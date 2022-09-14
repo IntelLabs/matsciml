@@ -18,38 +18,25 @@ Catalysts are essential components in chemical systems that aim to accelerate sp
 
 The examples outlined in the next section how to get started with Open MatSci ML Toolkit using a simple python script, jupyter notebook or the PyTorchLightning CLI for a simple training on a subset of the original dataset (dev-set) that can be run on a laptop. Subsequently, we scale our example python script to large compute systems, including Distributed Training (Multiple GPU on a Single Node) and Multi-Node Training (Multiple GPUS across Multiple Nodes) in a computing cluster. Leveraging both PyTorch Lightning and DGL capabilities, we can enable the compute and experiment scaling with minimal additional complexity.
 
-<!-- - Introduce OCP; what its goals are and link to original repository
-- In our own usage, we found it difficult to do certain things both from a research and execution perspective
-- General themes are usability without compromising performance
-- PyTorch Lightning provides (resuable) pipeline abstraction, going from workstation to distributed systems
-  - Main thing is breaking out of the OCP mold: easily extend to new tasks, new architectures
-- DGL provides comparable performance to PyG on GPUs, and significantly better performance on CPUs
-  - DGL also provides an alternate model for graph abstraction and performance (e.g. `with graph.local_scope()`)
-  - DGL wasn't supported on OCP
-- Want to ramp up the reader from developing their own GNN locally on their laptop up to training in HPC environments -->
-
-
-## Examples
-The following section outlines the installation procedure for Open MatSci ML Toolkit, as well as various examples starting from the smallest compute scale (laptop) to the largest (Multi-Node Distributed Training).
-
 ### Installation
 
-Might to unify the package installs between `pip`, `conda` and `Docker`; right now the conda install has Intel optimized packages
 - `pip`: We recommend installing inside a virtual environment with `python -m venv matsciml_env && pip install -r docker/requirements` from the main directory
 - `conda`: We recommend installing inside a virtual with `conda env create --name matsciml_env --file=pl-env.yml` from the main directory
 - `Docker`: We provide a Dockerfiles inside the `docker` that can be run to install a container with pip (`Dockerfile.pip`) or conda (`Dockerfile.conda`)
 
 Additionally, for a development install, one can specify the extra packages like `black` and `pytest` with `pip install './[dev]'`.
 
-### Minimal Example
+## Examples
 
-- Provide an example of developing your own GNN on workstation with devset
-- Provide a number of examples on how to use the pipeline: three ways depending on your personal preference, what feels natural to you as opposed to using one specific way (e.g. `submitit`)
+The `examples` folder contains simple, unit scripts that demonstrate how to use the pipeline in specific ways:
 
-### Accelarated Examples
-- Provide a number of examples on how to run the pipeline; workstation with the devset, multi GPU DDP, and then multinode, distributed multi CPU training
-- Provide example of HPO
-
+- [Basic script for task training with PyTorch Lightning abstractions](examples/simple_example_pt_lightning.py)
+- [Manual training; the traditional way](examples/simple_example_torch.py)
+- [Distributed data parallelism with CPUs on a SLURM managed cluster](examples/simple_example_slurm.py)
+- [Using the Lightning CLI with YAML configuration files](examples/simple_cli_example.sh)
+- [Model development and testing in a Jupyter notebook](examples/devel-example.ipynb)
+- [Multi-GPU training script](examples/simple_example_multi_node.py)
+- [Modifying the pipeline with `Callbacks`](examples/train_with_callbacks_example.py)
 
 ## PyTorch Lightning Refactor
 
