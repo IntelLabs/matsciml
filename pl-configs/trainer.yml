@@ -1,0 +1,13 @@
+# Copyright (C) 2022 Intel Corporation
+# SPDX-License-Identifier: MIT License
+
+trainer:
+  max_steps: 5
+  accelerator: "gpu"
+  devices: 1
+  logger:
+    - class_path: pytorch_lightning.loggers.CSVLogger
+      init_args:
+        save_dir: "matsciml-logs"
+        name: "training-logs"
+seed_everything: 6

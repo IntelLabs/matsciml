@@ -1,0 +1,9 @@
+# Copyright (C) 2022 Intel Corporation
+# SPDX-License-Identifier: MIT License
+
+data:
+  class_path: "S2EFDGLDataModule"
+  init_args:
+    train_path: "data/dev-min"
+    batch_size: 8
+    # num_workers: 0

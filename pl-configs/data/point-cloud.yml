@@ -1,0 +1,10 @@
+# Copyright (C) 2022 Intel Corporation
+# SPDX-License-Identifier: MIT License
+
+data:
+  class_path: PointCloudDataModule
+  init_args:
+    train_path: "data/dev-min"
+    dataset_class: ocpmodels.datasets.S2EFDataset
+    batch_size: 8
+    num_workers: 0

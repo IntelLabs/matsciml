@@ -1,0 +1,9 @@
+# Copyright (C) 2022 Intel Corporation
+# SPDX-License-Identifier: MIT License
+
+data:
+  class_path: "IS2REDGLDataModule"
+  init_args:
+    train_path: "ocpmodels/datasets/dev-is2re-dgl"
+    batch_size: 8
+    num_workers: 0

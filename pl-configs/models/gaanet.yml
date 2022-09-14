@@ -1,0 +1,35 @@
+# Copyright (C) 2022 Intel Corporation
+# SPDX-License-Identifier: MIT License
+
+model:
+  class_path: S2EFPointCloudModule
+  init_args:
+    gnn:
+      class_path: ocpmodels.models.GalaPotential
+      init_args:
+        # Node Embedding
+        D_in: 1
+        hidden_dim: 16
+        depth: 3
+        dilation: 3
+        residual: False
+        nonlinearities: True
+        merge_fun: mean
+        join_fun: mean
+        invariant_mode: full
+        rank: 2
+        invar_value_normalization: momentum
+        value_normalization: momentum
+        score_normalization: momentum
+        block_normalization: momentum
+        pc_mini_batch: 8
+        pc_size: 8
+    regress_forces: True
+    normalize_kwargs:
+      target_mean: -0.7554450631141663
+      target_std: 2.887317180633545
+      grad_target_mean: 0.0
+      grad_target_std: 2.887317180633545
+    lr: 0.0001
+    gamma: 0.01
+    nan_check: True

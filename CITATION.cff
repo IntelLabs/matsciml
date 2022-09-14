@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use Open MatSci ML Toolkit in your technical work or publication, we would appreciate it if you cite the Open MatSci ML Toolkit library"
+authors:
+  - family-names: Miret*
+    given-names: Santiago
+    orcid: https://orcid.org/0000-0002-5121-3853
+    affiliation: Intel Labs
+  - family-names: Lee*
+    given-names: Kin Long Kelvin
+    orcid: https://orcid.org/0000-0002-1903-9242
+    affiliation: Intel SCALE
+  - family-names: Gonzales
+    given-names: Carmelo
+    affiliation: Intel Labs
+    orcid: https://orcid.org/0000-0002-5048-1901
+  - family-names: Nassar
+    given-names: Marcel
+    affiliation: Intel Labs
+    orcid: https://orcid.org/0000-0002-7628-8819
+  - family-names: Sadowski
+    given-names: Krzysztof
+    affiliation: IP Rally Technologies
+title: "Open MatSci ML Toolkit: A Flexible Framework for Deep Learning on the OpenCatalyst Dataset"
+type: software
+version: 0.1.0
+url: https://github.com/IntelLabs/matsciml

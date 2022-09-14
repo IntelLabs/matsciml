@@ -1,0 +1,23 @@
+# Copyright (C) 2022 Intel Corporation
+# SPDX-License-Identifier: MIT License
+
+model:
+  class_path: "S2EFLitModule"
+  init_args:
+    gnn: 
+      class_path: "GraphConvModel"
+      init_args:
+        atom_embedding_dim: 128
+        out_dim: 32
+        num_blocks: 3
+        num_fc_layers: 3
+        activation: torch.nn.SiLU
+        readout: dgl.nn.pytorch.SumPooling
+    regress_forces: False
+    normalize_kwargs:
+      target_mean: -0.7554450631141663
+      target_std: 2.887317180633545
+      grad_target_mean: 0.0
+      grad_target_std: 2.887317180633545
+    lr: 0.001
+    gamma: 0.1

@@ -1,0 +1,27 @@
+# Copyright (C) 2022 Intel Corporation
+# SPDX-License-Identifier: MIT License
+
+model:
+  class_path: "S2EFLitModule"
+  init_args:
+    gnn: 
+      class_path: ocpmodels.models.DimeNetPP
+      init_args:
+        emb_size: 128
+        out_emb_size: 128
+        int_emb_size: 32
+        basis_emb_size: 12
+        num_blocks: 4
+        num_spherical: 7
+        num_radial: 6
+        cutoff: 10.
+        envelope_exponent: 5.0
+        activation: torch.nn.SiLU
+    regress_forces: False
+    normalize_kwargs:
+      target_mean: -0.7554450631141663
+      target_std: 2.887317180633545
+      grad_target_mean: 0.0
+      grad_target_std: 2.887317180633545
+    lr: 0.0001
+    gamma: 0.01
