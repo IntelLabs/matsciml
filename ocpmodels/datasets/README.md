@@ -45,3 +45,19 @@ This data representation is unique in the context of Open Catalyst, which was bu
 For now, the `PointCloudDataset` _wraps_ around one of the OCP datasets, mainly to take advantage of how to process the differences in the LMDB data. Ostensibly, using these classes should not require that much more complexity in configuration, and can be readily created at the `LightningDataModule` level via class methods, `PointCloudDataModule.from_s2ef` and `PointCloudDataModule.from_is2re`. That said, it might be worth exploring re-implementing the point cloud representation as a transform (effectively a Python decorator) instead of its own dataset and data module.
 
 The modules `trajectory_lmdb` and `single_point_lmdb` will be superceded by these changes. There will also be some refactoring needed from `ocpmodels.lightning.data_utils`, where we move the `LightningDataModule` blocks to within this module.
+
+## Transforms interface
+
+In other deep learning domains, transforms typically serve as ways to perform data augmentation: for example, image rotation and translation for computer vision, etc. Here, the concept works similarly but the interface serves also to augment the data _pipeline_ itself, that is to say intended to be used to generate new data and representations, not just graph rotations, etc. with the idea that you should not need to create new datasets to obtain extract new variables and representations. This improves on modularity: the typical route is to either implement these ideas at the model level (e.g. in the `forward` pass, we compute distances, etc.) or create a whole new dataset that includes these variables. Because the data are retrieved as dictionaries, you are free to manipulate, add, and remove keys after the data is loaded to modify it. The way that the collating function is designed should not require modification; graphs are batched together with `dgl.batch`, and tensors are stacked together, and should work for any variable number of batch items.
+
+Two examples exist right now, which are the distance edge features (which add edge features based on distance and "reduced mass") and the graph level variables. In the former, we modify the graph `edata` by appending `r` and `mu`, while the latter adds a new tensor to the data dictionary being returned (`graph_variables`), and they both demonstrate how one can incorporate new data/features into the pipeline without modifying the codebase.
+
+To incorporate these transforms in your pipeline, you can pass a list of instantiated objects (as you would for CV models) to the `LightningDataModules` in `ocpmodels/lightning/data_utils` module as a keyword argument:
+
+```python
+from ocpmodels.datasets import transforms as t
+
+data_module = S2EFDGLDataModule(h5_path, transforms=[t.DistancesTransform(), t.GraphVariablesTransform()])
+```
+
+Transforms are performed sequentially, in the order that they are passed to the argument. In this case, `GraphVariablesTransform` depends on interatomic distances as the `r` key in `graph.edata`, so the `DistancesTransform` is applied first.
