@@ -1,7 +1,7 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Union, Optional, Type
+from typing import Union, Optional, Type, List, Callable
 from pathlib import Path
 from warnings import warn
 
@@ -42,7 +42,7 @@ class GraphDataModule(pl.LightningDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
-        num_gpus: Optional[int] = 0
+        transforms: Optional[List[Callable]] = None,
     ):
         super().__init__()
         self.paths = {"train": train_path, "val": val_path, "test": test_path}
@@ -56,6 +56,7 @@ class GraphDataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.dataset_class = dataset_class
         self.collate_fn = dataset_class.collate_fn
+        self.transforms = transforms
 
     def verify_paths(self) -> None:
         """
@@ -96,7 +97,7 @@ class GraphDataModule(pl.LightningDataModule):
         self.data_splits = {}
         # set up each of the dataset splits
         for key, path in self.paths.items():
-            self.data_splits[key] = self.dataset_class(path)
+            self.data_splits[key] = self.dataset_class(path, transforms=self.transforms)
 
     def train_dataloader(self):
         split = self.data_splits.get("train")
@@ -147,9 +148,16 @@ class S2EFDGLDataModule(GraphDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
-            train_path, S2EFDataset, batch_size, num_workers, val_path, test_path
+            train_path,
+            S2EFDataset,
+            batch_size,
+            num_workers,
+            val_path,
+            test_path,
+            transforms,
         )
 
     @classmethod
@@ -169,9 +177,16 @@ class IS2REDGLDataModule(GraphDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
-            train_path, IS2REDataset, batch_size, num_workers, val_path, test_path
+            train_path,
+            IS2REDataset,
+            batch_size,
+            num_workers,
+            val_path,
+            test_path,
+            transforms,
         )
 
     @classmethod
@@ -195,8 +210,11 @@ class DGLDataModule(S2EFDGLDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        transforms: Optional[List[Callable]] = None,
     ):
-        super().__init__(train_path, batch_size, num_workers, val_path, test_path)
+        super().__init__(
+            train_path, batch_size, num_workers, val_path, test_path, transforms
+        )
         warn(f"DGLDataModule is being retired - please switch to S2EFDGLDataModule.")
 
 
@@ -211,9 +229,16 @@ class PointCloudDataModule(GraphDataModule):
         sample_size: int = 10,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
-            train_path, dataset_class, batch_size, num_workers, val_path, test_path
+            train_path,
+            dataset_class,
+            batch_size,
+            num_workers,
+            val_path,
+            test_path,
+            transforms,
         )
         self._point_cloud_size = point_cloud_size
         self._sample_size = sample_size
