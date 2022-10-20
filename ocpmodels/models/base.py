@@ -1,8 +1,9 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Dict, Type, Tuple, Optional, Union
+from typing import Dict, Type, Tuple, Optional, Union, ContextManager
 from abc import abstractmethod
+from contextlib import nullcontext, ExitStack
 import logging
 
 import pytorch_lightning as pl
@@ -47,31 +48,70 @@ debug_lightpurple = decorate_color("[94m")
 debug_cyan = decorate_color("[96m")
 
 
-def lit_conditional_grad(regress_forces: bool):
+def dynamic_gradients_context(need_grad: bool, has_rnn: bool) -> ContextManager:
     """
-    Decorator function that will dynamically enable gradient
-    computation. An example usage for this decorator is given in
-    the `S2EFLitModule.forward` call, where we determine at
-    runtime whether or not to enable gradients for the force
-    computation by wrapping the embedded `gnn.forward` method.
+    Conditional gradient context manager, based on whether or not
+    force computation is necessary in the process.
+
+    This is necessary because there are actually two contexts
+    necessary: enable gradient computation _and_ make sure we
+    aren't in inference mode, which is enabled by PyTorch Lightning
+    for faster inference.
+
+    If this is `regress_forces` is set to False, a `nullcontext`
+    is applied that does nothing.
 
     Parameters
     ----------
-    regress_forces : bool
-        Specifies whether or not to regress forces; if so,
-        enable gradient computation.
+    need_grad : bool
+        Flag to designate whether or not gradients need to be forced
+        within this code block.
+
+    has_rnn : bool
+        Flag to indicate whether or not RNNs are being used in this
+        model, which will disable cudnn to enable double backprop.
+
+    Returns
+    -------
+    ContextManager
+        Joint context, combining `inference_mode` and `enable_grad`,
+        otherwise a `nullcontext` if `need_grad` is `False`.
     """
+    manager = ExitStack()
+    if need_grad:
+        contexts = [torch.inference_mode(False), torch.enable_grad()]
+        # if we're also using CUDA, there is an additional context to allow
+        # RNNs to do double backprop
+        if torch.cuda.is_available() and has_rnn:
+            contexts.append(torch.backends.cudnn.flags(enabled=False))
+        for cxt in contexts:
+            manager.enter_context(cxt)
+    else:
+        manager.enter_context(nullcontext())
+    return manager
 
-    def decorator(func):
-        def cls_method(self, *args, **kwargs):
-            f = func
-            if regress_forces:
-                f = torch.enable_grad()(func)
-            return f(self, *args, **kwargs)
 
-        return cls_method
+def rnn_force_train_mode(module: nn.Module) -> None:
+    """
+    Forces RNN subclasses into training mode to facilitate
+    derivatives for force computation outside of training
+    steps.
 
-    return decorator
+    See https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnRNNForward
+
+    Parameters
+    ----------
+    module : nn.Module
+        Abstract `torch.nn.Module` to check and toggle
+    """
+    # this try/except will catch non-CUDA enabled systems
+    # this patch is only for cudnn
+    try:
+        _ = torch.cuda.current_device()
+        if isinstance(module, nn.RNNBase):
+            module.train()
+    except RuntimeError:
+        pass
 
 
 class BaseModel(nn.Module):
@@ -132,7 +172,7 @@ class OCPLitModule(pl.LightningModule):
         if self._nan_check:
             # configure logging for the bad batch detection
             self._nan_logger = logging.getLogger("pytorch_lightning")
-            self._nan_logger.setLevel(logging.DEBUG)
+            # self._nan_logger.setLevel(logging.DEBUG)
             self._nan_logger.addHandler(logging.FileHandler("nan_checker.log"))
 
     def forward(self, *args, **kwargs):
@@ -153,6 +193,20 @@ class OCPLitModule(pl.LightningModule):
             optimizer, self.hparams.gamma
         )
         return [optimizer], [lr_scheduler]
+
+    @property
+    def has_rnn(self) -> bool:
+        """
+        Property to determine whether or not this LightningModule contains
+        RNNs. This is primarily to determine whether or not to enable/disable
+        contexts with cudnn, as double backprop is not supported.
+
+        Returns
+        -------
+        bool
+            True if any module is a subclass of `RNNBase`, otherwise False.
+        """
+        return any([isinstance(module, nn.RNNBase) for module in self.modules()])
 
     def _nan_check_gradients(self, batch_idx: int) -> bool:
         """
@@ -213,11 +267,12 @@ class OCPLitModule(pl.LightningModule):
         losses = self._compute_losses(batch, batch_idx)
         # ensure batch size is correct
         batch_size = self._get_batch_size(batch)
+
         for key, value in losses.items():
             self.log(
                 f"{prefix}_{key}",
                 value,
-                on_step=True,
+                # on_step=True,
                 batch_size=batch_size,
                 prog_bar=True,
             )
@@ -552,10 +607,7 @@ class S2EFLitModule(OCPLitModule):
             # make sure atomic positions are tracking gradients
             # for the force computation
             graph.ndata["pos"].requires_grad_(True)
-        # decorate the GNN's forward method, which will enable/disable
-        # gradient computation as necessary
-        compute_func = lit_conditional_grad(self.regress_forces)(self.gnn.forward)
-        energy = compute_func(graph, *args, **kwargs)
+        energy = self.gnn(graph, *args, **kwargs)
         if self.regress_forces:
             forces = (
                 -1
@@ -594,11 +646,14 @@ class S2EFLitModule(OCPLitModule):
         Dict[str, Union[float, Dict[str, float]]]
             Nested dictionary of losses
         """
-        # grab the single optimizer
-        optimizer = self.optimizers()
-        optimizer.zero_grad()
-        # compute losses, log them, and grab the total loss for backprop
-        losses = self._compute_losses(batch, batch_idx)
+        with dynamic_gradients_context(
+            self.regress_forces, self.has_rnn
+        ) as grad_context:
+            # grab the single optimizer
+            optimizer = self.optimizers()
+            optimizer.zero_grad()
+            # compute losses, log them, and grab the total loss for backprop
+            losses = self._compute_losses(batch, batch_idx)
         batch_size = self._get_batch_size(batch)
         # log the losses individually with the batch size specified
         for key, value in losses.get("logs").items():
@@ -684,6 +739,66 @@ class S2EFLitModule(OCPLitModule):
         loss_dict["total"] = sum([value for value in loss_dict.values()])
         return {"loss": loss_dict["total"], "logs": loss_dict}
 
+    def step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]],
+        batch_idx: int,
+        prefix: str = "validation",
+    ) -> float:
+        """
+        Wraps the parent class's generic step method with a gradient context.
+
+        This ensures that derivatives are computable (i.e. forces) even outside
+        of training mode/steps.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+            Dictionary containing batched data
+        batch_idx : int
+            Index of this batch
+        """
+        with dynamic_gradients_context(
+            self.regress_forces, self.has_rnn
+        ) as grad_context:
+            return super().step(batch, batch_idx, prefix)
+
+    def on_validation_start(self) -> None:
+        """
+        Configures RNN subclasses to be in training mode for CUDA enabled
+        systems.
+        """
+        self.apply(rnn_force_train_mode)
+
+    def on_test_start(self) -> None:
+        """
+        Configures RNN subclasses to be in training mode for CUDA enabled
+        systems.
+        """
+        self.apply(rnn_force_train_mode)
+
+    def on_validation_batch_end(
+        self,
+        outputs,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]],
+        batch_idx: int,
+        dataloader_idx: int,
+    ) -> None:
+        # make sure gradients are zeroed out and they don't contaminate
+        # the next batch
+        self.zero_grad()
+
+    def on_test_batch_end(
+        self,
+        outputs,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]],
+        batch_idx: int,
+        dataloader_idx: int,
+    ) -> None:
+        # make sure gradients are zeroed out and they don't contaminate
+        # the next batch
+        self.zero_grad()
+
 
 class S2EFPointCloudModule(S2EFLitModule):
     def forward(
@@ -713,8 +828,7 @@ class S2EFPointCloudModule(S2EFLitModule):
             positions.requires_grad_(True)
         # decorate the GNN's forward method, which will enable/disable
         # gradient computation as necessary
-        compute_func = lit_conditional_grad(self.regress_forces)(self.model.forward)
-        energy = compute_func(features, positions, *args, **kwargs)
+        energy = self.model(features, positions, *args, **kwargs)
         if self.regress_forces:
             forces = (
                 -1
