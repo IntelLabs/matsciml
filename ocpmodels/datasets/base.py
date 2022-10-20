@@ -475,11 +475,16 @@ class PointCloudDataset(Dataset):
                     (batch_size, max_centers, max_neighbors, feat_dim),
                     dtype=example.dtype,
                 )
+                collate_mask = torch.zeros(
+                    batch_size, max_centers, max_neighbors, dtype=bool
+                )
                 # iterate over samples, and copy of data to zero-padded tensors
                 for index, sample in enumerate(batch):
                     lengths = sample[key].shape
                     batched_data[
                         index, : lengths[0], : lengths[1], : lengths[2]
                     ] = sample[key][:, :, :]
+                    collate_mask[index, : lengths[0], : lengths[1]] = True
                 output_dict[key] = batched_data
+                output_dict["collate_mask"] = collate_mask
         return output_dict
