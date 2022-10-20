@@ -12,5 +12,5 @@ except ImportError:
 if _has_dgl:
     from ocpmodels.models.dgl.dpp import DimeNetPP
     from ocpmodels.models.dgl.egnn import PLEGNNBackbone
-    from ocpmodels.models.dgl.gaanet import GalaPotential
+    from ocpmodels.models.dgl.gaanet import GalaPotential, GAANetVectorRegressor
     from ocpmodels.models.dgl.gcn import GraphConvModel
