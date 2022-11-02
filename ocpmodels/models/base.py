@@ -721,6 +721,37 @@ class S2EFLitModule(OCPLitModule):
         loss_dict["total"] = sum([value for value in loss_dict.values()])
         return {"loss": loss_dict["total"], "logs": loss_dict}
 
+    def predict_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]],
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> Dict[str, torch.Tensor]:
+        # force gradients when running predictions
+        # TODO implement with wrapper for conditional gradients
+        with torch.enable_grad():
+            input_data = self._get_inputs(batch)
+            if self.regress_forces:
+                (pred_energy, pred_force) = self(*input_data)
+            else:
+                pred_energy = self(*input_data)
+        ids, chunk_ids = batch.get("sid"), batch.get("fid")
+        # ids are formatted differently for force tasks
+        system_ids = [f"{i}_{j}" for i, j in zip(ids, chunk_ids)]
+        predictions = {
+            "ids": system_ids,
+            "chunk_ids": chunk_ids,
+            "energy": pred_energy.to(torch.float16),
+        }
+        # processing the forces is a bit more complicated because apparently
+        # only the free atoms are considered
+        if self.regress_forces:
+            graph = batch.get("graph")
+            fixed_mask = graph.ndata["fixed"] == 0
+            # retrieve only forces corresponding to unfixed nodes
+            predictions["forces"] = pred_force[fixed_mask]
+        return predictions
+
 
 class S2EFPointCloudModule(S2EFLitModule):
     def forward(
