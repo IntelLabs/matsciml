@@ -66,5 +66,5 @@ class LeaderboardWriter(BasePredictionWriter):
                 joint_results[key] = combined_result.flatten(0, -2).numpy()
             target = self.output_path.joinpath(f"{task_name}/{gnn_name}/{self.now}.npz")
             # make the directory in case it doesn't exist
-            target.mkdir(parents=True, exist_ok=True)
+            target.parent.mkdir(parents=True, exist_ok=True)
             np.savez_compressed(target, **joint_results)
