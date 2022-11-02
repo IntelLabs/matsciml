@@ -36,22 +36,27 @@ class GraphDataModule(pl.LightningDataModule):
 
     def __init__(
         self,
-        train_path: str,
+        train_path: Optional[str],
         dataset_class: Type[TorchDataset],
         batch_size: int = 32,
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        predict_path: Optional[str] = None,
         transforms: Optional[List[Callable]] = None,
     ):
         super().__init__()
-        self.paths = {"train": train_path, "val": val_path, "test": test_path}
+        self.paths = {
+            "train": train_path,
+            "val": val_path,
+            "test": test_path,
+            "predict": predict_path,
+        }
         # check that the path is accessible first and not none
         self.verify_paths()
-        if "train" not in self.paths:
-            raise FileNotFoundError(
-                f"Training path was invalid; verify {train_path} exists and contains *.lmdb files as children."
-            )
+        assert (
+            len(self.paths) > 0
+        ), "No data paths were provided or valid; check configuration."
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.dataset_class = dataset_class
