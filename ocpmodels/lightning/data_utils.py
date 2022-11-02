@@ -164,6 +164,7 @@ class S2EFDGLDataModule(GraphDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        predict_path: Optional[str] = None,
         transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
@@ -173,6 +174,7 @@ class S2EFDGLDataModule(GraphDataModule):
             num_workers,
             val_path,
             test_path,
+            predict_path,
             transforms,
         )
 
@@ -193,6 +195,7 @@ class IS2REDGLDataModule(GraphDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        predict_path: Optional[str] = None,
         transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
@@ -202,6 +205,7 @@ class IS2REDGLDataModule(GraphDataModule):
             num_workers,
             val_path,
             test_path,
+            predict_path,
             transforms,
         )
 
@@ -226,10 +230,17 @@ class DGLDataModule(S2EFDGLDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        predict_path: Optional[str] = None,
         transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
-            train_path, batch_size, num_workers, val_path, test_path, transforms
+            train_path,
+            batch_size,
+            num_workers,
+            val_path,
+            test_path,
+            predict_path,
+            transforms,
         )
         warn(f"DGLDataModule is being retired - please switch to S2EFDGLDataModule.")
 
@@ -245,6 +256,7 @@ class PointCloudDataModule(GraphDataModule):
         sample_size: int = 10,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        predict_path: Optional[str] = None,
         transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
@@ -254,6 +266,7 @@ class PointCloudDataModule(GraphDataModule):
             num_workers,
             val_path,
             test_path,
+            predict_path,
             transforms,
         )
         self._point_cloud_size = point_cloud_size
