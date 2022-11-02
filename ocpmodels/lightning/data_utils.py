@@ -159,7 +159,7 @@ class S2EFDGLDataModule(GraphDataModule):
 
     def __init__(
         self,
-        train_path: Optional[str],
+        train_path: Optional[str] = None,
         batch_size: int = 32,
         num_workers: int = 0,
         val_path: Optional[str] = None,
@@ -190,7 +190,7 @@ class IS2REDGLDataModule(GraphDataModule):
 
     def __init__(
         self,
-        train_path: Optional[str],
+        train_path: Optional[str] = None,
         batch_size: int = 32,
         num_workers: int = 0,
         val_path: Optional[str] = None,
@@ -225,7 +225,7 @@ class DGLDataModule(S2EFDGLDataModule):
 
     def __init__(
         self,
-        train_path: Optional[str],
+        train_path: Optional[str] = None,
         batch_size: int = 32,
         num_workers: int = 0,
         val_path: Optional[str] = None,
@@ -248,7 +248,7 @@ class DGLDataModule(S2EFDGLDataModule):
 class PointCloudDataModule(GraphDataModule):
     def __init__(
         self,
-        train_path: Optional[str],
+        train_path: Optional[str] = None,
         dataset_class: Type[TorchDataset],
         batch_size: int = 32,
         num_workers: int = 0,
