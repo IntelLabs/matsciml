@@ -142,6 +142,17 @@ class GraphDataModule(pl.LightningDataModule):
             warn(f"Validation split not defined; not performing validation.")
             pass
 
+    def predict_dataloader(self):
+        split = self.data_splits.get("predict")
+        if split is not None:
+            return split.data_loader(
+                split,
+                shuffle=False,
+                num_workers=self.num_workers,
+                batch_size=self.batch_size,
+                collate_fn=self.collate_fn,
+            )
+
 
 class S2EFDGLDataModule(GraphDataModule):
     """The DGL version of the S2EF task `LightningDataModule`"""
