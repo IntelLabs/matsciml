@@ -276,6 +276,43 @@ class OCPLitModule(pl.LightningModule):
     ) -> float:
         return self.step(batch, batch_idx, "test")
 
+    def predict_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]],
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Implements the inference logic for energy prediction, which is used to
+        run the leaderboard oriented prediction pipeline.
+
+        This is intended to be used in tandem with the `LeaderboardWriter` callback,
+        which will save and format the results from inference in a way that conforms
+        with the evalAI formatting.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+            Batch of data, corresponding to a dictionary of tensors
+        batch_idx : int
+            Index of the batch
+        dataloader_idx : int, optional
+            Dataloader index, which is used for DDP processing, by default 0
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing the IDs of each batch item, and the corresponding
+            energy result.
+        """
+        input_data = self._get_inputs(batch)
+        prediction = self(*input_data)
+        normalizer = self.normalizers.get("target", None)
+        if normalizer is not None:
+            prediction = normalizer.denorm(prediction)
+        ids = batch.get("sid")
+        return {"id": ids, "energy": prediction}
+
     @abstractmethod
     def _compute_losses(
         self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]], batch_idx: int
