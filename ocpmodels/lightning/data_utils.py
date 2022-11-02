@@ -248,8 +248,8 @@ class DGLDataModule(S2EFDGLDataModule):
 class PointCloudDataModule(GraphDataModule):
     def __init__(
         self,
-        train_path: Optional[str] = None,
         dataset_class: Type[TorchDataset],
+        train_path: Optional[str] = None,
         batch_size: int = 32,
         num_workers: int = 0,
         point_cloud_size: int = 6,
