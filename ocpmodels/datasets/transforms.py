@@ -168,3 +168,57 @@ class RemoveTagZeroNodes(AbstractGraphTransform):
         target_key = "graph" if self.overwrite else "subgraph"
         data[target_key] = subgraph
         return data
+
+
+class GraphSupernode(AbstractGraphTransform):
+    """
+    Generates a super node based on tag zero nodes.
+
+    This is intended to be run _prior_ to `RemoveTagZeroNodes`, as it
+    does require aggregating data over all of the tag zero nodes.
+    """
+
+    def __init__(self, atom_max_embed_index: int) -> None:
+        super().__init__()
+        self.atom_max_embed_index = atom_max_embed_index
+
+    @property
+    def supernode_index(self) -> int:
+        # mostly for the sake of abstraction; this just makes it easier to
+        # understand the embedding lookup index for the graph supernode
+        return self.atom_max_embed_index + 1
+
+    def __call__(
+        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+        graph = data.get("graph")
+        # check to make sure the nodes
+        assert (
+            len(graph.ndata["tag"] == 0) > 0
+        ), "No nodes with tag == 0 in `graph`! Please apply this transform before removing tag zero nodes."
+        tag_zero_indices = graph.nodes()[graph.ndata["tag"] == 0]
+        supernode_data = {
+            "tag": torch.as_tensor([3], dtype=graph.ndata["tag"].dtype),
+            "atomic_numbers": torch.as_tensor(
+                [self.supernode_index], dtype=graph.ndata["atomic_numbers"].dtype
+            ),
+            "fixed": torch.as_tensor([1], dtype=graph.ndata["fixed"].dtype),
+        }
+        # extract out the tag zero nodes to compute averages
+        tag_zero_subgraph = dgl.node_subgraph(graph, tag_zero_indices)
+        # for 2D tensors, like positions and forces, get the average value
+        for key, tensor in tag_zero_subgraph.ndata.items():
+            if tensor.ndim == 2:
+                # have to unsqueeze to make the node appending work
+                supernode_data[key] = tensor.mean(0).unsqueeze(0)
+        new_graph = dgl.add_nodes(graph, 1, data=supernode_data)
+        supernode_index = new_graph.num_nodes() - 1
+        # add edges to every existing node with the super node, except itself
+        new_graph = dgl.add_edges(
+            new_graph,
+            u=[supernode_index for _ in range(supernode_index)],
+            v=[index for index in range(supernode_index)],
+        )
+        # overwrite the existing graph
+        data["graph"] = new_graph
+        return data
