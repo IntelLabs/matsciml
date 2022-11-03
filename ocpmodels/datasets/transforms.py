@@ -136,3 +136,23 @@ class GraphVariablesTransform(AbstractGraphTransform):
         avg_dist, std_dist = graph.edata["r"].mean(), graph.edata["r"].std()
         avg_mu, std_mu = graph.edata["mu"].mean(), graph.edata["mu"].std()
         return [avg_dist, std_dist, avg_mu, std_mu, sub_distance]
+
+
+class RemoveTagZeroNodes(AbstractGraphTransform):
+    """
+    Create a subgraph representation where atoms tagged with
+    zero are absent.
+
+    TODO make sure the properties of the graph are updated.
+    """
+
+    def __call__(
+        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+        graph = data.get("graph")
+        tag_zero_mask = graph.ndata["tag"] != 0
+        select_node_indices = graph.nodes()[tag_zero_mask]
+        # induce subgraph based on atom tags
+        subgraph = dgl.node_subgraph(graph, select_node_indices)
+        data["subgraph"] = subgraph
+        return data
