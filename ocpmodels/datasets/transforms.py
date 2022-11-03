@@ -143,8 +143,19 @@ class RemoveTagZeroNodes(AbstractGraphTransform):
     Create a subgraph representation where atoms tagged with
     zero are absent.
 
-    TODO make sure the properties of the graph are updated.
+    The `overwrite` kwarg, which is by default `True`, will overwrite
+    the `graph` key in a batch to avoid duplication of data. If set
+    to `False`, the new subgraph can be referenced with the `subgraph`
+    key.
+
+    TODO make sure the properties of the graph are updated, but a glance
+    at the original implementation the `dgl.node_subgraph` should take
+    care of everything.
     """
+
+    def __init__(self, overwrite: bool = True) -> None:
+        super().__init__()
+        self.overwrite = overwrite
 
     def __call__(
         self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
@@ -154,5 +165,6 @@ class RemoveTagZeroNodes(AbstractGraphTransform):
         select_node_indices = graph.nodes()[tag_zero_mask]
         # induce subgraph based on atom tags
         subgraph = dgl.node_subgraph(graph, select_node_indices)
-        data["subgraph"] = subgraph
+        target_key = "graph" if self.overwrite else "subgraph"
+        data[target_key] = subgraph
         return data
