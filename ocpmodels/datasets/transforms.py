@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 
 import torch
 import dgl
@@ -312,5 +312,32 @@ class AtomicSuperNodes(AbstractGraphTransform):
             graph = dgl.add_edges(
                 graph, [new_node_index for _ in range(num_edges)], joint
             )
+        data["graph"] = graph
+        return data
+
+
+class GraphReordering(AbstractGraphTransform):
+    """
+    Implements a graph node/edge reordering transform, which nominally
+    may help with graph processing performance. This transform
+    wraps `dgl.reorder_graph`, and the `init` method allows the user to
+    customize how the graphs are ordered.
+    """
+
+    def __init__(
+        self, node_algo: Optional[str] = None, edge_algo: str = "src", **sort_kwargs
+    ) -> None:
+        super().__init__()
+        self.node_algo = node_algo
+        self.edge_algo = edge_algo
+        self.sort_kwargs = sort_kwargs
+
+    def __call__(
+        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+        graph = data.get("graph")
+        graph = dgl.reorder_graph(
+            graph, self.node_algo, self.edge_algo, permute_config=self.sort_kwargs
+        )
         data["graph"] = graph
         return data
