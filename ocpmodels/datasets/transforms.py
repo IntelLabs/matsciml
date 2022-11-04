@@ -222,3 +222,95 @@ class GraphSupernode(AbstractGraphTransform):
         # overwrite the existing graph
         data["graph"] = new_graph
         return data
+
+
+class AtomicSuperNodes(AbstractGraphTransform):
+    def __init__(self, atom_max_embedding: int) -> None:
+        super().__init__()
+        self.atom_max_embedding = atom_max_embedding
+
+    def super_atom_embedding(self, atomic_number: int, graph_super_node: bool) -> int:
+        """
+        This function shifts the super node indexes from the individual atom
+        embedding indices. Depending on whether or not a graph super node
+        was included, we will also shift the index accordingly.
+
+        An example is with 100 atom types, the maximum superatom value
+        would be 199; if the graph supernode embedding is included as
+        well, then it would be 200 (with embedding index 100 being the
+        graph supernode value.)
+
+        Parameters
+        ----------
+        atomic_number : int
+            Atomic number index to offset
+
+        Returns
+        -------
+        int
+            Offset value of the superatom embedding
+        """
+        index = self.atom_max_embedding + atomic_number
+        if graph_super_node:
+            index += 1
+        return index
+
+    def __call__(
+        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+        graph = data.get("graph")
+        # check to see if there are graph supernodes already, which will offset
+        # the atomic supernode indices
+        if torch.any(graph.ndata["tags"] == 3):
+            graph_super_node = True
+        else:
+            graph_super_node = False
+        # extract the tag zero data again
+        tag_zero_mask = graph.ndata["tags"] == 0
+        assert len(
+            tag_zero_mask > 0
+        ), "No nodes with tag == 0 in `graph`! Please apply this transform before removing tag zero nodes."
+        tag_zero_indices = graph.nodes()[tag_zero_mask]
+        tag_zero_subgraph = dgl.node_subgraph(graph, tag_zero_indices)
+        # slice out atomic numbers that are only in the sub-surface
+        unique_atomic_numbers = tag_zero_subgraph.ndata["atomic_numbers"].unique()
+        # get the edges
+        u, v = graph.edges()
+        for atomic_number in unique_atomic_numbers:
+            # slice out the nodes that match the element and is in the subsurface
+            all_nodes_mask = (graph.ndata["tags"] == 0) * (
+                graph.ndata["atomic_numbers"] == atomic_number
+            )
+            # similar to the other supernode featurization, but different in the tag
+            # and in the way the embedding number is computed
+            supernode_data = {
+                "tags": torch.as_tensor([4], dtype=graph.ndata["tags"].dtype),
+                "atomic_numbers": torch.as_tensor(
+                    [self.super_atom_embedding(atomic_number, graph_super_node)],
+                    dtype=graph.ndata["atomic_numbers"].dtype,
+                ),
+                "fixed": torch.as_tensor([1], dtype=graph.ndata["fixed"].dtype),
+            }
+            for key, tensor in graph.ndata.items():
+                masked_tensor = tensor[all_nodes_mask]
+                if masked_tensor.ndim == 2:
+                    # have to unsqueeze to make the node appending work
+                    supernode_data[key] = masked_tensor.mean(0).unsqueeze(0)
+            # now we need to build the edges
+            node_indices = graph.nodes()[all_nodes_mask]
+            # rebuild a list of nodes to connect with
+            src_targets, dst_targets = (
+                u[torch.isin(u, node_indices)],
+                v[torch.isin(v, node_indices)],
+            )
+            # add edges to each node only once
+            joint = torch.cat([src_targets, dst_targets]).unique()
+            num_edges = len(joint)
+            graph = dgl.add_nodes(graph, 1, data=supernode_data)
+            # add edges joining the supernode to existing connections
+            new_node_index = graph.num_nodes() - 1
+            graph = dgl.add_edges(
+                graph, [new_node_index for _ in range(num_edges)], joint
+            )
+        data["graph"] = graph
+        return data

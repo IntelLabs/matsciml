@@ -59,3 +59,19 @@ def test_graph_supernode():
     graph = next(iter(loader))["graph"]
     # should be one super node per graph
     assert (graph.ndata["tags"] == 3).sum() == graph.batch_size
+
+
+@pytest.mark.dependency(["test_remove_tag_zero"])
+def test_atom_supernode():
+    trans = [
+        transforms.AtomicSuperNodes(100),
+        transforms.RemoveTagZeroNodes(),
+    ]
+    dm = S2EFDGLDataModule.from_devset(transforms=trans)
+    dm.setup()
+    loader = dm.train_dataloader()
+    graph = next(iter(loader))["graph"]
+    # make sure node numbers don't exceed the expected limit
+    assert torch.all(graph.ndata["atomic_numbers"] <= 199)
+    # make sure we have atomic super nodes after the transform
+    assert torch.any(graph.ndata["tags"] == 4)
