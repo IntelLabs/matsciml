@@ -186,7 +186,7 @@ class GraphSuperNodes(AbstractGraphTransform):
     def supernode_index(self) -> int:
         # mostly for the sake of abstraction; this just makes it easier to
         # understand the embedding lookup index for the graph supernode
-        return self.atom_max_embed_index + 1
+        return self.atom_max_embed_index
 
     def __call__(
         self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
