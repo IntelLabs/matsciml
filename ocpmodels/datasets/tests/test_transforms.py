@@ -75,3 +75,26 @@ def test_atom_supernode():
     assert torch.all(graph.ndata["atomic_numbers"] <= 199)
     # make sure we have atomic super nodes after the transform
     assert torch.any(graph.ndata["tags"] == 4)
+
+
+@pytest.mark.dependency(["test_atom_supernode", "test_graph_supernode"])
+def test_all_supernodes():
+    trans = [
+        transforms.GraphSuperNodes(100),
+        transforms.AtomicSuperNodes(100),
+        transforms.RemoveTagZeroNodes(),
+    ]
+    dm = S2EFDGLDataModule.from_devset(transforms=trans)
+    dm.setup()
+    loader = dm.train_dataloader()
+    graph = next(iter(loader))["graph"]
+    # make sure node numbers don't exceed the expected limit
+    assert torch.all(graph.ndata["atomic_numbers"] <= 200)
+    # make sure we have graph and atomic super nodes after the transform
+    assert torch.any(graph.ndata["tags"] == 4)
+    assert torch.any(graph.ndata["tags"] == 3)
+    # check no tag zero nodes remain
+    assert not torch.any(graph.ndata["tags"] == 0)
+    # make sure the graph super node has an embedding index of 100
+    mask = graph.ndata["tags"] == 3
+    assert (graph.ndata["atomic_numbers"][mask] - 100).sum() == 0
