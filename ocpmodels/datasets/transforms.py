@@ -161,7 +161,7 @@ class RemoveTagZeroNodes(AbstractGraphTransform):
         self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
     ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
         graph = data.get("graph")
-        tag_zero_mask = graph.ndata["tag"] != 0
+        tag_zero_mask = graph.ndata["tags"] != 0
         select_node_indices = graph.nodes()[tag_zero_mask]
         # induce subgraph based on atom tags
         subgraph = dgl.node_subgraph(graph, select_node_indices)
@@ -194,11 +194,11 @@ class GraphSupernode(AbstractGraphTransform):
         graph = data.get("graph")
         # check to make sure the nodes
         assert (
-            len(graph.ndata["tag"] == 0) > 0
+            len(graph.ndata["tags"] == 0) > 0
         ), "No nodes with tag == 0 in `graph`! Please apply this transform before removing tag zero nodes."
-        tag_zero_indices = graph.nodes()[graph.ndata["tag"] == 0]
+        tag_zero_indices = graph.nodes()[graph.ndata["tags"] == 0]
         supernode_data = {
-            "tag": torch.as_tensor([3], dtype=graph.ndata["tag"].dtype),
+            "tags": torch.as_tensor([3], dtype=graph.ndata["tags"].dtype),
             "atomic_numbers": torch.as_tensor(
                 [self.supernode_index], dtype=graph.ndata["atomic_numbers"].dtype
             ),
