@@ -48,3 +48,14 @@ def test_remove_tag_zero():
     graph = next(iter(loader))["graph"]
     # make sure we've purged all of the tag zero nodes
     assert not torch.any(graph.ndata["tags"] == 0)
+
+
+@pytest.mark.dependency(["test_remove_tag_zero"])
+def test_graph_supernode():
+    trans = [transforms.GraphSupernode(100), transforms.RemoveTagZeroNodes()]
+    dm = S2EFDGLDataModule.from_devset(transforms=trans)
+    dm.setup()
+    loader = dm.train_dataloader()
+    graph = next(iter(loader))["graph"]
+    # should be one super node per graph
+    assert (graph.ndata["tags"] == 3).sum() == graph.batch_size
