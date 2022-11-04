@@ -52,7 +52,7 @@ def test_remove_tag_zero():
 
 @pytest.mark.dependency(["test_remove_tag_zero"])
 def test_graph_supernode():
-    trans = [transforms.GraphSupernode(100), transforms.RemoveTagZeroNodes()]
+    trans = [transforms.GraphSuperNodes(100), transforms.RemoveTagZeroNodes()]
     dm = S2EFDGLDataModule.from_devset(transforms=trans)
     dm.setup()
     loader = dm.train_dataloader()

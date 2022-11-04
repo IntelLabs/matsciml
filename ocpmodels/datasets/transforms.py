@@ -170,7 +170,7 @@ class RemoveTagZeroNodes(AbstractGraphTransform):
         return data
 
 
-class GraphSupernode(AbstractGraphTransform):
+class GraphSuperNodes(AbstractGraphTransform):
     """
     Generates a super node based on tag zero nodes.
 
