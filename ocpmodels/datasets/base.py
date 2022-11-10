@@ -394,12 +394,18 @@ class PointCloudDataset(Dataset):
         # point cloud features as symmetric one-hot encodings
         # shape should be [natom_centers, neighbors, natom_types * 2]
         pc_features = torch.concat([plus, minus], axis=-1)
+        # for the reduced dimensionality, we will average over the atom centers
+        # so that the point cloud features are just averaged encodings
+        pc_features = pc_features.mean(0)
         # shift coordinates according to their atom centers
         # shape should be [natom_centers, neighbors, 3]
-        pc_pos = (
-            graph.ndata["pos"][substrate_indices][None, :]
-            - graph.ndata["pos"][mol_idx][:, None]
-        )
+        pc_pos = graph.ndata["pos"][substrate_indices, :]
+        atomic_numbers = graph.ndata["atomic_numbers"][substrate_indices]
+        total_mass = atomic_numbers.sum()
+        # broadcasting [num_nodes, 3] * [num_nodes, 1]
+        center_of_mass = (pc_pos * atomic_numbers.unsqueeze(-1)).sum(0) / total_mass
+        # subtract off the center of mass for point cloud
+        pc_pos -= center_of_mass
 
         # now we start getting the data out
         output_data = {
