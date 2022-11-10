@@ -412,8 +412,6 @@ class PointCloudDataset(Dataset):
             "pc_features": pc_features,
             "pos": pc_pos,
             "sizes": len(substrate_idx),  # the size of the point cloud
-            "nneighbors": len(dest_types),
-            "ncenters": len(source_types),
         }
         if "force" in graph.ndata.keys():
             output_data["force"] = graph.ndata["force"][substrate_indices].squeeze()
