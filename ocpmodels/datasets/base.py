@@ -463,10 +463,7 @@ class PointCloudDataset(Dataset):
                     result = torch.as_tensor(data)
                 output_dict[key] = result
         # these keys are special because we have to pad to match the number of point clouds
-        max_centers, max_neighbors = (
-            output_dict["ncenters"].max().item(),
-            output_dict["nneighbors"].max().item(),
-        )
+        max_centers = output_dict["sizes"].max().item()
         batch_size = len(batch)
         for key in pad_keys:
             # force doesn't need to be padded
@@ -476,19 +473,15 @@ class PointCloudDataset(Dataset):
                 feat_dim = example.size(-1)
                 # preallocate zeros tensor to hold everything
                 batched_data = torch.zeros(
-                    (batch_size, max_centers, max_neighbors, feat_dim),
+                    (batch_size, max_centers, feat_dim),
                     dtype=example.dtype,
                 )
-                collate_mask = torch.zeros(
-                    batch_size, max_centers, max_neighbors, dtype=bool
-                )
+                collate_mask = torch.zeros(batch_size, max_centers, dtype=bool)
                 # iterate over samples, and copy of data to zero-padded tensors
                 for index, sample in enumerate(batch):
                     lengths = sample[key].shape
-                    batched_data[
-                        index, : lengths[0], : lengths[1], : lengths[2]
-                    ] = sample[key][:, :, :]
-                    collate_mask[index, : lengths[0], : lengths[1]] = True
+                    batched_data[index, : lengths[0], : lengths[1]] = sample[key][:, :]
+                    collate_mask[index, : lengths[0]] = True
                 output_dict[key] = batched_data
                 output_dict["collate_mask"] = collate_mask
         return output_dict
