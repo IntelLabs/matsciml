@@ -110,6 +110,7 @@ class EGNN(nn.Module):
         use_attention: bool = False,
         attention_dims: List[int] = None,
         attention_norm: Callable[[torch.Tensor], torch.Tensor] = None,
+        num_atoms_embedding: int = 100,
     ) -> nn.Module:
         super().__init__()
         self._k_linears = k_linears
@@ -122,7 +123,9 @@ class EGNN(nn.Module):
         hidden_sizes = [hidden_dim for _ in range(depth)]
         hidden_sizes.append(out_dim)
 
-        self.in_embed = MLP([in_dim, hidden_dim], k_linears=k_linears)
+        # use an atomic number lookup to grab from the table of embeddings
+        self.atom_embedding = nn.Embedding(num_atoms_embedding, hidden_dim)
+        self.in_embed = MLP([hidden_dim, hidden_dim], k_linears=k_linears)
         self.layers = nn.ModuleList()
 
         for i, (in_dim_, out_dim_) in enumerate(zip(hidden_sizes, hidden_sizes[:-1])):
@@ -142,12 +145,19 @@ class EGNN(nn.Module):
 
                 attention_sizes.append(1)
 
-            edge_func = MLP(edge_sizes, activation=activation,
-                            activate_last=True, k_linears=k_linears)
-            position_func = MLP(position_sizes, activation=activation,
-                                bias_last=False, k_linears=k_linears)
-            feat_func = MLP(feat_sizes, activation=activation,
-                            k_linears=k_linears)
+            edge_func = MLP(
+                edge_sizes,
+                activation=activation,
+                activate_last=True,
+                k_linears=k_linears,
+            )
+            position_func = MLP(
+                position_sizes,
+                activation=activation,
+                bias_last=False,
+                k_linears=k_linears,
+            )
+            feat_func = MLP(feat_sizes, activation=activation, k_linears=k_linears)
 
             if use_attention:
                 if isinstance(attention_norm, nn.Softmax):
@@ -199,9 +209,10 @@ class EGNN(nn.Module):
 
             if edge_attrs is not None:
                 edge_attrs = torch.stack(
-                    [edge_attrs for _ in range(self._k_linears)], dim=1)
-
-        feats = self.in_embed(node_feats)
+                    [edge_attrs for _ in range(self._k_linears)], dim=1
+                )
+        embeddings = self.atom_embedding(node_feats)
+        feats = self.in_embed(embeddings)
 
         for layer in self.layers:
             if isinstance(layer, EquiCoordGraphConv):
