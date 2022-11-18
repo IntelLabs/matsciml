@@ -28,20 +28,22 @@ class MLP(nn.Module):
             self.linear = nn.Linear
         else:
             self.linear = KLinears
-            self._linear_kwargs['k'] = k_linears
+            self._linear_kwargs["k"] = k_linears
 
         self.layers = nn.ModuleList()
 
         for i, (in_dim, out_dim) in enumerate(zip(dims[:-1], dims[1:])):
             if i < self._depth - 1:
-                self.layers.append(self.linear(in_dim, out_dim, bias=True,
-                                               **self._linear_kwargs))
+                self.layers.append(
+                    self.linear(in_dim, out_dim, bias=True, **self._linear_kwargs)
+                )
 
                 if activation is not None:
                     self.layers.append(activation)
             else:
-                self.layers.append(self.linear(in_dim, out_dim, bias=bias_last,
-                                               **self._linear_kwargs))
+                self.layers.append(
+                    self.linear(in_dim, out_dim, bias=bias_last, **self._linear_kwargs)
+                )
 
                 if activation is not None and activate_last:
                     self.layers.append(activation)
@@ -51,7 +53,7 @@ class MLP(nn.Module):
 
         for layer in self.layers:
             if isinstance(layer, (nn.Linear, KLinears)):
-                dims.append(f'{layer.in_features} \u2192 {layer.out_features}')
+                dims.append(f"{layer.in_features} \u2192 {layer.out_features}")
             else:
                 dims.append(layer.__class__.__name__)
 
@@ -177,15 +179,17 @@ class EGNN(nn.Module):
                     attention_norm,
                 )
 
-            self.layers.append(EquiCoordGraphConv(
-                edge_func,
-                position_func,
-                feat_func,
-                attention_func if use_attention else None,
-                residual=residual,
-                normalize=normalize,
-                tanh=tanh,
-            ))
+            self.layers.append(
+                EquiCoordGraphConv(
+                    edge_func,
+                    position_func,
+                    feat_func,
+                    attention_func if use_attention else None,
+                    residual=residual,
+                    normalize=normalize,
+                    tanh=tanh,
+                )
+            )
 
             if i < depth - 1 or activate_last:
                 self.layers.append(activation)
