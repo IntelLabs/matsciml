@@ -43,6 +43,7 @@ class PLEGNNBackbone(AbstractEnergyModel):
         prediction_hidden_dim: int,
         prediction_out_dim: int,
         prediction_activation: str,
+        num_atoms_embedding: int = 100,
     ) -> None:
         super().__init__()
         self.embed = EGNN(
@@ -62,6 +63,7 @@ class PLEGNNBackbone(AbstractEnergyModel):
             k_linears=embed_k_linears,
             use_attention=embed_use_attention,
             attention_norm=self._get_attention_norm(embed_attention_norm),
+            num_atoms_embedding=num_atoms_embedding,
         )
 
         node_projection_dims = self._get_node_projection_dims(
@@ -151,7 +153,7 @@ class PLEGNNBackbone(AbstractEnergyModel):
         return prediction_dims
 
     def forward(self, graph: dgl.DGLGraph) -> torch.Tensor:
-        inputs = graph.ndata["atomic_numbers"].unsqueeze(-1)
+        inputs = graph.ndata["atomic_numbers"].long()
         pos = graph.ndata["pos"]
 
         x, _ = self.embed(graph, inputs, pos)
