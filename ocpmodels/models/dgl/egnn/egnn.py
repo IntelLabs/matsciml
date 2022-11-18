@@ -153,6 +153,8 @@ class PLEGNNBackbone(AbstractEnergyModel):
         return prediction_dims
 
     def forward(self, graph: dgl.DGLGraph) -> torch.Tensor:
+        # cast atomic numbers to make sure they're floats, then pass
+        # them into the embedding lookup
         inputs = graph.ndata["atomic_numbers"].long()
         pos = graph.ndata["pos"]
 
