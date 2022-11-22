@@ -23,7 +23,9 @@ class MEGNet(AbstractEnergyModel):
 
     def __init__(
         self,
-        in_dim: int,
+        edge_feat_dim: int,
+        node_feat_dim: int,
+        graph_feat_dim: int,
         num_blocks: int,
         hiddens: list[int],
         conv_hiddens: list[int],
@@ -80,16 +82,21 @@ class MEGNet(AbstractEnergyModel):
         )
         self.attr_embed = attr_embed if attr_embed else Identity()
 
-        dims = [in_dim] + hiddens
-        self.edge_encoder = MLP(dims, Softplus(), activate_last=True)
+        self.edge_encoder = MLP(
+            [edge_feat_dim] + hiddens, Softplus(), activate_last=True
+        )
         # in the event we're using an embedding table, skip the input dim because
         # we're using the hidden dimensionality
         if isinstance(self.node_embed, nn.Embedding):
-            node_encoder = MLP(dims[1:], Softplus(), activate_last=True)
+            node_encoder = MLP(hiddens, Softplus(), activate_last=True)
         else:
-            node_encoder = MLP(dims, Softplus(), activate_last=True)
+            node_encoder = MLP(
+                [node_feat_dim] + hiddens, Softplus(), activate_last=True
+            )
         self.node_encoder = node_encoder
-        self.attr_encoder = MLP(dims, Softplus(), activate_last=True)
+        self.attr_encoder = MLP(
+            [graph_feat_dim] + hiddens, Softplus(), activate_last=True
+        )
 
         blocks_in_dim = hiddens[-1]
         block_out_dim = conv_hiddens[-1]
