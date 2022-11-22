@@ -65,7 +65,6 @@ class MEGNet(Module):
         block_out_dim = conv_hiddens[-1]
         block_args = dict(conv_hiddens=conv_hiddens, dropout=dropout, skip=True)
         blocks = []
-        from .layers import MEGNetBlock
 
         # first block
         blocks.append(MEGNetBlock(dims=[blocks_in_dim], **block_args))  # type: ignore
