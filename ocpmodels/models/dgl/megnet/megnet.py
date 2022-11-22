@@ -13,9 +13,10 @@ from dgl.nn import Set2Set
 from torch.nn import Dropout, Identity, Module, ModuleList, Softplus
 
 from ocpmodels.models.dgl.megnet import MLP, MEGNetBlock, EdgeSet2Set
+from ocpmodels.models import AbstractEnergyModel
 
 
-class MEGNet(Module):
+class MEGNet(AbstractEnergyModel):
     """
     DGL implementation of MEGNet.
     """
