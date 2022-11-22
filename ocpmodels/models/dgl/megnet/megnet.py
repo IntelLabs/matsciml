@@ -35,9 +35,13 @@ class MEGNet(AbstractEnergyModel):
         edge_embed: Optional[nn.Module] = None,
         attr_embed: Optional[nn.Module] = None,
         dropout: Optional[float] = None,
+        num_atom_embedding: int = 100,
     ) -> None:
         """
-        Init method for MEGNet.
+        Init method for MEGNet. Also supports learnable embeddings for each
+        atom, as specified by `num_atom_embedding` for the number of types of
+        atoms. The embedding dimensionality is given by the first element of
+        the `hiddens` arg.
 
         Parameters
         ----------
@@ -63,16 +67,28 @@ class MEGNet(AbstractEnergyModel):
         dropout : Optional[float], optional
             Dropout probability for the convolution layers, by default None
             which does not use dropout.
+        num_atom_embedding : int, optional
+            Number of embeddings to use for the atom node embedding table, by
+            default is 100.
         """
         super().__init__()
 
         self.edge_embed = edge_embed if edge_embed else Identity()
-        self.node_embed = node_embed if node_embed else Identity()
+        # default behavior for node embeddings is to use a lookup table
+        self.node_embed = (
+            node_embed if node_embed else nn.Embedding(num_atom_embedding, hiddens[0])
+        )
         self.attr_embed = attr_embed if attr_embed else Identity()
 
         dims = [in_dim] + hiddens
         self.edge_encoder = MLP(dims, Softplus(), activate_last=True)
-        self.node_encoder = MLP(dims, Softplus(), activate_last=True)
+        # in the event we're using an embedding table, skip the input dim because
+        # we're using the hidden dimensionality
+        if isinstance(self.node_embed, nn.Embedding):
+            node_encoder = MLP(dims[1:], Softplus(), activate_last=True)
+        else:
+            node_encoder = MLP(dims, Softplus(), activate_last=True)
+        self.node_encoder = node_encoder
         self.attr_encoder = MLP(dims, Softplus(), activate_last=True)
 
         blocks_in_dim = hiddens[-1]
@@ -127,6 +143,10 @@ class MEGNet(AbstractEnergyModel):
         torch.Tensor
             Output tensor, typically is the energy.
         """
+        # in the event we're using an embedding table, make sure we're
+        # casting the node features correctly
+        if isinstance(self.node_embed, nn.Embedding):
+            node_feat = node_feat.squeeze().long()
 
         edge_feat = self.edge_encoder(self.edge_embed(edge_feat))
         node_feat = self.node_encoder(self.node_embed(node_feat))
