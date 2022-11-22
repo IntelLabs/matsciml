@@ -36,19 +36,32 @@ class MEGNet(Module):
         dropout: Optional[float] = None,
     ) -> None:
         """
-        TODO: Add docs.
-        :param in_dim:
-        :param num_blocks:
-        :param hiddens:
-        :param conv_hiddens:
-        :param s2s_num_layers:
-        :param s2s_num_iters:
-        :param output_hiddens:
-        :param is_classification:
-        :param node_embed:
-        :param edge_embed:
-        :param attr_embed:
-        :param dropout:
+        Init method for MEGNet.
+
+        Parameters
+        ----------
+        in_dim : int
+            Input dimensionality, which is used to create the encoder layers.
+        num_blocks : int
+            Number of MEGNet convolution blocks to use
+        hiddens : list[int]
+            Hidden dimensionality of encoding MLP layers, follows `in_dim`
+        conv_hiddens : list[int]
+            Hidden dimensionality of the convolution layers
+        s2s_num_layers : int
+            Number of Set2Set layers
+        s2s_num_iters : int
+            Number of iterations for Set2Set operations
+        output_hiddens : list[int]
+            Output layer hidden dimensionality in the projection layer
+        is_classification : bool, optional
+            Whether to apply sigmoid to the output tensor, by default True
+        node_embed, edge_embed, attr_embed : Optional[nn.Module], optional
+            Embedding functions for each type of feature, by default None and
+            simply uses an `Identity` function
+        dropout : Optional[float], optional
+            Dropout probability for the convolution layers, by default None
+            which does not use dropout.
         """
         super().__init__()
 
@@ -95,14 +108,23 @@ class MEGNet(Module):
         edge_feat: torch.Tensor,
         node_feat: torch.Tensor,
         graph_attr: torch.Tensor,
-    ) -> None:
+    ) -> torch.Tensor:
         """
-        TODO: Add docs.
-        :param graph:
-        :param edge_feat:
-        :param node_feat:
-        :param graph_attr:
-        :return:
+        Forward pass of MEGNet, taking in an input DGL graph and
+        transforming the input features with encoding layers first,
+        followed by blocks of graph convolution and projection.
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            _description_
+        edge_feat, node_feat, graph_attr : torch.Tensor
+            Respective feature tensors for each type of representation
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor, typically is the energy.
         """
 
         edge_feat = self.edge_encoder(self.edge_embed(edge_feat))
