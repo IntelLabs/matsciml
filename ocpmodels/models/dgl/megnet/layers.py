@@ -44,21 +44,40 @@ class MEGNetGraphConv(Module):
         self.node_func = node_func
         self.attr_func = attr_func
 
-    @staticmethod
-    def from_dims(edge_dims: list[int], node_dims: list[int], attr_dims: list[int]):
+    @classmethod
+    def from_dims(
+        cls, edge_dims: list[int], node_dims: list[int], attr_dims: list[int]
+    ):
         """
-        TODO: Add docs.
-        :param edge_dims:
-        :param node_dims:
-        :param attr_dims:
-        :return:
+        Class method to instantiate a MEGNet graph convolution layer given
+        a list of dimensionalities.
+
+        Parameters
+        ----------
+        edge_dims, node_dims, attr_dims : list[int]
+            Dimensionalities for each MLP function that transforms edge, node, and
+            graph features.
+
+        Parameters
+        ----------
+        edge_dims : list[int]
+            _description_
+        node_dims : list[int]
+            _description_
+        attr_dims : list[int]
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
         """
         # TODO(marcel): Softplus doesnt exactly match paper's SoftPlus2
         # TODO(marcel): Should we activate last?
         edge_update = MLP(edge_dims, Softplus(), activate_last=True)
         node_update = MLP(node_dims, Softplus(), activate_last=True)
         attr_update = MLP(attr_dims, Softplus(), activate_last=True)
-        return MEGNetGraphConv(edge_update, node_update, attr_update)
+        return cls(edge_update, node_update, attr_update)
 
     def _edge_udf(self, edges: dgl.udf.EdgeBatch) -> Dict[str, torch.Tensor]:
         """
