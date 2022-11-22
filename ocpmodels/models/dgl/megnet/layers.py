@@ -4,8 +4,8 @@ Implement graph convolution layers for MEGNet.
 Code attributions to https://github.com/materialsvirtuallab/m3gnet-dgl/tree/main/megnet,
 along with contributions and modifications from Marcel Nassar, Santiago Miret, and Kelvin Lee
 """
-
-from typing import Dict, Optional
+from __future__ import annotations
+from typing import Dict, Optional, List
 
 import dgl
 import dgl.function as fn
@@ -46,8 +46,8 @@ class MEGNetGraphConv(Module):
 
     @classmethod
     def from_dims(
-        cls, edge_dims: list[int], node_dims: list[int], attr_dims: list[int]
-    ):
+        cls, edge_dims: List[int], node_dims: List[int], attr_dims: List[int]
+    ) -> MEGNetGraphConv:
         """
         Class method to instantiate a MEGNet graph convolution layer given
         a list of dimensionalities.
@@ -58,19 +58,10 @@ class MEGNetGraphConv(Module):
             Dimensionalities for each MLP function that transforms edge, node, and
             graph features.
 
-        Parameters
-        ----------
-        edge_dims : list[int]
-            _description_
-        node_dims : list[int]
-            _description_
-        attr_dims : list[int]
-            _description_
-
         Returns
         -------
-        _type_
-            _description_
+        MEGNetGraphConv
+            Instance of a MEGNet graph convolution layer
         """
         # TODO(marcel): Softplus doesnt exactly match paper's SoftPlus2
         # TODO(marcel): Should we activate last?
