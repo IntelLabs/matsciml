@@ -57,6 +57,7 @@ class GraphDataModule(pl.LightningDataModule):
         self.dataset_class = dataset_class
         self.collate_fn = dataset_class.collate_fn
         self.transforms = transforms
+        self.save_hyperparameters(ignore=["dataset_class"])
 
     def verify_paths(self) -> None:
         """
