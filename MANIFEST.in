@@ -1,2 +1,3 @@
 
-recursive-include ocpmodels/datasets/dev-min *
+recursive-include ocpmodels/datasets/dev-s2ef-dgl *
+recursive-include ocpmodels/datasets/dev-is2re-dgl *
