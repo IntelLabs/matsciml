@@ -161,11 +161,11 @@ Typical way to address this is to shrink the size of the graphs by sub-sampling 
 
 If you use Open MatSci ML Toolkit in your technical work or publication, we would appreciate it if you cite the Open MatSci ML Toolkit library:
 ```
-@software{open_matsci_ml_toolkit,
-  author = {Miret*, Santiago and *Lee, Kin Long Kelvin, and Gonzales, Carmelo and Nassar, Marcel and Sadowski, Krzysztof},
-  title = {{Open MatSci ML Toolkit : A Flexible Framework for Deep Learning on the OpenCatalyst Dataset}},
-  url = {https://github.com/IntelLabs/Open MatSci ML Toolkit},
-  year = {2022}
+@article{miret2022open,
+  title={The Open MatSci ML Toolkit: A Flexible Framework for Machine Learning in Materials Science},
+  author={Miret, Santiago and Lee, Kin Long Kelvin and Gonzales, Carmelo and Nassar, Marcel and Spellings, Matthew},
+  journal={arXiv preprint arXiv:2210.17484},
+  year={2022}
 }
 ```
 
