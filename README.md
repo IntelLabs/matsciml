@@ -51,11 +51,17 @@ Our data pipeline leverages the processing capabilities of the original OpenCata
 - Use of `pl.LightningDataModule` abstracts away splits, distributed loading, and data management while running experiments
 - DGL data objects are defined in `ocpmodel/datasets` and the classes for DGL data pre-processing is contained in `ocpmodel/preprocessing`
 
+#### S2EF
+
 For streamlined processing of the S2EF 200k subset, you can use the following set of commands similar to [orginal repo's pipeline](https://github.com/Open-Catalyst-Project/ocp/blob/main/DATASET.md#download-and-preprocess-the-dataset):
 - Ensure all requirements are installed in the virtual environment per the installtion instructions above
 - run `python scripts/download_data.py --task s2ef --split 200k --num-workers 1 --get-edges --ref-energy --data-path <path-to-data>`
 
 The `--data-path` specifies the output location of the processed dataset,  `--task` specifies the task for which the data is to be downloaded with `--split` specifying the data split in the case of S2EF; `--ref-energy` subtracts the reference energy from raw energies and `--get-edges` creates the edges for the graph structure.
+
+#### IS2RE
+
+For IS2RE, we provide pre-processed DGL graphs for all the data splits (10K, 100K, all) at: https://zenodo.org/record/7411133#.Y5DzRezMKX0.
 
 The minimal energy path to testing and development would be to use the minimal devset. There is a convenient mechanism for getting the DGL version of the devset regardless
 of how you install the package:
