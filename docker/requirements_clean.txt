@@ -11,14 +11,14 @@ geometric_algebra_attention
 jsonargparse[signatures]
 sympy
 sigopt
-pymatgen==2020.12.31
+pymatgen>=2022.9.21
 
 # Basic DGL
 ogb
 --find-links=https://data.dgl.ai/wheels/repo.html
-dgl-cu113
+dgl-cu116
 
 # BasicPytorch Tester
---extra-index-url https://download.pytorch.org/whl/cu113
-torch==1.10.2+cu113
+--extra-index-url https://download.pytorch.org/whl/cu116
+torch>=1.13.0+cu116
 
