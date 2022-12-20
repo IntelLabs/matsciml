@@ -436,3 +436,50 @@ class PointCloudTransform(AbstractGraphTransform):
             if not isinstance(value, (dgl.DGLGraph, dgl.DGLHeteroGraph)):
                 pc_data[key] = value
         return pc_data
+
+
+class SampledPointCloudTransform(PointCloudTransform):
+    """
+    Variation of the `PointCloudTransform`, where we randomly sample
+    `max_num_surface` number of subsurface nodes instead of taking all
+    of the subsurface nodes.
+
+    Ostensibly will lower the computational cost of the point cloud,
+    but maybe with some loss of accuracy.
+    """
+
+    def __init__(self, max_num_subsurface: int, shift_com: bool = True) -> None:
+        super().__init__(shift_com)
+        self.max_num_subsurface = max_num_subsurface
+
+    def _get_point_cloud(
+        self, indices: Dict[str, List[int]], graph: dgl.DGLGraph
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Extract out the point cloud, given a molecular graph and a dictionary
+        of indices obtained from `_extract_indices`. This variation of
+        the method will randomly sample `max_num_subsurface` number of
+        subsurface nodes to add to the point cloud, as opposed to using all of
+        the point cloud.
+
+        Parameters
+        ----------
+        indices : Dict[str, List[int]]
+            Key/value mapping of node tags to lists of node indices.
+        graph : dgl.DGLGraph
+            Instance of a DGL graph containing the catalyst graph.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing the point cloud data.
+        """
+        # extract out the surface indices and modify the behavior
+        subsurface_indices = indices.get("subsurface")
+        total_subsurface = len(subsurface_indices)
+        num_surface_nodes = max(self.max_num_subsurface, total_subsurface)
+        selected_indices = torch.randperm(total_subsurface)[:num_surface_nodes].tolist()
+        selected_indices.sort()
+        # overwrite the original set of surface indices and run the usual method
+        indices["surface"] = selected_indices
+        return super()._get_point_cloud(indices, graph)
