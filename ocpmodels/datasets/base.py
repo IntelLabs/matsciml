@@ -4,6 +4,7 @@
 from typing import Union, List, Any, Tuple, Callable, Optional, Dict
 from pathlib import Path
 from abc import abstractstaticmethod, abstractproperty
+from warnings import warn
 import functools
 import pickle
 
@@ -328,6 +329,11 @@ class PointCloudDataset(Dataset):
         transforms: Optional[List[Callable]] = None,
         natom_types: int = 100,
     ) -> None:
+        warn(
+            f"PointCloudDataset is deprecated: use the transform interface instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__()
         # additional point cloud arguments needed for the KNN graph
         # and sampling
