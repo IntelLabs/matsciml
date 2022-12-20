@@ -216,23 +216,28 @@ class DGLDataset(BaseOCPDataset):
         batch: List[Dict[str, Union[torch.Tensor, dgl.DGLGraph]]]
     ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
         """
-        Collate a batch of DGL data together.
+        Collate a batch of DGL data together - this can comprise graphs
+        or point clouds.
 
         A batch of DGL data comprises multiple keys with Tensor values,
         except for `graph` which contains a `DGLGraph`. For the former,
         we just batch them as one would with regular tensors, and for the
         latter, we use the native `dgl.batch` function to pack them together.
 
+        In the case of point cloud representations, the data will be padded
+        with -1 to ensure things can be batched together. In this case,
+        a corresponding `mask` key is also provided in the batched data
+        that will indicate which indices are actually valid.
+
         Parameters
         ----------
         batch : List[Dict[str, Union[torch.Tensor, dgl.DGLGraph]]]
-            A list containing individual IS2RE data points
+            A list containing individual data points
 
         Returns
         -------
         Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-            Dictionary with keys: ["graph", "natoms", "y", "sid", "fid", "cell"]
-            of batched data.
+            Dictionary with keys/value mappings for batched data
         """
         # get keys from the first batch entry
         keys = batch[0].keys()
