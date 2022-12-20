@@ -341,3 +341,98 @@ class GraphReordering(AbstractGraphTransform):
         )
         data["graph"] = graph
         return data
+
+
+class PointCloudTransform(AbstractGraphTransform):
+    def __init__(self, shift_com: bool = True) -> None:
+        super().__init__()
+        self.shift_com = shift_com
+
+    @staticmethod
+    def _extract_indices(graph: dgl.DGLGraph) -> Dict[str, List[int]]:
+        """
+        Extracts node indices for each type of node tag. Essentially just
+        slices the graph into different subgraphs.
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph; expecting the graph to have a `tags`
+            key in `ndata`.
+
+        Returns
+        -------
+        Dict[str, List[int]]
+            Key/value mapping of node tags to lists of node indices.
+        """
+        tags, nodes = graph.ndata["tags"], graph.nodes()
+        indices = {}
+        for tag_index, node_type in zip(
+            [0, 1, 2, 3], ["subsurface", "surface", "molecule", "supernodes"]
+        ):
+            mask = [tags == tag_index]
+            # in the event we don't process supernodes, we will
+            # run the alternate case
+            if len(mask) > 0:
+                # TODO make this a little less verbose
+                type_indices = nodes[mask]
+                node_indices = nodes[type_indices].tolist()
+            else:
+                # return an empty list
+                node_indices = []
+            indices[node_type] = node_indices
+        return indices
+
+    def _get_point_cloud(
+        self, indices: Dict[str, List[int]], graph: dgl.DGLGraph
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Extract out the point cloud, given a molecular graph and a dictionary
+        of indices obtained from `_extract_indices`.
+
+        For modified versions of the point cloud transform, this is likely
+        the method to modify for subclasses.
+
+        Parameters
+        ----------
+        indices : Dict[str, List[int]]
+            Key/value mapping of node tags to lists of node indices.
+        graph : dgl.DGLGraph
+            Instance of a DGL graph containing the catalyst graph.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing the point cloud data.
+        """
+        pc_indices = torch.LongTensor(
+            indices.get("molecule")
+            + indices.get("surface")
+            + indices.get("subsurface")
+            + indices.get("supernodes")
+        )
+        outputs = {}
+        for key in graph.ndata.keys():
+            outputs[key] = graph.ndata[key][pc_indices]
+        # just for sake of book keeping
+        outputs["sizes"] = len(pc_indices)
+        if self.shift_com:
+            pos = outputs["pos"]
+            atomic_numbers = outputs["atomic_numbers"]
+            center_of_mass = (pos * atomic_numbers.unsqueeze(-1)).sum(
+                0
+            ) / atomic_numbers.sum()
+            pos.sub_(center_of_mass)
+        return outputs
+
+    def __call__(
+        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+        graph = data.get("graph")
+        indices = self._extract_indices(graph)
+        pc_data = self._get_point_cloud(indices, graph)
+        # merge with all non-graph data from the original set, typically labels
+        for key, value in data.items():
+            if not isinstance(value, (dgl.DGLGraph, dgl.DGLHeteroGraph)):
+                pc_data[key] = value
+        return pc_data
