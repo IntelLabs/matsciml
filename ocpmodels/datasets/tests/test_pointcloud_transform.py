@@ -46,3 +46,19 @@ def test_sampled_pointcloud_transform():
     # ensure that the number of subsurface nodes is less than or equal
     # the number we enforced
     assert (tags == 0).sum() <= 10
+
+
+def test_collate_s2ef_pointcloud_transform():
+    devset = S2EFDataset(s2ef_devset, transforms=[t.PointCloudTransform(False)])
+    # grab 5 data entries
+    data = [devset.__getitem__(i) for i in range(5)]
+    batch = devset.collate_fn(data)
+    assert len(batch["pointcloud_size"]) == 5
+
+
+def test_collate_is2re_pointcloud_transform():
+    devset = IS2REDataset(is2re_devset, transforms=[t.PointCloudTransform(False)])
+    # grab 5 data entries
+    data = [devset.__getitem__(i) for i in range(5)]
+    batch = devset.collate_fn(data)
+    assert len(batch["pointcloud_size"]) == 5
