@@ -3,6 +3,7 @@
 
 from ocpmodels.lightning import data_utils
 from ocpmodels.datasets import s2ef_devset, is2re_devset, S2EFDataset
+from ocpmodels.datasets import transforms as t
 
 
 def test_s2ef_dgl_datamodule():
@@ -41,5 +42,11 @@ def test_easy_is2re_datamodule():
     dgl_mod = data_utils.IS2REDGLDataModule.from_devset()
 
 
-def test_s2ef_point_cloud_datamodule():
-    dm = data_utils.PointCloudDataModule(s2ef_devset, S2EFDataset, batch_size=8)
+def test_transform_datamodule():
+    dgl_mod = data_utils.IS2REDGLDataModule(
+        is2re_devset, batch_size=8, transforms=[t.PointCloudTransform(False)]
+    )
+    dgl_mod.setup()
+    train_dataloader = dgl_mod.train_dataloader()
+    batch = next(iter(train_dataloader))
+    assert "pointcloud_mask" in batch.keys()
