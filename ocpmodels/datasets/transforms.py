@@ -481,5 +481,5 @@ class SampledPointCloudTransform(PointCloudTransform):
         selected_indices = torch.randperm(total_subsurface)[:num_surface_nodes].tolist()
         selected_indices.sort()
         # overwrite the original set of surface indices and run the usual method
-        indices["surface"] = selected_indices
+        indices["subsurface"] = selected_indices
         return super()._get_point_cloud(indices, graph)
