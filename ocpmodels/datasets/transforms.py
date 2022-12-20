@@ -415,7 +415,7 @@ class PointCloudTransform(AbstractGraphTransform):
         for key in graph.ndata.keys():
             outputs[key] = graph.ndata[key][pc_indices]
         # just for sake of book keeping
-        outputs["sizes"] = len(pc_indices)
+        outputs["pointcloud_size"] = len(pc_indices)
         if self.shift_com:
             pos = outputs["pos"]
             atomic_numbers = outputs["atomic_numbers"]
