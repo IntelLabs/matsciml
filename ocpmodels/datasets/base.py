@@ -234,17 +234,56 @@ class DGLDataset(BaseOCPDataset):
             Dictionary with keys: ["graph", "natoms", "y", "sid", "fid", "cell"]
             of batched data.
         """
-        batched_graphs = dgl.batch([entry["graph"] for entry in batch])
-        batched_data = {"graph": batched_graphs}
         # get keys from the first batch entry
-        keys = filter(lambda x: x != "graph", batch[0].keys())
+        keys = batch[0].keys()
+        # determine if the data contains point clouds instead of graphs
+        is_pointcloud = True if "pointcloud_size" in keys else False
+        if is_pointcloud:
+            pc_sizes = [data["pointcloud_size"] for data in batch]
+            max_pc_size = max(pc_sizes)
+        batch_size = len(batch)
+        batched_data = {}
         for key in keys:
             data = [entry.get(key) for entry in batch]
-            if isinstance(data[0], torch.Tensor):
-                data = torch.stack(data)
+            first_item = data[0]
+            # use DGL batching mechanism for graphs
+            if isinstance(first_item, (dgl.DGLGraph, dgl.DGLHeteroGraph)):
+                data = dgl.batch(data)
+            elif isinstance(first_item, torch.Tensor):
+                # in the case of pointcloud data, we need to zero pad
+                # if there is more than one dimension
+                if is_pointcloud and key != "cell":
+                    multi_dim = first_item.ndim > 1
+                    if multi_dim:
+                        feat_size = first_item.size(-1)
+                        tensor = torch.ones(
+                            (batch_size, max_pc_size, feat_size),
+                            dtype=first_item.dtype,
+                        )
+                    else:
+                        tensor = torch.ones(
+                            (batch_size, max_pc_size), dtype=first_item.dtype
+                        )
+                    # pad with a number that isn't zero
+                    tensor.fill_(-1)
+                    for index, (size, entry) in enumerate(zip(pc_sizes, data)):
+                        if multi_dim:
+                            tensor[index, :size, :] = entry[:, :]
+                        else:
+                            tensor[index, :size] = entry[:]
+                    data = tensor
+                # in all other cases, just stack up the data to batch
+                else:
+                    data = torch.stack(data)
             else:
                 data = torch.Tensor(data)
             batched_data[key] = data
+        # create a mask for the point cloud as well
+        if is_pointcloud:
+            mask = torch.zeros((batch_size, max_pc_size), dtype=torch.bool)
+            for index, size in enumerate(pc_sizes):
+                mask[index, :size] = True
+            batched_data["pointcloud_mask"] = mask
         return batched_data
 
     @property
