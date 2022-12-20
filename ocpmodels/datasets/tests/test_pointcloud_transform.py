@@ -62,3 +62,19 @@ def test_collate_is2re_pointcloud_transform():
     data = [devset.__getitem__(i) for i in range(5)]
     batch = devset.collate_fn(data)
     assert len(batch["pointcloud_size"]) == 5
+
+
+def test_phast_composition():
+    devset = IS2REDataset(
+        is2re_devset,
+        transforms=[
+            t.GraphSuperNodes(100),
+            t.AtomicSuperNodes(100),
+            t.RemoveTagZeroNodes(),
+            t.PointCloudTransform(False),
+        ],
+    )
+    data = next(iter(devset))
+    import pdb
+
+    pdb.set_trace()
