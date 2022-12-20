@@ -477,7 +477,7 @@ class SampledPointCloudTransform(PointCloudTransform):
         # extract out the surface indices and modify the behavior
         subsurface_indices = indices.get("subsurface")
         total_subsurface = len(subsurface_indices)
-        num_surface_nodes = max(self.max_num_subsurface, total_subsurface)
+        num_surface_nodes = min(self.max_num_subsurface, total_subsurface)
         selected_indices = torch.randperm(total_subsurface)[:num_surface_nodes].tolist()
         selected_indices.sort()
         # overwrite the original set of surface indices and run the usual method
