@@ -42,7 +42,8 @@ class GraphDataModule(pl.LightningDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
-        num_gpus: Optional[int] = 0
+        num_gpus: Optional[int] = 0,
+        **dataset_kwargs
     ):
         super().__init__()
         self.paths = {"train": train_path, "val": val_path, "test": test_path}
@@ -55,6 +56,7 @@ class GraphDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.dataset_class = dataset_class
+        self.dataset_kwargs = dataset_kwargs if dataset_kwargs else {}
         self.collate_fn = dataset_class.collate_fn
 
     def verify_paths(self) -> None:
@@ -96,7 +98,7 @@ class GraphDataModule(pl.LightningDataModule):
         self.data_splits = {}
         # set up each of the dataset splits
         for key, path in self.paths.items():
-            self.data_splits[key] = self.dataset_class(path)
+            self.data_splits[key] = self.dataset_class(path, **self.dataset_kwargs)
 
     def train_dataloader(self):
         split = self.data_splits.get("train")
