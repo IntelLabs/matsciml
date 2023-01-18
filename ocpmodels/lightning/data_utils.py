@@ -8,7 +8,7 @@ from warnings import warn
 import pytorch_lightning as pl
 from torch.utils.data import Dataset as TorchDataset
 
-from ocpmodels.datasets import IS2REDataset, S2EFDataset, PointCloudDataset
+from ocpmodels.datasets import IS2REDataset, S2EFDataset, PointCloudDataset, OE62Dataset
 from ocpmodels.datasets import s2ef_devset, is2re_devset
 
 
@@ -183,6 +183,32 @@ class IS2REDGLDataModule(GraphDataModule):
         kwargs.setdefault("batch_size", 8)
         kwargs.setdefault("num_workers", 0)
         return cls(is2re_devset, **kwargs)
+
+
+class OE62DGLDataModule(GraphDataModule):
+    def __init__(
+        self,
+        train_path: Union[str, Path],
+        batch_size: int = 32,
+        num_workers: int = 0,
+        val_path: Optional[str] = None,
+        test_path: Optional[str] = None,
+        **dataset_kwargs
+    ):
+        dataset_kwargs.setdefault("cutoff_dist", 5.)
+        super().__init__(
+            train_path,
+            OE62Dataset,
+            batch_size,
+            num_workers,
+            val_path,
+            test_path,
+            **dataset_kwargs
+        )
+
+    @classmethod
+    def from_devset(cls, **kwargs):
+        raise NotImplementedError(f"Devset is not yet implemented for OE62.")
 
 
 class DGLDataModule(S2EFDGLDataModule):
