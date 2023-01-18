@@ -149,9 +149,10 @@ class S2EFDGLDataModule(GraphDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        **dataset_kwargs
     ):
         super().__init__(
-            train_path, S2EFDataset, batch_size, num_workers, val_path, test_path
+            train_path, S2EFDataset, batch_size, num_workers, val_path, test_path, **dataset_kwargs
         )
 
     @classmethod
@@ -171,9 +172,10 @@ class IS2REDGLDataModule(GraphDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        **dataset_kwargs
     ):
         super().__init__(
-            train_path, IS2REDataset, batch_size, num_workers, val_path, test_path
+            train_path, IS2REDataset, batch_size, num_workers, val_path, test_path, **dataset_kwargs
         )
 
     @classmethod
