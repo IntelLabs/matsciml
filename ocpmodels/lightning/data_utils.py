@@ -36,7 +36,7 @@ class GraphDataModule(pl.LightningDataModule):
 
     def __init__(
         self,
-        train_path: str,
+        train_path: Union[str, Path],
         dataset_class: Type[TorchDataset],
         batch_size: int = 32,
         num_workers: int = 0,
@@ -144,7 +144,7 @@ class S2EFDGLDataModule(GraphDataModule):
 
     def __init__(
         self,
-        train_path: str,
+        train_path: Union[str, Path],
         batch_size: int = 32,
         num_workers: int = 0,
         val_path: Optional[str] = None,
@@ -167,7 +167,7 @@ class IS2REDGLDataModule(GraphDataModule):
 
     def __init__(
         self,
-        train_path: str,
+        train_path: Union[str, Path],
         batch_size: int = 32,
         num_workers: int = 0,
         val_path: Optional[str] = None,
