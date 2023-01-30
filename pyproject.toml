@@ -4,11 +4,11 @@ requires = ["setuptools>=61.0.0"]
 
 [project]
 authors = [
-  {"author" = "Santiago Miret"},
-  {"author" = "Kin Long Kelvin Lee"},
-  {"author" = "Carmelo Gonzales"},
-  {"author" = "Marcel Nassar"},
-  {"author" = "Krzysztof Sadowski"}
+  {"name" = "Santiago Miret", "email" = "santiago.miret@intel.com"},
+  {"name" = "Kin Long Kelvin Lee", "email" = "kin.long.kelvin.lee@intel.com"},
+  {"name" = "Carmelo Gonzales", "email" = "carmelo.gonzales@intel.com"},
+  {"name" = "Marcel Nassar", "email" = "marcel.nassar@intel.com"},
+  {"name" = "Krzysztof Sadowski"}
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
