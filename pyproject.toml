@@ -80,7 +80,7 @@ show_missing = true
 directory = "htmlcov"
 
 [tool.flakehell]
-docstring-convention = "google"
+docstring-convention = "numpy"
 extended_default_ignore = []
 format = "grouped"
 max_line_length = 99
