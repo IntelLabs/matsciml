@@ -109,7 +109,7 @@ line-length = 99
 target-version = ["py38"]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md"]}
