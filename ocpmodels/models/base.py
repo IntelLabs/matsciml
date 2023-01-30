@@ -774,3 +774,22 @@ class AbstractEnergyModel(AbstractTask):
         """
         energy = self.forward(graph)
         return energy
+
+
+class OE62LitModule(OCPLitModule):
+
+    # this should be consistent with the targets provided in `OE62Dataset`
+    __normalize_keys__ = ["bandgap"]
+
+    def __init__(self, gnn: AbstractTask, normalize_kwargs: Optional[Dict[str, float]] = None, nan_check: bool = False):
+        super().__init__(gnn, normalize_kwargs, nan_check)
+        # TODO when more targets are implemented, this number needs to change
+        self.output_head = nn.LazyLinear(1, bias=False)
+        self.target_loss = nn.L1Loss()
+
+    def _compute_losses(self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]], batch_idx: int) -> Dict[str, Union[float, Dict[str, float]]]:
+        inputs = self._get_inputs(batch)
+        targets = batch.get("targets")
+        outputs = self.model(*inputs)
+        loss = self.target_loss(targets, outputs)
+
