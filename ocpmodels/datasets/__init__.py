@@ -21,7 +21,7 @@ from .trajectory_lmdb import (
 from pathlib import Path
 
 # TODO homogenize the variable and folder names
-devset_path = Path(__file__).parents[0].joinpath("dev-min")
+devset_path = Path(__file__).parents[0].joinpath("dev-s2ef-dgl")
 s2ef_devset = devset_path
 is2re_devset = Path(__file__).parents[0].joinpath("dev-is2re-dgl")
 

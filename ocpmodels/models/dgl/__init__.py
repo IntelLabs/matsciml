@@ -14,3 +14,4 @@ if _has_dgl:
     from ocpmodels.models.dgl.egnn import PLEGNNBackbone
     from ocpmodels.models.dgl.gaanet import GalaPotential
     from ocpmodels.models.dgl.gcn import GraphConvModel
+    from ocpmodels.models.dgl.megnet import MEGNet

@@ -1,7 +1,7 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Union, Optional, Type
+from typing import Union, Optional, Type, List, Callable
 from pathlib import Path
 from warnings import warn
 
@@ -58,6 +58,7 @@ class GraphDataModule(pl.LightningDataModule):
         self.dataset_class = dataset_class
         self.dataset_kwargs = dataset_kwargs if dataset_kwargs else {}
         self.collate_fn = dataset_class.collate_fn
+        self.save_hyperparameters(ignore=["dataset_class"])
 
     def verify_paths(self) -> None:
         """
@@ -225,8 +226,11 @@ class DGLDataModule(S2EFDGLDataModule):
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        transforms: Optional[List[Callable]] = None,
     ):
-        super().__init__(train_path, batch_size, num_workers, val_path, test_path)
+        super().__init__(
+            train_path, batch_size, num_workers, val_path, test_path, transforms
+        )
         warn(f"DGLDataModule is being retired - please switch to S2EFDGLDataModule.")
 
 
@@ -241,9 +245,16 @@ class PointCloudDataModule(GraphDataModule):
         sample_size: int = 10,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
-            train_path, dataset_class, batch_size, num_workers, val_path, test_path
+            train_path,
+            dataset_class,
+            batch_size,
+            num_workers,
+            val_path,
+            test_path,
+            transforms,
         )
         self._point_cloud_size = point_cloud_size
         self._sample_size = sample_size

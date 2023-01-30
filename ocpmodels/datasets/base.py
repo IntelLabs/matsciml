@@ -279,9 +279,10 @@ class PointCloudDataset(Dataset):
     def __init__(
         self,
         dataset: DGLDataset,
-        point_cloud_size: Optional[int] = 6,
-        sample_size: Optional[int] = 10,
+        point_cloud_size: Optional[int] = 24,
+        sample_size: Optional[int] = 80,
         transforms: Optional[List[Callable]] = None,
+        natom_types: int = 100,
     ) -> None:
         super().__init__()
         # additional point cloud arguments needed for the KNN graph
@@ -289,6 +290,7 @@ class PointCloudDataset(Dataset):
         self._pc_size = point_cloud_size
         self._sample_size = sample_size
         self._dataset = dataset
+        self._natom_types = natom_types
         # construct a KNNGraph object for use
         self._knn = KNNGraph(self._pc_size)
 
@@ -307,6 +309,21 @@ class PointCloudDataset(Dataset):
             Reference to the PyTorch DataLoader class
         """
         return DataLoader
+
+    @property
+    @cache
+    def eye(self) -> torch.Tensor:
+        """
+        Creates and caches a diagonal tensor of dimensionality
+        `natom_types`, representing a one-hot embedding for each
+        atom type in our dataset.
+
+        Returns
+        -------
+        torch.Tensor
+            2D diagonal [N, N] tensor
+        """
+        return torch.eye(self._natom_types)
 
     def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
         """
@@ -336,76 +353,87 @@ class PointCloudDataset(Dataset):
         # dataset; it's all the same anyway :D
         data = self._dataset.__getitem__(index)
         graph = data.get("graph")
-        # compute point cloud from KNN
-        knn_graph = self._knn(graph.ndata["pos"])
+        # compute point cloud from KNN - TODO try without KNN once
+        knn_graph = graph  # self._knn(graph.ndata["pos"])
         (u, v) = knn_graph.edges()
-        # refer to the original graph to slice out data
+        # # refer to the original graph to slice out data
         tags, nodes = graph.ndata["tags"], graph.nodes()
         molecule_nodes = [tags == 2]
-        substrate_nodes = [tags != 2]
+        surface_nodes = [tags == 1]
+        substrate_nodes = [tags == 0]
         molecule_idx = nodes[molecule_nodes]
+        surface_idx = nodes[surface_nodes]
         substrate_idx = nodes[substrate_nodes]
         mol_idx = graph.nodes()[molecule_idx].tolist()
+        surface_idx = graph.nodes()[surface_idx].tolist()
         substrate_idx = graph.nodes()[substrate_idx]
+        # calculate the number of things we _need_ so we sample on top of that
+        mol_surf_num = len(mol_idx) + len(surface_idx)
         # random sampling
-        num_items = min(self._sample_size, len(substrate_idx))
-        substrate_idx_sample_idx = torch.randperm(len(substrate_idx))[:num_items]
+        num_items = self._sample_size  # min(self._sample_size, len(substrate_idx))
+        choose_items = max(num_items - mol_surf_num, 0)
 
-        substrate_idx_sample = substrate_idx[substrate_idx_sample_idx]
-        # TODO rename these variables to something more descriptive
-        pc_features, pc_pos, pc_force, lengths = [], [], [], []
-        for subs_id in substrate_idx_sample:
-            l3 = (u == subs_id).nonzero().flatten()
-            l4 = v[l3]
-            substrate_indices = torch.LongTensor([subs_id, *l4.tolist(), *mol_idx])
-            # get data and append to their respective lists
-            pc_features.append(
-                graph.ndata["atomic_numbers"][substrate_indices].unsqueeze(-1)
-            )
-            pc_pos.append(graph.ndata["pos"][substrate_indices])
-            if "force" in graph.ndata.keys():
-                pc_force.append(graph.ndata["force"][substrate_indices])
-            lengths.append(len(substrate_indices))
+        substrate_idx_sample_idx = substrate_idx[
+            torch.randperm(min(choose_items, len(substrate_idx)))
+        ]
+        # currently not used, but TODO adapt to KNN sampling
+        total_num = mol_surf_num + len(substrate_idx_sample_idx)
+        substrate_idx_sample_idx = substrate_idx_sample_idx.tolist()
+        substrate_indices = torch.LongTensor(
+            mol_idx + surface_idx + substrate_idx_sample_idx
+        )
+        # get data and append to their respective lists
+        source_types = graph.ndata["atomic_numbers"][mol_idx].long()
+        dest_types = graph.ndata["atomic_numbers"][substrate_indices].long()
+        # this represents the one-hot embedding lookup, relies on a cached
+        # diagonal tensor
+        source_onehot = self.eye[source_types][:, None]
+        dest_onehot = self.eye[dest_types][None, :]
+        plus = source_onehot + dest_onehot
+        minus = source_onehot - dest_onehot
+        # point cloud features as symmetric one-hot encodings
+        # shape should be [natom_centers, neighbors, natom_types * 2]
+        pc_features = torch.concat([plus, minus], axis=-1)
+        # shift coordinates according to their atom centers
+        # shape should be [natom_centers, neighbors, 3]
+        pc_pos = (
+            graph.ndata["pos"][substrate_indices][None, :]
+            - graph.ndata["pos"][mol_idx][:, None]
+        )
+
         # now we start getting the data out
         output_data = {
-            "pc_features": pad_sequence(pc_features),
-            "pos": pad_sequence(pc_pos),
-            "sizes": lengths,
+            "pc_features": pc_features,
+            "pos": pc_pos,
+            "sizes": len(substrate_idx),  # the size of the point cloud
+            "nneighbors": len(dest_types),
+            "ncenters": len(source_types),
         }
         if "force" in graph.ndata.keys():
-            output_data["force"] = pad_sequence(pc_force)
+            output_data["force"] = graph.ndata["force"][substrate_indices].squeeze()
         # copy over labels as well
         for key, value in data.items():
-            if key != "graph":
+            if "graph" not in key:
                 output_data[key] = value
-        # get the lengths out of this graph so we can batch later
-        output_data["num_clouds"] = len(substrate_idx_sample)
         return output_data
 
     @staticmethod
     def collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
         """
         Collate function for the point cloud data representation.
-
         While there is osentisbly nothing special about the data (i.e. they
         are all just tensors), there is some padding required to match
         the maximum number of features - like a sequence.
-
         The way this is implemented should also be agnostic to the
         original dataset; the labels should be copied over correctly
         regardless of whether you're using S2EF or IS2RE as a basis.
-
-        For each graph, we have a sequence of substrate samples. Each
-        substrate sample also has a variable number of features.
-
-        [N, S, F, D] for N batch, S substrate samples, F features, and D
-        the final feature dimensionality
-
+        The expected shape of `pc_features` is: [N, natom_centers, nneighbors, natom_types * 2]
+        In this iteration, we use `pad_sequence` to pad out the `natom_centers` and
+        `nneighbors`, which may be variable for both.
         Parameters
         ----------
         batch : List[Dict[str, torch.Tensor]]
             List of individual data points
-
         Returns
         -------
         Dict[str, torch.Tensor]
@@ -418,10 +446,6 @@ class PointCloudDataset(Dataset):
         pad_keys = ["pos", "pc_features"]
         if "force" in keys:
             pad_keys.append("force")
-        # these keys are special because we have to pad to
-        # match the number of point clouds
-        for key in pad_keys:
-            output_dict[key] = pad_sequence([b[key] for b in batch], batch_first=True)
         # for everything else, there's Mastercard
         for key in keys:
             if key not in pad_keys:
@@ -429,7 +453,33 @@ class PointCloudDataset(Dataset):
                 # stack tensors, otherwise just make a flat 1D tensor
                 if isinstance(data[0], torch.Tensor):
                     result = torch.stack(data)
+                elif isinstance(data[0], (dgl.DGLGraph, dgl.DGLHeteroGraph)):
+                    result = dgl.batch(data)
                 else:
-                    result = torch.Tensor(data)
+                    result = torch.as_tensor(data)
                 output_dict[key] = result
+        # these keys are special because we have to pad to match the number of point clouds
+        max_centers, max_neighbors = (
+            output_dict["ncenters"].max().item(),
+            output_dict["nneighbors"].max().item(),
+        )
+        batch_size = len(batch)
+        for key in pad_keys:
+            # force doesn't need to be padded
+            if key != "force":
+                # get the last dimension of the feature
+                example = batch[0][key]
+                feat_dim = example.size(-1)
+                # preallocate zeros tensor to hold everything
+                batched_data = torch.zeros(
+                    (batch_size, max_centers, max_neighbors, feat_dim),
+                    dtype=example.dtype,
+                )
+                # iterate over samples, and copy of data to zero-padded tensors
+                for index, sample in enumerate(batch):
+                    lengths = sample[key].shape
+                    batched_data[
+                        index, : lengths[0], : lengths[1], : lengths[2]
+                    ] = sample[key][:, :, :]
+                output_dict[key] = batched_data
         return output_dict
