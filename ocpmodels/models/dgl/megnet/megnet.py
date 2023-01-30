@@ -88,7 +88,7 @@ class MEGNet(AbstractEnergyModel):
         # in the event we're using an embedding table, skip the input dim because
         # we're using the hidden dimensionality
         if isinstance(self.node_embed, nn.Embedding):
-            node_encoder = MLP(hiddens, Softplus(), activate_last=True)
+            node_encoder = MLP([hiddens[0] + 3] + hiddens, Softplus(), activate_last=True)
         else:
             node_encoder = MLP(
                 [node_feat_dim] + hiddens, Softplus(), activate_last=True
@@ -130,7 +130,8 @@ class MEGNet(AbstractEnergyModel):
         self,
         graph: dgl.DGLGraph,
         edge_feat: torch.Tensor,
-        node_feat: torch.Tensor,
+        node_labels: torch.Tensor,
+        node_pos: torch.Tensor,
         graph_attr: torch.Tensor,
     ) -> torch.Tensor:
         """
@@ -152,11 +153,11 @@ class MEGNet(AbstractEnergyModel):
         """
         # in the event we're using an embedding table, make sure we're
         # casting the node features correctly
-        if isinstance(self.node_embed, nn.Embedding):
-            node_feat = node_feat.squeeze().long()
+        atom_embeddings = self.node_embed(node_labels)
+        node_feat = torch.hstack([node_pos, atom_embeddings])
 
         edge_feat = self.edge_encoder(self.edge_embed(edge_feat))
-        node_feat = self.node_encoder(self.node_embed(node_feat))
+        node_feat = self.node_encoder(node_feat)
         graph_attr = self.attr_encoder(self.attr_embed(graph_attr))
 
         for block in self.blocks:
