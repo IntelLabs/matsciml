@@ -61,7 +61,7 @@ The `--data-path` specifies the output location of the processed dataset,  `--ta
 
 #### IS2RE
 
-For IS2RE, we provide pre-processed DGL graphs for all the data splits (10K, 100K, all) at: https://zenodo.org/record/7411133#.Y5DzRezMKX0.
+For IS2RE, we provide pre-processed DGL graphs for all the data splits (10K, 100K, all) at: https://zenodo.org/record/7613165#.Y-aWzuzMKeA.
 
 The minimal energy path to testing and development would be to use the minimal devset. There is a convenient mechanism for getting the DGL version of the devset regardless
 of how you install the package:
