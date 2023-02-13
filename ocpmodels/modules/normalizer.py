@@ -4,7 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
-from typing import Union, Dict
+from typing import Union, Dict, List
 
 import torch
 
@@ -47,10 +47,10 @@ class Normalizer(object):
         self.std = state_dict["std"].to(self.mean.device)
 
 
-class BatchScaler(Normalizer):
-    def __init__(self, dim: int = 0) -> None:
-        super().__init__(mean=1.)
-        self.dim = dim
+class BatchScaler(object):
+    def __init__(self, dims: Union[int, List[int]] = 0) -> None:
+        super().__init__()
+        self.dims = dims
         self.storage = {}
 
     def to(self, device: str) -> None:
@@ -60,8 +60,8 @@ class BatchScaler(Normalizer):
             new_storage_dict[key] = tensor.to(device)
 
     def norm(self, tensor: torch.Tensor, name: str) -> torch.Tensor:
-        mean = tensor.mean(self.dim)
-        std = tensor.std(self.std)
+        mean = tensor.mean(self.dims)
+        std = tensor.std(self.dims)
         self.storage[f"{name}_mean"] = mean
         self.storage[f"{name}_std"] = std
         return (tensor - mean) / std
