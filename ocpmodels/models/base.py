@@ -782,6 +782,7 @@ class OE62LitModule(OCPLitModule):
     __normalize_keys__ = ["bandgap"]
 
     def __init__(self, gnn: AbstractTask, normalize_kwargs: Optional[Dict[str, float]] = None, nan_check: bool = False):
+        assert gnn.__class__.__name__ == "MEGNet", "OE62 only currently works for MegNet!"
         super().__init__(gnn, normalize_kwargs, nan_check)
         # TODO when more targets are implemented, this number needs to change
         self.output_head = nn.LazyLinear(1, bias=False)
