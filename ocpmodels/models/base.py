@@ -790,6 +790,7 @@ class OE62LitModule(OCPLitModule):
         # default behavior is to normalize targets by batched statistics
         if not normalize_kwargs:
             self.normalizers["bandgap"] = BatchScaler()
+        self.save_hyperparameters()
 
     def _get_inputs(self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]) -> Dict[str, Union[dgl.DGLGraph, torch.Tensor]]:
         # TODO currently this is hard coded for MegNet
