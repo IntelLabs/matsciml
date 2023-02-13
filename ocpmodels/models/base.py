@@ -802,7 +802,9 @@ class OE62LitModule(OCPLitModule):
 
     def _compute_losses(self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]], batch_idx: int) -> Dict[str, Union[float, Dict[str, float]]]:
         inputs = self._get_inputs(batch)
-        targets = batch.get("targets")
-        outputs = self.model(*inputs)
-        loss = self.target_loss(targets, outputs)
+        targets = batch.get("bandgap")
+        norm_targets = self.normalizers["bandgap"].norm(targets, "bandgap")
+        outputs = self.output_head(self.model(**inputs))
+        loss = self.target_loss(norm_targets, outputs)
+        return {"loss": loss, "logs": {"bandgap": loss}}
 
