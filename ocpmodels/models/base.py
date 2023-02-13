@@ -796,9 +796,6 @@ class OE62LitModule(OCPLitModule):
         # TODO when more targets are implemented, this number needs to change
         self.output_head = nn.LazyLinear(1, bias=False)
         self.target_loss = nn.L1Loss()
-        # default behavior is to normalize targets by batched statistics
-        if not normalize_kwargs:
-            self.normalizers["bandgap"] = BatchScaler()
         self.save_hyperparameters(ignore=["gnn"])
 
     def _get_inputs(
@@ -821,7 +818,7 @@ class OE62LitModule(OCPLitModule):
     ) -> Dict[str, Union[float, Dict[str, float]]]:
         inputs = self._get_inputs(batch)
         targets = batch.get("bandgap")
-        norm_targets = self.normalizers["bandgap"].norm(targets, "bandgap")
+        norm_targets = self.normalizers["bandgap"].norm(targets)
         outputs = self.output_head(self.model(**inputs))
         loss = self.target_loss(norm_targets, outputs)
         return {"loss": loss, "logs": {"bandgap": loss}}
