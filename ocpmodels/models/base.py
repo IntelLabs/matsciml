@@ -781,8 +781,17 @@ class OE62LitModule(OCPLitModule):
     # this should be consistent with the targets provided in `OE62Dataset`
     __normalize_keys__ = ["bandgap"]
 
-    def __init__(self, gnn: AbstractTask, normalize_kwargs: Optional[Dict[str, float]] = None, nan_check: bool = False, lr: float = 1e-3, gamma: float = 1.):
-        assert gnn.__class__.__name__ == "MEGNet", "OE62 only currently works for MegNet!"
+    def __init__(
+        self,
+        gnn: AbstractTask,
+        normalize_kwargs: Optional[Dict[str, float]] = None,
+        nan_check: bool = False,
+        lr: float = 1e-3,
+        gamma: float = 1.0,
+    ):
+        assert (
+            gnn.__class__.__name__ == "MEGNet"
+        ), "OE62 only currently works for MegNet!"
         super().__init__(gnn, normalize_kwargs, nan_check)
         # TODO when more targets are implemented, this number needs to change
         self.output_head = nn.LazyLinear(1, bias=False)
@@ -792,21 +801,26 @@ class OE62LitModule(OCPLitModule):
             self.normalizers["bandgap"] = BatchScaler()
         self.save_hyperparameters()
 
-    def _get_inputs(self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]) -> Dict[str, Union[dgl.DGLGraph, torch.Tensor]]:
+    def _get_inputs(
+        self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+    ) -> Dict[str, Union[dgl.DGLGraph, torch.Tensor]]:
         # TODO currently this is hard coded for MegNet
         model_inputs = {}
         graph = batch["graph"]
         model_inputs["graph"] = graph
-        model_inputs["edge_feats"] = torch.hstack([graph.edata["r"], graph.edata["mu"].unsqueeze(-1)])
+        model_inputs["edge_feats"] = torch.hstack(
+            [graph.edata["r"], graph.edata["mu"].unsqueeze(-1)]
+        )
         model_inputs["node_labels"] = graph.ndata["atomic_numbers"].long()
         model_inputs["node_pos"] = graph.ndata["pos"]
         return model_inputs
 
-    def _compute_losses(self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]], batch_idx: int) -> Dict[str, Union[float, Dict[str, float]]]:
+    def _compute_losses(
+        self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]], batch_idx: int
+    ) -> Dict[str, Union[float, Dict[str, float]]]:
         inputs = self._get_inputs(batch)
         targets = batch.get("bandgap")
         norm_targets = self.normalizers["bandgap"].norm(targets, "bandgap")
         outputs = self.output_head(self.model(**inputs))
         loss = self.target_loss(norm_targets, outputs)
         return {"loss": loss, "logs": {"bandgap": loss}}
-
