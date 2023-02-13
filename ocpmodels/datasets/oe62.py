@@ -69,7 +69,7 @@ class OE62Dataset(DGLDataset):
         graph = DGLGraph(adj_list)
         # get coordinates, typecast to single precision
         graph.ndata["pos"] = torch.from_numpy(data.get("pos")).float()
-        graph.ndata["atomic_numbers"] = torch.from_numpy(data.get("atomic_numbers"))
+        graph.ndata["atomic_numbers"] = torch.LongTensor(data.get("atomic_numbers"))
         # get the interatomic distances as well, typecast to single precision
         graph.edata["r"] = torch.from_numpy(dist_mat[mask]).float()
         output_data["graph"] = graph
