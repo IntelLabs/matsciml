@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from typing import Union, Dict
 
 import torch
 
@@ -44,3 +45,33 @@ class Normalizer(object):
     def load_state_dict(self, state_dict):
         self.mean = state_dict["mean"].to(self.mean.device)
         self.std = state_dict["std"].to(self.mean.device)
+
+
+class BatchScaler(Normalizer):
+    def __init__(self, dim: int = 0) -> None:
+        super().__init__(mean=1.)
+        self.dim = dim
+        self.storage = {}
+
+    def to(self, device: str) -> None:
+        assert len(self.storage) > 0, f"No keys in scaler storage to move to {device}"
+        new_storage_dict = {}
+        for key, tensor in self.storage.items():
+            new_storage_dict[key] = tensor.to(device)
+
+    def norm(self, tensor: torch.Tensor, name: str) -> torch.Tensor:
+        mean = tensor.mean(self.dim)
+        std = tensor.std(self.std)
+        self.storage[f"{name}_mean"] = mean
+        self.storage[f"{name}_std"] = std
+        return (tensor - mean) / std
+
+    def denorm(self, normed_tensor: torch.Tensor, name: str) -> torch.Tensor:
+        # make sure we only denorm tensors with normalized values
+        mean, std = self.storage.get(f"{name}_mean", None), self.storage.get(f"{name}_std", None)
+        if mean is None or std is None:
+            raise ValueError(f"No normalized value stored for {name}!")
+        return normed_tensor * std + mean
+
+    def state_dict(self) -> Dict[str, Union[torch.Tensor, float]]:
+        return self.storage
