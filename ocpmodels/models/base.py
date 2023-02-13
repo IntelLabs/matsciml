@@ -786,6 +786,15 @@ class OE62LitModule(OCPLitModule):
         # TODO when more targets are implemented, this number needs to change
         self.output_head = nn.LazyLinear(1, bias=False)
         self.target_loss = nn.L1Loss()
+    def _get_inputs(self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]) -> Dict[str, Union[dgl.DGLGraph, torch.Tensor]]:
+        # TODO currently this is hard coded for MegNet
+        model_inputs = {}
+        graph = batch["graph"]
+        model_inputs["graph"] = graph
+        model_inputs["edge_feats"] = torch.hstack([graph.edata["r"], graph.edata["mu"].unsqueeze(-1)])
+        model_inputs["node_labels"] = graph.ndata["atomic_numbers"].long()
+        model_inputs["node_pos"] = graph.ndata["pos"]
+        return model_inputs
 
     def _compute_losses(self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]], batch_idx: int) -> Dict[str, Union[float, Dict[str, float]]]:
         inputs = self._get_inputs(batch)
