@@ -808,7 +808,7 @@ class OE62LitModule(OCPLitModule):
         model_inputs = {}
         graph = batch["graph"]
         model_inputs["graph"] = graph
-        model_inputs["edge_feats"] = torch.hstack(
+        model_inputs["edge_feat"] = torch.hstack(
             [graph.edata["r"], graph.edata["mu"].unsqueeze(-1)]
         )
         model_inputs["node_labels"] = graph.ndata["atomic_numbers"].long()
