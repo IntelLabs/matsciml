@@ -10,7 +10,7 @@ import torch
 from torch import Tensor, nn
 import dgl
 
-from ocpmodels.modules.normalizer import Normalizer
+from ocpmodels.modules.normalizer import Normalizer, BatchScaler
 
 """
 base.py
