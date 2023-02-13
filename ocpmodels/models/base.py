@@ -813,6 +813,7 @@ class OE62LitModule(OCPLitModule):
         )
         model_inputs["node_labels"] = graph.ndata["atomic_numbers"].long()
         model_inputs["node_pos"] = graph.ndata["pos"]
+        model_inputs["graph_attr"] = batch["graph_variables"]
         return model_inputs
 
     def _compute_losses(
