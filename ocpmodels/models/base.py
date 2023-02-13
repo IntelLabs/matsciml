@@ -781,7 +781,7 @@ class OE62LitModule(OCPLitModule):
     # this should be consistent with the targets provided in `OE62Dataset`
     __normalize_keys__ = ["bandgap"]
 
-    def __init__(self, gnn: AbstractTask, normalize_kwargs: Optional[Dict[str, float]] = None, nan_check: bool = False):
+    def __init__(self, gnn: AbstractTask, normalize_kwargs: Optional[Dict[str, float]] = None, nan_check: bool = False, lr: float = 1e-3, gamma: float = 1.):
         assert gnn.__class__.__name__ == "MEGNet", "OE62 only currently works for MegNet!"
         super().__init__(gnn, normalize_kwargs, nan_check)
         # TODO when more targets are implemented, this number needs to change
