@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import dgl
 from dgl import DGLGraph
 from ocpmodels.datasets.base import DGLDataset
 
@@ -66,7 +67,7 @@ class OE62Dataset(DGLDataset):
         # mask out self loops and atoms that are too far away
         mask = (0. < lower_tri) * (lower_tri < self.cutoff_dist) 
         adj_list = np.argwhere(mask).tolist()    # DGLGraph only takes lists
-        graph = DGLGraph(adj_list)
+        graph = dgl.graph(adj_list)
         # get coordinates, typecast to single precision
         graph.ndata["pos"] = torch.from_numpy(data.get("pos")).float()
         graph.ndata["atomic_numbers"] = torch.FloatTensor(data.get("atomic_numbers"))
