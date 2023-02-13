@@ -825,3 +825,8 @@ class OE62LitModule(OCPLitModule):
         outputs = self.output_head(self.model(**inputs))
         loss = self.target_loss(norm_targets, outputs)
         return {"loss": loss, "logs": {"bandgap": loss}}
+
+    def training_step(
+        self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]], batch_idx: int
+    ) -> Dict[str, Union[float, Dict[str, float]]]:
+        return self.step(batch, batch_idx, prefix="train")
