@@ -201,7 +201,8 @@ class ForwardNaNDetection(Callback):
                 nan_data["input"] = str(nan_data["input"])
                 nan_data["output"] = str(nan_data["output"])
                 all_data.append(nan_data)
-        with open(self.target_file, "w+") as write_file: 
-            for entry in all_data:
-                write_file.write(" ".join([f"{key}: {value}" for key, value in entry.items()]))
+        if len(all_data) != 0:
+            with open(self.target_file, "w+") as write_file: 
+                for entry in all_data:
+                    write_file.write(" ".join([f"{key}: {value}" for key, value in entry.items()]))
                 write_file.write("\n")
