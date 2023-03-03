@@ -9,8 +9,29 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 import torch
+from torch import nn
 from torch import distributed as dist
 from torch.optim import Optimizer
+
+
+def forward_nan_hook(module: nn.Module, input: torch.Tensor, output: torch.Tensor) -> None:
+    """
+    Create a hook that will save the input/output tensors to a module if there are NaNs
+    detected in the output tensor.
+
+    To use this function, register it as a forward hook using `nn.Module.register_forward_hook`.
+
+    Parameters
+    ----------
+    module : nn.Module
+        PyTorch nn.Module/layer of interest
+    input : torch.Tensor
+        Input tensor fed into the nn.Module
+    output : torch.Tensor
+        Output tensor as a result of module(input)
+    """
+    if torch.any(output.isnan()):
+        setattr(module, "nan_detection", {"input": input.detach(), "output": output.detach()})
 
 
 class GradientCheckCallback(Callback):
