@@ -173,3 +173,35 @@ class ThroughputCallback(Callback):
             with open(target, "w+") as write_file:
                 json.dump(self.record, write_file)
 
+
+class ForwardNaNDetection(Callback):
+    def __init__(self, output_path: Union[str, Path]) -> None:
+        super().__init__()
+        if isinstance(output_path, str):
+            output_path = Path(output_path)
+        self.output_path = output_path
+        os.makedirs(self.output_path, exist_ok=True)
+
+    @property
+    def target_file(self) -> Path:
+        return self.output_path.joinpath(f"forward_nan_check_step{self.step_num}.log")
+
+    def on_fit_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        for child in pl_module.children():
+            child.register_forward_hook(forward_nan_hook)
+
+    def on_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        self.step_num = trainer.global_step
+        all_data = []
+        for name, child in pl_module.named_children():
+            nan_data = getattr(child, "nan_detection", None)
+            if nan_data is not None:
+                nan_data["name"] = name
+                # cast tenors to strings for saving
+                nan_data["input"] = str(nan_data["input"])
+                nan_data["output"] = str(nan_data["output"])
+                all_data.append(nan_data)
+        with open(self.target_file, "w+") as write_file: 
+            for entry in all_data:
+                write_file.write(" ".join([f"{key}: {value}" for key, value in entry.items()]))
+                write_file.write("\n")
