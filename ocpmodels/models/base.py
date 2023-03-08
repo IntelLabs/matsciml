@@ -1,8 +1,9 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Dict, Type, Tuple, Optional, Union
+from typing import Dict, Type, Tuple, Optional, Union, ContextManager
 from abc import abstractmethod
+from contextlib import nullcontext, ExitStack
 import logging
 
 import pytorch_lightning as pl
@@ -45,6 +46,44 @@ def decorate_color(color: str):
 debug_green = decorate_color("[92m")
 debug_lightpurple = decorate_color("[94m")
 debug_cyan = decorate_color("[96m")
+
+
+def dynamic_gradients_context(need_grad: bool, has_rnn: bool) -> ContextManager:
+    """
+    Conditional gradient context manager, based on whether or not
+    force computation is necessary in the process.
+    This is necessary because there are actually two contexts
+    necessary: enable gradient computation _and_ make sure we
+    aren't in inference mode, which is enabled by PyTorch Lightning
+    for faster inference.
+    If this is `regress_forces` is set to False, a `nullcontext`
+    is applied that does nothing.
+    Parameters
+    ----------
+    need_grad : bool
+        Flag to designate whether or not gradients need to be forced
+        within this code block.
+    has_rnn : bool
+        Flag to indicate whether or not RNNs are being used in this
+        model, which will disable cudnn to enable double backprop.
+    Returns
+    -------
+    ContextManager
+        Joint context, combining `inference_mode` and `enable_grad`,
+        otherwise a `nullcontext` if `need_grad` is `False`.
+    """
+    manager = ExitStack()
+    if need_grad:
+        contexts = [torch.inference_mode(False), torch.enable_grad()]
+        # if we're also using CUDA, there is an additional context to allow
+        # RNNs to do double backprop
+        if torch.cuda.is_available() and has_rnn:
+            contexts.append(torch.backends.cudnn.flags(enabled=False))
+        for cxt in contexts:
+            manager.enter_context(cxt)
+    else:
+        manager.enter_context(nullcontext())
+    return manager
 
 
 def lit_conditional_grad(regress_forces: bool):
