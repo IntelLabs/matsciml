@@ -193,6 +193,19 @@ class OCPLitModule(pl.LightningModule):
         )
         return [optimizer], [lr_scheduler]
 
+    @property
+    def has_rnn(self) -> bool:
+        """
+        Property to determine whether or not this LightningModule contains
+        RNNs. This is primarily to determine whether or not to enable/disable
+        contexts with cudnn, as double backprop is not supported.
+        Returns
+        -------
+        bool
+            True if any module is a subclass of `RNNBase`, otherwise False.
+        """
+        return any([isinstance(module, nn.RNNBase) for module in self.modules()])
+
     def _nan_check_gradients(self, batch_idx: int) -> bool:
         """
         Check model parameters for NaNs prior to backprop. Will return
