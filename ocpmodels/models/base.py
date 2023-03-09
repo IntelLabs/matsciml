@@ -86,6 +86,27 @@ def dynamic_gradients_context(need_grad: bool, has_rnn: bool) -> ContextManager:
     return manager
 
 
+def rnn_force_train_mode(module: nn.Module) -> None:
+    """
+    Forces RNN subclasses into training mode to facilitate
+    derivatives for force computation outside of training
+    steps.
+    See https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnRNNForward
+    Parameters
+    ----------
+    module : nn.Module
+        Abstract `torch.nn.Module` to check and toggle
+    """
+    # this try/except will catch non-CUDA enabled systems
+    # this patch is only for cudnn
+    try:
+        _ = torch.cuda.current_device()
+        if isinstance(module, nn.RNNBase):
+            module.train()
+    except RuntimeError:
+        pass
+
+
 def lit_conditional_grad(regress_forces: bool):
     """
     Decorator function that will dynamically enable gradient
