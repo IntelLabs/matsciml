@@ -683,11 +683,13 @@ class S2EFLitModule(OCPLitModule):
         Dict[str, Union[float, Dict[str, float]]]
             Nested dictionary of losses
         """
-        # grab the single optimizer
-        optimizer = self.optimizers()
-        optimizer.zero_grad()
-        # compute losses, log them, and grab the total loss for backprop
-        losses = self._compute_losses(batch, batch_idx)
+        # this forces gradient computation
+        with dynamic_gradients_context(self.regress_forces, self.has_rnn):
+            # grab the single optimizer
+            optimizer = self.optimizers()
+            optimizer.zero_grad()
+            # compute losses, log them, and grab the total loss for backprop
+            losses = self._compute_losses(batch, batch_idx)
         batch_size = self._get_batch_size(batch)
         # log the losses individually with the batch size specified
         for key, value in losses.get("logs").items():
