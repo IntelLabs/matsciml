@@ -796,6 +796,27 @@ class S2EFLitModule(OCPLitModule):
         loss_dict["total"] = sum([value for value in loss_dict.values()])
         return {"loss": loss_dict["total"], "logs": loss_dict}
 
+    def on_validation_start(self) -> None:
+        self.apply(rnn_force_train_mode)
+
+    def on_test_start(self) -> None:
+        self.apply(rnn_force_train_mode)
+
+    def on_predict_start(self) -> None:
+        self.apply(rnn_force_train_mode)
+
+    def on_validation_batch_end(self) -> None:
+        # ensure gradients aren't contaminating any results between batches
+        self.zero_grad()
+
+    def on_test_batch_end(self) -> None:
+        # ensure gradients aren't contaminating any results between batches
+        self.zero_grad()
+
+    def on_predict_batch_end(self) -> None:
+        # ensure gradients aren't contaminating any results between batches
+        self.zero_grad()
+
     def predict_step(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]],
