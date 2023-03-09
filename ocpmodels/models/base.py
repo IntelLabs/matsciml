@@ -782,13 +782,16 @@ class S2EFLitModule(OCPLitModule):
         dataloader_idx: int = 0,
     ) -> Dict[str, torch.Tensor]:
         # force gradients when running predictions
-        # TODO implement with wrapper for conditional gradients
-        with torch.enable_grad():
+        with dynamic_gradients_context(self.regress_forces, self.has_rnn) as grad_content:
             input_data = self._get_inputs(batch)
             if self.regress_forces:
                 (pred_energy, pred_force) = self(*input_data)
+                # detach from the graph
+                pred_energy, pred_force = pred_energy.detach(), pred_force.detach()
             else:
                 pred_energy = self(*input_data)
+                # detach from the graph
+                pred_energy = pred_energy.detach()
         ids, chunk_ids = batch.get("sid"), batch.get("fid")
         # ids are formatted differently for force tasks
         system_ids = [f"{i}_{j}" for i, j in zip(ids, chunk_ids)]
