@@ -833,7 +833,9 @@ class S2EFLitModule(OCPLitModule):
         dataloader_idx: int = 0,
     ) -> Dict[str, torch.Tensor]:
         # force gradients when running predictions
-        with dynamic_gradients_context(self.regress_forces, self.has_rnn) as grad_content:
+        with dynamic_gradients_context(
+            self.regress_forces, self.has_rnn
+        ) as grad_content:
             input_data = self._get_inputs(batch)
             if self.regress_forces:
                 (pred_energy, pred_force) = self(*input_data)
