@@ -1,0 +1,42 @@
+name: 🚀 Feature request
+description: "Suggest new functionality: models, datasets, tasks/workflows"
+labels: enhancement
+title: "[Feature request]: "
+body:
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Feature/behavior summary
+      description: Describe your feature or desired package behavior succinctly.
+  - type: checkboxes
+    validations:
+      required: true
+    attributes:
+      label: Request attributes
+      options:
+        - label: Would this be a refactor of existing code?
+        - label: Does this proposal require new package dependencies?
+        - label: Would this change break backwards compatibility?
+        - label: Does this proposal include a new model?
+        - label: Does this proposal include a new dataset?
+        - label: Does this proposal include a new task/workflow?
+  - type: textarea
+    validations:
+      required: false
+    attributes:
+      label: Related issues
+      description: Is your feature request related to any issue(s)? If so, please provide the issue number(s).
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Solution description
+      description: Describe solution(s) to the problem. Write "Unknown" if you haven't identified a solution.
+  - type: textarea
+    validations:
+      required: false
+    attributes:
+      label: Additional notes
+      description: Any additional context, screenshots, etc. that may help with the discussion and implementation.
+
