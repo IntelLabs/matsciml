@@ -1,7 +1,7 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Dict, Type, Tuple, Optional, Union, ContextManager
+from typing import Dict, Type, Tuple, Optional, Union, ContextManager, Any
 from abc import abstractmethod
 from contextlib import nullcontext, ExitStack
 import logging
@@ -805,15 +805,24 @@ class S2EFLitModule(OCPLitModule):
     def on_predict_start(self) -> None:
         self.apply(rnn_force_train_mode)
 
-    def on_validation_batch_end(self) -> None:
+    def on_validation_batch_end(
+        self, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int
+    ) -> None:
+        super().on_predict_batch_end(outputs, batch, batch_idx, dataloader_idx)
         # ensure gradients aren't contaminating any results between batches
         self.zero_grad()
 
-    def on_test_batch_end(self) -> None:
+    def on_test_batch_end(
+        self, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int
+    ) -> None:
+        super().on_predict_batch_end(outputs, batch, batch_idx, dataloader_idx)
         # ensure gradients aren't contaminating any results between batches
         self.zero_grad()
 
-    def on_predict_batch_end(self) -> None:
+    def on_predict_batch_end(
+        self, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int
+    ) -> None:
+        super().on_predict_batch_end(outputs, batch, batch_idx, dataloader_idx)
         # ensure gradients aren't contaminating any results between batches
         self.zero_grad()
 
