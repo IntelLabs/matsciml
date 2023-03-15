@@ -20,5 +20,5 @@ dgl-cu113
 
 # BasicPytorch Tester
 --extra-index-url https://download.pytorch.org/whl/cu113
-torch==1.13.1
+torch==2.0.0
 
