@@ -70,7 +70,7 @@ class LeaderboardWriter(BasePredictionWriter):
                     if any([type(v) == str for v in value]):
                         results[key].extend(value)
                     else:
-                        if key =="chunk_ids":
+                        if key == "chunk_ids":
                             value = [value.cpu() for value in value]
                             results[key].extend(value)
                         else:
@@ -82,7 +82,6 @@ class LeaderboardWriter(BasePredictionWriter):
                 else:
                     results[key] = torch.stack(values).numpy()
 
-            # print(results)
             target = self.output_path.joinpath(f"{task_name}/{gnn_name}/{self.now}.npz")
             # make the directory in case it doesn't exist
             target.parent.mkdir(parents=True, exist_ok=True)
