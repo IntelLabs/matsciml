@@ -860,6 +860,10 @@ class S2EFLitModule(OCPLitModule):
             fixed_mask = graph.ndata["fixed"] == 0
             # retrieve only forces corresponding to unfixed nodes
             predictions["forces"] = pred_force[fixed_mask]
+            natoms = tuple(batch.get('natoms').cpu().numpy().astype(int))
+            chunk_split = torch.split(graph.ndata["fixed"], natoms)
+            chunk_ids = [int((len(chunk)-sum(chunk)).cpu().numpy().astype(int)) for chunk in chunk_split]
+            predictions["chunk_ids"] = chunk_ids
         return predictions
 
 
