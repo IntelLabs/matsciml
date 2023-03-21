@@ -15,7 +15,7 @@ class MaterialsProjectRequest:
         material_ids: Optional[List[str]] = None,
         **api_kwargs,
     ):
-        api_kwargs.setdefault("chunk_size", 1024)
+        api_kwargs.setdefault("chunk_size", 1000)
         # set the API key, which will make sure we one is provided
         # before we check the fields
         self.api_key = api_key
