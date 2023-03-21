@@ -17,10 +17,6 @@ from pytorch_lightning.loggers import CSVLogger
 from tqdm import tqdm
 from yaml import safe_load
 
-import os
-
-os.environ["TORCH_DISTRIBUTED_DEBUG"] = "DETAIL"  # set to DETAIL for runtime logging.
-
 
 def verify_input_args(args):
     # make sure all paths are valid
