@@ -125,15 +125,5 @@ class MaterialsProjectRequest:
 
     @classmethod
     def retrieve_devset(cls, api_key: Optional[str] = None) -> MaterialsProjectRequest:
-        field_names = [
-            "elements",
-            "formula_pretty",
-            "formula_anonymous",
-            "band_gap",
-            "e_total",
-            "energy_per_atom",
-            "uncorrected_energy_per_atom",
-            "formation_energy_per_atom"
-        ]
-        kwargs = {"num_elements": (1, 2), "num_sites": (500, 1000), "num_chunks": 2}
-        return cls(field_names, api_key, **kwargs)
+        kwargs = {"num_elements": (1, 2), "num_chunks": 2, "chunk_size": 100}
+        return cls(["band_gap", "structure"], api_key, **kwargs)
