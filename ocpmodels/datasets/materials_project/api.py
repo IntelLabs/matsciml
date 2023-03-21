@@ -64,16 +64,17 @@ class MaterialsProjectRequest:
         self._api_key = value
 
     @property
-    def fields(self) -> List[str]:
+    def fields(self) -> Union[List[str], None]:
         return self._fields
 
     @fields.setter
-    def fields(self, values: List[str]) -> None:
-        # check to make sure all of the requested keys exist
-        for key in values:
-            assert (
-                key in self.available_fields
-                ), f"{key} is not a valid field in Materials Project: {self.available_fields}"
+    def fields(self, values: Union[List[str], None] = None) -> None:
+        if values:
+            # check to make sure all of the requested keys exist
+            for key in values:
+                assert (
+                    key in self.available_fields
+                    ), f"{key} is not a valid field in Materials Project: {self.available_fields}"
         self._fields = values
 
     def _api_context(self) -> MPRester:
