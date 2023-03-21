@@ -124,6 +124,6 @@ class MaterialsProjectRequest:
         return docs
 
     @classmethod
-    def retrieve_devset(cls, api_key: Optional[str] = None) -> MaterialsProjectRequest:
+    def devset(cls, api_key: Optional[str] = None) -> MaterialsProjectRequest:
         kwargs = {"num_elements": (1, 2), "num_chunks": 2, "chunk_size": 100}
         return cls(["band_gap", "structure"], api_key, **kwargs)
