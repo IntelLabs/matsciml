@@ -1,10 +1,15 @@
 from __future__ import annotations
 from typing import List, Optional, Union, Any, Dict
 from functools import cached_property
+from pathlib import Path
 import os
 
 from emmet.core.summary import SummaryDoc
 from mp_api.client import MPRester
+from tqdm import tqdm
+import lmdb
+
+from ocpmodels.datasets.generate_subsplit import write_data
 
 
 class MaterialsProjectRequest:
@@ -136,3 +141,39 @@ class MaterialsProjectRequest:
     def devset(cls, api_key: Optional[str] = None) -> MaterialsProjectRequest:
         kwargs = {"num_elements": (1, 2), "num_chunks": 2, "chunk_size": 100}
         return cls(["band_gap", "structure"], api_key, **kwargs)
+
+    def to_lmdb(self, lmdb_path: Union[str, Path]) -> None:
+        """
+        Save the retrieved documents to an LMDB file.
+
+        Requires specifying a folder to save to, in which a "data.lmdb" file
+        and associated lockfile will be created. Each entry is saved as key/
+        value pairs, with keys simply being the index, and the value being
+        a pickled dictionary representation of the retrieved `SummaryDoc`.
+
+        Parameters
+        ----------
+        lmdb_path : Union[str, Path]
+            Directory to save the LMDB data to.
+
+        Raises
+        ------
+        ValueError:
+            [TODO:description]
+        """
+        if isinstance(lmdb_path, str):
+            lmdb_path = Path(lmdb_path)
+        os.makedirs(lmdb_path, exist_ok=True)
+        target_env = lmdb.open(
+            str(lmdb_path.joinpath("data.lmdb")),
+            subdir=False,
+            map_size=1099511627776 * 2,
+            meminit=False,
+            map_async=True,
+        )
+        if self.data is not None:
+            for index, entry in tqdm(enumerate(self.data), desc="Entries processed", total=len(self.data)):
+                write_data(index, entry.__dict__, target_env)
+        else:
+            raise ValueError(f"No data was available for serializing - did you run `retrieve_data`?")
+
