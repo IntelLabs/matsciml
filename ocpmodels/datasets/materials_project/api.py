@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import List, Optional, Union, Any, Dict
 from functools import cached_property
 import os
@@ -122,5 +123,15 @@ class MaterialsProjectRequest:
         return docs
 
     @classmethod
-    def retrieve_devset(cls):
-        ...
+    def retrieve_devset(cls, api_key: Optional[str] = None) -> MaterialsProjectRequest:
+        field_names = [
+            "doi",
+            "energy",
+            "elements",
+            "full_formula",
+            "structure",
+            "initial_structure",
+            "bandgap",
+        ]
+        kwargs = {"num_elements": (1, 2), "num_sites": (500, 1000)}
+        return cls(field_names, api_key, **kwargs)
