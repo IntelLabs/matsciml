@@ -133,5 +133,5 @@ class MaterialsProjectRequest:
             "initial_structure",
             "bandgap",
         ]
-        kwargs = {"num_elements": (1, 2), "num_sites": (500, 1000)}
+        kwargs = {"num_elements": (1, 2), "num_sites": (500, 1000), "num_chunks": 2}
         return cls(field_names, api_key, **kwargs)
