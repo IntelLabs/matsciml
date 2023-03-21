@@ -862,7 +862,11 @@ class S2EFLitModule(OCPLitModule):
             predictions["forces"] = pred_force[fixed_mask]
             natoms = tuple(batch.get('natoms').cpu().numpy().astype(int))
             chunk_split = torch.split(graph.ndata["fixed"], natoms)
-            chunk_ids = [int((len(chunk)-sum(chunk)).cpu().numpy().astype(int)) for chunk in chunk_split]
+            chunk_ids = []
+            for chunk in chunk_split:
+                ids = (len(chunk) - sum(chunk)).cpu().numpy().astype(int)
+                chunk_ids.append(int(ids))
+
             predictions["chunk_ids"] = chunk_ids
         return predictions
 
