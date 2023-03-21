@@ -124,6 +124,14 @@ class MaterialsProjectRequest:
         self.data = docs
         return docs
 
+    @property
+    def data(self) -> Union[List[SummaryDoc], List[Dict[Any, Any]], None]:
+        return getattr(self, "_data")
+
+    @data.setter
+    def data(self, values: Union[List[SummaryDoc], List[Dict[Any, Any]]]) -> None:
+        self._data = values
+
     @classmethod
     def devset(cls, api_key: Optional[str] = None) -> MaterialsProjectRequest:
         kwargs = {"num_elements": (1, 2), "num_chunks": 2, "chunk_size": 100}
