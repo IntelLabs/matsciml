@@ -73,7 +73,7 @@ class MaterialsProjectRequest:
         for key in values:
             assert (
                 key in self.available_fields
-            ), f"{key} is not a valid field in Materials Project."
+                ), f"{key} is not a valid field in Materials Project: {self.available_fields}"
         self._fields = values
 
     def _api_context(self) -> MPRester:
