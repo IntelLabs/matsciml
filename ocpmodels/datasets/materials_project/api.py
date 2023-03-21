@@ -121,6 +121,7 @@ class MaterialsProjectRequest:
             docs = mpr.summary.search(
                 fields=self.fields, material_ids=self.material_ids, **self.api_kwargs
             )
+        self.data = docs
         return docs
 
     @classmethod
