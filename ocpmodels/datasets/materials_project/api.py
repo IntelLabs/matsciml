@@ -139,7 +139,7 @@ class MaterialsProjectRequest:
 
     @classmethod
     def devset(cls, api_key: Optional[str] = None) -> MaterialsProjectRequest:
-        kwargs = {"num_elements": (1, 2), "num_chunks": 2, "chunk_size": 100}
+        kwargs = {"num_elements": (1, 2), "num_chunks": 2, "chunk_size": 100, "num_sites": (2, 100)}
         return cls(["band_gap", "structure"], api_key, **kwargs)
 
     def to_lmdb(self, lmdb_path: Union[str, Path]) -> None:
