@@ -1,10 +1,15 @@
 from typing import Iterable, Tuple, Any, Dict, Union
+from importlib.util import find_spec
 
 import torch
 import numpy as np
 from pymatgen.core import Structure
 
 from ocpmodels.datasets.base import BaseOCPDataset
+
+
+_has_dgl = find_spec("dgl") is not None
+_has_pyg = find_spec("torch_geometric") is not None
 
 
 class MaterialsProjectDataset(BaseOCPDataset):
