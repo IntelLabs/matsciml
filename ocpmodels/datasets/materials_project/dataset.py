@@ -44,7 +44,7 @@ class MaterialsProjectDataset(BaseOCPDataset):
         return_dict = {}
         structure: Structure = data.get("structure")
         # retrieve properties
-        return_dict["coords"] = torch.from_numpy(structure.cart_coords).float()
+        return_dict["pos"] = torch.from_numpy(structure.cart_coords).float()
         return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
         # grab lattice properties
         space_group = structure.get_space_group_info()[-1]

@@ -37,4 +37,4 @@ def test_dataset_load():
     dset = MaterialsProjectDataset("test_lmdb")
     for index in range(10):
         data = dset.__getitem__(index)
-        assert all([key in data.keys() for key in ["coords", "atomic_numbers", "lattice_features"]])
+        assert all([key in data.keys() for key in ["pos", "atomic_numbers", "lattice_features"]])
