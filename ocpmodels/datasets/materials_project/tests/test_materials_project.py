@@ -1,4 +1,5 @@
 import pytest
+import shutil
 
 from ocpmodels.datasets.materials_project import (
     MaterialsProjectRequest,
@@ -14,6 +15,13 @@ def dev_request():
     return MaterialsProjectRequest.devset()
 
 
+@pytest.fixture(scope="session")
+def devset_dir(tmp_path_factory):
+    devset_dir = tmp_path_factory.mktemp("test_lmdb")
+    yield devset_dir
+    shutil.rmtree(devset_dir)
+
+
 @pytest.mark.dependency()
 @pytest.mark.mp_api
 def test_devset(dev_request):
@@ -27,15 +35,15 @@ def test_devset(dev_request):
 
 @pytest.mark.dependency(depends=["test_devset"])
 @pytest.mark.mp_api
-def test_serialize_lmdb(dev_request):
+def test_serialize_lmdb(dev_request, devset_dir):
     data = dev_request.retrieve_data()
-    dev_request.to_lmdb("test_lmdb")
+    dev_request.to_lmdb(devset_dir)
 
 
 @pytest.mark.dependency(depends=["test_serialize_lmdb"])
 @pytest.mark.local
-def test_dataset_load():
-    dset = MaterialsProjectDataset("test_lmdb")
+def test_dataset_load(devset_dir):
+    dset = MaterialsProjectDataset(devset_dir)
     for index in range(10):
         data = dset.__getitem__(index)
         assert all([key in data.keys() for key in ["pos", "atomic_numbers", "lattice_features"]])
@@ -43,8 +51,8 @@ def test_dataset_load():
 
 @pytest.mark.dependency(depends=["test_dataset_load"])
 @pytest.mark.local
-def test_dgl_dataset():
-    dset = DGLMaterialsProjectDataset("test_lmdb")
+def test_dgl_dataset(devset_dir):
+    dset = DGLMaterialsProjectDataset(devset_dir)
     for index in range(10):
         data = dset.__getitem__(index)
         assert "graph" in data
