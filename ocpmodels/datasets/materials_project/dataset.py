@@ -27,7 +27,7 @@ class MaterialsProjectDataset(BaseOCPDataset):
         dictionary. Specific to this format, however, we separate features and
         targets: at the top of level we expect what is effectively a point cloud
         with `coords` and `atomic_numbers`, while the `lattice_features` and
-        `targets` keys nest additional values 
+        `targets` keys nest additional values
 
         Parameters
         ----------
@@ -47,6 +47,9 @@ class MaterialsProjectDataset(BaseOCPDataset):
         # retrieve properties
         return_dict["pos"] = torch.from_numpy(structure.cart_coords).float()
         return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
+        return_dict["distance_matrix"] = torch.from_numpy(
+            structure.distance_matrix
+        ).float()
         # grab lattice properties
         space_group = structure.get_space_group_info()[-1]
         lattice_params = torch.FloatTensor(
@@ -58,7 +61,9 @@ class MaterialsProjectDataset(BaseOCPDataset):
         }
         return_dict["lattice_features"] = lattice_features
         # assume every other key are targets
-        not_targets = set(["structure", "fields_not_requested"] + data["fields_not_requested"])
+        not_targets = set(
+            ["structure", "fields_not_requested"] + data["fields_not_requested"]
+        )
         target_keys = set(data.keys()).difference(not_targets)
         targets = {key: self._standardize_values(data[key]) for key in target_keys}
         return_dict["targets"] = targets
@@ -75,7 +80,9 @@ class MaterialsProjectDataset(BaseOCPDataset):
         return return_dict
 
     @staticmethod
-    def _standardize_values(value: Union[float, Iterable[float]]) -> Union[torch.Tensor, float]:
+    def _standardize_values(
+        value: Union[float, Iterable[float]]
+    ) -> Union[torch.Tensor, float]:
         """
         Standardizes targets to be ingested by a model.
 
