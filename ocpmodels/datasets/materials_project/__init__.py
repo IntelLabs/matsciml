@@ -1,1 +1,2 @@
 from ocpmodels.datasets.materials_project.api import MaterialsProjectRequest
+from ocpmodels.datasets.materials_project.dataset import MaterialsProjectDataset
