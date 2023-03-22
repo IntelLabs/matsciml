@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import List, Optional, Union, Any, Dict
 from functools import cached_property
 from pathlib import Path
+from datetime import datetime
 import os
 
 from emmet.core.summary import SummaryDoc
@@ -146,6 +147,7 @@ class MaterialsProjectRequest:
                 fields=self.fields, material_ids=self.material_ids, **self.api_kwargs
             )
         self.data = docs
+        self.retrieved = str(datetime.now())
         return docs
 
     @property
@@ -204,3 +206,20 @@ class MaterialsProjectRequest:
             raise ValueError(
                 f"No data was available for serializing - did you run `retrieve_data`?"
             )
+
+    def to_dict(self) -> Dict[str, Union[str, List[str]]]:
+        """
+        Export a summary of the request into a JSON serializable format.
+
+        Returns
+        -------
+        Dict[str, Union[str, List[str]]]
+            Key/value mapping of parameters used and metadata
+        """
+        data = {}
+        data["fields"] = self.fields
+        data["material_ids"] = self.material_ids
+        data["available_fields"] = self.available_fields
+        data["retrieved"] = getattr(self, "retrieved", None)
+        return data
+
