@@ -3,6 +3,7 @@ import pytest
 from ocpmodels.datasets.materials_project import (
     MaterialsProjectRequest,
     MaterialsProjectDataset,
+    DGLMaterialsProjectDataset
 )
 
 # TODO add marks to pyproject.toml
@@ -38,3 +39,12 @@ def test_dataset_load():
     for index in range(10):
         data = dset.__getitem__(index)
         assert all([key in data.keys() for key in ["pos", "atomic_numbers", "lattice_features"]])
+
+
+@pytest.mark.dependency(depends=["test_dataset_load"])
+@pytest.mark.local
+def test_dgl_dataset():
+    dset = DGLMaterialsProjectDataset("test_lmdb")
+    for index in range(10):
+        data = dset.__getitem__(index)
+        assert "graph" in data
