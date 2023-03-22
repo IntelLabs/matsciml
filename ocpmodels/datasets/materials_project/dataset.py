@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple, Any, Dict, Union
+from typing import Iterable, Tuple, Any, Dict, Union, Optional, List, Callable
 from importlib.util import find_spec
 
 import torch
@@ -105,3 +105,42 @@ class MaterialsProjectDataset(BaseOCPDataset):
             # for scalars, just return the value
             return value
 
+
+if _has_dgl:
+    import dgl
+
+    class DGLMaterialsProjectDataset(MaterialsProjectDataset):
+        def __init__(
+            self,
+            lmdb_root_path: Union[str, Path],
+            cutoff_dist: float = 5.0,
+            transforms: Optional[List[Callable]] = None,
+        ) -> None:
+            super().__init__(lmdb_root_path, transforms)
+            self.cutoff_dist = cutoff_dist
+
+        @property
+        def cutoff_dist(self) -> float:
+            return self._cutoff_dist
+
+        @cutoff_dist.setter
+        def cutoff_dist(self, value: float) -> None:
+            self._cutoff_dist = value
+
+        def data_from_key(
+            self, lmdb_index: int, subindex: int
+        ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]:
+            data = super().data_from_key(lmdb_index, subindex)
+            dist_mat: np.ndarray = data.get("distance_matrix").numpy()
+            lower_tri = np.tril(dist_mat)
+            # mask out self loops and atoms that are too far away
+            mask = (0.0 < lower_tri) * (lower_tri < self.cutoff_dist)
+            adj_list = np.argwhere(mask).tolist()  # DGLGraph only takes lists
+            graph = dgl.graph(adj_list)
+            graph.ndata["pos"] = data["coords"]
+            graph.ndata["atomic_numbers"] = data["atomic_numbers"]
+            data["graph"] = graph
+            # delete the keys to reduce data redundancy
+            for key in ["pos", "atomic_numbers", "distance_matrix"]:
+                del data[key]
+            return data
