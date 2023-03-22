@@ -15,6 +15,23 @@ _has_pyg = find_spec("torch_geometric") is not None
 
 class MaterialsProjectDataset(BaseOCPDataset):
     def index_to_key(self, index: int) -> Tuple[int]:
+        """
+        Method that maps a global index value to a pair of indices.
+
+        This is kept for consistency between other datasets (namely
+        OCP). For now we are not splitting the dataset to multiple
+        LMDB files, so the first index that is returned is hardcoded.
+
+        Parameters
+        ----------
+        index : int
+            Global data sample index
+
+        Returns
+        -------
+        Tuple[int]
+            2-tuple of LMDB index and subindex
+        """
         return (0, index)
 
     def data_from_key(
@@ -27,19 +44,22 @@ class MaterialsProjectDataset(BaseOCPDataset):
         dictionary. Specific to this format, however, we separate features and
         targets: at the top of level we expect what is effectively a point cloud
         with `coords` and `atomic_numbers`, while the `lattice_features` and
-        `targets` keys nest additional values
+        `targets` keys nest additional values.
+
+        This method is likely what you would want to change if you want to modify
+        featurization for this project.
 
         Parameters
         ----------
-        lmdb_index
-            [TODO:description]
-        subindex
-            [TODO:description]
+        lmdb_index : int
+            Index corresponding to which LMDB environment to parse from.
+        subindex : int
+            Index within an LMDB file that maps to a sample.
 
         Returns
         -------
         Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
-            [TODO:description]
+            A single sample/material from Materials Project.
         """
         data: Dict[str, Any] = super().data_from_key(lmdb_index, subindex)
         return_dict = {}
@@ -118,12 +138,37 @@ if _has_dgl:
     import dgl
 
     class DGLMaterialsProjectDataset(MaterialsProjectDataset):
+        """
+        Subclass of `MaterialsProjectDataset` that will emit DGL graphs.
+
+        This class should be used until a future refactor to unify data
+        structures, and a transform interface is created for DGL graph creation.
+        )
+        """
         def __init__(
             self,
             lmdb_root_path: Union[str, Path],
             cutoff_dist: float = 5.0,
             transforms: Optional[List[Callable]] = None,
         ) -> None:
+            """
+            Instantiate a `DGLMaterialsProjectDataset` object.
+
+            In addition to specifying an optional list of transforms and an 
+            LMDB path, the `cutoff_dist` parameter is used to control edge
+            creation: we take a point cloud structure and create edges for
+            all atoms/sites that are within this cut off distance.
+
+            Parameters
+            ----------
+            lmdb_root_path : Union[str, Path]
+                Path to a folder containing LMDB files for Materials Project.
+            cutoff_dist : float
+                Distance to cut off edge creation; interatomic distances greater
+                than this value will not have an edge.
+            transforms : Optional[List[Callable]], by default None
+                List of transforms to apply to the data.
+            """
             super().__init__(lmdb_root_path, transforms)
             self.cutoff_dist = cutoff_dist
 
@@ -133,11 +178,42 @@ if _has_dgl:
 
         @cutoff_dist.setter
         def cutoff_dist(self, value: float) -> None:
+            """
+            Setter method for the cut off distance property.
+
+            For now this doesn't do anything special, but can be modified
+            to include checks for valid value, etc.
+
+            Parameters
+            ----------
+            value : float
+                Value to set the cut off distance
+            """
             self._cutoff_dist = value
 
         def data_from_key(
             self, lmdb_index: int, subindex: int
         ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]:
+            """
+            Maps a pair of indices to a specific data sample from LMDB.
+
+            This method in particular wraps the parent's method, which emits
+            a point cloud among other data from Materials Project. The additional
+            steps here are to: 1) compute an adjacency list, 2) pack data into a
+            DGLGraph structure, 3) clean up redundant data.
+
+            Parameters
+            ----------
+            lmdb_index : int
+                Index corresponding to which LMDB environment to parse from.
+            subindex : int
+                Index within an LMDB file that maps to a sample.
+
+            Returns
+            -------
+            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+                Single data sample from Materials Project with a "graph" key
+            """
             data = super().data_from_key(lmdb_index, subindex)
             dist_mat: np.ndarray = data.get("distance_matrix").numpy()
             lower_tri = np.tril(dist_mat)
