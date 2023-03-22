@@ -21,6 +21,7 @@ class MaterialsProjectRequest:
         **api_kwargs,
     ):
         api_kwargs.setdefault("chunk_size", 1000)
+        api_kwargs.setdefault("num_sites", (2, 1000))
         # set the API key, which will make sure we one is provided
         # before we check the fields
         self.api_key = api_key
