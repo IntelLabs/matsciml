@@ -138,7 +138,7 @@ if _has_dgl:
             mask = (0.0 < lower_tri) * (lower_tri < self.cutoff_dist)
             adj_list = np.argwhere(mask).tolist()  # DGLGraph only takes lists
             graph = dgl.graph(adj_list)
-            graph.ndata["pos"] = data["coords"]
+            graph.ndata["pos"] = data["pos"]
             graph.ndata["atomic_numbers"] = data["atomic_numbers"]
             data["graph"] = graph
             # delete the keys to reduce data redundancy
