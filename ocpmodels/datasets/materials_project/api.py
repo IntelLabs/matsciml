@@ -75,7 +75,25 @@ class MaterialsProjectRequest:
 
     @fields.setter
     def fields(self, values: Union[List[str], None] = None) -> None:
-        if values:
+        """
+        Method for setting which fields to query.
+
+        In this method, the "structure" field is always requested to ensure that
+        we always have something to work with.
+
+        Parameters
+        ----------
+        values : Union[List[str], None], by default None
+            List of field names to query the Materials Project API.
+        """
+        # first deal with the case with no fields; we need structure at the very least
+        if values is None:
+            values = ["structure",]
+        else:
+            # remove duplicates
+            values = set(values)
+            # need to make sure we always have structure as a request
+            values.add("structure")
             # check to make sure all of the requested keys exist
             for key in values:
                 assert (
