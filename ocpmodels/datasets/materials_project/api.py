@@ -70,8 +70,8 @@ class MaterialsProjectRequest:
         self._api_key = value
 
     @property
-    def fields(self) -> Union[List[str], None]:
-        return self._fields
+    def fields(self) -> List[str]:
+        return list(self._fields)
 
     @fields.setter
     def fields(self, values: Union[List[str], None] = None) -> None:
