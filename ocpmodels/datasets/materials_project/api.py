@@ -79,7 +79,7 @@ class MaterialsProjectRequest:
             for key in values:
                 assert (
                     key in self.available_fields
-                    ), f"{key} is not a valid field in Materials Project: {self.available_fields}"
+                ), f"{key} is not a valid field in Materials Project: {self.available_fields}"
         self._fields = values
 
     def _api_context(self) -> MPRester:
@@ -139,7 +139,12 @@ class MaterialsProjectRequest:
 
     @classmethod
     def devset(cls, api_key: Optional[str] = None) -> MaterialsProjectRequest:
-        kwargs = {"num_elements": (1, 2), "num_chunks": 2, "chunk_size": 100, "num_sites": (2, 100)}
+        kwargs = {
+            "num_elements": (1, 2),
+            "num_chunks": 2,
+            "chunk_size": 100,
+            "num_sites": (2, 100),
+        }
         return cls(["band_gap", "structure"], api_key, **kwargs)
 
     def to_lmdb(self, lmdb_path: Union[str, Path]) -> None:
@@ -172,8 +177,11 @@ class MaterialsProjectRequest:
             map_async=True,
         )
         if self.data is not None:
-            for index, entry in tqdm(enumerate(self.data), desc="Entries processed", total=len(self.data)):
+            for index, entry in tqdm(
+                enumerate(self.data), desc="Entries processed", total=len(self.data)
+            ):
                 write_data(index, entry.__dict__, target_env)
         else:
-            raise ValueError(f"No data was available for serializing - did you run `retrieve_data`?")
-
+            raise ValueError(
+                f"No data was available for serializing - did you run `retrieve_data`?"
+            )
