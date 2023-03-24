@@ -221,5 +221,6 @@ class MaterialsProjectRequest:
         data["material_ids"] = self.material_ids
         data["available_fields"] = self.available_fields
         data["retrieved"] = getattr(self, "retrieved", None)
+        data["api_kwargs"] = getattr(self, "api_kwargs", None)
         return data
 
