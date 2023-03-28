@@ -131,6 +131,14 @@ class MaterialsProjectDataset(BaseOCPDataset):
             }
             return_dict["symmetry"] = symmetry_data
 
+    @property
+    def target_keys(self) -> List[str]:
+        return self._target_keys
+
+    @target_keys.setter
+    def target_keys(self, values: List[str]) -> None:
+        self._target_keys = values
+
     def data_from_key(
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
@@ -168,7 +176,12 @@ class MaterialsProjectDataset(BaseOCPDataset):
             ["structure", "symmetry", "fields_not_requested"]
             + data["fields_not_requested"]
         )
-        target_keys = set(data.keys()).difference(not_targets)
+        target_keys = getattr(self, "target_keys", None)
+        # in the event we're getting data for the first time
+        if not target_keys:
+            target_keys = set(data.keys()).difference(not_targets)
+            # cache the result
+            self.target_keys = list(target_keys)
         targets = {key: self._standardize_values(data[key]) for key in target_keys}
         return_dict["targets"] = targets
         # compress all the targets into a single tensor for convenience
