@@ -5,6 +5,7 @@ from pathlib import Path
 import torch
 import numpy as np
 from pymatgen.core import Structure
+from emmet.core.symmetry import SymmetryData
 
 from ocpmodels.datasets.base import BaseOCPDataset
 
@@ -158,7 +159,7 @@ class MaterialsProjectDataset(BaseOCPDataset):
         self._parse_symmetry(data, return_dict)
         # assume every other key are targets
         not_targets = set(
-            ["structure", "fields_not_requested"] + data["fields_not_requested"]
+            ["structure", "symmetry", "fields_not_requested"] + data["fields_not_requested"]
         )
         target_keys = set(data.keys()).difference(not_targets)
         targets = {key: self._standardize_values(data[key]) for key in target_keys}
