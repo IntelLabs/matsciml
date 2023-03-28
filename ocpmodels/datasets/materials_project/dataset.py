@@ -62,6 +62,46 @@ class MaterialsProjectDataset(BaseOCPDataset):
         """
         return (0, index)
 
+    def _parse_structure(self, data: Dict[str, Any], return_dict: Dict[str, Any]) -> None:
+        """
+        Parse the standardized Structure data and format into torch Tensors.
+
+        This method also includes extracting lattice data as well.
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            Dictionary corresponding to the materials project data structure.
+
+        return_dict : Dict[str, Any]
+            Output dictionary that contains the training sample. Mutates
+            in place.
+
+        Raises
+        ------
+        ValueError:
+            If `Structure` is not found in the data; currently the workflow
+            intends for you to have the data structure in place.
+        """
+        structure: Union[None, Structure] = data.get("structure", None)
+        if structure is None:
+            raise ValueError("Structure not found in data - workflow needs a structure to use!")
+        return_dict["pos"] = torch.from_numpy(structure.cart_coords).float()
+        return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
+        return_dict["distance_matrix"] = torch.from_numpy(
+            structure.distance_matrix
+        ).float()
+        # grab lattice properties
+        space_group = structure.get_space_group_info()[-1]
+        lattice_params = torch.FloatTensor(
+            structure.lattice.abc + structure.lattice.angles
+        )
+        lattice_features = {
+            "space_group": space_group,
+            "lattice_params": lattice_params,
+        }
+        return_dict["lattice_features"] = lattice_features
+
     def data_from_key(
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
@@ -91,23 +131,8 @@ class MaterialsProjectDataset(BaseOCPDataset):
         """
         data: Dict[str, Any] = super().data_from_key(lmdb_index, subindex)
         return_dict = {}
-        structure: Structure = data.get("structure")
-        # retrieve properties
-        return_dict["pos"] = torch.from_numpy(structure.cart_coords).float()
-        return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
-        return_dict["distance_matrix"] = torch.from_numpy(
-            structure.distance_matrix
-        ).float()
-        # grab lattice properties
-        space_group = structure.get_space_group_info()[-1]
-        lattice_params = torch.FloatTensor(
-            structure.lattice.abc + structure.lattice.angles
-        )
-        lattice_features = {
-            "space_group": space_group,
-            "lattice_params": lattice_params,
-        }
-        return_dict["lattice_features"] = lattice_features
+        # parse out relevant structure/lattice data
+        self._parse_structure(data, return_dict)
         # assume every other key are targets
         not_targets = set(
             ["structure", "fields_not_requested"] + data["fields_not_requested"]
