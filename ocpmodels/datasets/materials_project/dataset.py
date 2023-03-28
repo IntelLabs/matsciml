@@ -176,9 +176,12 @@ class MaterialsProjectDataset(BaseOCPDataset):
         for key in target_keys:
             item = data.get(key)
             if isinstance(item, Iterable):
-                target_tensor.extend(item)
+                # check if the data is numeric first
+                if isinstance(item[0], (float, int)):
+                    target_tensor.extend(item)
             else:
-                target_tensor.append(item)
+                if isinstance(item, (float, int)):
+                    target_tensor.append(item)
         target_tensor = torch.FloatTensor(target_tensor)
         return_dict["target_tensor"] = target_tensor
         return return_dict
