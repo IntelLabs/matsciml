@@ -72,7 +72,6 @@ class MaterialsProjectDataset(BaseOCPDataset):
         ----------
         data : Dict[str, Any]
             Dictionary corresponding to the materials project data structure.
-
         return_dict : Dict[str, Any]
             Output dictionary that contains the training sample. Mutates
             in place.
@@ -101,6 +100,29 @@ class MaterialsProjectDataset(BaseOCPDataset):
             "lattice_params": lattice_params,
         }
         return_dict["lattice_features"] = lattice_features
+
+    def _parse_symmetry(self, data: Dict[str, Any], return_dict: Dict[str, Any]) -> None:
+        """
+        Parse out symmetry information from the `SymmetryData` structure.
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            Dictionary corresponding to the materials project data structure.
+        return_dict : Dict[str, Any]
+            Output dictionary that contains the training sample. Mutates
+            in place.
+        """
+        symmetry: Union[SymmetryData, None] = data.get("symmetry", None)
+        if symmetry is None:
+            return
+        else:
+            symmetry_data = {
+                    "number": symmetry.number,
+                    "symbol": symmetry.symbol,
+                    "group": symmetry.point_group
+                    }
+            return_dict["symmetry"] = symmetry_data
 
     def data_from_key(
         self, lmdb_index: int, subindex: int
@@ -133,6 +155,7 @@ class MaterialsProjectDataset(BaseOCPDataset):
         return_dict = {}
         # parse out relevant structure/lattice data
         self._parse_structure(data, return_dict)
+        self._parse_symmetry(data, return_dict)
         # assume every other key are targets
         not_targets = set(
             ["structure", "fields_not_requested"] + data["fields_not_requested"]
