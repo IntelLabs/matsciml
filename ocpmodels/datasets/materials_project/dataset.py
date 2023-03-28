@@ -63,7 +63,9 @@ class MaterialsProjectDataset(BaseOCPDataset):
         """
         return (0, index)
 
-    def _parse_structure(self, data: Dict[str, Any], return_dict: Dict[str, Any]) -> None:
+    def _parse_structure(
+        self, data: Dict[str, Any], return_dict: Dict[str, Any]
+    ) -> None:
         """
         Parse the standardized Structure data and format into torch Tensors.
 
@@ -85,7 +87,9 @@ class MaterialsProjectDataset(BaseOCPDataset):
         """
         structure: Union[None, Structure] = data.get("structure", None)
         if structure is None:
-            raise ValueError("Structure not found in data - workflow needs a structure to use!")
+            raise ValueError(
+                "Structure not found in data - workflow needs a structure to use!"
+            )
         return_dict["pos"] = torch.from_numpy(structure.cart_coords).float()
         return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
         return_dict["distance_matrix"] = torch.from_numpy(
@@ -102,7 +106,9 @@ class MaterialsProjectDataset(BaseOCPDataset):
         }
         return_dict["lattice_features"] = lattice_features
 
-    def _parse_symmetry(self, data: Dict[str, Any], return_dict: Dict[str, Any]) -> None:
+    def _parse_symmetry(
+        self, data: Dict[str, Any], return_dict: Dict[str, Any]
+    ) -> None:
         """
         Parse out symmetry information from the `SymmetryData` structure.
 
@@ -119,10 +125,10 @@ class MaterialsProjectDataset(BaseOCPDataset):
             return
         else:
             symmetry_data = {
-                    "number": symmetry.number,
-                    "symbol": symmetry.symbol,
-                    "group": symmetry.point_group
-                    }
+                "number": symmetry.number,
+                "symbol": symmetry.symbol,
+                "group": symmetry.point_group,
+            }
             return_dict["symmetry"] = symmetry_data
 
     def data_from_key(
@@ -159,7 +165,8 @@ class MaterialsProjectDataset(BaseOCPDataset):
         self._parse_symmetry(data, return_dict)
         # assume every other key are targets
         not_targets = set(
-            ["structure", "symmetry", "fields_not_requested"] + data["fields_not_requested"]
+            ["structure", "symmetry", "fields_not_requested"]
+            + data["fields_not_requested"]
         )
         target_keys = set(data.keys()).difference(not_targets)
         targets = {key: self._standardize_values(data[key]) for key in target_keys}
@@ -222,6 +229,7 @@ if _has_dgl:
         structures, and a transform interface is created for DGL graph creation.
         )
         """
+
         def __init__(
             self,
             lmdb_root_path: Union[str, Path],
@@ -231,7 +239,7 @@ if _has_dgl:
             """
             Instantiate a `DGLMaterialsProjectDataset` object.
 
-            In addition to specifying an optional list of transforms and an 
+            In addition to specifying an optional list of transforms and an
             LMDB path, the `cutoff_dist` parameter is used to control edge
             creation: we take a point cloud structure and create edges for
             all atoms/sites that are within this cut off distance.
