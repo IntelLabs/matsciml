@@ -13,6 +13,34 @@ _has_dgl = find_spec("dgl") is not None
 _has_pyg = find_spec("torch_geometric") is not None
 
 
+def item_from_structure(data: Any, *keys: str) -> Any:
+    """
+    Function to recurse through an object and retrieve a nested attribute.
+
+    Parameters
+    ----------
+    data : Any
+        Basically any Python object
+    keys : str
+        Any variable number of keys to recurse through.
+
+    Returns
+    -------
+    Any
+        Retrieved nested attribute/object
+
+    Raises
+    ------
+    KeyError
+        If a key is not present, raise KeyError.
+    """
+    for key in keys:
+        data = getattr(data, key, None)
+        if data is None:
+            raise KeyError(f"{key} not found in {data}.")
+    return data
+
+
 class MaterialsProjectDataset(BaseOCPDataset):
     def index_to_key(self, index: int) -> Tuple[int]:
         """
