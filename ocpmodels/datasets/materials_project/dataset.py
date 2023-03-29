@@ -191,12 +191,14 @@ class MaterialsProjectDataset(BaseOCPDataset):
         return_dict["targets"] = targets
         # compress all the targets into a single tensor for convenience
         target_tensor = []
+        target_types = {"classification": [], "regression": []}
         for key in target_keys:
             item = data.get(key)
             if isinstance(item, Iterable):
                 # check if the data is numeric first
                 if isinstance(item[0], (float, int)):
                     target_tensor.extend(item)
+                    target_types["regression"].append(key)
             else:
                 # big warning: if property is missing, we set the value to zero
                 # TODO think about whether this is physical
@@ -204,8 +206,11 @@ class MaterialsProjectDataset(BaseOCPDataset):
                     item = 0.0
                 if isinstance(item, (float, int)):
                     target_tensor.append(item)
+                    target_type = "classification" if isinstance(item, int) else "regression"
+                    target_types[target_type].append(key)
         target_tensor = torch.FloatTensor(target_tensor)
         return_dict["target_tensor"] = target_tensor
+        return_dict["target_types"] = target_types
         return return_dict
 
     @staticmethod
@@ -300,18 +305,19 @@ class MaterialsProjectDataset(BaseOCPDataset):
         for key, value in sample.items():
             # for dictionaries, we need to go one level deeper
             if isinstance(value, dict):
-                joint_data[key] = {}
-                for subkey, subvalue in value.items():
-                    data = [item_from_structure(s, key, subkey) for s in batch]
-                    # for numeric types, cast to a float tensor
-                    if isinstance(subvalue, (int, float)):
-                        data = torch.as_tensor(data)
-                    elif isinstance(subvalue, torch.Tensor):
-                        data = torch.vstack(data)
-                    # for string types, we just return a list
-                    else:
-                        pass
-                    joint_data[key][subkey] = data
+                if key != "target_keys":
+                    joint_data[key] = {}
+                    for subkey, subvalue in value.items():
+                        data = [item_from_structure(s, key, subkey) for s in batch]
+                        # for numeric types, cast to a float tensor
+                        if isinstance(subvalue, (int, float)):
+                            data = torch.as_tensor(data)
+                        elif isinstance(subvalue, torch.Tensor):
+                            data = torch.vstack(data)
+                        # for string types, we just return a list
+                        else:
+                            pass
+                        joint_data[key][subkey] = data
             elif key in pad_keys:
                 assert isinstance(
                     value, torch.Tensor
@@ -343,6 +349,7 @@ class MaterialsProjectDataset(BaseOCPDataset):
                     data = torch.as_tensor(data)
                 # return anything else as just a list
                 joint_data[key] = data
+        joint_data["target_types"] = sample["target_types"]
         return joint_data
 
 
