@@ -2,6 +2,7 @@ from functools import cached_property
 from typing import Iterable, Tuple, Any, Dict, Union, Optional, List, Callable
 from importlib.util import find_spec
 from pathlib import Path
+from math import pi
 
 import torch
 import numpy as np
@@ -100,8 +101,9 @@ class MaterialsProjectDataset(BaseOCPDataset):
         ).float()
         # grab lattice properties
         space_group = structure.get_space_group_info()[-1]
+        # convert lattice angles into radians
         lattice_params = torch.FloatTensor(
-            structure.lattice.abc + structure.lattice.angles
+            structure.lattice.abc + tuple(a * (pi / 180.) for a in structure.lattice.angles)
         )
         lattice_features = {
             "space_group": space_group,
