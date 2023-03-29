@@ -822,6 +822,10 @@ class BaseTaskModule(pl.LightningModule):
     def output_heads(self) -> nn.ModuleDict:
         return self._output_heads
 
+    @property
+    def num_heads(self) -> int:
+        return len(self.task_keys)
+
     def forward(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
