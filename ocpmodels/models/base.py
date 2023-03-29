@@ -777,7 +777,7 @@ class AbstractEnergyModel(AbstractTask):
 
 
 class BaseTaskModule(pl.LightningModule):
-    def __init__(self, encoder: nn.Module, task_keys: List[str], **kwargs) -> None:
+    def __init__(self, encoder: nn.Module, task_keys: Optional[List[str]] = None, **kwargs) -> None:
         super().__init__()
         self.encoder = encoder
         self.task_keys = task_keys
@@ -787,7 +787,7 @@ class BaseTaskModule(pl.LightningModule):
         return self._task_keys
 
     @task_keys.setter
-    def task_keys(self, values: Union[set, List[str]]) -> None:
+    def task_keys(self, values: Union[set, List[str], None]) -> None:
         """
         Ensures that the task keys are unique.
 
@@ -796,6 +796,8 @@ class BaseTaskModule(pl.LightningModule):
         values : Union[set, List[str]]
             Array of keys to use to look up targets.
         """
+        if values is None:
+            values = []
         if isinstance(values, list):
             values = set(values)
         if isinstance(values, set):
