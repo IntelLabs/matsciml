@@ -814,6 +814,25 @@ class BaseTaskModule(pl.LightningModule):
             values = list(values)
         self._task_keys = values
 
+    @abstractmethod
+    def _make_output_heads(self) -> nn.ModuleDict:
+        ...
+
+    @property
+    def output_heads(self) -> nn.ModuleDict:
+        return self._output_heads
+
+    def forward(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        embedding = self.encoder(batch)
+        outputs = {}
+        # process each head sequentially
+        for key, head in self.output_heads.items():
+            outputs[key] = head(embedding)
+        return outputs
+
     def _get_targets(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
