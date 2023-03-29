@@ -11,6 +11,7 @@ from torch import Tensor, nn
 import dgl
 
 from ocpmodels.modules.normalizer import Normalizer
+from ocpmodels.models.common import OutputHead
 
 """
 base.py
@@ -782,12 +783,14 @@ class BaseTaskModule(pl.LightningModule):
         encoder: nn.Module,
         loss_func: nn.Module,
         task_keys: Optional[List[str]] = None,
+        output_kwargs: Dict[str, Any] = {},
         **kwargs,
     ) -> None:
         super().__init__()
         self.encoder = encoder
         self.task_keys = task_keys
         self.loss_func = loss_func
+        self.output_kwargs
 
     @property
     def task_keys(self) -> List[str]:
