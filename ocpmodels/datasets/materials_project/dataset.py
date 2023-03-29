@@ -290,10 +290,11 @@ class MaterialsProjectDataset(BaseOCPDataset):
         """
         joint_data = {}
         sample = batch[0]
-        # get the biggest point cloud size for padding
-        max_size = max([s["pos"].size(0) for s in batch])
-        batch_size = len(batch)
         pad_keys = ["pos", "atomic_numbers"]
+        # get the biggest point cloud size for padding
+        if any([key in sample.keys() for key in pad_keys]):
+            max_size = max([s["pos"].size(0) for s in batch])
+            batch_size = len(batch)
         for key, value in sample.items():
             # for dictionaries, we need to go one level deeper
             if isinstance(value, dict):
