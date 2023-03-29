@@ -1,7 +1,7 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Dict, Type, Tuple, Optional, Union
+from typing import Dict, Type, Tuple, Optional, Union, Any, List
 from abc import abstractmethod
 import logging
 
@@ -774,3 +774,39 @@ class AbstractEnergyModel(AbstractTask):
         """
         energy = self.forward(graph)
         return energy
+
+
+class BaseTaskModule(pl.LightningModule):
+    def __init__(self, encoder: nn.Module, task_keys: List[str], **kwargs) -> None:
+        super().__init__()
+        self.encoder = encoder
+        self.task_keys = task_keys
+
+    @property
+    def task_keys(self) -> List[str]:
+        return self._task_keys
+
+    @task_keys.setter
+    def task_keys(self, values: Union[set, List[str]]) -> None:
+        """
+        Ensures that the task keys are unique.
+
+        Parameters
+        ----------
+        values : Union[set, List[str]]
+            Array of keys to use to look up targets.
+        """
+        if isinstance(values, list):
+            values = set(values)
+        if isinstance(values, set):
+            values = list(values)
+        self._task_keys = values
+
+    @abstractmethod
+    def _get_targets(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        ...
+
+
