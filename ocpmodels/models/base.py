@@ -891,3 +891,21 @@ class BaseTaskModule(pl.LightningModule):
         total_loss: torch.Tensor = sum(losses.values())
         return {"loss": total_loss, "log": losses}
 
+
+class RegressionTask(BaseTaskModule):
+    def __init__(
+        self,
+        encoder: nn.Module,
+        task_keys: List[str],
+        loss_func=nn.MSELoss(),
+        output_kwargs: Dict[str, Any] = {},
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(encoder, loss_func, task_keys, output_kwargs, **kwargs)
+
+    def _make_output_heads(self) -> nn.ModuleDict:
+        modules = {}
+        for key in self.task_keys:
+            # TODO allow for non-scalar outputs
+            modules[key] = OutputHead(1, **self.output_kwargs)
+        return nn.ModuleDict(modules)
