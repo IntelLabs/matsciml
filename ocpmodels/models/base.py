@@ -804,16 +804,17 @@ class BaseTaskModule(pl.LightningModule):
             values = list(values)
         self._task_keys = values
 
-    @abstractmethod
     def _get_targets(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
     ) -> Dict[str, torch.Tensor]:
         """
-        Abstract method for obtaining targets.
+        Method for extracting targets out of a batch.
 
         Ultimately it is up to the individual task to determine how to obtain
-        a dictionary of target tensors to use for loss computation.
+        a dictionary of target tensors to use for loss computation, but this
+        implements the base logic assuming everything is neatly in the "targets"
+        key of a batch.
 
         Parameters
         ----------
@@ -825,6 +826,10 @@ class BaseTaskModule(pl.LightningModule):
         Dict[str, torch.Tensor]
             A flat dictionary containing target tensors.
         """
+        target_dict = {}
+        for key in self.task_keys:
+            target_dict[key] = batch["targets"][key]
+        return target_key
         ...
 
 
