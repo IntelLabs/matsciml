@@ -790,7 +790,7 @@ class BaseTaskModule(pl.LightningModule):
         self.encoder = encoder
         self.task_keys = task_keys
         self.loss_func = loss_func
-        self.output_kwargs
+        self.output_kwargs = output_kwargs
 
     @property
     def task_keys(self) -> List[str]:
