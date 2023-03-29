@@ -777,10 +777,17 @@ class AbstractEnergyModel(AbstractTask):
 
 
 class BaseTaskModule(pl.LightningModule):
-    def __init__(self, encoder: nn.Module, task_keys: Optional[List[str]] = None, **kwargs) -> None:
+    def __init__(
+        self,
+        encoder: nn.Module,
+        loss_func: nn.Module,
+        task_keys: Optional[List[str]] = None,
+        **kwargs,
+    ) -> None:
         super().__init__()
         self.encoder = encoder
         self.task_keys = task_keys
+        self.loss_func = loss_func
 
     @property
     def task_keys(self) -> List[str]:
