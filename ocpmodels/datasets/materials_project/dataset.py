@@ -37,9 +37,11 @@ def item_from_structure(data: Any, *keys: str) -> Any:
         If a key is not present, raise KeyError.
     """
     for key in keys:
-        data = getattr(data, key, None)
-        if data is None:
-            raise KeyError(f"{key} not found in {data}.")
+        assert key in data.keys(), f"{key} not found in {data}."
+        if isinstance(data, dict):
+            data = data.get(key)
+        else:
+            data = getattr(data, key)
     return data
 
 
@@ -197,7 +199,7 @@ class MaterialsProjectDataset(BaseOCPDataset):
                 # big warning: if property is missing, we set the value to zero
                 # TODO think about whether this is physical
                 if item is None:
-                    item = 0.
+                    item = 0.0
                 if isinstance(item, (float, int)):
                     target_tensor.append(item)
         target_tensor = torch.FloatTensor(target_tensor)
@@ -255,6 +257,90 @@ class MaterialsProjectDataset(BaseOCPDataset):
         targets = [self.__getitem__(i)["target_tensor"] for i in range(len(self))]
         targets = torch.vstack(targets)
         return (targets.mean(0, keepdim=True), targets.std(0, keepdim=True))
+
+    @staticmethod
+    def collate_fn(
+        batch: List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
+    ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
+        """
+        Relatively verbose function to batch up materials project data.
+
+        At a high level, we basically go through and check what data types
+        are needed for the full batch, based on the first sample, and use
+        that to determine what to do: tensors are stacked, 1D lists are 
+        converted into their appropriate tensor types. For dictionaries,
+        we do the same thing but at their level (i.e. we preserve the
+        original structure of a sample). For strings, we are not currently
+        doing anything with them and so they are preserved as lists of strings.
+
+        We define a `pad_keys` list of keys that are explicitly meant to
+        be padded, which correspond to point cloud entities. For memory 
+        considerations, the interatomic distance matrix is not batched 
+        and just left as a list of tensors.
+
+        Parameters
+        ----------
+        batch : List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
+            List of Materials Project samples
+
+        Returns
+        -------
+        Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
+            Dictionary of batched data
+        """
+        joint_data = {}
+        sample = batch[0]
+        # get the biggest point cloud size for padding
+        max_size = max([s["pos"].size(0) for s in batch])
+        batch_size = len(batch)
+        pad_keys = ["pos", "atomic_numbers"]
+        for key, value in sample.items():
+            # for dictionaries, we need to go one level deeper
+            if isinstance(value, dict):
+                joint_data[key] = {}
+                for subkey, subvalue in value.items():
+                    data = [item_from_structure(s, key, subkey) for s in batch]
+                    # for numeric types, cast to a float tensor
+                    if isinstance(subvalue, (int, float)):
+                        data = torch.as_tensor(data)
+                    elif isinstance(subvalue, torch.Tensor):
+                        data = torch.vstack(data)
+                    # for string types, we just return a list
+                    else:
+                        pass
+                    joint_data[key][subkey] = data
+            elif key in pad_keys:
+                assert isinstance(
+                    value, torch.Tensor
+                ), f"{key} in batch should be a tensor."
+                # get the dimensionality
+                tensor_dim = value.size(-1)
+                if value.ndim == 2:
+                    data = torch.zeros(
+                        batch_size, max_size, tensor_dim, dtype=value.dtype
+                    )
+                else:
+                    data = torch.zeros(batch_size, max_size, dtype=value.dtype)
+                # pack the batched tensor with each sample now
+                for index, s in enumerate(batch):
+                    tensor: torch.Tensor = s[key]
+                    if tensor.ndim == 2:
+                        lengths = tensor.shape
+                        data[index, : lengths[0], : lengths[1]] = tensor[:, :]
+                    else:
+                        length = len(tensor)
+                        data[index, :length] = tensor[:]
+                joint_data[key] = data
+            else:
+                # aggregate all the data
+                data = [s.get(key) for s in batch]
+                if isinstance(value, torch.Tensor) and key != "distance_matrix":
+                    data = torch.vstack(data)
+                elif isinstance(value, (int, float)):
+                    data = torch.as_tensor(data)
+                # return anything else as just a list
+                joint_data[key] = data
+        return joint_data
 
 
 if _has_dgl:

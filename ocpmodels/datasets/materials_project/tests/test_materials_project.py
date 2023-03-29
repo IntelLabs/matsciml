@@ -51,6 +51,21 @@ def test_dataset_load(devset_dir):
 
 @pytest.mark.dependency(depends=["test_dataset_load"])
 @pytest.mark.local
+def test_dataset_collate(devset_dir):
+    dset = MaterialsProjectDataset(devset_dir)
+    data = [dset.__getitem__(index) for index in range(10)]
+    batch = dset.collate_fn(data)
+    # check the nuclear coordinates and numbers match what is expected
+    assert batch["pos"].size(0) == 10
+    assert batch["pos"].ndim == 3
+    assert batch["atomic_numbers"].size(0) == 10
+    assert batch["atomic_numbers"].ndim == 2
+    assert batch["target_tensor"].size(0) == 10
+    assert batch["target_tensor"].ndim == 2
+
+
+@pytest.mark.dependency(depends=["test_dataset_load"])
+@pytest.mark.local
 def test_dgl_dataset(devset_dir):
     dset = DGLMaterialsProjectDataset(devset_dir)
     for index in range(10):
