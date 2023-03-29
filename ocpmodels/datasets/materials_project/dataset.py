@@ -193,6 +193,10 @@ class MaterialsProjectDataset(BaseOCPDataset):
                 if isinstance(item[0], (float, int)):
                     target_tensor.extend(item)
             else:
+                # big warning: if property is missing, we set the value to zero
+                # TODO think about whether this is physical
+                if item is None:
+                    item = 0.
                 if isinstance(item, (float, int)):
                     target_tensor.append(item)
         target_tensor = torch.FloatTensor(target_tensor)
