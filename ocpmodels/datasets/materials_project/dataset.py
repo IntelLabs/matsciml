@@ -267,15 +267,15 @@ class MaterialsProjectDataset(BaseOCPDataset):
 
         At a high level, we basically go through and check what data types
         are needed for the full batch, based on the first sample, and use
-        that to determine what to do: tensors are stacked, 1D lists are 
+        that to determine what to do: tensors are stacked, 1D lists are
         converted into their appropriate tensor types. For dictionaries,
         we do the same thing but at their level (i.e. we preserve the
         original structure of a sample). For strings, we are not currently
         doing anything with them and so they are preserved as lists of strings.
 
         We define a `pad_keys` list of keys that are explicitly meant to
-        be padded, which correspond to point cloud entities. For memory 
-        considerations, the interatomic distance matrix is not batched 
+        be padded, which correspond to point cloud entities. For memory
+        considerations, the interatomic distance matrix is not batched
         and just left as a list of tensors.
 
         Parameters
@@ -439,3 +439,30 @@ if _has_dgl:
             for key in ["pos", "atomic_numbers", "distance_matrix"]:
                 del data[key]
             return data
+
+        @staticmethod
+        def collate_fn(
+            batch: List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
+        ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]:
+            """
+            Collate function for DGLGraph variant of the Materials Project.
+
+            Basically uses the same workflow as that for `MaterialsProjectDataset`,
+            but with the added step of calling `dgl.batch` on the graph data
+            that is left unprocessed by the parent method.
+
+            Parameters
+            ----------
+            batch : List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
+                List of Materials Project samples
+
+            Returns
+            -------
+            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+                Batched data, including graph
+            """
+            batched_data = super(
+                DGLMaterialsProjectDataset, DGLMaterialsProjectDataset
+            ).collate_fn(batch)
+            batched_data["graph"] = dgl.batch(batched_data["graph"])
+            return batched_data
