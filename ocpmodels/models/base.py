@@ -856,9 +856,34 @@ class BaseTaskModule(pl.LightningModule):
             A flat dictionary containing target tensors.
         """
         target_dict = {}
+        assert len(self.task_keys) != 0, f"No target keys were set!"
         for key in self.task_keys:
             target_dict[key] = batch["targets"][key]
         return target_key
-        ...
 
+    def _compute_losses(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
+        """
+        Compute pred versus target for every target, then sum.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to evaluate on.
+
+        Returns
+        -------
+        Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
+            Dictionary containing the joint loss, and a subdictionary
+            containing each individual target loss.
+        """
+        targets = self._get_targets(batch)
+        predictions = self(batch)
+        losses = {}
+        for key in self.task_keys:
+            losses[key] = self.loss_func(predictions[key], targets[key])
+        total_loss: torch.Tensor = sum(losses.values())
+        return {"loss": total_loss, "log": losses}
 
