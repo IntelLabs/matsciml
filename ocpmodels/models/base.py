@@ -807,6 +807,22 @@ class BaseTaskModule(pl.LightningModule):
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
     ) -> Dict[str, torch.Tensor]:
+        """
+        Abstract method for obtaining targets.
+
+        Ultimately it is up to the individual task to determine how to obtain
+        a dictionary of target tensors to use for loss computation.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples from the dataset.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            A flat dictionary containing target tensors.
+        """
         ...
 
 
