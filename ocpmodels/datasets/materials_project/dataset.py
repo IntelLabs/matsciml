@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Iterable, Tuple, Any, Dict, Union, Optional, List, Callable
 from importlib.util import find_spec
 from pathlib import Path
@@ -236,6 +237,24 @@ class MaterialsProjectDataset(BaseOCPDataset):
         else:
             # for scalars, just return the value
             return value
+
+    @cached_property
+    def dataset_target_norm(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute the dataset average for targets.
+
+        This property is cached, so once it has been called (per session)
+        it should stash the result for performance.
+
+        Returns
+        -------
+        Tuple[torch.Tensor, torch.Tensor]
+            PyTorch tensor containing the mean and standard deviation
+            values of targets, with `keepdim=True`
+        """
+        targets = [self.__getitem__(i)["target_tensor"] for i in range(len(self))]
+        targets = torch.vstack(targets)
+        return (targets.mean(0, keepdim=True), targets.std(0, keepdim=True))
 
 
 if _has_dgl:
