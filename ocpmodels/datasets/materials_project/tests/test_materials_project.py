@@ -71,3 +71,15 @@ def test_dgl_dataset(devset_dir):
     for index in range(10):
         data = dset.__getitem__(index)
         assert "graph" in data
+
+
+@pytest.mark.dependency(depends=["test_dgl_dataset"])
+@pytest.mark.local
+def test_dgl_collate(devset_dir):
+    dset = DGLMaterialsProjectDataset(devset_dir)
+    data = [dset.__getitem__(index) for index in range(10)]
+    batch = dset.collate_fn(data)
+    assert "graph" in batch
+    # should be ten graphs
+    assert batch["graph"].batch_size == 10
+    assert all([key in batch["graph"].ndata for key in ["pos", "atomic_numbers"]])
