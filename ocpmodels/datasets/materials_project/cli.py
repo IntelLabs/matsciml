@@ -98,7 +98,9 @@ if __name__ == "__main__":
         api_kwargs = parameters.get("api_kwargs")
         del parameters["api_kwargs"]
         # update api_kwargs based on user overrides
-        user_kwargs = args.get("api_kwargs", {})
+        user_kwargs = args.get("api_kwargs")
+        if user_kwargs is None:
+            user_kwargs = {}
         api_kwargs.update(user_kwargs)
         client = MaterialsProjectRequest(**parameters, **api_kwargs)
         data = client.retrieve_data()
