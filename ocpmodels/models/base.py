@@ -797,6 +797,7 @@ class BaseTaskModule(pl.LightningModule):
         default_heads = {"act_last": None, "hidden_dim": 128}
         default_heads.update(output_kwargs)
         self.output_kwargs = default_heads
+        self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     @property
     def task_keys(self) -> List[str]:
