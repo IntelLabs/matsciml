@@ -826,6 +826,13 @@ class BaseTaskModule(pl.LightningModule):
     def output_heads(self) -> nn.ModuleDict:
         return self._output_heads
 
+    @output_heads.setter
+    def output_heads(self, heads: nn.ModuleDict) -> None:
+        assert isinstance(heads, nn.ModuleDict), f"Output heads must be an instance of `nn.ModuleDict`."
+        assert len(heads) > 0, f"No output heads in {heads}."
+        assert all([key in self.task_keys for key in heads.keys()]), f"Output head keys {heads.keys()} do not match any in tasks: {self.task_keys}."
+        self._output_heads = heads
+
     @property
     def num_heads(self) -> int:
         return len(self.task_keys)
