@@ -1,7 +1,7 @@
 # Copyright (C) 2022-2023 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Callable, List
+from typing import Callable, List, Optional, Dict, Union
 
 import dgl
 import torch
