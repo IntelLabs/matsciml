@@ -163,7 +163,7 @@ class GraphConvModel(AbstractEnergyModel):
         if not isinstance(readout, nn.Module):
             readout = readout()
         self.readout = readout
-        if not self.encoder_only:
+        if not encoder_only:
             self.output = nn.Linear(out_dim, 1)
         self.save_hyperparameters()
 
