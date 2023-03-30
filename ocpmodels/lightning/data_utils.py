@@ -13,6 +13,11 @@ from torch.utils.data import random_split
 
 from ocpmodels.datasets import IS2REDataset, S2EFDataset, PointCloudDataset
 from ocpmodels.datasets import s2ef_devset, is2re_devset
+from ocpmodels.datasets.materials_project import (
+    materialsproject_devset,
+    MaterialsProjectDataset,
+    DGLMaterialsProjectDataset,
+)
 
 
 class GraphDataModule(pl.LightningDataModule):
@@ -292,6 +297,17 @@ class MaterialsProjectDataModule(pl.LightningDataModule):
             num_workers=self.hparams.num_workers,
             collate_fn=self.dataset.collate_fn,
         )
+
+    @classmethod
+    def from_devset(
+        cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
+    ):
+        kwargs.setdefault("batch_size", 8)
+        kwargs.setdefault("num_workers", 0)
+        dset_class = (
+            MaterialsProjectDataset if not graphs else DGLMaterialsProjectDataset
+        )
+        return cls(dset_class(materialsproject_devset, transforms=transforms), **kwargs)
 
 
 class PointCloudDataModule(GraphDataModule):
