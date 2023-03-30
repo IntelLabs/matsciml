@@ -905,6 +905,15 @@ class BaseTaskModule(pl.LightningModule):
         total_loss: torch.Tensor = sum(losses.values())
         return {"loss": total_loss, "log": losses}
 
+    def configure_optimizers(self) -> torch.optim.AdamW:
+        opt = torch.optim.AdamW(
+            self.parameters(),
+            lr=self.hparams.lr,
+            weight_decay=self.hparams.weight_decay,
+        )
+        return opt
+
+
 
 class RegressionTask(BaseTaskModule):
     def __init__(
