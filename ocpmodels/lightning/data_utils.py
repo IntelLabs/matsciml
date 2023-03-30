@@ -239,7 +239,7 @@ class MaterialsProjectDataModule(pl.LightningDataModule):
     ):
         super().__init__()
         self.dataset = dataset
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["dataset"])
 
     def setup(self, stage: Optional[str] = None) -> None:
         if self.hparams.seed is None:
