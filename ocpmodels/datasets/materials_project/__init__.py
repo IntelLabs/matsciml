@@ -1,4 +1,5 @@
 from importlib.util import find_spec
+from pathlib import Path
 
 from ocpmodels.datasets.materials_project.api import MaterialsProjectRequest
 from ocpmodels.datasets.materials_project.dataset import MaterialsProjectDataset
