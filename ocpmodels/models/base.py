@@ -781,7 +781,7 @@ class BaseTaskModule(pl.LightningModule):
     def __init__(
         self,
         encoder: nn.Module,
-        loss_func: nn.Module,
+        loss_func: Union[Type[nn.Module], nn.Module],
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         **kwargs,
@@ -789,6 +789,8 @@ class BaseTaskModule(pl.LightningModule):
         super().__init__()
         self.encoder = encoder
         self.task_keys = task_keys
+        if isinstance(loss_func, Type):
+            loss_func = loss_func()
         self.loss_func = loss_func
         self.output_kwargs = output_kwargs
 
