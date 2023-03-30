@@ -917,6 +917,60 @@ class BaseTaskModule(pl.LightningModule):
         )
         return opt
 
+    def training_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch_idx: int,
+    ):
+        loss_dict = self._compute_losses(batch)
+        metrics = loss_dict["log"]
+        # prepending training flag for 
+        for key in metrics.keys():
+            metrics[f"train_{key}"] = metrics[key]
+            del metrics[key]
+        if "graph" in batch.keys():
+            batch_size = batch["graph"].batch_size
+        else:
+            batch_size = None
+        self.log_dict(metrics, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_size)
+        return loss_dict
+
+    def validation_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch_idx: int,
+    ):
+        loss_dict = self._compute_losses(batch)
+        metrics = loss_dict["log"]
+        # prepending training flag for 
+        for key in metrics.keys():
+            metrics[f"val_{key}"] = metrics[key]
+            del metrics[key]
+        if "graph" in batch.keys():
+            batch_size = batch["graph"].batch_size
+        else:
+            batch_size = None
+        self.log_dict(metrics, on_epoch=True, batch_size=batch_size)
+        return loss_dict
+
+    def test_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch_idx: int,
+    ):
+        loss_dict = self._compute_losses(batch)
+        metrics = loss_dict["log"]
+        # prepending training flag for 
+        for key in metrics.keys():
+            metrics[f"test_{key}"] = metrics[key]
+            del metrics[key]
+        if "graph" in batch.keys():
+            batch_size = batch["graph"].batch_size
+        else:
+            batch_size = None
+        self.log_dict(metrics, on_epoch=True, batch_size=batch_size)
+        return loss_dict
+
 
 
 class RegressionTask(BaseTaskModule):
