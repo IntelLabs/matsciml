@@ -792,7 +792,9 @@ class BaseTaskModule(pl.LightningModule):
         if isinstance(loss_func, Type):
             loss_func = loss_func()
         self.loss_func = loss_func
-        self.output_kwargs = output_kwargs
+        default_heads = {"act_last": None, "hidden_dim": 128}
+        default_heads.update(output_kwargs)
+        self.output_kwargs = default_heads
 
     @property
     def task_keys(self) -> List[str]:
