@@ -4,9 +4,12 @@
 from typing import Union, Optional, Type, List, Callable
 from pathlib import Path
 from warnings import warn
+from os import getenv
 
 import pytorch_lightning as pl
-from torch.utils.data import Dataset as TorchDataset
+import torch
+from torch.utils.data import DataLoader, Dataset as TorchDataset
+from torch.utils.data import random_split
 
 from ocpmodels.datasets import IS2REDataset, S2EFDataset, PointCloudDataset
 from ocpmodels.datasets import s2ef_devset, is2re_devset
@@ -217,6 +220,78 @@ class DGLDataModule(S2EFDGLDataModule):
             train_path, batch_size, num_workers, val_path, test_path, transforms
         )
         warn(f"DGLDataModule is being retired - please switch to S2EFDGLDataModule.")
+
+
+class MaterialsProjectDataModule(pl.LightningDataModule):
+    def __init__(
+        self,
+        dataset: TorchDataset,
+        batch_size: int = 32,
+        num_workers: int = 0,
+        val_split: float = 0.0,
+        test_split: float = 0.0,
+        seed: Optional[int] = None,
+    ):
+        super().__init__()
+        self.dataset = dataset
+        self.save_hyperparameters()
+
+    def setup(self, stage: Optional[str] = None) -> None:
+        if self.hparams.seed is None:
+            # try read from PyTorch Lightning, if not use a set seed
+            seed = getenv("PL_GLOBAL_SEED", 42)
+        else:
+            seed = self.hparams.seed
+        generator = torch.Generator().manual_seed(int(seed))
+        num_points = len(self.dataset)
+        num_val = int(self.hparams.val_split * num_points)
+        num_test = int(self.hparams.test_split * num_points)
+        # make sure we're not asking for more data than exists
+        num_train = num_points - (num_val + num_test)
+        assert (
+            num_train >= 0
+        ), f"More test/validation samples requested than available samples."
+        splits = random_split(self.dataset, [num_train, num_val, num_test], generator)
+        self.splits = {key: splits[i] for i, key in enumerate(["train", "val", "test"])}
+
+    def train_dataloader(self):
+        split = self.splits.get("train")
+        return DataLoader(
+            split,
+            batch_size=self.hparams.batch_size,
+            shuffle=True,
+            num_workers=self.hparams.num_workers,
+            collate_fn=self.dataset.collate_fn,
+        )
+
+    def predict_dataloader(self):
+        """
+        Predict behavior just assumes the whole dataset is used for inference.
+        """
+        return DataLoader(
+            self.dataset,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+            collate_fn=self.dataset.collate_fn,
+        )
+
+    def test_dataloader(self):
+        split = self.splits.get("test")
+        return DataLoader(
+            split,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+            collate_fn=self.dataset.collate_fn,
+        )
+
+    def val_dataloader(self):
+        split = self.splits.get("val")
+        return DataLoader(
+            split,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+            collate_fn=self.dataset.collate_fn,
+        )
 
 
 class PointCloudDataModule(GraphDataModule):
