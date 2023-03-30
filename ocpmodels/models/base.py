@@ -784,6 +784,8 @@ class BaseTaskModule(pl.LightningModule):
         loss_func: Union[Type[nn.Module], nn.Module],
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
+        lr: float = 1e-4,
+        weight_decay: float = 0.,
         **kwargs,
     ) -> None:
         super().__init__()
