@@ -780,6 +780,9 @@ class AbstractEnergyModel(AbstractTask):
 
 
 class BaseTaskModule(pl.LightningModule):
+
+    __task__ = None
+
     def __init__(
         self,
         encoder: nn.Module,
@@ -974,6 +977,9 @@ class BaseTaskModule(pl.LightningModule):
 
 
 class ScalarRegressionTask(BaseTaskModule):
+
+    __task__ = "regression"
+
     """
     NOTE: You can have multiple targets, but each target is scalar.
     """
@@ -1036,6 +1042,9 @@ class ScalarRegressionTask(BaseTaskModule):
 
 
 class BinaryClassificationTask(BaseTaskModule):
+
+    __task__ = "classification"
+
     """
     Same as the regression case; you can have multiple targets,
     but each target has to be a binary classification task.
