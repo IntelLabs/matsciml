@@ -10,7 +10,7 @@ from ocpmodels.datasets.task_datasets import IS2REDataset, S2EFDataset
 
 # quasi-registry of functions for collating based on dataset class name
 collate_registry = {
-    ref.__class__.__name__: ref.collate_fn
+    ref.__name__: ref.collate_fn
     for ref in [MaterialsProjectDataset, IS2REDataset, S2EFDataset]
 }
 
@@ -65,5 +65,5 @@ class MultiDataset(ConcatDataset):
             all_data[origin].append(entry)
         # convert the samples into batched data
         for key in all_data.keys():
-            all_data[key] = collate_registry[key].collate_fn(all_data[key])
+            all_data[key] = collate_registry[key](all_data[key])
         return all_data
