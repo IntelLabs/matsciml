@@ -1098,3 +1098,15 @@ class BinaryClassificationTask(BaseTaskModule):
         self, batch: any, batch_idx: int, dataloader_idx: int
     ):
         self.on_train_batch_start(batch, batch_idx)
+
+
+    class MultiTaskLitModule(pl.LightningModule):
+        def __init__(self, **tasks: Dict[str, BaseTaskModule]) -> None:
+            super().__init__()
+            assert len(tasks) > 0, f"No tasks provided."
+            task_modules = list(tasks.values())
+            # set an encoder here, and share encoders for all tasks
+            self.encoder = task_modules[0].encoder
+            for task in tasks.values():
+                task.encoder = self.encoder
+            self.tasks = nn.ModuleDict(tasks)
