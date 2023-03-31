@@ -202,6 +202,7 @@ class MaterialsProjectDataset(BaseOCPDataset):
                     target_type = "classification" if isinstance(item, int) else "regression"
                     target_types[target_type].append(key)
         return_dict["target_types"] = target_types
+        return_dict["dataset"] = self.__class__.__name__
         return return_dict
 
     @staticmethod
