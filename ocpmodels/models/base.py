@@ -1022,6 +1022,9 @@ class ScalarRegressionTask(BaseTaskModule):
             keys = batch["target_types"]["regression"]
             self.task_keys = keys
             self.output_heads = self._make_output_heads()
+            # now add the parameters to our task's optimizer
+            opt = self.optimizers()
+            opt.add_param_group({"params": self.output_heads.parameters()})
         return status
 
 
@@ -1080,4 +1083,7 @@ class BinaryClassificationTask(BaseTaskModule):
             keys = batch["target_types"]["classification"]
             self.task_keys = keys
             self.output_heads = self._make_output_heads()
+            # now add the parameters to our task's optimizer
+            opt = self.optimizers()
+            opt.add_param_group({"params": self.output_heads.parameters()})
         return status
