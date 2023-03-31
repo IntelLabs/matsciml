@@ -81,7 +81,9 @@ class IS2REDataset(DGLDataset):
     ) -> None:
         super().__init__(lmdb_root_path, transforms)
 
-    def data_from_key(self, lmdb_index: int, subindex: int) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def data_from_key(
+        self, lmdb_index: int, subindex: int
+    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
         data = super().data_from_key(lmdb_index, subindex)
         data["dataset"] = self.__class__.__name__
         return data
