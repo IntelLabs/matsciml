@@ -923,11 +923,10 @@ class BaseTaskModule(pl.LightningModule):
         batch_idx: int,
     ):
         loss_dict = self._compute_losses(batch)
-        metrics = loss_dict["log"]
+        metrics = {}
         # prepending training flag for 
-        for key in metrics.keys():
-            metrics[f"train_{key}"] = metrics[key]
-            del metrics[key]
+        for key, value in loss_dict["log"].items():
+            metrics[f"train_{key}"] = value
         if "graph" in batch.keys():
             batch_size = batch["graph"].batch_size
         else:
@@ -941,9 +940,9 @@ class BaseTaskModule(pl.LightningModule):
         batch_idx: int,
     ):
         loss_dict = self._compute_losses(batch)
-        metrics = loss_dict["log"]
+        metrics = {}
         # prepending training flag for 
-        for key in metrics.keys():
+        for key, value in loss_dict["log"].items():
             metrics[f"val_{key}"] = metrics[key]
             del metrics[key]
         if "graph" in batch.keys():
@@ -959,7 +958,7 @@ class BaseTaskModule(pl.LightningModule):
         batch_idx: int,
     ):
         loss_dict = self._compute_losses(batch)
-        metrics = loss_dict["log"]
+        metrics = {}
         # prepending training flag for 
         for key in metrics.keys():
             metrics[f"test_{key}"] = metrics[key]
