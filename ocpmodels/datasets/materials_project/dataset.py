@@ -190,26 +190,17 @@ class MaterialsProjectDataset(BaseOCPDataset):
         targets = {key: self._standardize_values(data[key]) for key in target_keys}
         return_dict["targets"] = targets
         # compress all the targets into a single tensor for convenience
-        target_tensor = []
         target_types = {"classification": [], "regression": []}
         for key in target_keys:
             item = targets.get(key)
             if isinstance(item, Iterable):
                 # check if the data is numeric first
                 if isinstance(item[0], (float, int)):
-                    target_tensor.extend(item)
                     target_types["regression"].append(key)
             else:
-                # big warning: if property is missing, we set the value to zero
-                # TODO think about whether this is physical
-                if item is None:
-                    item = 0.0
                 if isinstance(item, (float, int)):
-                    target_tensor.append(item)
                     target_type = "classification" if isinstance(item, int) else "regression"
                     target_types[target_type].append(key)
-        target_tensor = torch.FloatTensor(target_tensor)
-        return_dict["target_tensor"] = target_tensor
         return_dict["target_types"] = target_types
         return return_dict
 
