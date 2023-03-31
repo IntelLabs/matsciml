@@ -311,7 +311,7 @@ class MaterialsProjectDataset(BaseOCPDataset):
                         data = [item_from_structure(s, key, subkey) for s in batch]
                         # for numeric types, cast to a float tensor
                         if isinstance(subvalue, (int, float)):
-                            data = torch.as_tensor(data)
+                            data = torch.as_tensor(data).unsqueeze(-1)
                         elif isinstance(subvalue, torch.Tensor):
                             data = torch.vstack(data)
                         # for string types, we just return a list
@@ -346,7 +346,7 @@ class MaterialsProjectDataset(BaseOCPDataset):
                 if isinstance(value, torch.Tensor) and key != "distance_matrix":
                     data = torch.vstack(data)
                 elif isinstance(value, (int, float)):
-                    data = torch.as_tensor(data)
+                    data = torch.as_tensor(data).unsqueeze(-1)
                 # return anything else as just a list
                 joint_data[key] = data
         joint_data["target_types"] = sample["target_types"]
