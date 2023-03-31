@@ -243,6 +243,9 @@ class MaterialsProjectDataset(BaseOCPDataset):
                 return torch.from_numpy(value).type(dtype)
             else:
                 return torch.Tensor(value).type(dtype)
+        # for missing data, set to zero
+        elif value is None:
+            return 0.
         else:
             # for scalars, just return the value
             return value
