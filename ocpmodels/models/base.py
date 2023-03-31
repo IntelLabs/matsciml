@@ -881,7 +881,7 @@ class BaseTaskModule(pl.LightningModule):
         assert len(self.task_keys) != 0, f"No target keys were set!"
         for key in self.task_keys:
             target_dict[key] = batch["targets"][key]
-        return target_key
+        return target_dict
 
     def _compute_losses(
         self,
