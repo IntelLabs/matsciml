@@ -193,7 +193,7 @@ class MaterialsProjectDataset(BaseOCPDataset):
         target_tensor = []
         target_types = {"classification": [], "regression": []}
         for key in target_keys:
-            item = data.get(key)
+            item = targets.get(key)
             if isinstance(item, Iterable):
                 # check if the data is numeric first
                 if isinstance(item[0], (float, int)):
