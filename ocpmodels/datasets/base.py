@@ -242,6 +242,9 @@ class DGLDataset(BaseOCPDataset):
             data = [entry.get(key) for entry in batch]
             if isinstance(data[0], torch.Tensor):
                 data = torch.stack(data)
+            # ignore strings
+            elif isinstance(data[0], str):
+                pass
             else:
                 data = torch.Tensor(data)
             batched_data[key] = data
