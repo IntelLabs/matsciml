@@ -4,6 +4,7 @@
 from typing import Dict, Type, Tuple, Optional, Union, Any, List
 from abc import abstractmethod
 import logging
+from dgl.utils import data
 
 import pytorch_lightning as pl
 import torch
@@ -785,7 +786,7 @@ class BaseTaskModule(pl.LightningModule):
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         lr: float = 1e-4,
-        weight_decay: float = 0.,
+        weight_decay: float = 0.0,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -924,14 +925,16 @@ class BaseTaskModule(pl.LightningModule):
     ):
         loss_dict = self._compute_losses(batch)
         metrics = {}
-        # prepending training flag for 
+        # prepending training flag for
         for key, value in loss_dict["log"].items():
             metrics[f"train_{key}"] = value
         if "graph" in batch.keys():
             batch_size = batch["graph"].batch_size
         else:
             batch_size = None
-        self.log_dict(metrics, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_size)
+        self.log_dict(
+            metrics, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_size
+        )
         return loss_dict
 
     def validation_step(
@@ -941,10 +944,9 @@ class BaseTaskModule(pl.LightningModule):
     ):
         loss_dict = self._compute_losses(batch)
         metrics = {}
-        # prepending training flag for 
+        # prepending training flag for
         for key, value in loss_dict["log"].items():
-            metrics[f"val_{key}"] = metrics[key]
-            del metrics[key]
+            metrics[f"val_{key}"] = value
         if "graph" in batch.keys():
             batch_size = batch["graph"].batch_size
         else:
@@ -959,10 +961,9 @@ class BaseTaskModule(pl.LightningModule):
     ):
         loss_dict = self._compute_losses(batch)
         metrics = {}
-        # prepending training flag for 
-        for key in metrics.keys():
-            metrics[f"test_{key}"] = metrics[key]
-            del metrics[key]
+        # prepending training flag for
+        for key, value in loss_dict["log"].items():
+            metrics[f"test_{key}"] = value
         if "graph" in batch.keys():
             batch_size = batch["graph"].batch_size
         else:
@@ -1008,7 +1009,7 @@ class ScalarRegressionTask(BaseTaskModule):
             Batch of data from data loader.
         batch_idx : int
             Batch index.
-        unused 
+        unused
             PyTorch Lightning hangover
 
         Returns
@@ -1026,6 +1027,11 @@ class ScalarRegressionTask(BaseTaskModule):
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
         return status
+
+    def on_validation_batch_start(
+        self, batch: any, batch_idx: int, dataloader_idx: int
+    ):
+        self.on_train_batch_start(batch, batch_idx)
 
 
 class BinaryClassificationTask(BaseTaskModule):
@@ -1069,7 +1075,7 @@ class BinaryClassificationTask(BaseTaskModule):
             Batch of data from data loader.
         batch_idx : int
             Batch index.
-        unused 
+        unused
             PyTorch Lightning hangover
 
         Returns
@@ -1087,3 +1093,8 @@ class BinaryClassificationTask(BaseTaskModule):
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
         return status
+
+    def on_validation_batch_start(
+        self, batch: any, batch_idx: int, dataloader_idx: int
+    ):
+        self.on_train_batch_start(batch, batch_idx)
