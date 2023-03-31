@@ -11,7 +11,12 @@ import torch
 from torch.utils.data import DataLoader, Dataset as TorchDataset
 from torch.utils.data import random_split
 
-from ocpmodels.datasets import IS2REDataset, S2EFDataset, PointCloudDataset
+from ocpmodels.datasets import (
+    IS2REDataset,
+    S2EFDataset,
+    PointCloudDataset,
+    MultiDataset,
+)
 from ocpmodels.datasets import s2ef_devset, is2re_devset
 from ocpmodels.datasets.materials_project import (
     materialsproject_devset,
@@ -379,3 +384,72 @@ class PointCloudDataModule(GraphDataModule):
             A point cloud lightning module configured to use the IS2RE data.
         """
         return cls(dataset_class=IS2REDataset, **kwargs)
+
+
+class MultiTaskDataModule(pl.LightningDataModule):
+    def __init__(
+        self,
+        batch_size: int = 32,
+        num_workers: int = 0,
+        train_dataset: Optional[MultiDataset] = None,
+        val_dataset: Optional[MultiDataset] = None,
+        test_dataset: Optional[MultiDataset] = None,
+        predict_dataset: Optional[MultiDataset] = None,
+    ) -> None:
+        super().__init__()
+        if not any([train_dataset, val_dataset, test_dataset, predict_dataset]):
+            raise ValueError(
+                f"No datasets were passed for training, validation, testing, or predict."
+            )
+        self.save_hyperparameters(
+            ignore=["train_dataset", "val_dataset", "test_dataset", "predict_dataset"]
+        )
+        # stash the datasets as an attribute
+        self.datasets = {
+            key: value
+            for key, value in zip(
+                ["train", "val", "test", "predict"],
+                [train_dataset, val_dataset, test_dataset, predict_dataset],
+            )
+        }
+
+    def train_dataloader(self) -> Union[DataLoader, None]:
+        data = self.datasets.get("train", None)
+        if data is None:
+            return None
+        return DataLoader(
+            data,
+            self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+            shuffle=True,
+        )
+
+    def val_dataloader(self) -> Union[DataLoader, None]:
+        data = self.datasets.get("val", None)
+        if data is None:
+            return None
+        return DataLoader(
+            data,
+            self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+        )
+
+    def test_dataloader(self) -> Union[DataLoader, None]:
+        data = self.datasets.get("test", None)
+        if data is None:
+            return None
+        return DataLoader(
+            data,
+            self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+        )
+
+    def predict_dataloader(self) -> Union[DataLoader, None]:
+        data = self.datasets.get("predict", None)
+        if data is None:
+            return None
+        return DataLoader(
+            data,
+            self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+        )
