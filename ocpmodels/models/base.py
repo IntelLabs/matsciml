@@ -1101,19 +1101,19 @@ class BinaryClassificationTask(BaseTaskModule):
         self.on_train_batch_start(batch, batch_idx)
 
 
-    class MultiTaskLitModule(pl.LightningModule):
-        def __init__(self, **tasks: Dict[str, BaseTaskModule]) -> None:
-            super().__init__()
-            assert len(tasks) > 0, f"No tasks provided."
-            task_modules = list(tasks.values())
-            # set an encoder here, and share encoders for all tasks
-            self.encoder = task_modules[0].encoder
-            for task in tasks.values():
-                task.encoder = self.encoder
-            self.tasks = nn.ModuleDict(tasks)
+class MultiTaskLitModule(pl.LightningModule):
+    def __init__(self, **tasks: Dict[str, BaseTaskModule]) -> None:
+        super().__init__()
+        assert len(tasks) > 0, f"No tasks provided."
+        task_modules = list(tasks.values())
+        # set an encoder here, and share encoders for all tasks
+        self.encoder = task_modules[0].encoder
+        for task in tasks.values():
+            task.encoder = self.encoder
+        self.tasks = nn.ModuleDict(tasks)
 
-        def configure_optimizers(self) -> List[Optimizer]:
-            optimizers = []
-            for subtask in self.tasks.values():
-                optimizers.append(subtask.configure_optimizers())
-            return optimizers
+    def configure_optimizers(self) -> List[Optimizer]:
+        optimizers = []
+        for subtask in self.tasks.values():
+            optimizers.append(subtask.configure_optimizers())
+        return optimizers
