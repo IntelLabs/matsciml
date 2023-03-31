@@ -282,6 +282,8 @@ class MaterialsProjectDataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         split = self.splits.get("test")
+        if len(split) == 0:
+            return None
         return DataLoader(
             split,
             batch_size=self.hparams.batch_size,
@@ -291,6 +293,8 @@ class MaterialsProjectDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         split = self.splits.get("val")
+        if len(split) == 0:
+            return None
         return DataLoader(
             split,
             batch_size=self.hparams.batch_size,
