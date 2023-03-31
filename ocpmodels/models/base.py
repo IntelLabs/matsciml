@@ -971,17 +971,58 @@ class BaseTaskModule(pl.LightningModule):
         return loss_dict
 
 
+class ScalarRegressionTask(BaseTaskModule):
+    """
+    NOTE: You can have multiple targets, but each target is scalar.
+    """
 
-class RegressionTask(BaseTaskModule):
     def __init__(
         self,
         encoder: nn.Module,
-        task_keys: List[str],
-        loss_func=nn.MSELoss(),
+        loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
+        task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         **kwargs: Any,
     ) -> None:
         super().__init__(encoder, loss_func, task_keys, output_kwargs, **kwargs)
+        self.save_hyperparameters(ignore=["encoder", "loss_func"])
+
+    def _make_output_heads(self) -> nn.ModuleDict:
+        modules = {}
+        for key in self.task_keys:
+            modules[key] = OutputHead(1, **self.output_kwargs)
+        return nn.ModuleDict(modules)
+
+    def on_train_batch_start(
+        self, batch: Any, batch_idx: int, unused: int = 0
+    ) -> Optional[int]:
+        """
+        PyTorch Lightning hook to check OutputHeads are created.
+
+        This will take data from the batch to determine which key to retrieve
+        data from and how many heads to create.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of data from data loader.
+        batch_idx : int
+            Batch index.
+        unused 
+            PyTorch Lightning hangover
+
+        Returns
+        -------
+        Optional[int]
+            Just returns the parent result.
+        """
+        status = super().on_train_batch_start(batch, batch_idx, unused)
+        # if there are no task keys set, task has not been initialized yet
+        if len(self.task_keys) == 0:
+            keys = batch["target_types"]["regression"]
+            self.task_keys = keys
+            self.output_heads = self._make_output_heads()
+        return status
 
     def _make_output_heads(self) -> nn.ModuleDict:
         modules = {}
