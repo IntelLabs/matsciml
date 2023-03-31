@@ -386,7 +386,7 @@ class PointCloudDataModule(GraphDataModule):
         return cls(dataset_class=IS2REDataset, **kwargs)
 
 
-class MultiTaskDataModule(pl.LightningDataModule):
+class MultiDataModule(pl.LightningDataModule):
     def __init__(
         self,
         batch_size: int = 32,
