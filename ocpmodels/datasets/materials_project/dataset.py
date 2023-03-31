@@ -434,7 +434,9 @@ if _has_dgl:
             # mask out self loops and atoms that are too far away
             mask = (0.0 < lower_tri) * (lower_tri < self.cutoff_dist)
             adj_list = np.argwhere(mask).tolist()  # DGLGraph only takes lists
-            graph = dgl.graph(adj_list)
+            # number of nodes has to be passed explicitly since cutoff
+            # radius may result in shorter adj_list
+            graph = dgl.graph(adj_list, num_nodes=len(data["atomic_numbers"]))
             graph.ndata["pos"] = data["pos"]
             graph.ndata["atomic_numbers"] = data["atomic_numbers"]
             data["graph"] = graph
