@@ -152,3 +152,9 @@ class ThroughputCallback(Callback):
             with open(target, "w+") as write_file:
                 json.dump(self.record, write_file)
 
+
+class UnusedParametersCallback(Callback):
+    def on_before_optimizer_step(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", optimizer: Optimizer, opt_idx: int) -> None:
+        for name, parameter in pl_module.named_parameters():
+            if parameter.grad is None:
+                print(f"{name} has no gradients and is not part of the computational graph.")
