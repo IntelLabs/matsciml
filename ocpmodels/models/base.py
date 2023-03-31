@@ -10,6 +10,7 @@ import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn
 import dgl
+from torch.optim import Optimizer
 
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
@@ -1110,3 +1111,9 @@ class BinaryClassificationTask(BaseTaskModule):
             for task in tasks.values():
                 task.encoder = self.encoder
             self.tasks = nn.ModuleDict(tasks)
+
+        def configure_optimizers(self) -> List[Optimizer]:
+            optimizers = []
+            for subtask in self.tasks.values():
+                optimizers.append(subtask.configure_optimizers())
+            return optimizers
