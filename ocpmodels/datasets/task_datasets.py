@@ -60,6 +60,9 @@ class S2EFDataset(DGLDataset):
                 output_data[key] = data.get(key)
             output_data["graph"] = graph
         output_data["dataset"] = self.__class__.__name__
+        # This is the case for test set data for s2ef with dgl format.
+        elif 'graph' in data.keys():
+            output_data = data
         return output_data
 
 

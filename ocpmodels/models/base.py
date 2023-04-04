@@ -1,8 +1,9 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Dict, Type, Tuple, Optional, Union, Any, List
+from typing import Dict, Type, Tuple, Optional, Union, ContextManager, List, Any
 from abc import abstractmethod
+from contextlib import nullcontext, ExitStack
 import logging
 from dgl.utils import data
 
@@ -48,6 +49,65 @@ def decorate_color(color: str):
 debug_green = decorate_color("[92m")
 debug_lightpurple = decorate_color("[94m")
 debug_cyan = decorate_color("[96m")
+
+
+def dynamic_gradients_context(need_grad: bool, has_rnn: bool) -> ContextManager:
+    """
+    Conditional gradient context manager, based on whether or not
+    force computation is necessary in the process.
+    This is necessary because there are actually two contexts
+    necessary: enable gradient computation _and_ make sure we
+    aren't in inference mode, which is enabled by PyTorch Lightning
+    for faster inference.
+    If this is `regress_forces` is set to False, a `nullcontext`
+    is applied that does nothing.
+    Parameters
+    ----------
+    need_grad : bool
+        Flag to designate whether or not gradients need to be forced
+        within this code block.
+    has_rnn : bool
+        Flag to indicate whether or not RNNs are being used in this
+        model, which will disable cudnn to enable double backprop.
+    Returns
+    -------
+    ContextManager
+        Joint context, combining `inference_mode` and `enable_grad`,
+        otherwise a `nullcontext` if `need_grad` is `False`.
+    """
+    manager = ExitStack()
+    if need_grad:
+        contexts = [torch.inference_mode(False), torch.enable_grad()]
+        # if we're also using CUDA, there is an additional context to allow
+        # RNNs to do double backprop
+        if torch.cuda.is_available() and has_rnn:
+            contexts.append(torch.backends.cudnn.flags(enabled=False))
+        for cxt in contexts:
+            manager.enter_context(cxt)
+    else:
+        manager.enter_context(nullcontext())
+    return manager
+
+
+def rnn_force_train_mode(module: nn.Module) -> None:
+    """
+    Forces RNN subclasses into training mode to facilitate
+    derivatives for force computation outside of training
+    steps.
+    See https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnRNNForward
+    Parameters
+    ----------
+    module : nn.Module
+        Abstract `torch.nn.Module` to check and toggle
+    """
+    # this try/except will catch non-CUDA enabled systems
+    # this patch is only for cudnn
+    try:
+        _ = torch.cuda.current_device()
+        if isinstance(module, nn.RNNBase):
+            module.train()
+    except RuntimeError:
+        pass
 
 
 def lit_conditional_grad(regress_forces: bool):
@@ -156,6 +216,19 @@ class OCPLitModule(pl.LightningModule):
             optimizer, self.hparams.gamma
         )
         return [optimizer], [lr_scheduler]
+
+    @property
+    def has_rnn(self) -> bool:
+        """
+        Property to determine whether or not this LightningModule contains
+        RNNs. This is primarily to determine whether or not to enable/disable
+        contexts with cudnn, as double backprop is not supported.
+        Returns
+        -------
+        bool
+            True if any module is a subclass of `RNNBase`, otherwise False.
+        """
+        return any([isinstance(module, nn.RNNBase) for module in self.modules()])
 
     def _nan_check_gradients(self, batch_idx: int) -> bool:
         """
@@ -278,6 +351,43 @@ class OCPLitModule(pl.LightningModule):
         self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]], batch_idx: int
     ) -> float:
         return self.step(batch, batch_idx, "test")
+
+    def predict_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]],
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Implements the inference logic for energy prediction, which is used to
+        run the leaderboard oriented prediction pipeline.
+
+        This is intended to be used in tandem with the `LeaderboardWriter` callback,
+        which will save and format the results from inference in a way that conforms
+        with the evalAI formatting.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+            Batch of data, corresponding to a dictionary of tensors
+        batch_idx : int
+            Index of the batch
+        dataloader_idx : int, optional
+            Dataloader index, which is used for DDP processing, by default 0
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing the IDs of each batch item, and the corresponding
+            energy result.
+        """
+        input_data = self._get_inputs(batch)
+        prediction = self(*input_data)
+        normalizer = self.normalizers.get("target", None)
+        if normalizer is not None:
+            prediction = normalizer.denorm(prediction)
+        ids = batch.get("sid")
+        return {"id": ids, "energy": prediction}
 
     @abstractmethod
     def _compute_losses(
@@ -597,11 +707,13 @@ class S2EFLitModule(OCPLitModule):
         Dict[str, Union[float, Dict[str, float]]]
             Nested dictionary of losses
         """
-        # grab the single optimizer
-        optimizer = self.optimizers()
-        optimizer.zero_grad()
-        # compute losses, log them, and grab the total loss for backprop
-        losses = self._compute_losses(batch, batch_idx)
+        # this forces gradient computation
+        with dynamic_gradients_context(self.regress_forces, self.has_rnn):
+            # grab the single optimizer
+            optimizer = self.optimizers()
+            optimizer.zero_grad()
+            # compute losses, log them, and grab the total loss for backprop
+            losses = self._compute_losses(batch, batch_idx)
         batch_size = self._get_batch_size(batch)
         # log the losses individually with the batch size specified
         for key, value in losses.get("logs").items():
@@ -686,6 +798,80 @@ class S2EFLitModule(OCPLitModule):
             loss_dict[key] *= self.scalers.get(key)
         loss_dict["total"] = sum([value for value in loss_dict.values()])
         return {"loss": loss_dict["total"], "logs": loss_dict}
+
+    def on_validation_start(self) -> None:
+        self.apply(rnn_force_train_mode)
+
+    def on_test_start(self) -> None:
+        self.apply(rnn_force_train_mode)
+
+    def on_predict_start(self) -> None:
+        self.apply(rnn_force_train_mode)
+
+    def on_validation_batch_end(
+        self, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int
+    ) -> None:
+        super().on_predict_batch_end(outputs, batch, batch_idx, dataloader_idx)
+        # ensure gradients aren't contaminating any results between batches
+        self.zero_grad()
+
+    def on_test_batch_end(
+        self, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int
+    ) -> None:
+        super().on_predict_batch_end(outputs, batch, batch_idx, dataloader_idx)
+        # ensure gradients aren't contaminating any results between batches
+        self.zero_grad()
+
+    def on_predict_batch_end(
+        self, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int
+    ) -> None:
+        super().on_predict_batch_end(outputs, batch, batch_idx, dataloader_idx)
+        # ensure gradients aren't contaminating any results between batches
+        self.zero_grad()
+
+    def predict_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]],
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> Dict[str, torch.Tensor]:
+        # force gradients when running predictions
+        with dynamic_gradients_context(
+            self.regress_forces, self.has_rnn
+        ) as grad_content:
+            input_data = self._get_inputs(batch)
+            if self.regress_forces:
+                (pred_energy, pred_force) = self(*input_data)
+                # detach from the graph
+                pred_energy, pred_force = pred_energy.detach(), pred_force.detach()
+            else:
+                pred_energy = self(*input_data)
+                # detach from the graph
+                pred_energy = pred_energy.detach()
+        ids, chunk_ids = batch.get("sid"), batch.get("fid")
+        # ids are formatted differently for force tasks
+        system_ids = [f"{i}_{j}" for i, j in zip(ids, chunk_ids)]
+        predictions = {
+            "ids": system_ids,
+            "chunk_ids": chunk_ids,
+            "energy": pred_energy.to(torch.float16),
+        }
+        # processing the forces is a bit more complicated because apparently
+        # only the free atoms are considered
+        if self.regress_forces:
+            graph = batch.get("graph")
+            fixed_mask = graph.ndata["fixed"] == 0
+            # retrieve only forces corresponding to unfixed nodes
+            predictions["forces"] = pred_force[fixed_mask]
+            natoms = tuple(batch.get('natoms').cpu().numpy().astype(int))
+            chunk_split = torch.split(graph.ndata["fixed"], natoms)
+            chunk_ids = []
+            for chunk in chunk_split:
+                ids = (len(chunk) - sum(chunk)).cpu().numpy().astype(int)
+                chunk_ids.append(int(ids))
+
+            predictions["chunk_ids"] = chunk_ids
+        return predictions
 
 
 class S2EFPointCloudModule(S2EFLitModule):

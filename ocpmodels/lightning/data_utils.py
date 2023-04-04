@@ -49,22 +49,27 @@ class GraphDataModule(pl.LightningDataModule):
 
     def __init__(
         self,
-        train_path: str,
+        train_path: Optional[str],
         dataset_class: Type[TorchDataset],
         batch_size: int = 32,
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        predict_path: Optional[str] = None,
         transforms: Optional[List[Callable]] = None,
     ):
         super().__init__()
-        self.paths = {"train": train_path, "val": val_path, "test": test_path}
+        self.paths = {
+            "train": train_path,
+            "val": val_path,
+            "test": test_path,
+            "predict": predict_path,
+        }
         # check that the path is accessible first and not none
         self.verify_paths()
-        if "train" not in self.paths:
-            raise FileNotFoundError(
-                f"Training path was invalid; verify {train_path} exists and contains *.lmdb files as children."
-            )
+        assert (
+            len(self.paths) > 0
+        ), "No data paths were provided or valid; check configuration."
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.dataset_class = dataset_class
@@ -151,17 +156,29 @@ class GraphDataModule(pl.LightningDataModule):
             warn(f"Validation split not defined; not performing validation.")
             pass
 
+    def predict_dataloader(self):
+        split = self.data_splits.get("predict")
+        if split is not None:
+            return split.data_loader(
+                split,
+                shuffle=False,
+                num_workers=self.num_workers,
+                batch_size=self.batch_size,
+                collate_fn=self.collate_fn,
+            )
+
 
 class S2EFDGLDataModule(GraphDataModule):
     """The DGL version of the S2EF task `LightningDataModule`"""
 
     def __init__(
         self,
-        train_path: str,
+        train_path: Optional[str] = None,
         batch_size: int = 32,
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        predict_path: Optional[str] = None,
         transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
@@ -171,6 +188,7 @@ class S2EFDGLDataModule(GraphDataModule):
             num_workers,
             val_path,
             test_path,
+            predict_path,
             transforms,
         )
 
@@ -186,11 +204,12 @@ class IS2REDGLDataModule(GraphDataModule):
 
     def __init__(
         self,
-        train_path: str,
+        train_path: Optional[str] = None,
         batch_size: int = 32,
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        predict_path: Optional[str] = None,
         transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
@@ -200,6 +219,7 @@ class IS2REDGLDataModule(GraphDataModule):
             num_workers,
             val_path,
             test_path,
+            predict_path,
             transforms,
         )
 
@@ -219,15 +239,22 @@ class DGLDataModule(S2EFDGLDataModule):
 
     def __init__(
         self,
-        train_path: str,
+        train_path: Optional[str] = None,
         batch_size: int = 32,
         num_workers: int = 0,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        predict_path: Optional[str] = None,
         transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
-            train_path, batch_size, num_workers, val_path, test_path, transforms
+            train_path,
+            batch_size,
+            num_workers,
+            val_path,
+            test_path,
+            predict_path,
+            transforms,
         )
         warn(f"DGLDataModule is being retired - please switch to S2EFDGLDataModule.")
 
@@ -322,14 +349,15 @@ class MaterialsProjectDataModule(pl.LightningDataModule):
 class PointCloudDataModule(GraphDataModule):
     def __init__(
         self,
-        train_path: str,
         dataset_class: Type[TorchDataset],
+        train_path: Optional[str] = None,
         batch_size: int = 32,
         num_workers: int = 0,
         point_cloud_size: int = 6,
         sample_size: int = 10,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
+        predict_path: Optional[str] = None,
         transforms: Optional[List[Callable]] = None,
     ):
         super().__init__(
@@ -339,6 +367,7 @@ class PointCloudDataModule(GraphDataModule):
             num_workers,
             val_path,
             test_path,
+            predict_path,
             transforms,
         )
         self._point_cloud_size = point_cloud_size
