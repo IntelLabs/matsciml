@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
 """
@@ -25,7 +25,7 @@ S2EFLitModule(
 )
 
 """
-from typing import Optional, Type
+from typing import Optional, Type, Union, Dict
 
 from argparse import ArgumentParser
 import numpy as np
@@ -122,6 +122,7 @@ class GraphConvModel(AbstractEnergyModel):
         num_fc_layers: Optional[int] = 3,
         activation: Optional[Type[nn.Module]] = nn.SiLU,
         readout: Optional[Type[nn.Module]] = dgl_nn.SumPooling,
+        encoder_only: bool = False
     ):
         """
         A simple baseline graph convolution model for use with energy/force
@@ -162,10 +163,17 @@ class GraphConvModel(AbstractEnergyModel):
         if not isinstance(readout, nn.Module):
             readout = readout()
         self.readout = readout
-        self.output = nn.Linear(out_dim, 1)
+        if not encoder_only:
+            self.output = nn.Linear(out_dim, 1)
         self.save_hyperparameters()
 
-    def forward(self, graph: dgl.DGLGraph) -> torch.Tensor:
+    def forward(
+        self,
+        batch: Optional[
+            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        ] = None,
+        graph: Optional[dgl.DGLGraph] = None,
+    ) -> torch.Tensor:
         """
         Implement the forward method, which computes the energy of
         a molecular graph.
@@ -180,6 +188,10 @@ class GraphConvModel(AbstractEnergyModel):
         torch.Tensor
             Energy tensor [G, 1] for G graphs
         """
+        if batch:
+            graph = batch.get("graph", None)
+        if not batch and not graph:
+            raise ValueError(f"No valid data passed to GraphConv.")
         if graph.in_degrees().min().item() == 0:
             graphs = dgl.unbatch(graph)
             graphs = [dgl.add_self_loop(g) for g in graphs]
@@ -194,9 +206,11 @@ class GraphConvModel(AbstractEnergyModel):
             # recursively compress node embeddings, pool, and compute the energy
             for block in self.blocks:
                 n_z = block(graph, n_z)
-            g_z = self.readout(graph, n_z)
-            energy = self.output(g_z)
-        return energy
+            output = self.readout(graph, n_z)
+            if hasattr(self, "output"):
+                # regress if we're not just an encoder
+                output = self.output(output)
+        return output
 
     @staticmethod
     def add_model_specific_args(

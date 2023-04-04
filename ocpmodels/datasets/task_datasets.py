@@ -59,6 +59,7 @@ class S2EFDataset(DGLDataset):
             for key in ["natoms", "y", "sid", "fid", "cell"]:
                 output_data[key] = data.get(key)
             output_data["graph"] = graph
+        output_data["dataset"] = self.__class__.__name__
         # This is the case for test set data for s2ef with dgl format.
         elif 'graph' in data.keys():
             output_data = data
@@ -82,3 +83,10 @@ class IS2REDataset(DGLDataset):
         transforms: Optional[List[Callable]] = None,
     ) -> None:
         super().__init__(lmdb_root_path, transforms)
+
+    def data_from_key(
+        self, lmdb_index: int, subindex: int
+    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+        data = super().data_from_key(lmdb_index, subindex)
+        data["dataset"] = self.__class__.__name__
+        return data
