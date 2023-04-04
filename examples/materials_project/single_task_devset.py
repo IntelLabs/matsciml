@@ -11,7 +11,7 @@ task = ScalarRegressionTask(model)
 
 dm = MaterialsProjectDataModule.from_devset()
 
-trainer = pl.Trainer(max_steps=10, enable_checkpointing=False, logger=False)
+trainer = pl.Trainer(max_steps=10, enable_checkpointing=False, logger=False, accelerator="gpu", devices=1)
 
 trainer.fit(task, datamodule=dm)
 

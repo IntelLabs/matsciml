@@ -4,7 +4,7 @@ Implementation of MEGNet model.
 Code attributions to https://github.com/materialsvirtuallab/m3gnet-dgl/tree/main/megnet,
 along with contributions and modifications from Marcel Nassar, Santiago Miret, and Kelvin Lee
 """
-from typing import Optional
+from typing import Optional, List
 
 import dgl
 import torch
@@ -27,11 +27,11 @@ class MEGNet(AbstractEnergyModel):
         node_feat_dim: int,
         graph_feat_dim: int,
         num_blocks: int,
-        hiddens: list[int],
-        conv_hiddens: list[int],
+        hiddens: List[int],
+        conv_hiddens: List[int],
         s2s_num_layers: int,
         s2s_num_iters: int,
-        output_hiddens: list[int],
+        output_hiddens: List[int],
         is_classification: bool = True,
         node_embed: Optional[nn.Module] = None,
         edge_embed: Optional[nn.Module] = None,
@@ -51,15 +51,15 @@ class MEGNet(AbstractEnergyModel):
             Input dimensionality, which is used to create the encoder layers.
         num_blocks : int
             Number of MEGNet convolution blocks to use
-        hiddens : list[int]
+        hiddens : List[int]
             Hidden dimensionality of encoding MLP layers, follows `in_dim`
-        conv_hiddens : list[int]
+        conv_hiddens : List[int]
             Hidden dimensionality of the convolution layers
         s2s_num_layers : int
             Number of Set2Set layers
         s2s_num_iters : int
             Number of iterations for Set2Set operations
-        output_hiddens : list[int]
+        output_hiddens : List[int]
             Output layer hidden dimensionality in the projection layer
         is_classification : bool, optional
             Whether to apply sigmoid to the output tensor, by default True
