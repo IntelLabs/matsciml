@@ -1111,18 +1111,249 @@ class BinaryClassificationTask(BaseTaskModule):
 
 
 class MultiTaskLitModule(pl.LightningModule):
-    def __init__(self, **tasks: Dict[str, BaseTaskModule]) -> None:
+    def __init__(self, *tasks: Tuple[str, BaseTaskModule]) -> None:
+        """
+        High level module for orchestrating multiple tasks.
+
+        Keep in mind that multiple tasks is distinct from multiple datasets:
+        this class can be used for multiple tasks even with a single dataset
+        for example regression and classification in Materials Project.
+
+        Parameters
+        ----------
+        *tasks : Tuple[str, BaseTaskModule]
+            A variable number of 2-tuples, each comprising the
+            dataset name and the task associated. Example would
+            be ('MaterialsProjectDataset', RegressionTask).
+        """
         super().__init__()
         assert len(tasks) > 0, f"No tasks provided."
-        task_modules = list(tasks.values())
-        # set an encoder here, and share encoders for all tasks
-        self.encoder = task_modules[0].encoder
-        for task in tasks.values():
-            task.encoder = self.encoder
-        self.tasks = nn.ModuleDict(tasks)
+        # hold a set of dataset mappings
+        task_map = nn.ModuleDict()
+        encoder = tasks[0][1]
+        dset_names = set()
+        for index, entry in enumerate(tasks):
+            # unpack tuple
+            (dset_name, task) = entry
+            if dset_name not in task_map:
+                task_map[dset_name] = nn.ModuleDict()
+            # set the task's encoder to be the same model instance except
+            # the first to avoid recursion
+            if index != 0:
+                task.encoder = encoder
+            # nest the task based on its category
+            task_map[dset_name][task.__task__] = task
+            # add dataset names to determine forward logic
+            dset_names.add(dset_name)
+        self.task_map = task_map
+        self.dataset_names = dset_names
+        self.automatic_optimization = False
 
     def configure_optimizers(self) -> List[Optimizer]:
         optimizers = []
-        for subtask in self.tasks.values():
-            optimizers.append(subtask.configure_optimizers())
+        optimizer_names = []
+        # iterate over tasks
+        index = 0
+        for data_key, tasks in self.task_map.items():
+            for task_type, subtask in tasks.items():
+                optimizer = subtask.configure_optimizers()
+                optimizers.append(optimizer)
+                optimizer_names.append((data_key, task_type))
+                index += 1
+        assert (
+            len(optimizers) > 1
+        ), f"Only one optimizer was found for multi-task training."
+        # this keeps a list of 2-tuples to index optimizers
+        self.optimizer_names = optimizer_names
         return optimizers
+
+    @property
+    def dataset_names(self) -> List[str]:
+        return self._dataset_names
+
+    @dataset_names.setter
+    def dataset_names(self, values: Union[set, List[str]]) -> None:
+        if isinstance(values, set):
+            values = list(values)
+        self._dataset_names = values
+
+    @property
+    def is_multidata(self) -> bool:
+        # convenient property to determine how to unpack batches
+        return len(self.dataset_names) > 1
+
+    def forward(
+        self,
+        batch: Dict[
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        ],
+    ) -> Dict[str, Dict[str, torch.Tensor]]:
+        """
+        Forward method for `MultiTaskLitModule`.
+
+        Uses the number of unique dataset names (specified when creating)
+        a `MultiTaskLitModule`) to determine what kind of batch structure
+        is used. This might not be fully transparent, and might be something
+        that needs to be refactored later.
+
+        Parameters
+        ----------
+        batch
+            [TODO:description]
+
+        Returns
+        -------
+        Dict[str, Dict[str, torch.Tensor]]
+            [TODO:description]
+        """
+        # iterate over datasets in the batch
+        results = {}
+        # for single dataset usage, we assume the nested structure isn't used
+        if self.is_multidata:
+            for key, data in batch.items():
+                subtasks = self.task_map[key]
+                if key not in results:
+                    results[key] = {}
+                # finally call the task with the data
+                # TODO: refactor this to share an embedding, so the encoder
+                # is only called once
+                for task_type, subtask in subtasks.items():
+                    results[key][task_type] = subtask(data)
+        else:
+            # in the single dataset case, we can skip the outer loop
+            # and just pass the batch into the subtask
+            tasks = list(self.task_map.values()).pop(0)
+            for task_type, subtask in tasks.items():
+                results[task_type] = subtask(batch)
+        return results
+
+    def on_train_batch_start(
+        self, batch: Any, batch_idx: int, unused: int = 0
+    ) -> Optional[int]:
+        # this follows what's implemented in forward to ensure the
+        # output heads and optimizers are set properly
+        if self.is_multidata:
+            for dataset in batch.keys():
+                subtasks = self.task_map[dataset]
+                for task_type in subtasks.keys():
+                    self._initialize_subtask_output(dataset, task_type, batch)
+        else:
+            # skip grabbing dataset key from the batch
+            tasks = list(self.task_map.values()).pop(0)
+            dataset = list(self.task_map.keys()).pop(0)
+            for task_type in tasks.keys():
+                self._initialize_subtask_output(dataset, task_type, batch)
+        return None
+
+    def _compute_losses(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ):
+        # compute predictions for required models
+        losses = {}
+        if self.is_multidata:
+            for key, data in batch.items():
+                subtasks = self.task_map[key]
+                if key not in losses:
+                    losses[key] = {}
+                for task_type, subtask in subtasks.items():
+                    losses[key][task_type] = subtask._compute_losses(data)
+        else:
+            tasks = list(self.task_map.values()).pop(0)
+            import pdb; pdb.set_trace()
+            for task_type, subtask in tasks.items():
+                losses[task_type] = subtask._compute_losses(batch)
+        return losses
+
+    def _initialize_subtask_output(
+        self,
+        dataset: str,
+        task_type: str,
+        batch: Dict[
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        ],
+    ):
+        """
+        For a given dataset and task type, this function will check and initialize corresponding
+        output heads and add them to the corresponding optimizer.
+
+        [TODO:description]
+
+        Parameters
+        ----------
+        dataset
+            [TODO:description]
+        task_type
+            [TODO:description]
+        batch
+            [TODO:description]
+        """
+        task_instance = self.task_map[dataset][task_type]
+        if not hasattr(task_instance, "output_head"):
+            # get the task keys from the batch, depends on usage
+            if self.is_multidata:
+                task_keys = batch[dataset]["target_types"][task_type]
+            else:
+                task_keys = batch["target_types"][task_type]
+            # set task keys, then call make output heads
+            task_instance.task_keys = task_keys
+            task_instance.output_heads = task_instance._make_output_heads()
+            # now look up which optimizer it belongs to and add the parameters
+            ref = (dataset, task_type)
+            opt_index = self.optimizer_names.index(ref)
+            self.optimizers()[opt_index].add_param_group(
+                {"params": task_instance.output_heads.parameters()}
+            )
+
+    def embed(self, *args, **kwargs) -> Any:
+        return self.encoder(*args, **kwargs)
+
+    def training_step(
+        self,
+        batch: Dict[
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        ],
+        batch_idx: int,
+    ) -> Dict[str, Dict[str, torch.Tensor]]:
+        """
+        Manual training logic for multi tasks.
+
+        We sequentially step through each loss returned, and perform
+        backpropagation. The logic looks complicated, because we have
+        to match each loss with its corresponding optimizer.
+
+        TODO: add stuff like gradient clipping, etc.
+
+        Parameters
+        ----------
+        batch : Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]
+            Batch of data from one or more datasets.
+        batch_idx : int
+            Index of current batch
+        """
+        # zero all gradients
+        optimizers = self.optimizers()
+        for opt in optimizers:
+            opt.zero_grad()
+        losses = self._compute_losses(batch)
+        # for multiple datasets, we step through each dataset
+        if self.is_multidata:
+            for dataset_name, task_loss in losses.items():
+                for task_name, subtask_loss in task_loss.items():
+                    # get the right optimizer by indexing our lookup list
+                    ref = (dataset_name, task_name)
+                    opt_index = self.optimizer_names.index(ref)
+                    # backward and step
+                    opt = optimizers[opt_index]
+                    self.manual_backward(subtask_loss["loss"])
+                    opt.step()
+        # for single dataset, we can just unpack the dictionary directly
+        else:
+            for task_name, loss in losses.items():
+                dataset_name = self.dataset_names.pop(0)
+                opt_index = self.optimizer_names.index((dataset_name, task_name))
+                opt = optimizers[opt_index]
+                self.manual_backward(loss["loss"])
+                opt.step()
+        self.log_dict(losses)
+        return losses
