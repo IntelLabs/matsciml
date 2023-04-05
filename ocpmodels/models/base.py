@@ -1519,8 +1519,10 @@ class MultiTaskLitModule(pl.LightningModule):
         # zero all gradients
         optimizers = self.optimizers()
         for opt in optimizers:
+            self.on_before_zero_grad(opt)
             opt.zero_grad()
         losses = self._compute_losses(batch)
+        loss_logging = {}
         # for multiple datasets, we step through each dataset
         if self.is_multidata:
             for dataset_name, task_loss in losses.items():
@@ -1528,17 +1530,27 @@ class MultiTaskLitModule(pl.LightningModule):
                     # get the right optimizer by indexing our lookup list
                     ref = (dataset_name, task_name)
                     opt_index = self.optimizer_names.index(ref)
-                    # backward and step
+                    # backprop gradients
                     opt = optimizers[opt_index]
+                    # run hooks between backward
+                    self.on_before_backward(subtask_loss["loss"])
                     self.manual_backward(subtask_loss["loss"])
-                    opt.step()
+                    self.on_after_backward()
+                    loss_logging.update(subtask_loss["log"])
         # for single dataset, we can just unpack the dictionary directly
         else:
             dataset_name = self.dataset_names[0]
             for task_name, loss in losses.items():
                 opt_index = self.optimizer_names.index((dataset_name, task_name))
                 opt = optimizers[opt_index]
+                # run hooks between backward
+                self.on_before_backward(loss["loss"])
                 self.manual_backward(loss["loss"])
-                opt.step()
-        self.log_dict(losses)
+                self.on_after_backward()
+                loss_logging.update(loss["log"])
+        # run before step hooks
+        for opt_idx, opt in enumerate(optimizers):
+            self.on_before_optimizer_step(opt, opt_idx)
+            opt.step()
+        self.log_dict(loss_logging, on_step=True, on_epoch=True, prog_bar=True)
         return losses
