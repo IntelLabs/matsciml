@@ -1316,7 +1316,7 @@ class MultiTaskLitModule(pl.LightningModule):
         assert len(tasks) > 0, f"No tasks provided."
         # hold a set of dataset mappings
         task_map = nn.ModuleDict()
-        encoder = tasks[0][1].encoder
+        self.encoder = tasks[0][1].encoder
         dset_names = set()
         for index, entry in enumerate(tasks):
             # unpack tuple
@@ -1326,7 +1326,7 @@ class MultiTaskLitModule(pl.LightningModule):
             # set the task's encoder to be the same model instance except
             # the first to avoid recursion
             if index != 0:
-                task.encoder = encoder
+                task.encoder = self.encoder
             # nest the task based on its category
             task_map[dset_name][task.__task__] = task
             # add dataset names to determine forward logic
