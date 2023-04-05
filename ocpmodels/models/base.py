@@ -1536,7 +1536,7 @@ class MultiTaskLitModule(pl.LightningModule):
         # for single dataset, we can just unpack the dictionary directly
         else:
             for task_name, loss in losses.items():
-                dataset_name = self.dataset_names.pop(0)
+                dataset_name = self.dataset_names[0]
                 opt_index = self.optimizer_names.index((dataset_name, task_name))
                 opt = optimizers[opt_index]
                 self.manual_backward(loss["loss"])
