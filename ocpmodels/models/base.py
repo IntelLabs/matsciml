@@ -1446,7 +1446,6 @@ class MultiTaskLitModule(pl.LightningModule):
                     losses[key][task_type] = subtask._compute_losses(data)
         else:
             tasks = list(self.task_map.values()).pop(0)
-            import pdb; pdb.set_trace()
             for task_type, subtask in tasks.items():
                 losses[task_type] = subtask._compute_losses(batch)
         return losses
