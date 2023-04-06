@@ -1384,6 +1384,23 @@ class MultiTaskLitModule(pl.LightningModule):
         self._dataset_names = values
 
     @property
+    def num_tasks(self) -> int:
+        """
+        Return the total number of tasks.
+
+        Returns
+        -------
+        int
+            Number of tasks, aggregated over all datasets.
+        """
+        counter = 0
+        # basically loop over datasets, and add up number of tasks
+        # per dataset
+        for tasks in self.task_map.values():
+            counter += len(tasks)
+        return counter
+
+    @property
     def is_multidata(self) -> bool:
         # convenient property to determine how to unpack batches
         return len(self.dataset_names) > 1
