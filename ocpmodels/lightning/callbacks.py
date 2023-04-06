@@ -4,7 +4,7 @@ from datetime import datetime
 from logging import getLogger
 from pathlib import Path
 from time import time
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 import numpy as np
 import pytorch_lightning as pl
@@ -161,12 +161,21 @@ class GradientCheckCallback(Callback):
                 )
                 self.logger.debug(msg)
 
+
 class UnusedParametersCallback(Callback):
-    def on_before_optimizer_step(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", optimizer: Optimizer, opt_idx: int) -> None:
+    def on_before_optimizer_step(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        optimizer: Optimizer,
+        opt_idx: int,
+    ) -> None:
         for name, parameter in pl_module.named_parameters():
             if parameter.grad is None:
-                print(f"{name} has no gradients and is not part of the computational graph.")
-             
+                print(
+                    f"{name} has no gradients and is not part of the computational graph."
+                )
+
 
 class ThroughputCallback(Callback):
     def __init__(self, log_dir: str, batch_size: int) -> None:
@@ -299,3 +308,80 @@ class ForwardNaNDetection(Callback):
                         " ".join([f"{key}: {value}" for key, value in entry.items()])
                     )
                 write_file.write("\n")
+
+
+class ManualGradientClip(Callback):
+    def __init__(
+        self, value: float, algorithm: str = "norm", verbose: bool = False, **kwargs
+    ) -> None:
+        super().__init__()
+        self.value = value
+        self.algorithm = algorithm
+        self.kwargs = kwargs
+        self.verbose = verbose
+
+    @property
+    def algorithm(self) -> Callable:
+        return self._algorithm
+
+    @algorithm.setter
+    def algorithm(self, value: str) -> None:
+        if value == "norm":
+            method = nn.utils.clip_grad_norm_
+        else:
+            method = nn.utils.clip_grad_value_
+        self._algorithm = method
+
+    def on_before_optimizer_step(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        optimizer: Optimizer,
+        opt_idx: int,
+    ) -> None:
+        for parameter in pl_module.parameters():
+            self.algorithm(parameter, self.value, **self.kwargs)
+            if self.verbose:
+                print(parameter)
+
+
+class MonitorEncoder(Callback):
+    def __init__(self, step_frequency: int) -> None:
+        super().__init__()
+        self.step_frequency = step_frequency
+
+    def on_before_optimizer_step(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        optimizer: Optimizer,
+        opt_idx: int,
+    ) -> None:
+        # figure out what the step number is from optimizer
+        state = optimizer.state[optimizer.param_groups[0]["params"][-1]]
+        if len(state) == 0:
+            step = 0
+        else:
+            step = int(state["step"])
+        if step % self.step_frequency == 0:
+            encoder = pl_module.encoder
+            joint_state = torch.concat(
+                [t.grad.flatten().cpu() for t in encoder.parameters()]
+            )
+            torch.save(joint_state, f"step{step}_opt{opt_idx}_grads.pt")
+
+    def on_after_backward(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        encoder = pl_module.encoder
+        joint_state = torch.concat(
+            [t.grad.flatten().cpu() for t in encoder.parameters()]
+        )
+        if hasattr(self, "last_state"):
+            is_close = torch.allclose(joint_state, self.last_state)
+        else:
+            is_close = False
+        self.last_state = joint_state
+        print(
+            f"Step: {trainer.global_step} - Grads: {joint_state[100:200]} - Equal? {is_close}\n"
+        )
