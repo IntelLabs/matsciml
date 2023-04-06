@@ -1572,5 +1572,7 @@ class MultiTaskLitModule(pl.LightningModule):
         for opt_idx, opt in enumerate(optimizers):
             self.on_before_optimizer_step(opt, opt_idx)
             opt.step()
+        # add train prefix to metric logs
+        prepend_affix(loss_logging, "train")
         self.log_dict(loss_logging, on_step=True, on_epoch=True, prog_bar=True)
         return losses
