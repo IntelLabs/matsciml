@@ -1,7 +1,7 @@
 # Copyright (C) 2022-2023 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Callable, List, Optional, Dict, Union
+from typing import Callable, List, Optional, Dict, Union, Any
 
 import dgl
 import torch
@@ -44,6 +44,7 @@ class PLEGNNBackbone(AbstractEnergyModel):
         prediction_out_dim: int,
         prediction_activation: str,
         num_atoms_embedding: int = 100,
+        encoder_only: Optional[bool] = False,
     ) -> None:
         super().__init__()
         self.embed = EGNN(
@@ -66,6 +67,7 @@ class PLEGNNBackbone(AbstractEnergyModel):
             num_atoms_embedding=num_atoms_embedding,
         )
 
+        self.encoder_only = encoder_only
         node_projection_dims = self._get_node_projection_dims(
             embed_hidden_dim,
             node_projection_depth,
@@ -86,6 +88,7 @@ class PLEGNNBackbone(AbstractEnergyModel):
             prediction_hidden_dim,
             prediction_out_dim,
         )
+
         self.prediction = MLP(
             prediction_dims,
             activation=self._get_activation(prediction_activation),
@@ -152,15 +155,21 @@ class PLEGNNBackbone(AbstractEnergyModel):
 
         return prediction_dims
 
-    def forward(self, graph: dgl.DGLGraph) -> torch.Tensor:
+    def forward(
+        self,batch: Optional[Dict[str, Any]]=None, graph: Optional[dgl.DGLGraph]=None, 
+    ) -> torch.Tensor:
         # cast atomic numbers to make sure they're floats, then pass
         # them into the embedding lookup
+        # import pdb; pdb.set_trace()
+        if batch is not None:
+            graph = batch["graph"]
         inputs = graph.ndata["atomic_numbers"].long()
         pos = graph.ndata["pos"]
 
         x, _ = self.embed(graph, inputs, pos)
         x = self.node_projection(x)
         x = self.readout(graph, x)
-        x = self.prediction(x)
+        if not self.encoder_only:
+            x = self.prediction(x)
 
         return x

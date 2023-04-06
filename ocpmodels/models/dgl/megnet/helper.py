@@ -5,7 +5,7 @@ Code attributions to https://github.com/materialsvirtuallab/m3gnet-dgl/tree/main
 along with contributions and modifications from Marcel Nassar, Santiago Miret, and Kelvin Lee
 """
 
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 
 import torch
 from dgl import broadcast_edges, softmax_edges, sum_edges, DGLGraph
@@ -19,7 +19,7 @@ class MLP(Module):
 
     def __init__(
         self,
-        dims: list[int],
+        dims: List[int],
         activation: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
         activate_last: bool = False,
         bias_last: bool = True,
@@ -29,7 +29,7 @@ class MLP(Module):
 
         Parameters
         ----------
-        dims : list[int]
+        dims : List[int]
             Dimensionality of each MLP layer
         activation : Optional[Callable[[torch.Tensor], torch.Tensor]], optional
             Activation functions to apply to each layer, by default None
