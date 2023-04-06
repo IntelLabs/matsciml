@@ -1,7 +1,7 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Dict, Type, Tuple, Optional, Union, ContextManager, List, Any
+from typing import Dict, Iterable, Type, Tuple, Optional, Union, ContextManager, List, Any
 from abc import abstractmethod
 from contextlib import nullcontext, ExitStack
 import logging
@@ -1317,7 +1317,7 @@ class BinaryClassificationTask(BaseTaskModule):
 
 
 class MultiTaskLitModule(pl.LightningModule):
-    def __init__(self, *tasks: Tuple[str, BaseTaskModule]) -> None:
+    def __init__(self, *tasks: Tuple[str, BaseTaskModule], task_scaling: Optional[Iterable[float]] = None) -> None:
         """
         High level module for orchestrating multiple tasks.
 
@@ -1353,6 +1353,7 @@ class MultiTaskLitModule(pl.LightningModule):
             dset_names.add(dset_name)
         self.task_map = task_map
         self.dataset_names = dset_names
+        self.task_scaling = task_scaling
         self.automatic_optimization = False
 
     def configure_optimizers(self) -> List[Optimizer]:
@@ -1382,6 +1383,27 @@ class MultiTaskLitModule(pl.LightningModule):
         if isinstance(values, set):
             values = list(values)
         self._dataset_names = values
+
+    @property
+    def task_scaling(self) -> List[float]:
+        """
+        Returns a list of scaling factors used task importance.
+
+        These values are applied to the loss values prior to backprop.
+
+        Returns
+        -------
+        List[float]
+            List of scaling factors for each task
+        """
+        return self._task_scaling
+
+    @task_scaling.setter
+    def task_scaling(self, values: Union[Iterable[float], None]) -> None:
+        if values is None:
+            values = [1. for _ in range(self.num_tasks)]
+        assert len(values) == self.num_tasks, f"Number of provided task scaling values not equal to number of tasks."
+        self._task_scaling = values
 
     @property
     def num_tasks(self) -> int:
