@@ -137,6 +137,26 @@ def lit_conditional_grad(regress_forces: bool):
     return decorator
 
 
+def prepend_affix(metrics: Dict[str, torch.Tensor], affix: str) -> None:
+    """
+    Mutate a dictionary in place, prepending an affix to keys.
+
+    This is primarily for logging metrics, where we want to denote something
+    originating from train/test/validation, etc.
+
+    Parameters
+    ----------
+    metrics : Dict[str, torch.Tensor]
+        Dictionary containing metrics
+    affix : str
+        Affix to prepend each key, for example "train" for training metrics.
+    """
+    keys = list(metrics.keys())
+    for key in keys:
+        metrics[f"{affix}_{key}"] = metrics[key]
+        del metrics[key]
+
+
 class BaseModel(nn.Module):
     def __init__(self, num_atoms=None, bond_feat_dim=None, num_targets=None):
         super(BaseModel, self).__init__()
