@@ -1595,7 +1595,7 @@ class MultiTaskLitModule(pl.LightningModule):
                     self.on_before_backward(subtask_loss["loss"])
                     # scale loss values in task
                     scaling = self.task_scaling[opt_index]
-                    self.manual_backward(subtask_loss["loss"] * scaling)
+                    self.manual_backward(subtask_loss["loss"] * scaling, retain_graph=True)
                     self.on_after_backward()
                     loss_logging.update(subtask_loss["log"])
         # for single dataset, we can just unpack the dictionary directly
@@ -1604,11 +1604,12 @@ class MultiTaskLitModule(pl.LightningModule):
             for task_name, loss in losses.items():
                 opt_index = self.optimizer_names.index((dataset_name, task_name))
                 opt = optimizers[opt_index]
+                is_last_opt = opt_index == len(self.optimizer_names) - 1
                 # run hooks between backward
                 self.on_before_backward(loss["loss"])
                 # scale loss values in task
                 scaling = self.task_scaling[opt_index]
-                self.manual_backward(loss["loss"] * scaling)
+                self.manual_backward(loss["loss"] * scaling, retain_graph=not is_last_opt)
                 self.on_after_backward()
                 loss_logging.update(loss["log"])
         # run before step hooks
