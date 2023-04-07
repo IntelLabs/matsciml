@@ -82,19 +82,20 @@ class PLEGNNBackbone(AbstractEnergyModel):
 
         self.readout = self._get_readout(readout, node_projection_dims[-1])
 
-        prediction_dims = self._get_prediction_dims(
-            node_projection_dims[-1],
-            prediction_depth,
-            prediction_hidden_dim,
-            prediction_out_dim,
-        )
+        if not encoder_only:
+            prediction_dims = self._get_prediction_dims(
+                node_projection_dims[-1],
+                prediction_depth,
+                prediction_hidden_dim,
+                prediction_out_dim,
+            )
 
-        self.prediction = MLP(
-            prediction_dims,
-            activation=self._get_activation(prediction_activation),
-            activate_last=False,
-            k_linears=embed_k_linears,
-        )
+            self.prediction = MLP(
+                prediction_dims,
+                activation=self._get_activation(prediction_activation),
+                activate_last=False,
+                k_linears=embed_k_linears,
+            )
 
     @staticmethod
     def _get_activation(activation: str) -> Callable[[torch.Tensor], torch.Tensor]:
