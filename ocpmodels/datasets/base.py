@@ -182,6 +182,7 @@ class BaseLMDBDataset(Dataset):
         """
         keys = self.index_to_key(index)
         data = self.data_from_key(*keys)
+        data["dataset"] = self.__class__.__name__
         # if some callable transforms have been provided, transform
         # the data sequentially
         if self.transforms:

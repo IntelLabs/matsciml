@@ -62,7 +62,6 @@ class S2EFDataset(DGLDataset):
         # This is the case for test set data for s2ef with dgl format.
         elif 'graph' in data.keys():
             output_data = data
-        output_data["dataset"] = self.__class__.__name__
         return output_data
 
 
@@ -88,5 +87,4 @@ class IS2REDataset(DGLDataset):
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
         data = super().data_from_key(lmdb_index, subindex)
-        data["dataset"] = self.__class__.__name__
         return data
