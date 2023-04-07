@@ -348,7 +348,7 @@ class CoordinateScaling(object):
         self.value = value
         self.key = key
 
-    def __call__(self, data: Dict[str, Any]) -> None:
+    def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
         if "graph" in data:
             graph = data["graph"]
             assert self.key in graph.ndata, f"{self.key} not found in graph node data."
@@ -359,3 +359,4 @@ class CoordinateScaling(object):
             raise KeyError(f"{self.key} not found in samples, or graph was not present.")
         # perform inplace rescaling
         target_tensor.mul_(self.value)
+        return data
