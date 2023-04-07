@@ -893,7 +893,7 @@ class S2EFLitModule(OCPLitModule):
             fixed_mask = graph.ndata["fixed"] == 0
             # retrieve only forces corresponding to unfixed nodes
             predictions["forces"] = pred_force[fixed_mask]
-            natoms = tuple(batch.get('natoms').cpu().numpy().astype(int))
+            natoms = tuple(batch.get("natoms").cpu().numpy().astype(int))
             chunk_split = torch.split(graph.ndata["fixed"], natoms)
             chunk_ids = []
             for chunk in chunk_split:
@@ -1421,8 +1421,10 @@ class MultiTaskLitModule(pl.LightningModule):
     @task_scaling.setter
     def task_scaling(self, values: Union[Iterable[float], None]) -> None:
         if values is None:
-            values = [1. for _ in range(self.num_tasks)]
-        assert len(values) == self.num_tasks, f"Number of provided task scaling values not equal to number of tasks."
+            values = [1.0 for _ in range(self.num_tasks)]
+        assert (
+            len(values) == self.num_tasks
+        ), f"Number of provided task scaling values not equal to number of tasks."
         self._task_scaling = values
 
     @property
