@@ -345,10 +345,19 @@ class ManualGradientClip(Callback):
                 print(parameter)
 
 
-class MonitorEncoder(Callback):
-    def __init__(self, step_frequency: int) -> None:
+class MonitorGradients(Callback):
+    """
+    This callback is useful for pulling out gradients for analysis.
+
+    The verbose argument will print to standard output a chunk of gradients
+    live, and perform an `allclose` on current and previous gradients to
+    make sure each batch provides gradient signals that are not the same.
+    """
+    def __init__(self, step_frequency: int, verbose: bool = False, eps: float = 1e-10) -> None:
         super().__init__()
         self.step_frequency = step_frequency
+        self.verbose = verbose
+        self.eps = eps
 
     def on_before_optimizer_step(
         self,
@@ -364,24 +373,33 @@ class MonitorEncoder(Callback):
         else:
             step = int(state["step"])
         if step % self.step_frequency == 0:
-            encoder = pl_module.encoder
-            joint_state = torch.concat(
-                [t.grad.flatten().cpu() for t in encoder.parameters()]
-            )
+            tensors = []
+            for parameter in optimizer.state.keys():
+                if parameter.grad is not None:
+                    tensors.append(parameter.grad.flatten())
+                else:
+                    pass
+            joint_state = torch.concat(tensors)
             torch.save(joint_state, f"step{step}_opt{opt_idx}_grads.pt")
 
     def on_after_backward(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
         encoder = pl_module.encoder
-        joint_state = torch.concat(
-            [t.grad.flatten().cpu() for t in encoder.parameters()]
-        )
+        tensors = []
+        no_grads = []
+        for name, parameter in encoder.named_parameters():
+            if parameter.grad is not None:
+                tensors.append(parameter.grad.flatten())
+            elif parameter.grad is None or parameter.grad.sum() == 0.:
+                no_grads.append(name)
+        joint_state = torch.concat(tensors)
         if hasattr(self, "last_state"):
             is_close = torch.allclose(joint_state, self.last_state)
         else:
             is_close = False
         self.last_state = joint_state
-        print(
-            f"Step: {trainer.global_step} - Grads: {joint_state[100:200]} - Equal? {is_close}\n"
-        )
+        if self.verbose:
+            print(
+                    f"Step: {trainer.global_step} - Grads: {joint_state[:50]} - Equal? {is_close} - Zero grads: {no_grads}\n"
+            )
