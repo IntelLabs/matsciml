@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union, Optional, Any
 
 import torch
 import dgl
@@ -341,3 +341,21 @@ class GraphReordering(AbstractGraphTransform):
         )
         data["graph"] = graph
         return data
+
+
+class CoordinateScaling(object):
+    def __init__(self, value: float, key: str = "pos") -> None:
+        self.value = value
+        self.key = key
+
+    def __call__(self, data: Dict[str, Any]) -> None:
+        if "graph" in data:
+            graph = data["graph"]
+            assert self.key in graph.ndata, f"{self.key} not found in graph node data."
+            target_tensor: torch.Tensor = data["graph"].ndata[self.key]
+        elif self.key in data:
+            target_tensor: torch.Tensor = data[self.key]
+        else:
+            raise KeyError(f"{self.key} not found in samples, or graph was not present.")
+        # perform inplace rescaling
+        target_tensor.mul_(self.value)
