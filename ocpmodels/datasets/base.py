@@ -73,7 +73,7 @@ def read_lmdb_file(path: Union[str, Path], **kwargs) -> lmdb.Environment:
     return open_lmdb_file(path, **kwargs)
 
 
-class BaseOCPDataset(Dataset):
+class BaseLMDBDataset(Dataset):
     """
     Main purpose of this class is to inherit LMDB file
     reading.
@@ -210,7 +210,7 @@ class BaseOCPDataset(Dataset):
         )
 
 
-class DGLDataset(BaseOCPDataset):
+class DGLDataset(BaseLMDBDataset):
     @staticmethod
     def collate_fn(
         batch: List[Dict[str, Union[torch.Tensor, dgl.DGLGraph]]]
@@ -269,10 +269,10 @@ class DGLDataset(BaseOCPDataset):
 
 class PointCloudDataset(Dataset):
     """
-    TODO reimplement using BaseOCPDataset as parent
+    TODO reimplement using BaseLMDBDataset as parent
 
     For better abstraction and performance, it would be worth looking
-    into using BaseOCPDataset (i.e. straight from the LMDB without
+    into using BaseLMDBDataset (i.e. straight from the LMDB without
     DGLGraphs) instead of these subclasses.
 
     Alternatively, this could be implemented as a transform instead,

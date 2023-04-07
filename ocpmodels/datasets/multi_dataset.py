@@ -4,7 +4,7 @@ import torch
 import dgl
 from torch.utils.data import ConcatDataset
 
-from ocpmodels.datasets.base import BaseOCPDataset
+from ocpmodels.datasets.base import BaseLMDBDataset
 from ocpmodels.datasets.materials_project import MaterialsProjectDataset
 from ocpmodels.datasets.task_datasets import IS2REDataset, S2EFDataset
 
@@ -25,7 +25,7 @@ class MultiDataset(ConcatDataset):
     function.
     """
 
-    def __init__(self, datasets: Iterable[BaseOCPDataset]) -> None:
+    def __init__(self, datasets: Iterable[BaseLMDBDataset]) -> None:
         super().__init__(datasets)
 
     @staticmethod

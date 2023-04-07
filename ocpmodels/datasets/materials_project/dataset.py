@@ -9,7 +9,7 @@ import numpy as np
 from pymatgen.core import Structure
 from emmet.core.symmetry import SymmetryData
 
-from ocpmodels.datasets.base import BaseOCPDataset
+from ocpmodels.datasets.base import BaseLMDBDataset
 
 
 _has_dgl = find_spec("dgl") is not None
@@ -46,7 +46,7 @@ def item_from_structure(data: Any, *keys: str) -> Any:
     return data
 
 
-class MaterialsProjectDataset(BaseOCPDataset):
+class MaterialsProjectDataset(BaseLMDBDataset):
     def index_to_key(self, index: int) -> Tuple[int]:
         """
         Method that maps a global index value to a pair of indices.
