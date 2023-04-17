@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union, Optional, Any
 
 import torch
 import dgl
@@ -341,3 +341,52 @@ class GraphReordering(AbstractGraphTransform):
         )
         data["graph"] = graph
         return data
+
+
+class CoordinateScaling(object):
+    def __init__(self, value: float, key: str = "pos") -> None:
+        self.value = value
+        self.key = key
+
+    def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        if "graph" in data:
+            graph = data["graph"]
+            assert self.key in graph.ndata, f"{self.key} not found in graph node data."
+            target_tensor: torch.Tensor = data["graph"].ndata[self.key]
+        elif self.key in data:
+            target_tensor: torch.Tensor = data[self.key]
+        else:
+            raise KeyError(f"{self.key} not found in samples, or graph was not present.")
+        # perform inplace rescaling
+        target_tensor.mul_(self.value)
+        return data
+
+
+class COMShift(object):
+    """
+    Shift coordinates of a point cloud or graph based on its center of mass.
+
+    For convenience, the default is to just use atomic numbers (since they're
+    proportional to mass). The center of mass is then subtracted off the atom
+    positions.
+    """
+    def __init__(self, pos_key: str = "pos", mass_key: str = "atomic_numbers") -> None:
+        self.pos_key = pos_key
+        self.mass_key = mass_key
+
+    def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        if "graph" in data:
+            target_dict = data["graph"].ndata
+        else:
+            target_dict = data
+        assert self.pos_key in target_dict, f"Coordinates expected in {self.pos_key}, but not found in data."
+        assert self.mass_key in target_dict, f"Masses expected in {self.mass_key}, but not found in data."
+        coords: torch.Tensor = target_dict[self.pos_key]
+        masses: torch.Tensor = target_dict[self.mass_key]
+        mass_sum = masses.sum()
+        # sum over nodes, mass times position
+        com = torch.einsum("i,ij->j", masses.float(), coords) / mass_sum
+        # make dimensions match up
+        coords.sub_(com.unsqueeze(0))
+        return data
+

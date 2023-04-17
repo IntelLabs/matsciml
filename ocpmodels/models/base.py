@@ -1,7 +1,17 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Dict, Type, Tuple, Optional, Union, ContextManager, List, Any
+from typing import (
+    Dict,
+    Iterable,
+    Type,
+    Tuple,
+    Optional,
+    Union,
+    ContextManager,
+    List,
+    Any,
+)
 from abc import abstractmethod
 from contextlib import nullcontext, ExitStack
 import logging
@@ -11,7 +21,7 @@ import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn
 import dgl
-from torch.optim import Optimizer
+from torch.optim import AdamW, Optimizer
 
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
@@ -135,6 +145,26 @@ def lit_conditional_grad(regress_forces: bool):
         return cls_method
 
     return decorator
+
+
+def prepend_affix(metrics: Dict[str, torch.Tensor], affix: str) -> None:
+    """
+    Mutate a dictionary in place, prepending an affix to keys.
+
+    This is primarily for logging metrics, where we want to denote something
+    originating from train/test/validation, etc.
+
+    Parameters
+    ----------
+    metrics : Dict[str, torch.Tensor]
+        Dictionary containing metrics
+    affix : str
+        Affix to prepend each key, for example "train" for training metrics.
+    """
+    keys = list(metrics.keys())
+    for key in keys:
+        metrics[f"{affix}_{key}"] = metrics[key]
+        del metrics[key]
 
 
 class BaseModel(nn.Module):
@@ -863,7 +893,7 @@ class S2EFLitModule(OCPLitModule):
             fixed_mask = graph.ndata["fixed"] == 0
             # retrieve only forces corresponding to unfixed nodes
             predictions["forces"] = pred_force[fixed_mask]
-            natoms = tuple(batch.get('natoms').cpu().numpy().astype(int))
+            natoms = tuple(batch.get("natoms").cpu().numpy().astype(int))
             chunk_split = torch.split(graph.ndata["fixed"], natoms)
             chunk_ids = []
             for chunk in chunk_split:
@@ -1297,7 +1327,12 @@ class BinaryClassificationTask(BaseTaskModule):
 
 
 class MultiTaskLitModule(pl.LightningModule):
-    def __init__(self, *tasks: Tuple[str, BaseTaskModule]) -> None:
+    def __init__(
+        self,
+        *tasks: Tuple[str, BaseTaskModule],
+        task_scaling: Optional[Iterable[float]] = None,
+        **encoder_opt_kwargs,
+    ) -> None:
         """
         High level module for orchestrating multiple tasks.
 
@@ -1316,7 +1351,7 @@ class MultiTaskLitModule(pl.LightningModule):
         assert len(tasks) > 0, f"No tasks provided."
         # hold a set of dataset mappings
         task_map = nn.ModuleDict()
-        encoder = tasks[0][1]
+        self.encoder = tasks[0][1].encoder
         dset_names = set()
         for index, entry in enumerate(tasks):
             # unpack tuple
@@ -1326,13 +1361,15 @@ class MultiTaskLitModule(pl.LightningModule):
             # set the task's encoder to be the same model instance except
             # the first to avoid recursion
             if index != 0:
-                task.encoder = encoder
+                task.encoder = self.encoder
             # nest the task based on its category
             task_map[dset_name][task.__task__] = task
             # add dataset names to determine forward logic
             dset_names.add(dset_name)
         self.task_map = task_map
         self.dataset_names = dset_names
+        self.task_scaling = task_scaling
+        self.encoder_opt_kwargs = encoder_opt_kwargs
         self.automatic_optimization = False
 
     def configure_optimizers(self) -> List[Optimizer]:
@@ -1349,6 +1386,10 @@ class MultiTaskLitModule(pl.LightningModule):
         assert (
             len(optimizers) > 1
         ), f"Only one optimizer was found for multi-task training."
+        opt_kwargs = {"lr": 1e-4}
+        opt_kwargs.update(self.encoder_opt_kwargs)
+        optimizers.append(AdamW(self.encoder.parameters(), **opt_kwargs))
+        optimizer_names.append(("Global", "Encoder"))
         # this keeps a list of 2-tuples to index optimizers
         self.optimizer_names = optimizer_names
         return optimizers
@@ -1362,6 +1403,46 @@ class MultiTaskLitModule(pl.LightningModule):
         if isinstance(values, set):
             values = list(values)
         self._dataset_names = values
+
+    @property
+    def task_scaling(self) -> List[float]:
+        """
+        Returns a list of scaling factors used task importance.
+
+        These values are applied to the loss values prior to backprop.
+
+        Returns
+        -------
+        List[float]
+            List of scaling factors for each task
+        """
+        return self._task_scaling
+
+    @task_scaling.setter
+    def task_scaling(self, values: Union[Iterable[float], None]) -> None:
+        if values is None:
+            values = [1.0 for _ in range(self.num_tasks)]
+        assert (
+            len(values) == self.num_tasks
+        ), f"Number of provided task scaling values not equal to number of tasks."
+        self._task_scaling = values
+
+    @property
+    def num_tasks(self) -> int:
+        """
+        Return the total number of tasks.
+
+        Returns
+        -------
+        int
+            Number of tasks, aggregated over all datasets.
+        """
+        counter = 0
+        # basically loop over datasets, and add up number of tasks
+        # per dataset
+        for tasks in self.task_map.values():
+            counter += len(tasks)
+        return counter
 
     @property
     def is_multidata(self) -> bool:
@@ -1446,7 +1527,6 @@ class MultiTaskLitModule(pl.LightningModule):
                     losses[key][task_type] = subtask._compute_losses(data)
         else:
             tasks = list(self.task_map.values()).pop(0)
-            import pdb; pdb.set_trace()
             for task_type, subtask in tasks.items():
                 losses[task_type] = subtask._compute_losses(batch)
         return losses
@@ -1487,6 +1567,7 @@ class MultiTaskLitModule(pl.LightningModule):
             # now look up which optimizer it belongs to and add the parameters
             ref = (dataset, task_type)
             opt_index = self.optimizer_names.index(ref)
+            # this adds the output head weights to optimizer
             self.optimizers()[opt_index].add_param_group(
                 {"params": task_instance.output_heads.parameters()}
             )
@@ -1520,8 +1601,10 @@ class MultiTaskLitModule(pl.LightningModule):
         # zero all gradients
         optimizers = self.optimizers()
         for opt in optimizers:
+            self.on_before_zero_grad(opt)
             opt.zero_grad()
         losses = self._compute_losses(batch)
+        loss_logging = {}
         # for multiple datasets, we step through each dataset
         if self.is_multidata:
             for dataset_name, task_loss in losses.items():
@@ -1529,17 +1612,40 @@ class MultiTaskLitModule(pl.LightningModule):
                     # get the right optimizer by indexing our lookup list
                     ref = (dataset_name, task_name)
                     opt_index = self.optimizer_names.index(ref)
-                    # backward and step
+                    # backprop gradients
                     opt = optimizers[opt_index]
-                    self.manual_backward(subtask_loss["loss"])
-                    opt.step()
+                    opt = optimizers[opt_index]
+                    is_last_opt = opt_index == len(self.optimizer_names) - 2
+                    # run hooks between backward
+                    self.on_before_backward(subtask_loss["loss"])
+                    # scale loss values in task
+                    scaling = self.task_scaling[opt_index]
+                    self.manual_backward(
+                        subtask_loss["loss"] * scaling, retain_graph=not is_last_opt
+                    )
+                    self.on_after_backward()
+                    loss_logging.update(subtask_loss["log"])
         # for single dataset, we can just unpack the dictionary directly
         else:
+            dataset_name = self.dataset_names[0]
             for task_name, loss in losses.items():
-                dataset_name = self.dataset_names.pop(0)
                 opt_index = self.optimizer_names.index((dataset_name, task_name))
                 opt = optimizers[opt_index]
-                self.manual_backward(loss["loss"])
-                opt.step()
-        self.log_dict(losses)
+                is_last_opt = opt_index == len(self.optimizer_names) - 2
+                # run hooks between backward
+                self.on_before_backward(loss["loss"])
+                # scale loss values in task
+                scaling = self.task_scaling[opt_index]
+                self.manual_backward(
+                    loss["loss"] * scaling, retain_graph=not is_last_opt
+                )
+                self.on_after_backward()
+                loss_logging.update(loss["log"])
+        # run before step hooks
+        for opt_idx, opt in enumerate(optimizers):
+            self.on_before_optimizer_step(opt, opt_idx)
+            opt.step()
+        # add train prefix to metric logs
+        prepend_affix(loss_logging, "train")
+        self.log_dict(loss_logging, on_step=True, on_epoch=True, prog_bar=True)
         return losses
