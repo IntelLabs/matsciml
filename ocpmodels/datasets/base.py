@@ -238,17 +238,33 @@ class DGLDataset(BaseLMDBDataset):
         batched_graphs = dgl.batch([entry["graph"] for entry in batch])
         batched_data = {"graph": batched_graphs}
         # get keys from the first batch entry
-        keys = filter(lambda x: x != "graph", batch[0].keys())
-        for key in keys:
-            data = [entry.get(key) for entry in batch]
-            if isinstance(data[0], torch.Tensor):
-                data = torch.stack(data)
-            # ignore strings
-            elif isinstance(data[0], str):
-                pass
-            else:
-                data = torch.Tensor(data)
-            batched_data[key] = data
+        sample = batch[0]
+        for key, value in sample.items():
+            # ignore graph since we've already batched it
+            if key != "graph":
+                # this collates nested data
+                if isinstance(value, dict):
+                    batched_data[key] = {}
+                    for subkey, subvalue in value.items():
+                        # aggregate nested data from batch
+                        data = [s[key][subkey] for s in batch]
+                        if isinstance(subvalue, (int, float)):
+                            data = torch.FloatTensor(data).unsqueeze(-1)
+                        elif isinstance(subvalue, torch.Tensor):
+                            data = torch.vstack(data)
+                        else:
+                            pass
+                        batched_data[key][subkey] = data
+                # for everything else, assume tensors and just stack them
+                else:
+                    data = [entry.get(key) for entry in batch]
+                    if isinstance(value, torch.Tensor):
+                        data = torch.vstack(data)
+                    elif isinstance(value, (int, float)):
+                        data = torch.FloatTensor(data).unsqueeze(-1)
+                    batched_data[key] = data
+        # copy over metadata without "collating"
+        batched_data["target_types"] = sample["target_types"]
         return batched_data
 
     @property
