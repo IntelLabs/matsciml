@@ -390,3 +390,21 @@ class COMShift(object):
         coords.sub_(com.unsqueeze(0))
         return data
 
+
+class ScaleRegressionTargets(object):
+    def __init__(self, value: Optional[float] = None, values: Optional[Dict[str, float]] = None) -> None:
+        if value is None and values is None:
+            raise ValueError(f"No values provided - must provide either value or values arguments.")
+        self.value = value if value else 1.
+        self.values = values if values else {}
+
+    def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        target_keys = data["target_types"]["regression"]
+        for key in target_keys:
+            # first check if it's been specified
+            scaling = self.values.get(key, None)
+            if not scaling:
+                scaling = self.value
+            data["targets"][key] *= scaling
+        return data
+
