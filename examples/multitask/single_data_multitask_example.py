@@ -1,4 +1,5 @@
 import pytorch_lightning as pl
+from torch.nn import L1Loss
 
 from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
 from ocpmodels.datasets.materials_project import (
@@ -10,7 +11,10 @@ from ocpmodels.models.base import (
     BinaryClassificationTask,
 )
 from ocpmodels.models import PLEGNNBackbone
-from ocpmodels.datasets.transforms import CoordinateScaling, COMShift
+from ocpmodels.datasets.transforms import (
+    CoordinateScaling,
+    COMShift,
+)
 
 pl.seed_everything(1616)
 
@@ -57,7 +61,26 @@ output_kwargs = {
     "norm": "torch.nn.LazyBatchNorm1d",
     "activation": "torch.nn.SiLU",
 }
-r = ScalarRegressionTask(model, lr=1e-3, output_kwargs=output_kwargs)
+# set target normalization valkues
+mp_norms = {
+    "band_gap_mean": 1.0761,
+    "band_gap_std": 1.5284,
+    "uncorrected_energy_per_atom_mean": -5.8859,
+    "uncorrected_energy_per_atom_std": 1.7386,
+    "formation_energy_per_atom_mean": -1.4762,
+    "formation_energy_per_atom_std": 1.2009,
+    "efermi_mean": 3.0530,
+    "efermi_std": 2.7154,
+    "energy_per_atom_mean": 6.2507,
+    "energy_per_atom_std": 1.8614,
+}
+r = ScalarRegressionTask(
+    model,
+    lr=1e-3,
+    loss_func=L1Loss,
+    output_kwargs=output_kwargs,
+    normalize_kwargs=mp_norms,
+)
 c = BinaryClassificationTask(model, lr=1e-3, output_kwargs=output_kwargs)
 
 # initialize multitask with regression and classification on materials project
@@ -68,7 +91,7 @@ task = MultiTaskLitModule(
 
 # using manual optimization for multitask, so "grad_clip" args do not work for trainer
 trainer = pl.Trainer(
-    limit_train_batches=100,      # limit batches not max steps, since there are multiple optimizers
+    limit_train_batches=100,  # limit batches not max steps, since there are multiple optimizers
     logger=False,
     enable_checkpointing=False,
 )
