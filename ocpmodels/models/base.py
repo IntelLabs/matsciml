@@ -1262,7 +1262,7 @@ class ScalarRegressionTask(BaseTaskModule):
             # sure the last target dimension is scalar
             target = batch["targets"][key]
             if isinstance(target, torch.Tensor):
-                return target.size(-1) > 1
+                return target.size(-1) <= 1
             return False
         # this filters out targets that are multidimensional
         keys = list(filter(checker, keys))
