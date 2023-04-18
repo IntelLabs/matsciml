@@ -1075,6 +1075,20 @@ class BaseTaskModule(pl.LightningModule):
             return False
         return True
 
+    @property
+    def has_rnn(self) -> bool:
+        """
+        Property to determine whether or not this LightningModule contains
+        RNNs. This is primarily to determine whether or not to enable/disable
+        contexts with cudnn, as double backprop is not supported.
+
+        Returns
+        -------
+        bool
+            True if any module is a subclass of `RNNBase`, otherwise False.
+        """
+        return any([isinstance(module, nn.RNNBase) for module in self.modules()])
+
     def forward(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
