@@ -1244,6 +1244,9 @@ class ScalarRegressionTask(BaseTaskModule):
         # if there are no task keys set, task has not been initialized yet
         if len(self.task_keys) == 0:
             keys = batch["target_types"]["regression"]
+            checker = lambda x: batch["targets"][x].size(-1) > 1
+            # this filters out targets that are multidimensional
+            keys = list(filter(checker, keys))
             self.task_keys = keys
             self.output_heads = self._make_output_heads()
             # now add the parameters to our task's optimizer
