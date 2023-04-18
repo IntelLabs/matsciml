@@ -1067,6 +1067,14 @@ class BaseTaskModule(pl.LightningModule):
     def num_heads(self) -> int:
         return len(self.task_keys)
 
+    @property
+    def uses_normalizers(self) -> bool:
+        # property determines if we normalize targets or not
+        norms = getattr(self, "normalizers", None)
+        if norms is None:
+            return False
+        return True
+
     def forward(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
