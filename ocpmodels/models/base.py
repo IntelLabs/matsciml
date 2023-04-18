@@ -1704,5 +1704,9 @@ class MultiTaskLitModule(pl.LightningModule):
             opt.step()
         # add train prefix to metric logs
         prepend_affix(loss_logging, "train")
-        self.log_dict(loss_logging, on_step=True, on_epoch=True, prog_bar=True)
+        batch_info = self._calculate_batch_size(batch)
+        if "breakdown" in batch_info:
+            for key, value in batch_info["breakdown"].items():
+                self.log(f"{key}.num_samples", float(value), on_step=True, on_epoch=False, reduce_fx="min")
+        self.log_dict(loss_logging, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_info["batch_size"])
         return losses
