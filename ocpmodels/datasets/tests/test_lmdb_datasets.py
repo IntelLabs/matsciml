@@ -4,7 +4,7 @@
 import dgl
 
 from ocpmodels.datasets import is2re_devset, s2ef_devset
-from ocpmodels.datasets.base import BaseOCPDataset
+from ocpmodels.datasets.base import BaseLMDBDataset
 from ocpmodels.datasets.task_datasets import IS2REDataset, S2EFDataset
 
 """
@@ -19,7 +19,7 @@ def test_base_s2ef_read():
     of the dataset.
     """
     # no transforms
-    dset = BaseOCPDataset(s2ef_devset)
+    dset = BaseLMDBDataset(s2ef_devset)
     # get the first entry
     data = dset.__getitem__(0)
     # now try get the length
@@ -32,7 +32,7 @@ def test_base_is2re_read():
     This test will try and obtain the first and last elements
     of the dev IS2RE dataset and check its length
     """
-    dset = BaseOCPDataset(is2re_devset)
+    dset = BaseLMDBDataset(is2re_devset)
     # get the first entry
     data = dset.__getitem__(0)
     # now try get the length

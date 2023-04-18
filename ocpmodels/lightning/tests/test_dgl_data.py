@@ -40,6 +40,3 @@ def test_is2re_dgl_datamodule():
 def test_easy_is2re_datamodule():
     dgl_mod = data_utils.IS2REDGLDataModule.from_devset()
 
-
-def test_s2ef_point_cloud_datamodule():
-    dm = data_utils.PointCloudDataModule(s2ef_devset, S2EFDataset, batch_size=8)

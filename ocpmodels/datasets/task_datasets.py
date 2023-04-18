@@ -62,7 +62,14 @@ class S2EFDataset(DGLDataset):
         # This is the case for test set data for s2ef with dgl format.
         elif 'graph' in data.keys():
             output_data = data
-        output_data["dataset"] = self.__class__.__name__
+        # tacking on metadata about the task; energy and force regression
+        output_data["targets"] = {}
+        output_data["target_types"] = {"regression": [], "classification": []}
+        output_data["targets"]["y"] = data.get("y")
+        output_data["targets"]["force"] = output_data["graph"].ndata["force"]
+        for key in ["y", "force"]:
+            if key in data:
+                output_data["target_types"]["regression"].append(key)
         return output_data
 
 
@@ -88,5 +95,11 @@ class IS2REDataset(DGLDataset):
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
         data = super().data_from_key(lmdb_index, subindex)
-        data["dataset"] = self.__class__.__name__
+        # tacking on metadata about the task; energy
+        data["targets"] = {}
+        data["target_types"] = {"regression": [], "classification": []}
+        for key in ["y_init", "y_relaxed"]:
+            if key in data:
+                data["targets"][key] = data.get(key)
+                data["target_types"]["regression"].append(key)
         return data

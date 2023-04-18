@@ -1,28 +1,32 @@
 import pytorch_lightning as pl
-from torch.nn import L1Loss
 
-from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
 from ocpmodels.datasets.materials_project import (
     DGLMaterialsProjectDataset,
 )
+from ocpmodels.datasets.multi_dataset import MultiDataset
+from ocpmodels.datasets import IS2REDataset, is2re_devset, S2EFDataset, s2ef_devset
+from ocpmodels.lightning.data_utils import MultiDataModule
 from ocpmodels.models.base import (
     MultiTaskLitModule,
     ScalarRegressionTask,
     BinaryClassificationTask,
 )
 from ocpmodels.models import PLEGNNBackbone
-from ocpmodels.datasets.transforms import (
-    CoordinateScaling,
-    COMShift,
-)
+from ocpmodels.datasets.transforms import CoordinateScaling, COMShift
 
 pl.seed_everything(1616)
 
 # include transforms to the data: shift center of mass and rescale magnitude of coordinates
-dset = DGLMaterialsProjectDataset(
+mp_dset = DGLMaterialsProjectDataset(
     "../materials_project/mp_data/base", transforms=[COMShift(), CoordinateScaling(0.1)]
 )
-dm = MaterialsProjectDataModule(dset, batch_size=32)
+is2re_dset = IS2REDataset(is2re_devset)
+s2ef_dset = S2EFDataset(s2ef_devset)
+# use MultiDataset to concatenate each dataset
+dset = MultiDataset([mp_dset, is2re_dset, s2ef_dset])
+
+# wrap multidataset in Lightning abstraction
+dm = MultiDataModule(train_dataset=dset, batch_size=16)
 
 # configure EGNN
 model_args = {
@@ -54,14 +58,13 @@ model_args = {
 }
 
 model = PLEGNNBackbone(**model_args)
-# shared output head arguments
+# shared output head arguments.
 output_kwargs = {
     "dropout": 0.2,
     "num_hidden": 2,
-    "norm": "torch.nn.LazyBatchNorm1d",
     "activation": "torch.nn.SiLU",
 }
-# set target normalization valkues
+# normalization factors for Materials Project base dataset
 mp_norms = {
     "band_gap_mean": 1.0761,
     "band_gap_std": 1.5284,
@@ -74,19 +77,21 @@ mp_norms = {
     "energy_per_atom_mean": 6.2507,
     "energy_per_atom_std": 1.8614,
 }
-r = ScalarRegressionTask(
-    model,
-    lr=1e-3,
-    loss_func=L1Loss,
-    output_kwargs=output_kwargs,
-    normalize_kwargs=mp_norms,
+# build tasks using joint encoder
+r_mp = ScalarRegressionTask(
+    model, lr=1e-3, output_kwargs=output_kwargs, normalize_kwargs=mp_norms
 )
+# no normalization for IS2RE and S2EF (energy only) but specified in the same way as above
+r_is2re = ScalarRegressionTask(model, lr=1e-3, output_kwargs=output_kwargs)
+r_s2ef = ScalarRegressionTask(model, lr=1e-3, output_kwargs=output_kwargs)
 c = BinaryClassificationTask(model, lr=1e-3, output_kwargs=output_kwargs)
 
-# initialize multitask with regression and classification on materials project
+# initialize multitask with regression and classification on materials project and OCP
 task = MultiTaskLitModule(
-    ("MaterialsProjectDataset", r),
-    ("MaterialsProjectDataset", c),
+    ("DGLMaterialsProjectDataset", r_mp),
+    ("DGLMaterialsProjectDataset", c),
+    ("IS2REDataset", r_is2re),
+    ("S2EFDataset", r_s2ef),
 )
 
 # using manual optimization for multitask, so "grad_clip" args do not work for trainer

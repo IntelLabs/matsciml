@@ -1,9 +1,10 @@
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2022-2023 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
 from typing import Union, List, Any, Tuple, Callable, Optional, Dict
 from pathlib import Path
 from abc import abstractstaticmethod, abstractproperty
+from random import sample
 import functools
 import pickle
 
@@ -73,7 +74,7 @@ def read_lmdb_file(path: Union[str, Path], **kwargs) -> lmdb.Environment:
     return open_lmdb_file(path, **kwargs)
 
 
-class BaseOCPDataset(Dataset):
+class BaseLMDBDataset(Dataset):
     """
     Main purpose of this class is to inherit LMDB file
     reading.
@@ -182,6 +183,7 @@ class BaseOCPDataset(Dataset):
         """
         keys = self.index_to_key(index)
         data = self.data_from_key(*keys)
+        data["dataset"] = self.__class__.__name__
         # if some callable transforms have been provided, transform
         # the data sequentially
         if self.transforms:
@@ -209,8 +211,30 @@ class BaseOCPDataset(Dataset):
             "Collate function is not implemented for this class, {self.__class__.__name__}."
         )
 
+    def sample(self, num_samples: int) -> List[Any]:
+        """
+        Produce a set of random samples from this dataset.
 
-class DGLDataset(BaseOCPDataset):
+        Samples _without_ replacement, and is intended for obtaining statistics
+        about the dataset without iterating over its entirety.
+
+        Parameters
+        ----------
+        num_samples : int
+            Number of samples to draw
+
+        Returns
+        -------
+        List[Any]
+            List of samples from the dataset.
+        """
+        assert num_samples < len(self)
+        indices = sample(range(len(self)), num_samples)
+        samples = [self.__getitem__(i) for i in indices]
+        return samples
+
+
+class DGLDataset(BaseLMDBDataset):
     @staticmethod
     def collate_fn(
         batch: List[Dict[str, Union[torch.Tensor, dgl.DGLGraph]]]
@@ -237,17 +261,33 @@ class DGLDataset(BaseOCPDataset):
         batched_graphs = dgl.batch([entry["graph"] for entry in batch])
         batched_data = {"graph": batched_graphs}
         # get keys from the first batch entry
-        keys = filter(lambda x: x != "graph", batch[0].keys())
-        for key in keys:
-            data = [entry.get(key) for entry in batch]
-            if isinstance(data[0], torch.Tensor):
-                data = torch.stack(data)
-            # ignore strings
-            elif isinstance(data[0], str):
-                pass
-            else:
-                data = torch.Tensor(data)
-            batched_data[key] = data
+        sample = batch[0]
+        for key, value in sample.items():
+            # ignore graph since we've already batched it
+            if key != "graph":
+                # this collates nested data
+                if isinstance(value, dict):
+                    batched_data[key] = {}
+                    for subkey, subvalue in value.items():
+                        # aggregate nested data from batch
+                        data = [s[key][subkey] for s in batch]
+                        if isinstance(subvalue, (int, float)):
+                            data = torch.FloatTensor(data).unsqueeze(-1)
+                        elif isinstance(subvalue, torch.Tensor):
+                            data = torch.vstack(data)
+                        else:
+                            pass
+                        batched_data[key][subkey] = data
+                # for everything else, assume tensors and just stack them
+                else:
+                    data = [entry.get(key) for entry in batch]
+                    if isinstance(value, torch.Tensor):
+                        data = torch.vstack(data)
+                    elif isinstance(value, (int, float)):
+                        data = torch.FloatTensor(data).unsqueeze(-1)
+                    batched_data[key] = data
+        # copy over metadata without "collating"
+        batched_data["target_types"] = sample["target_types"]
         return batched_data
 
     @property
@@ -269,10 +309,10 @@ class DGLDataset(BaseOCPDataset):
 
 class PointCloudDataset(Dataset):
     """
-    TODO reimplement using BaseOCPDataset as parent
+    TODO reimplement using BaseLMDBDataset as parent
 
     For better abstraction and performance, it would be worth looking
-    into using BaseOCPDataset (i.e. straight from the LMDB without
+    into using BaseLMDBDataset (i.e. straight from the LMDB without
     DGLGraphs) instead of these subclasses.
 
     Alternatively, this could be implemented as a transform instead,

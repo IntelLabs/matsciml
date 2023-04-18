@@ -1007,6 +1007,7 @@ class BaseTaskModule(pl.LightningModule):
         output_kwargs: Dict[str, Any] = {},
         lr: float = 1e-4,
         weight_decay: float = 0.0,
+        normalize_kwargs: Optional[Dict[str, float]] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -1018,6 +1019,7 @@ class BaseTaskModule(pl.LightningModule):
         default_heads = {"act_last": None, "hidden_dim": 128}
         default_heads.update(output_kwargs)
         self.output_kwargs = default_heads
+        self.normalize_kwargs = normalize_kwargs
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     @property
@@ -1065,6 +1067,14 @@ class BaseTaskModule(pl.LightningModule):
     def num_heads(self) -> int:
         return len(self.task_keys)
 
+    @property
+    def uses_normalizers(self) -> bool:
+        # property determines if we normalize targets or not
+        norms = getattr(self, "normalizers", None)
+        if norms is None:
+            return False
+        return True
+
     def forward(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
@@ -1104,6 +1114,26 @@ class BaseTaskModule(pl.LightningModule):
             target_dict[key] = batch["targets"][key]
         return target_dict
 
+    def _filter_task_keys(self, keys: List[str], batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]) -> List[str]:
+        """
+        Implement a mechanism for filtering out keys for targets.
+
+        The base class simply returns the keys without modification.
+
+        Parameters
+        ----------
+        keys : List[str]
+            List of task keys
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of training samples to inspect.
+
+        Returns
+        -------
+        List[str]
+            List of filtered task keys
+        """
+        return keys
+
     def _compute_losses(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
@@ -1126,7 +1156,10 @@ class BaseTaskModule(pl.LightningModule):
         predictions = self(batch)
         losses = {}
         for key in self.task_keys:
-            losses[key] = self.loss_func(predictions[key], targets[key])
+            target_val = targets[key]
+            if self.uses_normalizers:
+                target_val = self.normalizers[key].norm(target_val)
+            losses[key] = self.loss_func(predictions[key], target_val)
         total_loss: torch.Tensor = sum(losses.values())
         return {"loss": total_loss, "log": losses}
 
@@ -1191,6 +1224,29 @@ class BaseTaskModule(pl.LightningModule):
         self.log_dict(metrics, on_epoch=True, batch_size=batch_size)
         return loss_dict
 
+    def _make_normalizers(self) -> Dict[str, Normalizer]:
+        """
+        Instantiate a set of normalizers for targets associated with this task.
+
+        Assumes that task keys has been set correctly, and the default behavior
+        will use normalizers with a mean and standard deviation of zero and one.
+
+        Returns
+        -------
+        Dict[str, Normalizer]
+            Normalizers for each target
+        """
+        if self.normalize_kwargs is not None:
+            norm_kwargs = self.normalize_kwargs
+        else:
+            norm_kwargs = {}
+        normalizers = {}
+        for key in self.task_keys:
+            mean = norm_kwargs.get(f"{key}_mean", 0.)
+            std = norm_kwargs.get(f"{key}_std", 1.)
+            normalizers[key] = Normalizer(mean=mean, std=std, device=self.device)
+        return normalizers
+
 
 class ScalarRegressionTask(BaseTaskModule):
 
@@ -1216,6 +1272,37 @@ class ScalarRegressionTask(BaseTaskModule):
         for key in self.task_keys:
             modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
         return nn.ModuleDict(modules)
+
+    def _filter_task_keys(self, keys: List[str], batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]) -> List[str]:
+        """
+        Filters out task keys for scalar regression.
+
+        This routine will filter out keys with targets that are multidimensional, since
+        this is the _scalar_ regression task class.
+
+        Parameters
+        ----------
+        keys : List[str]
+            List of task keys
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of training samples to inspect.
+
+        Returns
+        -------
+        List[str]
+            List of filtered task keys
+        """
+        keys = super()._filter_task_keys(keys, batch)
+        def checker(key) -> bool:
+            # this ignores all non-tensor objects, and checks to make
+            # sure the last target dimension is scalar
+            target = batch["targets"][key]
+            if isinstance(target, torch.Tensor):
+                return target.size(-1) <= 1
+            return False
+        # this filters out targets that are multidimensional
+        keys = list(filter(checker, keys))
+        return keys
 
     def on_train_batch_start(
         self, batch: Any, batch_idx: int, unused: int = 0
@@ -1244,11 +1331,13 @@ class ScalarRegressionTask(BaseTaskModule):
         # if there are no task keys set, task has not been initialized yet
         if len(self.task_keys) == 0:
             keys = batch["target_types"]["regression"]
-            self.task_keys = keys
+            self.task_keys = self._filter_task_keys(keys, batch)
             self.output_heads = self._make_output_heads()
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
+            # create normalizers for each target
+            self.normalizers = self._make_normalizers()
         return status
 
     def on_validation_batch_start(
@@ -1558,12 +1647,15 @@ class MultiTaskLitModule(pl.LightningModule):
         if not hasattr(task_instance, "output_head"):
             # get the task keys from the batch, depends on usage
             if self.is_multidata:
-                task_keys = batch[dataset]["target_types"][task_type]
+                subset = batch[dataset]
             else:
-                task_keys = batch["target_types"][task_type]
+                subset = batch
+            task_keys = subset["target_types"][task_type]
             # set task keys, then call make output heads
-            task_instance.task_keys = task_keys
+            task_instance.task_keys = task_instance._filter_task_keys(task_keys, subset)
             task_instance.output_heads = task_instance._make_output_heads()
+            if task_type == "regression":
+                task_instance.normalizers = task_instance._make_normalizers()
             # now look up which optimizer it belongs to and add the parameters
             ref = (dataset, task_type)
             opt_index = self.optimizer_names.index(ref)
@@ -1574,6 +1666,70 @@ class MultiTaskLitModule(pl.LightningModule):
 
     def embed(self, *args, **kwargs) -> Any:
         return self.encoder(*args, **kwargs)
+
+    def _calculate_batch_size(
+        self,
+        batch: Dict[
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        ],
+    ) -> Dict[str, Union[int, Dict[str, int]]]:
+        """
+        Compute the size of a given batch.
+
+        For multidata runs, this will sum over each of the subsets, providing a breakdown of
+        how many samples from each respective dataset as well.
+
+        Parameters
+        ----------
+        batch : Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]
+            Batch of samples.
+
+        Returns
+        -------
+        Dict[str, Union[int, Dict[str, int]]]
+            Dictionary holding the batch size. For multidata runs, an additional "breakdown"
+            key comprises the number of samples from each dataset.
+        """
+        batch_info = {}
+        batch_size = 0
+        if self.is_multidata:
+            break_down = {}
+            for dataset, subset in batch.items():
+                # extract out targets to figure batch size for this subset of data
+                key = next(iter(subset["targets"]))
+                sample = subset["targets"][key]
+                if isinstance(sample, dgl.DGLGraph):
+                    counts = sample.batch_size
+                elif isinstance(sample, torch.Tensor):
+                    # assume first dimension is the batch size
+                    counts = sample.size(0)
+                else:
+                    # assume the object is like a list
+                    counts = len(sample)
+                # track how much data from each dataset
+                break_down[dataset] = counts
+                batch_size += counts
+            batch_info["breakdown"] = break_down
+        else:
+            key = next(iter(batch["targets"]))
+            sample = batch["targets"][key]
+            if isinstance(sample, dgl.DGLGraph):
+                batch_size = sample.batch_size
+            elif isinstance(sample, torch.Tensor):
+                # assume first dimension is the batch size
+                batch_size = sample.size(0)
+            else:
+                # assume the object is like a list
+                batch_size = len(sample)
+        batch_info["batch_size"] = batch_size
+        return batch_info
+
+    def __repr__(self) -> str:
+        build_str = "MultiTask Training module:\n"
+        for dataset, tasks in self.task_map.items():
+            for task_type in tasks.keys():
+                build_str += f"{dataset}-{task_type}\n"
+        return build_str
 
     def training_step(
         self,
@@ -1588,8 +1744,6 @@ class MultiTaskLitModule(pl.LightningModule):
         We sequentially step through each loss returned, and perform
         backpropagation. The logic looks complicated, because we have
         to match each loss with its corresponding optimizer.
-
-        TODO: add stuff like gradient clipping, etc.
 
         Parameters
         ----------
@@ -1647,5 +1801,9 @@ class MultiTaskLitModule(pl.LightningModule):
             opt.step()
         # add train prefix to metric logs
         prepend_affix(loss_logging, "train")
-        self.log_dict(loss_logging, on_step=True, on_epoch=True, prog_bar=True)
+        batch_info = self._calculate_batch_size(batch)
+        if "breakdown" in batch_info:
+            for key, value in batch_info["breakdown"].items():
+                self.log(f"{key}.num_samples", float(value), on_step=True, on_epoch=False, reduce_fx="min")
+        self.log_dict(loss_logging, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_info["batch_size"])
         return losses
