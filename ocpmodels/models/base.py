@@ -1609,11 +1609,12 @@ class MultiTaskLitModule(pl.LightningModule):
         if not hasattr(task_instance, "output_head"):
             # get the task keys from the batch, depends on usage
             if self.is_multidata:
-                task_keys = batch[dataset]["target_types"][task_type]
+                subset = batch[dataset]
             else:
-                task_keys = batch["target_types"][task_type]
+                subset = batch
+            task_keys = subset["target_types"][task_type]
             # set task keys, then call make output heads
-            task_instance.task_keys = task_keys
+            task_instance.task_keys = task_instance._filter_task_keys(task_keys, subset)
             task_instance.output_heads = task_instance._make_output_heads()
             # now look up which optimizer it belongs to and add the parameters
             ref = (dataset, task_type)
