@@ -1325,6 +1325,8 @@ class ScalarRegressionTask(BaseTaskModule):
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
+            # create normalizers for each target
+            self.normalizers = self._make_normalizers()
         return status
 
     def on_validation_batch_start(
