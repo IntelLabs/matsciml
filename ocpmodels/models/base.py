@@ -1237,6 +1237,37 @@ class ScalarRegressionTask(BaseTaskModule):
             modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
         return nn.ModuleDict(modules)
 
+    def _filter_task_keys(self, keys: List[str], batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]) -> List[str]:
+        """
+        Filters out task keys for scalar regression.
+
+        This routine will filter out keys with targets that are multidimensional, since
+        this is the _scalar_ regression task class.
+
+        Parameters
+        ----------
+        keys : List[str]
+            List of task keys
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of training samples to inspect.
+
+        Returns
+        -------
+        List[str]
+            List of filtered task keys
+        """
+        keys = super()._filter_task_keys(keys, batch)
+        def checker(key) -> bool:
+            # this ignores all non-tensor objects, and checks to make
+            # sure the last target dimension is scalar
+            target = batch["targets"][key]
+            if isinstance(target, torch.Tensor):
+                return target.size(-1) > 1
+            return False
+        # this filters out targets that are multidimensional
+        keys = list(filter(checker, keys))
+        return keys
+
     def on_train_batch_start(
         self, batch: Any, batch_idx: int, unused: int = 0
     ) -> Optional[int]:
@@ -1264,10 +1295,7 @@ class ScalarRegressionTask(BaseTaskModule):
         # if there are no task keys set, task has not been initialized yet
         if len(self.task_keys) == 0:
             keys = batch["target_types"]["regression"]
-            checker = lambda x: batch["targets"][x].size(-1) > 1
-            # this filters out targets that are multidimensional
-            keys = list(filter(checker, keys))
-            self.task_keys = keys
+            self.task_keys = self._filter_task_keys(keys, batch)
             self.output_heads = self._make_output_heads()
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
