@@ -1213,6 +1213,29 @@ class BaseTaskModule(pl.LightningModule):
         self.log_dict(metrics, on_epoch=True, batch_size=batch_size)
         return loss_dict
 
+    def _make_normalizers(self) -> Dict[str, Normalizer]:
+        """
+        Instantiate a set of normalizers for targets associated with this task.
+
+        Assumes that task keys has been set correctly, and the default behavior
+        will use normalizers with a mean and standard deviation of zero and one.
+
+        Returns
+        -------
+        Dict[str, Normalizer]
+            Normalizers for each target
+        """
+        if self.normalize_kwargs is not None:
+            norm_kwargs = self.normalize_kwargs
+        else:
+            norm_kwargs = {}
+        normalizers = {}
+        for key in self.task_keys:
+            mean = norm_kwargs.get(f"{key}_mean", 0.)
+            std = norm_kwargs.get(f"{key}_std", 1.)
+            normalizers[key] = Normalizer(mean=mean, std=std, device=self.device)
+        return normalizers
+
 
 class ScalarRegressionTask(BaseTaskModule):
 
