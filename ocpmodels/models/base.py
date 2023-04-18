@@ -1156,7 +1156,10 @@ class BaseTaskModule(pl.LightningModule):
         predictions = self(batch)
         losses = {}
         for key in self.task_keys:
-            losses[key] = self.loss_func(predictions[key], targets[key])
+            target_val = targets[key]
+            if self.uses_normalizers:
+                target_val = self.normalizers[key].norm(target_val)
+            losses[key] = self.loss_func(predictions[key], target_val)
         total_loss: torch.Tensor = sum(losses.values())
         return {"loss": total_loss, "log": losses}
 
@@ -1651,6 +1654,8 @@ class MultiTaskLitModule(pl.LightningModule):
             # set task keys, then call make output heads
             task_instance.task_keys = task_instance._filter_task_keys(task_keys, subset)
             task_instance.output_heads = task_instance._make_output_heads()
+            if task_type == "regression":
+                task_instance.normalizers = task_instance._make_normalizers()
             # now look up which optimizer it belongs to and add the parameters
             ref = (dataset, task_type)
             opt_index = self.optimizer_names.index(ref)
