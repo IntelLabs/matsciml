@@ -1705,8 +1705,6 @@ class MultiTaskLitModule(pl.LightningModule):
         backpropagation. The logic looks complicated, because we have
         to match each loss with its corresponding optimizer.
 
-        TODO: add stuff like gradient clipping, etc.
-
         Parameters
         ----------
         batch : Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]
