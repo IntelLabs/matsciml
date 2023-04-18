@@ -1575,6 +1575,63 @@ class MultiTaskLitModule(pl.LightningModule):
     def embed(self, *args, **kwargs) -> Any:
         return self.encoder(*args, **kwargs)
 
+    def _calculate_batch_size(
+        self,
+        batch: Dict[
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        ],
+    ) -> Dict[str, Union[int, Dict[str, int]]]:
+        """
+        Compute the size of a given batch.
+
+        For multidata runs, this will sum over each of the subsets, providing a breakdown of
+        how many samples from each respective dataset as well.
+
+        Parameters
+        ----------
+        batch : Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]
+            Batch of samples.
+
+        Returns
+        -------
+        Dict[str, Union[int, Dict[str, int]]]
+            Dictionary holding the batch size. For multidata runs, an additional "breakdown"
+            key comprises the number of samples from each dataset.
+        """
+        batch_info = {}
+        batch_size = 0
+        if self.is_multidata:
+            break_down = {}
+            for dataset, subset in batch.items():
+                # extract out targets to figure batch size for this subset of data
+                key = next(iter(subset["targets"]))
+                sample = subset["targets"][key]
+                if isinstance(sample, dgl.DGLGraph):
+                    counts = sample.batch_size
+                elif isinstance(sample, torch.Tensor):
+                    # assume first dimension is the batch size
+                    counts = sample.size(0)
+                else:
+                    # assume the object is like a list
+                    counts = len(sample)
+                # track how much data from each dataset
+                break_down[dataset] = counts
+                batch_size += counts
+            batch_info["breakdown"] = break_down
+        else:
+            key = next(iter(batch["targets"]))
+            sample = batch["targets"][key]
+            if isinstance(sample, dgl.DGLGraph):
+                batch_size = sample.batch_size
+            elif isinstance(sample, torch.Tensor):
+                # assume first dimension is the batch size
+                batch_size = sample.size(0)
+            else:
+                # assume the object is like a list
+                batch_size = len(sample)
+        batch_info["batch_size"] = batch_size
+        return batch_info
+
     def training_step(
         self,
         batch: Dict[
