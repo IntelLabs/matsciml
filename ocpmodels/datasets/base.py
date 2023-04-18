@@ -4,6 +4,7 @@
 from typing import Union, List, Any, Tuple, Callable, Optional, Dict
 from pathlib import Path
 from abc import abstractstaticmethod, abstractproperty
+from random import sample
 import functools
 import pickle
 
@@ -209,6 +210,28 @@ class BaseLMDBDataset(Dataset):
         raise NotImplementedError(
             "Collate function is not implemented for this class, {self.__class__.__name__}."
         )
+
+    def sample(self, num_samples: int) -> List[Any]:
+        """
+        Produce a set of random samples from this dataset.
+
+        Samples _without_ replacement, and is intended for obtaining statistics
+        about the dataset without iterating over its entirety.
+
+        Parameters
+        ----------
+        num_samples : int
+            Number of samples to draw
+
+        Returns
+        -------
+        List[Any]
+            List of samples from the dataset.
+        """
+        assert num_samples < len(self)
+        indices = sample(range(len(self)), num_samples)
+        samples = [self.__getitem__(i) for i in indices]
+        return samples
 
 
 class DGLDataset(BaseLMDBDataset):
