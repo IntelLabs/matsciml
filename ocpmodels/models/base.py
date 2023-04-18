@@ -1683,6 +1683,13 @@ class MultiTaskLitModule(pl.LightningModule):
         batch_info["batch_size"] = batch_size
         return batch_info
 
+    def __repr__(self) -> str:
+        build_str = "MultiTask Training module:\n"
+        for dataset, tasks in self.task_map.items():
+            for task_type in tasks.keys():
+                build_str += f"{dataset}-{task_type}\n"
+        return build_str
+
     def training_step(
         self,
         batch: Dict[
