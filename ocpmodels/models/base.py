@@ -1104,6 +1104,26 @@ class BaseTaskModule(pl.LightningModule):
             target_dict[key] = batch["targets"][key]
         return target_dict
 
+    def _filter_task_keys(self, keys: List[str], batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]) -> List[str]:
+        """
+        Implement a mechanism for filtering out keys for targets.
+
+        The base class simply returns the keys without modification.
+
+        Parameters
+        ----------
+        keys : List[str]
+            List of task keys
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of training samples to inspect.
+
+        Returns
+        -------
+        List[str]
+            List of filtered task keys
+        """
+        return keys
+
     def _compute_losses(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
