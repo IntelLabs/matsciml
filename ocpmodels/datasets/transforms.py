@@ -75,7 +75,10 @@ class GraphVariablesTransform(AbstractGraphTransform):
         # retrieve the DGL graph
         graph = data.get("graph")
         # isolate the subtrate
-        mol_mask = graph.ndata["tags"] == 2
+        if "tags" in graph.ndata:
+            mol_mask = graph.ndata["tags"] == 2
+        else:
+            mol_mask = torch.ones(graph.num_nodes(), dtype=bool)
         charge_data = self._get_atomic_charge(graph, mol_mask)
         dist_data = self._get_distance_features(graph, mol_mask)
         # stack the variables together into a single vector
