@@ -1478,7 +1478,7 @@ class ForceRegressionTask(BaseTaskModule):
                     f"No atomic positions were found in batch - neither as standalone tensor nor graph."
                 )
             pos.requires_grad_(True)
-            outputs = super()(batch)
+            outputs = super().forward(batch)
             energy = outputs.get("energy")
             # now use autograd for force calculation
             force = (
