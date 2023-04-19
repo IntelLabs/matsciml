@@ -4,7 +4,7 @@ Implementation of MEGNet model.
 Code attributions to https://github.com/materialsvirtuallab/m3gnet-dgl/tree/main/megnet,
 along with contributions and modifications from Marcel Nassar, Santiago Miret, and Kelvin Lee
 """
-from typing import Optional, List
+from typing import Dict, Optional, List, Union
 
 import dgl
 import torch
@@ -38,6 +38,7 @@ class MEGNet(AbstractEnergyModel):
         attr_embed: Optional[nn.Module] = None,
         dropout: Optional[float] = None,
         num_atom_embedding: int = 100,
+        encoder_only: bool = False
     ) -> None:
         """
         Init method for MEGNet. Also supports learnable embeddings for each
@@ -114,12 +115,14 @@ class MEGNet(AbstractEnergyModel):
         self.edge_s2s = EdgeSet2Set(block_out_dim, **s2s_kwargs)
         self.node_s2s = Set2Set(block_out_dim, **s2s_kwargs)
 
-        self.output_proj = MLP(
-            # S2S cats q_star to output producing double the dim
-            dims=[2 * 2 * block_out_dim + block_out_dim] + output_hiddens + [1],
-            activation=Softplus(),
-            activate_last=False,
-        )
+        self.encoder_only = encoder_only
+        if not encoder_only:
+            self.output_proj = MLP(
+                # S2S cats q_star to output producing double the dim
+                dims=[2 * 2 * block_out_dim + block_out_dim] + output_hiddens + [1],
+                activation=Softplus(),
+                activate_last=False,
+            )
 
         self.dropout = Dropout(dropout) if dropout else None
         # TODO(marcel): should this be an 1D dropout
@@ -128,11 +131,12 @@ class MEGNet(AbstractEnergyModel):
 
     def forward(
         self,
-        graph: dgl.DGLGraph,
-        edge_feat: torch.Tensor,
-        node_labels: torch.Tensor,
-        node_pos: torch.Tensor,
-        graph_attr: torch.Tensor,
+        batch: Optional[Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]] = None,
+        graph: Optional[dgl.DGLGraph] = None,
+        edge_feat: Optional[torch.Tensor] = None,
+        node_labels: Optional[torch.Tensor] = None,
+        node_pos: Optional[torch.Tensor] = None,
+        graph_attr: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Forward pass of MEGNet, taking in an input DGL graph and
@@ -151,6 +155,16 @@ class MEGNet(AbstractEnergyModel):
         torch.Tensor
             Output tensor, typically is the energy.
         """
+        if batch is None and graph is None:
+            raise ValueError(f"MegNet requires either batch or graph arguments in its forward call.")
+        if batch is not None:
+            graph = batch["graph"]
+            # get atom properties
+            node_labels = graph.ndata["atomic_numbers"]
+            node_pos = graph.ndata["pos"]
+            graph_attr = batch.get("graph_variables", None)
+            assert graph_attr is not None, "Graph variables are required for MegNet and expected to be in the 'graph_variables' key."
+            edge_feat = torch.hstack((graph.edata["r"], graph.edata["mu"].unsqueeze(-1)))
         # in the event we're using an embedding table, make sure we're
         # casting the node features correctly
         atom_embeddings = self.node_embed(node_labels)
@@ -171,9 +185,11 @@ class MEGNet(AbstractEnergyModel):
 
         if self.dropout:
             vec = self.dropout(vec)  # pylint: disable=E1102
-
-        output = self.output_proj(vec)
-        if self.is_classification:
-            output = torch.sigmoid(output)
+        if not self.encoder_only:
+            output = self.output_proj(vec)
+            if self.is_classification:
+                output = torch.sigmoid(output)
+        else:
+            output = vec
 
         return output
