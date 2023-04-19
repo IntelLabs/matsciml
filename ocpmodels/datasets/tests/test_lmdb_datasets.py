@@ -73,4 +73,6 @@ def test_s2ef_collate():
     # check there are 5 graphs
     assert batched["graph"].batch_size == 5
     # check one of the label shapes is correct
-    assert batched["y"].size(0) == 5
+    assert batched["targets"]["energy"].size(0) == 5
+    num_nodes = batched["graph"].num_nodes()
+    assert batched["targets"]["force"].shape == (num_nodes, 3)
