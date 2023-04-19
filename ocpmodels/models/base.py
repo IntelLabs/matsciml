@@ -1491,6 +1491,42 @@ class ForceRegressionTask(BaseTaskModule):
             outputs["force"] = force
         return outputs
 
+    def _get_targets(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Extract out the energy and force targets from a batch.
+
+        The intended behavior is similar to other tasks, however explicit because
+        we actually expect "energy" and "force" keys as opposed to inferring them from a batch.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to evaluate
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing targets to evaluate against
+
+        Raises
+        ------
+        KeyError
+            If either "energy" or "force" keys aren't found in the "targets"
+            dictionary within a batch, we abort the program.
+        """
+        target_dict = {}
+        for key in ["energy", "force"]:
+            try:
+                target_dict[key] = batch["targets"][key]
+            except KeyError as e:
+                raise KeyError(
+                    f"{key} was not found in targets key in batch, which is needed for force regression task."
+                ) from e
+        return target_dict
+
 
 class MultiTaskLitModule(pl.LightningModule):
     def __init__(
