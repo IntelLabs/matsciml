@@ -10,6 +10,7 @@ from ocpmodels.models.base import (
     MultiTaskLitModule,
     ScalarRegressionTask,
     BinaryClassificationTask,
+    ForceRegressionTask
 )
 from ocpmodels.models import PLEGNNBackbone
 from ocpmodels.datasets.transforms import CoordinateScaling, COMShift
@@ -83,7 +84,7 @@ r_mp = ScalarRegressionTask(
 )
 # no normalization for IS2RE and S2EF (energy only) but specified in the same way as above
 r_is2re = ScalarRegressionTask(model, lr=1e-3, output_kwargs=output_kwargs)
-r_s2ef = ScalarRegressionTask(model, lr=1e-3, output_kwargs=output_kwargs)
+r_s2ef = ForceRegressionTask(model, lr=1e-3, output_kwargs=output_kwargs)
 c = BinaryClassificationTask(model, lr=1e-3, output_kwargs=output_kwargs)
 
 # initialize multitask with regression and classification on materials project and OCP
