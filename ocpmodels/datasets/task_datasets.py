@@ -65,8 +65,8 @@ class S2EFDataset(DGLDataset):
         # tacking on metadata about the task; energy and force regression
         output_data["targets"] = {}
         output_data["target_types"] = {"regression": [], "classification": []}
-        output_data["targets"]["energy"] = getattr(data, "y")
-        output_data["targets"]["force"] = getattr(output_data["graph"].ndata, "force")
+        output_data["targets"]["energy"] = data.get("y")
+        output_data["targets"]["force"] = output_data["graph"].ndata.get("force")
         for key in ["energy", "force"]:
             output_data["target_types"]["regression"].append(key)
         return output_data
