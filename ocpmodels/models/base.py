@@ -1128,7 +1128,11 @@ class BaseTaskModule(pl.LightningModule):
             target_dict[key] = batch["targets"][key]
         return target_dict
 
-    def _filter_task_keys(self, keys: List[str], batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]) -> List[str]:
+    def _filter_task_keys(
+        self,
+        keys: List[str],
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> List[str]:
         """
         Implement a mechanism for filtering out keys for targets.
 
@@ -1256,8 +1260,8 @@ class BaseTaskModule(pl.LightningModule):
             norm_kwargs = {}
         normalizers = {}
         for key in self.task_keys:
-            mean = norm_kwargs.get(f"{key}_mean", 0.)
-            std = norm_kwargs.get(f"{key}_std", 1.)
+            mean = norm_kwargs.get(f"{key}_mean", 0.0)
+            std = norm_kwargs.get(f"{key}_std", 1.0)
             normalizers[key] = Normalizer(mean=mean, std=std, device=self.device)
         return normalizers
 
@@ -1287,7 +1291,11 @@ class ScalarRegressionTask(BaseTaskModule):
             modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
         return nn.ModuleDict(modules)
 
-    def _filter_task_keys(self, keys: List[str], batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]) -> List[str]:
+    def _filter_task_keys(
+        self,
+        keys: List[str],
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> List[str]:
         """
         Filters out task keys for scalar regression.
 
@@ -1307,6 +1315,7 @@ class ScalarRegressionTask(BaseTaskModule):
             List of filtered task keys
         """
         keys = super()._filter_task_keys(keys, batch)
+
         def checker(key) -> bool:
             # this ignores all non-tensor objects, and checks to make
             # sure the last target dimension is scalar
@@ -1314,6 +1323,7 @@ class ScalarRegressionTask(BaseTaskModule):
             if isinstance(target, torch.Tensor):
                 return target.size(-1) <= 1
             return False
+
         # this filters out targets that are multidimensional
         keys = list(filter(checker, keys))
         return keys
@@ -1818,6 +1828,18 @@ class MultiTaskLitModule(pl.LightningModule):
         batch_info = self._calculate_batch_size(batch)
         if "breakdown" in batch_info:
             for key, value in batch_info["breakdown"].items():
-                self.log(f"{key}.num_samples", float(value), on_step=True, on_epoch=False, reduce_fx="min")
-        self.log_dict(loss_logging, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_info["batch_size"])
+                self.log(
+                    f"{key}.num_samples",
+                    float(value),
+                    on_step=True,
+                    on_epoch=False,
+                    reduce_fx="min",
+                )
+        self.log_dict(
+            loss_logging,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=batch_info["batch_size"],
+        )
         return losses
