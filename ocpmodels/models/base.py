@@ -1439,6 +1439,24 @@ class BinaryClassificationTask(BaseTaskModule):
         self.on_train_batch_start(batch, batch_idx)
 
 
+class ForceRegressionTask(BaseTaskModule):
+
+    __task__ = "force_regression"
+
+    def __init__(
+        self,
+        encoder: nn.Module,
+        loss_func: Union[Type[nn.Module], nn.Module] = nn.L1Loss,
+        task_keys: Optional[List[str]] = None,
+        output_kwargs: Dict[str, Any] = {},
+        **kwargs,
+    ) -> None:
+        super().__init__(encoder, loss_func, task_keys, output_kwargs, **kwargs)
+        self.save_hyperparameters(ignore=["encoder", "loss_func"])
+        # have to enable double backprop
+        self.automatic_optimization = False
+
+
 class MultiTaskLitModule(pl.LightningModule):
     def __init__(
         self,
