@@ -1529,6 +1529,40 @@ class ForceRegressionTask(BaseTaskModule):
                 ) from e
         return target_dict
 
+    def on_train_batch_start(
+        self, batch: Any, batch_idx: int, unused: int = 0
+    ) -> Optional[int]:
+        """
+        PyTorch Lightning hook to check OutputHeads are created.
+
+        This will take data from the batch to determine which key to retrieve
+        data from and how many heads to create.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of data from data loader.
+        batch_idx : int
+            Batch index.
+        unused
+            PyTorch Lightning hangover
+
+        Returns
+        -------
+        Optional[int]
+            Just returns the parent result.
+        """
+        status = super().on_train_batch_start(batch, batch_idx, unused)
+        # if there are no task keys set, task has not been initialized yet
+        if len(self.task_keys) == 0:
+            # first round is used to initialize the output head
+            self.output_heads = self._make_output_heads()
+            self.task_keys = ["energy", "force"]
+            # now add the parameters to our task's optimizer
+            opt = self.optimizers()
+            opt.add_param_group({"params": self.output_heads.parameters()})
+        return status
+
 
 class MultiTaskLitModule(pl.LightningModule):
     def __init__(
