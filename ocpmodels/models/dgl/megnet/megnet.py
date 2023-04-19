@@ -4,7 +4,7 @@ Implementation of MEGNet model.
 Code attributions to https://github.com/materialsvirtuallab/m3gnet-dgl/tree/main/megnet,
 along with contributions and modifications from Marcel Nassar, Santiago Miret, and Kelvin Lee
 """
-from typing import Optional, List
+from typing import Dict, Optional, List, Union
 
 import dgl
 import torch
@@ -131,11 +131,12 @@ class MEGNet(AbstractEnergyModel):
 
     def forward(
         self,
-        graph: dgl.DGLGraph,
-        edge_feat: torch.Tensor,
-        node_labels: torch.Tensor,
-        node_pos: torch.Tensor,
-        graph_attr: torch.Tensor,
+        batch: Optional[Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]] = None,
+        graph: Optional[dgl.DGLGraph] = None,
+        edge_feat: Optional[torch.Tensor] = None,
+        node_labels: Optional[torch.Tensor] = None,
+        node_pos: Optional[torch.Tensor] = None,
+        graph_attr: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Forward pass of MEGNet, taking in an input DGL graph and
@@ -154,6 +155,16 @@ class MEGNet(AbstractEnergyModel):
         torch.Tensor
             Output tensor, typically is the energy.
         """
+        if batch is None and graph is None:
+            raise ValueError(f"MegNet requires either batch or graph arguments in its forward call.")
+        if batch is not None:
+            graph = batch["graph"]
+            # get atom properties
+            node_labels = graph.ndata["atomic_numbers"]
+            node_pos = graph.ndata["pos"]
+            graph_attr = batch.get("graph_variables", None)
+            assert graph_attr is not None, "Graph variables are required for MegNet and expected to be in the 'graph_variables' key."
+            edge_feat = torch.hstack((graph.edata["r"], graph.edata["mu"].unsqueeze(-1)))
         # in the event we're using an embedding table, make sure we're
         # casting the node features correctly
         atom_embeddings = self.node_embed(node_labels)
