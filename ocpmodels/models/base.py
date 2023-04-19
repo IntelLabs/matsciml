@@ -1823,6 +1823,8 @@ class MultiTaskLitModule(pl.LightningModule):
         for opt_idx, opt in enumerate(optimizers):
             self.on_before_optimizer_step(opt, opt_idx)
             opt.step()
+        # compoute the joint loss for logging purposes
+        loss_logging["total_loss"] = sum(list(loss_logging.values()))
         # add train prefix to metric logs
         prepend_affix(loss_logging, "train")
         batch_info = self._calculate_batch_size(batch)
