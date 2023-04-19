@@ -65,11 +65,10 @@ class S2EFDataset(DGLDataset):
         # tacking on metadata about the task; energy and force regression
         output_data["targets"] = {}
         output_data["target_types"] = {"regression": [], "classification": []}
-        output_data["targets"]["y"] = data.get("y")
-        output_data["targets"]["force"] = output_data["graph"].ndata["force"]
-        for key in ["y", "force"]:
-            if key in data:
-                output_data["target_types"]["regression"].append(key)
+        output_data["targets"]["energy"] = data.get("y")
+        output_data["targets"]["force"] = output_data["graph"].ndata.get("force")
+        for key in ["energy", "force"]:
+            output_data["target_types"]["regression"].append(key)
         return output_data
 
 
@@ -98,8 +97,7 @@ class IS2REDataset(DGLDataset):
         # tacking on metadata about the task; energy
         data["targets"] = {}
         data["target_types"] = {"regression": [], "classification": []}
-        for key in ["y_init", "y_relaxed"]:
-            if key in data:
-                data["targets"][key] = data.get(key)
-                data["target_types"]["regression"].append(key)
+        for suffix in ["init", "relaxed"]:
+            data["targets"][f"energy_{suffix}"] = data.get(f"y_{suffix}")
+            data["target_types"]["regression"].append(f"energy_{suffix}")
         return data

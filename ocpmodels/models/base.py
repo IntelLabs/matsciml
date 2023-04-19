@@ -1075,6 +1075,20 @@ class BaseTaskModule(pl.LightningModule):
             return False
         return True
 
+    @property
+    def has_rnn(self) -> bool:
+        """
+        Property to determine whether or not this LightningModule contains
+        RNNs. This is primarily to determine whether or not to enable/disable
+        contexts with cudnn, as double backprop is not supported.
+
+        Returns
+        -------
+        bool
+            True if any module is a subclass of `RNNBase`, otherwise False.
+        """
+        return any([isinstance(module, nn.RNNBase) for module in self.modules()])
+
     def forward(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
@@ -1114,7 +1128,11 @@ class BaseTaskModule(pl.LightningModule):
             target_dict[key] = batch["targets"][key]
         return target_dict
 
-    def _filter_task_keys(self, keys: List[str], batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]) -> List[str]:
+    def _filter_task_keys(
+        self,
+        keys: List[str],
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> List[str]:
         """
         Implement a mechanism for filtering out keys for targets.
 
@@ -1242,8 +1260,8 @@ class BaseTaskModule(pl.LightningModule):
             norm_kwargs = {}
         normalizers = {}
         for key in self.task_keys:
-            mean = norm_kwargs.get(f"{key}_mean", 0.)
-            std = norm_kwargs.get(f"{key}_std", 1.)
+            mean = norm_kwargs.get(f"{key}_mean", 0.0)
+            std = norm_kwargs.get(f"{key}_std", 1.0)
             normalizers[key] = Normalizer(mean=mean, std=std, device=self.device)
         return normalizers
 
@@ -1273,7 +1291,11 @@ class ScalarRegressionTask(BaseTaskModule):
             modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
         return nn.ModuleDict(modules)
 
-    def _filter_task_keys(self, keys: List[str], batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]) -> List[str]:
+    def _filter_task_keys(
+        self,
+        keys: List[str],
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> List[str]:
         """
         Filters out task keys for scalar regression.
 
@@ -1293,6 +1315,7 @@ class ScalarRegressionTask(BaseTaskModule):
             List of filtered task keys
         """
         keys = super()._filter_task_keys(keys, batch)
+
         def checker(key) -> bool:
             # this ignores all non-tensor objects, and checks to make
             # sure the last target dimension is scalar
@@ -1300,6 +1323,7 @@ class ScalarRegressionTask(BaseTaskModule):
             if isinstance(target, torch.Tensor):
                 return target.size(-1) <= 1
             return False
+
         # this filters out targets that are multidimensional
         keys = list(filter(checker, keys))
         return keys
@@ -1410,9 +1434,183 @@ class BinaryClassificationTask(BaseTaskModule):
         return status
 
     def on_validation_batch_start(
-        self, batch: any, batch_idx: int, dataloader_idx: int
+        self, batch: Any, batch_idx: int, dataloader_idx: int
     ):
         self.on_train_batch_start(batch, batch_idx)
+
+
+class ForceRegressionTask(BaseTaskModule):
+
+    __task__ = "regression"
+
+    def __init__(
+        self,
+        encoder: nn.Module,
+        loss_func: Union[Type[nn.Module], nn.Module] = nn.L1Loss,
+        task_keys: Optional[List[str]] = None,
+        output_kwargs: Dict[str, Any] = {},
+        **kwargs,
+    ) -> None:
+        super().__init__(encoder, loss_func, task_keys, output_kwargs, **kwargs)
+        self.save_hyperparameters(ignore=["encoder", "loss_func"])
+        # have to enable double backprop
+        self.automatic_optimization = False
+
+    def _make_output_heads(self) -> nn.ModuleDict:
+        # this task only utilizes one output head
+        modules = {"energy": OutputHead(1, **self.output_kwargs).to(self.device)}
+        return nn.ModuleDict(modules)
+
+    def forward(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        # for ease of use, this task will always compute forces
+        with dynamic_gradients_context(True, self.has_rnn):
+            # first ensure that positions tensor is backprop ready
+            if "graph" in batch:
+                pos: torch.Tensor = batch["graph"].ndata.get("pos")
+            else:
+                # assume point cloud otherwise
+                pos: torch.Tensor = batch.get("pos")
+            if pos is None:
+                raise ValueError(
+                    f"No atomic positions were found in batch - neither as standalone tensor nor graph."
+                )
+            pos.requires_grad_(True)
+            outputs = super().forward(batch)
+            energy = outputs.get("energy")
+            # now use autograd for force calculation
+            force = (
+                -1
+                * torch.autograd.grad(
+                    energy,
+                    pos,
+                    grad_outputs=torch.ones_like(energy),
+                    create_graph=True,
+                )[0]
+            )
+            outputs["force"] = force
+        return outputs
+
+    def _get_targets(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Extract out the energy and force targets from a batch.
+
+        The intended behavior is similar to other tasks, however explicit because
+        we actually expect "energy" and "force" keys as opposed to inferring them from a batch.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to evaluate
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing targets to evaluate against
+
+        Raises
+        ------
+        KeyError
+            If either "energy" or "force" keys aren't found in the "targets"
+            dictionary within a batch, we abort the program.
+        """
+        target_dict = {}
+        for key in ["energy", "force"]:
+            try:
+                target_dict[key] = batch["targets"][key]
+            except KeyError as e:
+                raise KeyError(
+                    f"{key} was not found in targets key in batch, which is needed for force regression task."
+                ) from e
+        return target_dict
+
+    def on_train_batch_start(
+        self, batch: Any, batch_idx: int, unused: int = 0
+    ) -> Optional[int]:
+        """
+        PyTorch Lightning hook to check OutputHeads are created.
+
+        This will take data from the batch to determine which key to retrieve
+        data from and how many heads to create.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of data from data loader.
+        batch_idx : int
+            Batch index.
+        unused
+            PyTorch Lightning hangover
+
+        Returns
+        -------
+        Optional[int]
+            Just returns the parent result.
+        """
+        status = super().on_train_batch_start(batch, batch_idx, unused)
+        # if there are no task keys set, task has not been initialized yet
+        if len(self.task_keys) == 0:
+            # first round is used to initialize the output head
+            self.output_heads = self._make_output_heads()
+            self.task_keys = ["energy", "force"]
+            # now add the parameters to our task's optimizer
+            opt = self.optimizers()
+            opt.add_param_group({"params": self.output_heads.parameters()})
+        return status
+
+    def training_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch_idx: int,
+    ):
+        """
+        Implements the training logic for force regression.
+
+        This task uses manual optimization to facilitate double backprop, but by
+        in large functions in the same way as other tasks.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+            A dictionary of batched data from the S2EF dataset.
+        batch_idx : int
+            Index of the batch being processed.
+
+        Returns
+        -------
+        Dict[str, Union[float, Dict[str, float]]]
+            Nested dictionary of losses
+        """
+        opt = self.optimizers()
+        self.on_before_zero_grad(opt)
+        opt.zero_grad()
+        # compute losses
+        loss_dict = self._compute_losses(batch)
+        loss = loss_dict["loss"]
+        # sandwich lightning callbacks
+        self.on_before_backward(loss)
+        self.manual_backward(loss, retain_graph=True)
+        self.manual_backward(loss)
+        self.on_after_backward()
+        self.on_before_optimizer_step(opt, 0)
+        opt.step()
+        metrics = {}
+        # prepending training flag
+        for key, value in loss_dict["log"].items():
+            metrics[f"train_{key}"] = value
+        if "graph" in batch.keys():
+            batch_size = batch["graph"].batch_size
+        else:
+            batch_size = None
+        self.log_dict(
+            metrics, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_size
+        )
+        return loss_dict
 
 
 class MultiTaskLitModule(pl.LightningModule):
@@ -1799,11 +1997,25 @@ class MultiTaskLitModule(pl.LightningModule):
         for opt_idx, opt in enumerate(optimizers):
             self.on_before_optimizer_step(opt, opt_idx)
             opt.step()
+        # compoute the joint loss for logging purposes
+        loss_logging["total_loss"] = sum(list(loss_logging.values()))
         # add train prefix to metric logs
         prepend_affix(loss_logging, "train")
         batch_info = self._calculate_batch_size(batch)
         if "breakdown" in batch_info:
             for key, value in batch_info["breakdown"].items():
-                self.log(f"{key}.num_samples", float(value), on_step=True, on_epoch=False, reduce_fx="min")
-        self.log_dict(loss_logging, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_info["batch_size"])
+                self.log(
+                    f"{key}.num_samples",
+                    float(value),
+                    on_step=True,
+                    on_epoch=False,
+                    reduce_fx="min",
+                )
+        self.log_dict(
+            loss_logging,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=batch_info["batch_size"],
+        )
         return losses
