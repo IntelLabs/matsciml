@@ -1456,6 +1456,11 @@ class ForceRegressionTask(BaseTaskModule):
         # have to enable double backprop
         self.automatic_optimization = False
 
+    def _make_output_heads(self) -> nn.ModuleDict:
+        # this task only utilizes one output head
+        modules = {"energy": OutputHead(1, **self.output_kwargs).to(self.device)}
+        return nn.ModuleDict(modules)
+
 
 class MultiTaskLitModule(pl.LightningModule):
     def __init__(
