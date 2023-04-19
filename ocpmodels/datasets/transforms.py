@@ -94,7 +94,7 @@ class GraphVariablesTransform(AbstractGraphTransform):
         surf_mask = ~mol_mask
         output = []
         for mask in [mol_mask, surf_mask]:
-            atomic_numbers = graph.ndata["atomic_numbers"][mask]
+            atomic_numbers = graph.ndata["atomic_numbers"][mask].float()
             output.extend([atomic_numbers.mean(), atomic_numbers.std()])
         return output
 
@@ -129,7 +129,7 @@ class GraphVariablesTransform(AbstractGraphTransform):
         # center of masses
         coms = []
         for mask in [mol_mask, surf_mask]:
-            atom_numbers = graph.ndata["atomic_numbers"][mask].unsqueeze(-1)
+            atom_numbers = graph.ndata["atomic_numbers"][mask].unsqueeze(-1).float()
             positions = graph.ndata["pos"][mask]
             num_sum = atom_numbers.sum()
             coms.append((atom_numbers * positions).sum(dim=0) / num_sum)
