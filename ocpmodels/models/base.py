@@ -1474,7 +1474,9 @@ class ForceRegressionTask(BaseTaskModule):
                 # assume point cloud otherwise
                 pos: torch.Tensor = batch.get("pos")
             if pos is None:
-                raise ValueError(f"No atomic positions were found in batch - neither as standalone tensor nor graph.")
+                raise ValueError(
+                    f"No atomic positions were found in batch - neither as standalone tensor nor graph."
+                )
             pos.requires_grad_(True)
             outputs = super()(batch)
             energy = outputs.get("energy")
