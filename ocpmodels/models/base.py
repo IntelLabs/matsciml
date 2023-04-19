@@ -1424,7 +1424,7 @@ class BinaryClassificationTask(BaseTaskModule):
         return status
 
     def on_validation_batch_start(
-        self, batch: any, batch_idx: int, dataloader_idx: int
+        self, batch: Any, batch_idx: int, dataloader_idx: int
     ):
         self.on_train_batch_start(batch, batch_idx)
 
