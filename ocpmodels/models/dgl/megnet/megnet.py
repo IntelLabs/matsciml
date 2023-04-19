@@ -174,9 +174,11 @@ class MEGNet(AbstractEnergyModel):
 
         if self.dropout:
             vec = self.dropout(vec)  # pylint: disable=E1102
-
-        output = self.output_proj(vec)
-        if self.is_classification:
-            output = torch.sigmoid(output)
+        if not self.encoder_only:
+            output = self.output_proj(vec)
+            if self.is_classification:
+                output = torch.sigmoid(output)
+        else:
+            output = vec
 
         return output
