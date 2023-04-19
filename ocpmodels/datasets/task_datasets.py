@@ -97,8 +97,7 @@ class IS2REDataset(DGLDataset):
         # tacking on metadata about the task; energy
         data["targets"] = {}
         data["target_types"] = {"regression": [], "classification": []}
-        for key in ["y_init", "y_relaxed"]:
-            if key in data:
-                data["targets"][key] = data.get(key)
-                data["target_types"]["regression"].append(key)
+        for suffix in ["init", "relaxed"]:
+            data["targets"][f"energy_{suffix}"] = data.get(f"y_{suffix}")
+            data["target_types"]["regression"].append(f"energy_{suffix}")
         return data
