@@ -1461,6 +1461,36 @@ class ForceRegressionTask(BaseTaskModule):
         modules = {"energy": OutputHead(1, **self.output_kwargs).to(self.device)}
         return nn.ModuleDict(modules)
 
+    def forward(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        # for ease of use, this task will always compute forces
+        with dynamic_gradients_context(True, self.has_rnn):
+            # first ensure that positions tensor is backprop ready
+            if "graph" in batch:
+                pos: torch.Tensor = batch["graph"].ndata.get("pos")
+            else:
+                # assume point cloud otherwise
+                pos: torch.Tensor = batch.get("pos")
+            if pos is None:
+                raise ValueError(f"No atomic positions were found in batch - neither as standalone tensor nor graph.")
+            pos.requires_grad_(True)
+            outputs = super()(batch)
+            energy = outputs.get("energy")
+            # now use autograd for force calculation
+            force = (
+                -1
+                * torch.autograd.grad(
+                    energy,
+                    pos,
+                    grad_outputs=torch.ones_like(energy),
+                    create_graph=True,
+                )[0]
+            )
+            outputs["force"] = force
+        return outputs
+
 
 class MultiTaskLitModule(pl.LightningModule):
     def __init__(
