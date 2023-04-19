@@ -170,6 +170,9 @@ class RemoveTagZeroNodes(AbstractGraphTransform):
         subgraph = dgl.node_subgraph(graph, select_node_indices)
         target_key = "graph" if self.overwrite else "subgraph"
         data[target_key] = subgraph
+        # need to update force targets as the number of nodes will be fewer
+        if "force" in subgraph.ndata and self.overwrite:
+            data["targets"]["force"] = subgraph.ndata["force"]
         return data
 
 
