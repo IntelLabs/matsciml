@@ -1,5 +1,6 @@
 import json
 import os
+import gc
 from datetime import datetime
 from logging import getLogger
 from pathlib import Path
@@ -403,3 +404,28 @@ class MonitorGradients(Callback):
             print(
                     f"Step: {trainer.global_step} - Grads: {joint_state[:50]} - Equal? {is_close} - Zero grads: {no_grads}\n"
             )
+
+
+class GarbageCallback(Callback):
+    def __init__(self, frequency: int) -> None:
+        super().__init__()
+        self.frequency = frequency
+
+    def on_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        """
+        Run garbage collection at the end of a batch.
+
+        Frequency of which garbage collection occurs is set by class argument
+        and on the `trainer.global_step` attribute.
+
+        Parameters
+        ----------
+        trainer : pl.Trainer
+            Instance of PyTorch Lightning trainer
+        pl_module : pl.LightningModule
+            Instance of PyTorch Lightning module
+        """
+        step = trainer.global_step
+        if step % self.frequency == 0:
+            cleared_objs = gc.collect()
+
