@@ -1563,6 +1563,55 @@ class ForceRegressionTask(BaseTaskModule):
             opt.add_param_group({"params": self.output_heads.parameters()})
         return status
 
+    def training_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch_idx: int,
+    ):
+        """
+        Implements the training logic for force regression.
+
+        This task uses manual optimization to facilitate double backprop, but by
+        in large functions in the same way as other tasks.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
+            A dictionary of batched data from the S2EF dataset.
+        batch_idx : int
+            Index of the batch being processed.
+
+        Returns
+        -------
+        Dict[str, Union[float, Dict[str, float]]]
+            Nested dictionary of losses
+        """
+        opt = self.optimizers()
+        self.on_before_zero_grad(opt)
+        opt.zero_grad()
+        # compute losses
+        loss_dict = self._compute_losses(batch)
+        loss = loss_dict["loss"]
+        # sandwich lightning callbacks
+        self.on_before_backward(loss)
+        self.manual_backward(loss, retain_graph=True)
+        self.manual_backward(loss)
+        self.on_after_backward()
+        self.on_before_optimizer_step(opt, 0)
+        opt.step()
+        metrics = {}
+        # prepending training flag
+        for key, value in loss_dict["log"].items():
+            metrics[f"train_{key}"] = value
+        if "graph" in batch.keys():
+            batch_size = batch["graph"].batch_size
+        else:
+            batch_size = None
+        self.log_dict(
+            metrics, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_size
+        )
+        return loss_dict
+
 
 class MultiTaskLitModule(pl.LightningModule):
     def __init__(
