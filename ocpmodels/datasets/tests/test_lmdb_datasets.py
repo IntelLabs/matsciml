@@ -59,7 +59,7 @@ def test_is2re_collate():
     # check there are 5 graphs
     assert batched["graph"].batch_size == 5
     # check one of the label shapes is correct
-    assert batched["y_init"].size(0) == 5
+    assert batched["targets"]["energy_init"].size(0) == 5
 
 
 def test_s2ef_collate():
