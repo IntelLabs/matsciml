@@ -38,6 +38,7 @@ class MEGNet(AbstractEnergyModel):
         attr_embed: Optional[nn.Module] = None,
         dropout: Optional[float] = None,
         num_atom_embedding: int = 100,
+        encoder_only: bool = False
     ) -> None:
         """
         Init method for MEGNet. Also supports learnable embeddings for each
@@ -114,12 +115,14 @@ class MEGNet(AbstractEnergyModel):
         self.edge_s2s = EdgeSet2Set(block_out_dim, **s2s_kwargs)
         self.node_s2s = Set2Set(block_out_dim, **s2s_kwargs)
 
-        self.output_proj = MLP(
-            # S2S cats q_star to output producing double the dim
-            dims=[2 * 2 * block_out_dim + block_out_dim] + output_hiddens + [1],
-            activation=Softplus(),
-            activate_last=False,
-        )
+        self.encoder_only = encoder_only
+        if not encoder_only:
+            self.output_proj = MLP(
+                # S2S cats q_star to output producing double the dim
+                dims=[2 * 2 * block_out_dim + block_out_dim] + output_hiddens + [1],
+                activation=Softplus(),
+                activate_last=False,
+            )
 
         self.dropout = Dropout(dropout) if dropout else None
         # TODO(marcel): should this be an 1D dropout
