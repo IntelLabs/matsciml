@@ -1,6 +1,6 @@
 
 from pathlib import Path
 
-from ocpmodels.datasets.lips.dataset import LiPSDataset
+from ocpmodels.datasets.lips.dataset import LiPSDataset, DGLLiPSDataset
 
 lips_devset = str(Path(__file__).parent.joinpath("devset"))
