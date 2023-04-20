@@ -357,11 +357,11 @@ class MaterialsProjectDataModule(BaseLightningDataModule):
 class LiPSDataModule(BaseLightningDataModule):
     @classmethod
     def from_devset(
-        cls, graph: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
+        cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
     ):
         kwargs.setdefault("batch_size", 8)
         kwargs.setdefault("num_workers", 0)
-        dset_class = LiPSDataset if not graph else DGLLiPSDataset
+        dset_class = LiPSDataset if not graphs else DGLLiPSDataset
         return cls(dset_class(lips_devset, transforms=transforms), **kwargs)
 
 
