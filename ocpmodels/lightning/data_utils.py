@@ -1,6 +1,7 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
+from abc import abstractclassmethod
 from typing import Union, Optional, Type, List, Callable
 from pathlib import Path
 from warnings import warn
@@ -259,7 +260,7 @@ class DGLDataModule(S2EFDGLDataModule):
         warn(f"DGLDataModule is being retired - please switch to S2EFDGLDataModule.")
 
 
-class MaterialsProjectDataModule(pl.LightningDataModule):
+class BaseLightningDataModule(pl.LightningDataModule):
     def __init__(
         self,
         dataset: TorchDataset,
@@ -334,6 +335,12 @@ class MaterialsProjectDataModule(pl.LightningDataModule):
             collate_fn=self.dataset.collate_fn,
         )
 
+    @abstractclassmethod
+    def from_devset(cls, *args, **kwargs):
+        ...
+
+
+class MaterialsProjectDataModule(BaseLightningDataModule):
     @classmethod
     def from_devset(
         cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
