@@ -163,7 +163,7 @@ def prepend_affix(metrics: Dict[str, torch.Tensor], affix: str) -> None:
     """
     keys = list(metrics.keys())
     for key in keys:
-        metrics[f"{affix}_{key}"] = metrics[key]
+        metrics[f"{affix}.{key}"] = metrics[key]
         del metrics[key]
 
 
