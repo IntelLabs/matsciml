@@ -356,7 +356,9 @@ class MaterialsProjectDataModule(BaseLightningDataModule):
 
 class LiPSDataModule(BaseLightningDataModule):
     @classmethod
-    def from_devset(cls, graph: bool = True, transforms: Optional[List[Callable]] = None, **kwargs):
+    def from_devset(
+        cls, graph: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
+    ):
         kwargs.setdefault("batch_size", 8)
         kwargs.setdefault("num_workers", 0)
         dset_class = LiPSDataset if not graph else DGLLiPSDataset
@@ -468,7 +470,7 @@ class MultiDataModule(pl.LightningDataModule):
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             shuffle=True,
-            collate_fn=data.collate_fn
+            collate_fn=data.collate_fn,
         )
 
     def val_dataloader(self) -> Union[DataLoader, None]:
@@ -479,7 +481,7 @@ class MultiDataModule(pl.LightningDataModule):
             data,
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
-            collate_fn=data.collate_fn
+            collate_fn=data.collate_fn,
         )
 
     def test_dataloader(self) -> Union[DataLoader, None]:
@@ -490,7 +492,7 @@ class MultiDataModule(pl.LightningDataModule):
             data,
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
-            collate_fn=data.collate_fn
+            collate_fn=data.collate_fn,
         )
 
     def predict_dataloader(self) -> Union[DataLoader, None]:
@@ -501,5 +503,5 @@ class MultiDataModule(pl.LightningDataModule):
             data,
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
-            collate_fn=data.collate_fn
+            collate_fn=data.collate_fn,
         )
