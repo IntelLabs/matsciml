@@ -24,6 +24,7 @@ from ocpmodels.datasets.materials_project import (
     MaterialsProjectDataset,
     DGLMaterialsProjectDataset,
 )
+from ocpmodels.datasets.lips import LiPSDataset, lips_devset
 
 
 class GraphDataModule(pl.LightningDataModule):
@@ -351,6 +352,15 @@ class MaterialsProjectDataModule(BaseLightningDataModule):
             MaterialsProjectDataset if not graphs else DGLMaterialsProjectDataset
         )
         return cls(dset_class(materialsproject_devset, transforms=transforms), **kwargs)
+
+
+class LiPSDataModule(BaseLightningDataModule):
+    @classmethod
+    def from_devset(cls, transforms: Optional[List[Callable]] = None, **kwargs):
+        kwargs.setdefault("batch_size", 8)
+        kwargs.setdefault("num_workers", 0)
+        dset_class = LiPSDataset
+        return cls(dset_class(lips_devset, transforms=transforms), **kwargs)
 
 
 class PointCloudDataModule(GraphDataModule):
