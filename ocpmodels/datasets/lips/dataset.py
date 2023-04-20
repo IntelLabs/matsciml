@@ -145,11 +145,18 @@ if _has_dgl:
     import dgl
 
     class DGLLiPSDataset(LiPSDataset):
-        def __init__(self, lmdb_root_path: Union[str, Path], cutoff_dist: float = 5., transforms: Optional[List[Callable]] = None) -> None:
+        def __init__(
+            self,
+            lmdb_root_path: Union[str, Path],
+            cutoff_dist: float = 5.0,
+            transforms: Optional[List[Callable]] = None,
+        ) -> None:
             super().__init__(lmdb_root_path, transforms)
             self.cutoff_dist = cutoff_dist
 
-        def data_from_key(self, lmdb_index: int, subindex: int) -> Dict[str, Union[float, torch.Tensor, Dict[str, torch.Tensor]]]:
+        def data_from_key(
+            self, lmdb_index: int, subindex: int
+        ) -> Dict[str, Union[float, torch.Tensor, Dict[str, torch.Tensor]]]:
             data = super().data_from_key(lmdb_index, subindex)
             pos: torch.Tensor = data["pos"]
             dist_mat = torch.cdist(pos, pos, p=2).numpy()
@@ -186,8 +193,6 @@ if _has_dgl:
             Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
                 Batched data, including graph
             """
-            batched_data = super(
-                DGLLiPSDataset, DGLLiPSDataset
-            ).collate_fn(batch)
+            batched_data = super(DGLLiPSDataset, DGLLiPSDataset).collate_fn(batch)
             batched_data["graph"] = dgl.batch(batched_data["graph"])
             return batched_data

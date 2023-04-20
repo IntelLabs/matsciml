@@ -23,6 +23,7 @@ class LiPSStructure:
     The main form of interaction for this class is to load in an extended XYZ file, and dump
     it as an LMDB file consistent with other datasets in matsciml.
     """
+
     def __init__(self, *atoms: Atoms) -> None:
         self.atoms = atoms
 
@@ -45,7 +46,7 @@ class LiPSStructure:
             "energy": struct.get_potential_energy(),
             "force": struct.get_forces(),
             "pbc": struct.get_pbc(),
-            }
+        }
         keys = list(result.keys())
         for key in keys:
             data = result[key]
@@ -86,7 +87,9 @@ class LiPSStructure:
             meminit=False,
             map_async=True,
         )
-        for index, atom in enumerate(tqdm(self.atoms, desc="Entries processed", total=len(self))):
+        for index, atom in enumerate(
+            tqdm(self.atoms, desc="Entries processed", total=len(self))
+        ):
             struct = self.entry_to_dict(atom)
             write_data(index, struct, target_env)
 
@@ -119,4 +122,3 @@ class LiPSStructure:
         atoms = [self.atoms[index] for index in chosen]
         self.atoms = atoms
         self.to_lmdb(root.joinpath("devset"))
-        
