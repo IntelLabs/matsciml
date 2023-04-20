@@ -64,8 +64,12 @@ output_kwargs = {
 is2re_norm = {
     "energy_relaxed_mean": -1.3314,
     "energy_relaxed_std": 2.2805,
+    "energy_init_mean": 5.4111,
+    "energy_init_std": 5.4003,
 }
+s2ef_norm = {"energy_mean": -364.9521, "energy_std": 233.8758}
 lips_norm = {"energy_mean": -357.6045, "energy_std": 0.5468}
+
 # build tasks using joint encoder
 r_is2re = ScalarRegressionTask(
     model,
@@ -74,7 +78,9 @@ r_is2re = ScalarRegressionTask(
     normalize_kwargs=is2re_norm,
     task_keys=["energy_relaxed"],
 )
-r_s2ef = ForceRegressionTask(model, lr=1e-3, output_kwargs=output_kwargs)
+r_s2ef = ForceRegressionTask(
+    model, lr=1e-3, output_kwargs=output_kwargs, normalize_kwargs=s2ef_norm
+)
 r_lips = ForceRegressionTask(
     model, lr=1e-3, output_kwargs=output_kwargs, normalize_kwargs=lips_norm
 )
@@ -86,7 +92,7 @@ task = MultiTaskLitModule(
 
 # using manual optimization for multitask, so "grad_clip" args do not work for trainer
 trainer = pl.Trainer(
-    limit_train_batches=100,  # limit batches not max steps, since there are multiple optimizers
+    overfit_batches=10,
     logger=False,
     enable_checkpointing=False,
     callbacks=[cb.GradientCheckCallback()],
