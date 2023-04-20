@@ -1,30 +1,25 @@
 import pytorch_lightning as pl
 
-from ocpmodels.datasets.materials_project import (
-    DGLMaterialsProjectDataset,
-)
+from ocpmodels.datasets.lips import DGLLiPSDataset, lips_devset
 from ocpmodels.datasets.multi_dataset import MultiDataset
 from ocpmodels.datasets import IS2REDataset, is2re_devset, S2EFDataset, s2ef_devset
 from ocpmodels.lightning.data_utils import MultiDataModule
 from ocpmodels.models.base import (
     MultiTaskLitModule,
     ScalarRegressionTask,
-    BinaryClassificationTask,
-    ForceRegressionTask
+    ForceRegressionTask,
 )
 from ocpmodels.models import PLEGNNBackbone
-from ocpmodels.datasets.transforms import CoordinateScaling, COMShift
+from ocpmodels.lightning import callbacks as cb
 
 pl.seed_everything(1616)
 
 # include transforms to the data: shift center of mass and rescale magnitude of coordinates
-mp_dset = DGLMaterialsProjectDataset(
-    "../materials_project/mp_data/base", transforms=[COMShift(), CoordinateScaling(0.1)]
-)
+lips_dset = DGLLiPSDataset(lips_devset)
 is2re_dset = IS2REDataset(is2re_devset)
 s2ef_dset = S2EFDataset(s2ef_devset)
 # use MultiDataset to concatenate each dataset
-dset = MultiDataset([mp_dset, is2re_dset, s2ef_dset])
+dset = MultiDataset([lips_dset, is2re_dset, s2ef_dset])
 
 # wrap multidataset in Lightning abstraction
 dm = MultiDataModule(train_dataset=dset, batch_size=16)
@@ -65,34 +60,28 @@ output_kwargs = {
     "num_hidden": 2,
     "activation": "torch.nn.SiLU",
 }
-# normalization factors for Materials Project base dataset
-mp_norms = {
-    "band_gap_mean": 1.0761,
-    "band_gap_std": 1.5284,
-    "uncorrected_energy_per_atom_mean": -5.8859,
-    "uncorrected_energy_per_atom_std": 1.7386,
-    "formation_energy_per_atom_mean": -1.4762,
-    "formation_energy_per_atom_std": 1.2009,
-    "efermi_mean": 3.0530,
-    "efermi_std": 2.7154,
-    "energy_per_atom_mean": 6.2507,
-    "energy_per_atom_std": 1.8614,
+# add normalization to targets
+is2re_norm = {
+    "energy_relaxed_mean": -1.3314,
+    "energy_relaxed_std": 2.2805,
 }
+lips_norm = {"energy_mean": -357.6045, "energy_std": 0.5468}
 # build tasks using joint encoder
-r_mp = ScalarRegressionTask(
-    model, lr=1e-3, output_kwargs=output_kwargs, normalize_kwargs=mp_norms
+r_is2re = ScalarRegressionTask(
+    model,
+    lr=1e-3,
+    output_kwargs=output_kwargs,
+    normalize_kwargs=is2re_norm,
+    task_keys=["energy_relaxed"],
 )
-# no normalization for IS2RE and S2EF (energy only) but specified in the same way as above
-r_is2re = ScalarRegressionTask(model, lr=1e-3, output_kwargs=output_kwargs)
 r_s2ef = ForceRegressionTask(model, lr=1e-3, output_kwargs=output_kwargs)
-c = BinaryClassificationTask(model, lr=1e-3, output_kwargs=output_kwargs)
+r_lips = ForceRegressionTask(
+    model, lr=1e-3, output_kwargs=output_kwargs, normalize_kwargs=lips_norm
+)
 
 # initialize multitask with regression and classification on materials project and OCP
 task = MultiTaskLitModule(
-    ("DGLMaterialsProjectDataset", r_mp),
-    ("DGLMaterialsProjectDataset", c),
-    ("IS2REDataset", r_is2re),
-    ("S2EFDataset", r_s2ef),
+    ("IS2REDataset", r_is2re), ("S2EFDataset", r_s2ef), ("DGLLiPSDataset", r_lips)
 )
 
 # using manual optimization for multitask, so "grad_clip" args do not work for trainer
@@ -100,5 +89,6 @@ trainer = pl.Trainer(
     limit_train_batches=100,  # limit batches not max steps, since there are multiple optimizers
     logger=False,
     enable_checkpointing=False,
+    callbacks=[cb.GradientCheckCallback()],
 )
 trainer.fit(task, datamodule=dm)
