@@ -163,7 +163,7 @@ def prepend_affix(metrics: Dict[str, torch.Tensor], affix: str) -> None:
     """
     keys = list(metrics.keys())
     for key in keys:
-        metrics[f"{affix}_{key}"] = metrics[key]
+        metrics[f"{affix}.{key}"] = metrics[key]
         del metrics[key]
 
 
@@ -1976,6 +1976,7 @@ class MultiTaskLitModule(pl.LightningModule):
                         subtask_loss["loss"] * scaling, retain_graph=not is_last_opt
                     )
                     self.on_after_backward()
+                    prepend_affix(subtask_loss["log"], dataset_name)
                     loss_logging.update(subtask_loss["log"])
         # for single dataset, we can just unpack the dictionary directly
         else:

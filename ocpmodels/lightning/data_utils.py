@@ -1,6 +1,7 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
+from abc import abstractclassmethod
 from typing import Union, Optional, Type, List, Callable
 from pathlib import Path
 from warnings import warn
@@ -23,6 +24,7 @@ from ocpmodels.datasets.materials_project import (
     MaterialsProjectDataset,
     DGLMaterialsProjectDataset,
 )
+from ocpmodels.datasets.lips import LiPSDataset, DGLLiPSDataset, lips_devset
 
 
 class GraphDataModule(pl.LightningDataModule):
@@ -259,7 +261,7 @@ class DGLDataModule(S2EFDGLDataModule):
         warn(f"DGLDataModule is being retired - please switch to S2EFDGLDataModule.")
 
 
-class MaterialsProjectDataModule(pl.LightningDataModule):
+class BaseLightningDataModule(pl.LightningDataModule):
     def __init__(
         self,
         dataset: TorchDataset,
@@ -334,6 +336,12 @@ class MaterialsProjectDataModule(pl.LightningDataModule):
             collate_fn=self.dataset.collate_fn,
         )
 
+    @abstractclassmethod
+    def from_devset(cls, *args, **kwargs):
+        ...
+
+
+class MaterialsProjectDataModule(BaseLightningDataModule):
     @classmethod
     def from_devset(
         cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
@@ -344,6 +352,17 @@ class MaterialsProjectDataModule(pl.LightningDataModule):
             MaterialsProjectDataset if not graphs else DGLMaterialsProjectDataset
         )
         return cls(dset_class(materialsproject_devset, transforms=transforms), **kwargs)
+
+
+class LiPSDataModule(BaseLightningDataModule):
+    @classmethod
+    def from_devset(
+        cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
+    ):
+        kwargs.setdefault("batch_size", 8)
+        kwargs.setdefault("num_workers", 0)
+        dset_class = LiPSDataset if not graphs else DGLLiPSDataset
+        return cls(dset_class(lips_devset, transforms=transforms), **kwargs)
 
 
 class PointCloudDataModule(GraphDataModule):
@@ -451,7 +470,7 @@ class MultiDataModule(pl.LightningDataModule):
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             shuffle=True,
-            collate_fn=data.collate_fn
+            collate_fn=data.collate_fn,
         )
 
     def val_dataloader(self) -> Union[DataLoader, None]:
@@ -462,7 +481,7 @@ class MultiDataModule(pl.LightningDataModule):
             data,
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
-            collate_fn=data.collate_fn
+            collate_fn=data.collate_fn,
         )
 
     def test_dataloader(self) -> Union[DataLoader, None]:
@@ -473,7 +492,7 @@ class MultiDataModule(pl.LightningDataModule):
             data,
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
-            collate_fn=data.collate_fn
+            collate_fn=data.collate_fn,
         )
 
     def predict_dataloader(self) -> Union[DataLoader, None]:
@@ -484,5 +503,5 @@ class MultiDataModule(pl.LightningDataModule):
             data,
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
-            collate_fn=data.collate_fn
+            collate_fn=data.collate_fn,
         )

@@ -5,13 +5,24 @@ import dgl
 from torch.utils.data import ConcatDataset
 
 from ocpmodels.datasets.base import BaseLMDBDataset
-from ocpmodels.datasets.materials_project import MaterialsProjectDataset, DGLMaterialsProjectDataset
+from ocpmodels.datasets.materials_project import (
+    MaterialsProjectDataset,
+    DGLMaterialsProjectDataset,
+)
 from ocpmodels.datasets.task_datasets import IS2REDataset, S2EFDataset
+from ocpmodels.datasets.lips import DGLLiPSDataset, LiPSDataset
 
 # quasi-registry of functions for collating based on dataset class name
 collate_registry = {
     ref.__name__: ref.collate_fn
-    for ref in [MaterialsProjectDataset, DGLMaterialsProjectDataset, IS2REDataset, S2EFDataset]
+    for ref in [
+        MaterialsProjectDataset,
+        DGLMaterialsProjectDataset,
+        IS2REDataset,
+        S2EFDataset,
+        DGLLiPSDataset,
+        LiPSDataset,
+    ]
 }
 
 
