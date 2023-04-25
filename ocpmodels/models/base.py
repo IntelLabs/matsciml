@@ -1204,7 +1204,7 @@ class BaseTaskModule(pl.LightningModule):
         else:
             batch_size = None
         self.log_dict(
-            metrics, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_size
+            metrics, on_step=True, prog_bar=True, batch_size=batch_size
         )
         return loss_dict
 
@@ -1222,7 +1222,7 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = batch["graph"].batch_size
         else:
             batch_size = None
-        self.log_dict(metrics, on_epoch=True, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size)
         return loss_dict
 
     def test_step(
@@ -1239,7 +1239,7 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = batch["graph"].batch_size
         else:
             batch_size = None
-        self.log_dict(metrics, on_epoch=True, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size)
         return loss_dict
 
     def _make_normalizers(self) -> Dict[str, Normalizer]:
@@ -1614,7 +1614,7 @@ class ForceRegressionTask(BaseTaskModule):
         else:
             batch_size = None
         self.log_dict(
-            metrics, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_size
+            metrics, on_step=True, prog_bar=True, batch_size=batch_size
         )
         return loss_dict
 
@@ -2021,7 +2021,6 @@ class MultiTaskLitModule(pl.LightningModule):
         self.log_dict(
             loss_logging,
             on_step=True,
-            on_epoch=True,
             prog_bar=True,
             batch_size=batch_info["batch_size"],
         )
