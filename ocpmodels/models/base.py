@@ -1613,6 +1613,13 @@ class ForceRegressionTask(BaseTaskModule):
         return loss_dict
 
 
+class CrystalSymmetryClassificationTask(BaseTaskModule):
+    def _make_output_heads(self) -> nn.ModuleDict:
+        # this task only utilizes one output head; 230 possible space groups
+        modules = {"spacegroup": OutputHead(230, **self.output_kwargs).to(self.device)}
+        return nn.ModuleDict(modules)
+
+
 class MultiTaskLitModule(pl.LightningModule):
     def __init__(
         self,
