@@ -1960,7 +1960,7 @@ class MultiTaskLitModule(pl.LightningModule):
         optimizers = self.optimizers()
         for opt in optimizers:
             self.on_before_zero_grad(opt)
-            opt.zero_grad()
+            opt.zero_grad(set_to_none=True)
         losses = self._compute_losses(batch)
         loss_logging = {}
         # for multiple datasets, we step through each dataset
