@@ -1613,6 +1613,100 @@ class ForceRegressionTask(BaseTaskModule):
         return loss_dict
 
 
+class CrystalSymmetryClassificationTask(BaseTaskModule):
+
+    __task__ = "classification"
+
+    def __init__(
+        self,
+        encoder: nn.Module,
+        loss_func: Union[Type[nn.Module], nn.Module] = nn.CrossEntropyLoss,
+        output_kwargs: Dict[str, Any] = {},
+        lr: float = 0.0001,
+        weight_decay: float = 0,
+        normalize_kwargs: Optional[Dict[str, float]] = None,
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            encoder,
+            loss_func,
+            None,
+            output_kwargs,
+            lr,
+            weight_decay,
+            normalize_kwargs,
+            **kwargs,
+        )
+
+    def _make_output_heads(self) -> nn.ModuleDict:
+        # this task only utilizes one output head; 230 possible space groups
+        modules = {"spacegroup": OutputHead(230, **self.output_kwargs).to(self.device)}
+        return nn.ModuleDict(modules)
+
+    def on_train_batch_start(
+        self, batch: Any, batch_idx: int, unused: int = 0
+    ) -> Optional[int]:
+        """
+        PyTorch Lightning hook to check OutputHeads are created.
+
+        This will take data from the batch to determine which key to retrieve
+        data from and how many heads to create.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of data from data loader.
+        batch_idx : int
+            Batch index.
+        unused
+            PyTorch Lightning hangover
+
+        Returns
+        -------
+        Optional[int]
+            Just returns the parent result.
+        """
+        status = super().on_train_batch_start(batch, batch_idx, unused)
+        # if there are no task keys set, task has not been initialized yet
+        if len(self.task_keys) == 0:
+            self.task_keys = [
+                "spacegroup",
+            ]
+            self.output_heads = self._make_output_heads()
+            # now add the parameters to our task's optimizer
+            opt = self.optimizers()
+            opt.add_param_group({"params": self.output_heads.parameters()})
+        return status
+
+    def on_validation_batch_start(
+        self, batch: Any, batch_idx: int, dataloader_idx: int
+    ):
+        self.on_train_batch_start(batch, batch_idx)
+
+    def _get_targets(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        target_dict = {}
+        subdict = batch.get("symmetry", None)
+        if subdict is None:
+            raise ValueError(
+                f"'symmetry' key is missing from batch, which is needed for space group classification."
+            )
+        labels: torch.Tensor = subdict.get("number", None)
+        if labels is None:
+            raise ValueError(
+                "Point group numbers missing from symmetry key, which is needed for symmetry classification."
+            )
+        # subtract one for zero-indexing
+        labels = labels.long() - 1
+        # cast to long type, and make sure it is 1D for cross entropy loss
+        if labels.ndim > 1:
+            labels = labels.flatten()
+        target_dict["spacegroup"] = labels
+        return target_dict
+
+
 class MultiTaskLitModule(pl.LightningModule):
     def __init__(
         self,
