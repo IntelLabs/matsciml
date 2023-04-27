@@ -1698,9 +1698,12 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
             raise ValueError(
                 "Point group numbers missing from symmetry key, which is needed for symmetry classification."
             )
-        # cast to long type, and make sure it is 1D for cross entropy loss
         # subtract one for zero-indexing
-        target_dict["spacegroup"] = labels.long().squeeze() - 1
+        labels = labels.long() - 1
+        # cast to long type, and make sure it is 1D for cross entropy loss
+        if labels.ndim > 1:
+            labels = labels.flatten()
+        target_dict["spacegroup"] = labels
         return target_dict
 
 
