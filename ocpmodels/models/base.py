@@ -1265,12 +1265,6 @@ class BaseTaskModule(pl.LightningModule):
             normalizers[key] = Normalizer(mean=mean, std=std, device=self.device)
         return normalizers
 
-    def on_train_batch_end(self, outputs, batch: Any, batch_idx: int, unused: int = 0) -> None:
-        super().on_train_batch_end(outputs, batch, batch_idx, unused)
-        # set gradients of parameters to None to prevent memory leaks
-        for parameter in self.parameters():
-            parameter.grad = None
-
 
 class ScalarRegressionTask(BaseTaskModule):
 
