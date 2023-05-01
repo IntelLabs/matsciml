@@ -2,3 +2,4 @@
 recursive-include ocpmodels/datasets/dev-s2ef-dgl *
 recursive-include ocpmodels/datasets/dev-is2re-dgl *
 recursive-include ocpmodels/datasets/materials_project/devset *
+recursive-include ocpmodels/datasets/lips/devset *
