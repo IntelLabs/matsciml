@@ -20,8 +20,8 @@ classifiers = [
 ]
 dependencies = [
     "psutil",
-    "pytorch_lightning==1.6.3",
-    "dgl>=0.9.1",
+    "pytorch_lightning==1.8.6",
+    "dgl==0.9.1",
     "numba>=0.55.0",
     "numpy>=1.21.0",
     "matplotlib",
