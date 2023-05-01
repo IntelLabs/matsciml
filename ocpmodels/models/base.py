@@ -1204,7 +1204,7 @@ class BaseTaskModule(pl.LightningModule):
         else:
             batch_size = None
         self.log_dict(
-            metrics, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_size
+            metrics, on_step=True, prog_bar=True, batch_size=batch_size
         )
         return loss_dict
 
@@ -1222,7 +1222,7 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = batch["graph"].batch_size
         else:
             batch_size = None
-        self.log_dict(metrics, on_epoch=True, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size)
         return loss_dict
 
     def test_step(
@@ -1239,7 +1239,7 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = batch["graph"].batch_size
         else:
             batch_size = None
-        self.log_dict(metrics, on_epoch=True, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size)
         return loss_dict
 
     def _make_normalizers(self) -> Dict[str, Normalizer]:
@@ -1608,7 +1608,7 @@ class ForceRegressionTask(BaseTaskModule):
         else:
             batch_size = None
         self.log_dict(
-            metrics, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_size
+            metrics, on_step=True, prog_bar=True, batch_size=batch_size
         )
         return loss_dict
 
@@ -1830,6 +1830,28 @@ class MultiTaskLitModule(pl.LightningModule):
         # convenient property to determine how to unpack batches
         return len(self.dataset_names) > 1
 
+    @property
+    def has_initialized(self) -> bool:
+        """
+        Property to track if subtasks have been initialized.
+
+        Right now this is manually set, but would like to refactor this later to
+        check if subtask output heads are all set.
+
+        Returns
+        -------
+        bool
+            True if first batch has been run already, otherwise False
+        """
+        state = getattr(self, "_has_initialized", None)
+        if not state:
+            return False
+        return state
+
+    @has_initialized.setter
+    def has_initialized(self, value: bool) -> None:
+        self._has_initialized = value
+
     def forward(
         self,
         batch: Dict[
@@ -1880,17 +1902,18 @@ class MultiTaskLitModule(pl.LightningModule):
     ) -> Optional[int]:
         # this follows what's implemented in forward to ensure the
         # output heads and optimizers are set properly
-        if self.is_multidata:
-            for dataset in batch.keys():
-                subtasks = self.task_map[dataset]
-                for task_type in subtasks.keys():
+        if not self.has_initialized:
+            if self.is_multidata:
+                for dataset in batch.keys():
+                    subtasks = self.task_map[dataset]
+                    for task_type in subtasks.keys():
+                        self._initialize_subtask_output(dataset, task_type, batch)
+            else:
+                # skip grabbing dataset key from the batch
+                tasks = list(self.task_map.values()).pop(0)
+                dataset = list(self.task_map.keys()).pop(0)
+                for task_type in tasks.keys():
                     self._initialize_subtask_output(dataset, task_type, batch)
-        else:
-            # skip grabbing dataset key from the batch
-            tasks = list(self.task_map.values()).pop(0)
-            dataset = list(self.task_map.keys()).pop(0)
-            for task_type in tasks.keys():
-                self._initialize_subtask_output(dataset, task_type, batch)
         return None
 
     def _compute_losses(
@@ -1955,6 +1978,7 @@ class MultiTaskLitModule(pl.LightningModule):
             self.optimizers()[opt_index].add_param_group(
                 {"params": task_instance.output_heads.parameters()}
             )
+        self.has_initialized = True
 
     def embed(self, *args, **kwargs) -> Any:
         return self.encoder(*args, **kwargs)
@@ -2048,7 +2072,7 @@ class MultiTaskLitModule(pl.LightningModule):
         optimizers = self.optimizers()
         for opt in optimizers:
             self.on_before_zero_grad(opt)
-            opt.zero_grad()
+            opt.zero_grad(set_to_none=True)
         losses = self._compute_losses(batch)
         loss_logging = {}
         # for multiple datasets, we step through each dataset
@@ -2109,7 +2133,6 @@ class MultiTaskLitModule(pl.LightningModule):
         self.log_dict(
             loss_logging,
             on_step=True,
-            on_epoch=True,
             prog_bar=True,
             batch_size=batch_info["batch_size"],
         )
