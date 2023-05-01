@@ -2025,8 +2025,3 @@ class MultiTaskLitModule(pl.LightningModule):
             batch_size=batch_info["batch_size"],
         )
         return losses
-
-    def on_train_batch_end(self, outputs, batch: Any, batch_idx: int, unused: int = 0) -> None:
-        super().on_train_batch_end(outputs, batch, batch_idx, unused)
-        for parameter in self.parameters():
-            parameter.grad = None
