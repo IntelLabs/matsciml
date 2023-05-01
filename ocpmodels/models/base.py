@@ -1742,6 +1742,28 @@ class MultiTaskLitModule(pl.LightningModule):
         # convenient property to determine how to unpack batches
         return len(self.dataset_names) > 1
 
+    @property
+    def has_initialized(self) -> bool:
+        """
+        Property to track if subtasks have been initialized.
+
+        Right now this is manually set, but would like to refactor this later to
+        check if subtask output heads are all set.
+
+        Returns
+        -------
+        bool
+            True if first batch has been run already, otherwise False
+        """
+        state = getattr(self, "_has_initialized", None)
+        if not state:
+            return False
+        return state
+
+    @has_initialized.setter
+    def has_initialized(self, value: bool) -> None:
+        self._has_initialized = value
+
     def forward(
         self,
         batch: Dict[
