@@ -1814,17 +1814,18 @@ class MultiTaskLitModule(pl.LightningModule):
     ) -> Optional[int]:
         # this follows what's implemented in forward to ensure the
         # output heads and optimizers are set properly
-        if self.is_multidata:
-            for dataset in batch.keys():
-                subtasks = self.task_map[dataset]
-                for task_type in subtasks.keys():
+        if not self.has_initialized:
+            if self.is_multidata:
+                for dataset in batch.keys():
+                    subtasks = self.task_map[dataset]
+                    for task_type in subtasks.keys():
+                        self._initialize_subtask_output(dataset, task_type, batch)
+            else:
+                # skip grabbing dataset key from the batch
+                tasks = list(self.task_map.values()).pop(0)
+                dataset = list(self.task_map.keys()).pop(0)
+                for task_type in tasks.keys():
                     self._initialize_subtask_output(dataset, task_type, batch)
-        else:
-            # skip grabbing dataset key from the batch
-            tasks = list(self.task_map.values()).pop(0)
-            dataset = list(self.task_map.keys()).pop(0)
-            for task_type in tasks.keys():
-                self._initialize_subtask_output(dataset, task_type, batch)
         return None
 
     def _compute_losses(
@@ -1889,6 +1890,7 @@ class MultiTaskLitModule(pl.LightningModule):
             self.optimizers()[opt_index].add_param_group(
                 {"params": task_instance.output_heads.parameters()}
             )
+        self.has_initialized = True
 
     def embed(self, *args, **kwargs) -> Any:
         return self.encoder(*args, **kwargs)
