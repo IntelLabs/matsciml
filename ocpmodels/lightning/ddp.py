@@ -39,6 +39,11 @@ class IntelMPIEnvironment(LightningEnvironment):
         return os.environ["HYDRA_BSTRAP_LOCALHOST"]
 
     @property
+    def main_port(self) -> int:
+        port = int(os.getenv("MASTER_PORT", "12345"))
+        return port
+
+    @property
     def creates_processes_externally(self) -> bool:
         """
         Override this because we rely on `mpiexec` or `mpirun` for
