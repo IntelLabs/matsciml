@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT License
 
 import os
-from random import randint
 
 # majority of these imports are just for type hinting!
 from pytorch_lightning.plugins.environments import (
