@@ -1,14 +1,24 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
+from datetime import timedelta
 import os
+from typing import Callable, Optional, Any, List
 
+from lightning_lite.plugins import CheckpointIO
+
+import torch
+from lightning_lite.plugins.collectives.torch_collective import default_pg_timeout
 # majority of these imports are just for type hinting!
 from pytorch_lightning.plugins.environments import (
     LightningEnvironment,
 )
+from pytorch_lightning.strategies.ddp import DDPStrategy
+from pytorch_lightning.strategies import StrategyRegistry
+from pytorch_lightning.plugins.precision import PrecisionPlugin
 
-class IntelMPIEnvironment(LightningEnvironment):
+
+class MPIEnvironment(LightningEnvironment):
     """
     This environment specializes in the use of Intel MPI for distributed
     multiworker instances. The key assumptions for using this environment
@@ -49,4 +59,42 @@ class IntelMPIEnvironment(LightningEnvironment):
         the process spawning.
         """
         return True
+
+
+class MPIDDPStrategy(DDPStrategy):
+    def __init__(
+        self,
+        accelerator: Optional["pl.accelerators.Accelerator"] = None,
+        parallel_devices: Optional[List[torch.device]] = None,
+        checkpoint_io: Optional[CheckpointIO] = None,
+        precision_plugin: Optional[PrecisionPlugin] = None,
+        ddp_comm_state: Optional[object] = None,
+        ddp_comm_hook: Optional[Callable] = None,
+        ddp_comm_wrapper: Optional[Callable] = None,
+        model_averaging_period: Optional[int] = None,
+        process_group_backend: Optional[str] = None,
+        timeout: Optional[timedelta] = default_pg_timeout,
+        **kwargs: Any,
+    ) -> None:
+        cluster_environment = MPIEnvironment()
+        if process_group_backend:
+            assert process_group_backend in [
+                "ccl",
+                "mpi",
+            ], f"Unsupported distributed backend! {process_group_backend}"
+        super().__init__(
+            accelerator,
+            parallel_devices,
+            cluster_environment,
+            checkpoint_io,
+            precision_plugin,
+            ddp_comm_state,
+            ddp_comm_hook,
+            ddp_comm_wrapper,
+            model_averaging_period,
+            process_group_backend,
+            timeout,
+            **kwargs,
+        )
+
 
