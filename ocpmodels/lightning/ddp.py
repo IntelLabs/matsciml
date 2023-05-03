@@ -103,7 +103,6 @@ StrategyRegistry.register(
     MPIDDPStrategy,
     description="Run distributed data parallel with an MPI environment.",
     process_group_backend="mpi",
-    find_unused_parameters=False
 )
 
 StrategyRegistry.register(
@@ -111,5 +110,4 @@ StrategyRegistry.register(
     MPIDDPStrategy,
     description="Run distributed data parallel with an CCL environment.",
     process_group_backend="ccl",
-    find_unused_parameters=False
 )
