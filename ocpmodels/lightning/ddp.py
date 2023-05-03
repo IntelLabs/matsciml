@@ -98,3 +98,18 @@ class MPIDDPStrategy(DDPStrategy):
         )
 
 
+StrategyRegistry.register(
+    "ddp_with_mpi",
+    MPIDDPStrategy,
+    description="Run distributed data parallel with an MPI environment.",
+    process_group_backend="mpi",
+    find_unused_parameters=False
+)
+
+StrategyRegistry.register(
+    "ddp_with_ccl",
+    MPIDDPStrategy,
+    description="Run distributed data parallel with an CCL environment.",
+    process_group_backend="ccl",
+    find_unused_parameters=False
+)
