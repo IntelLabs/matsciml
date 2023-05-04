@@ -1,7 +1,10 @@
 import pytest
 
 from ocpmodels.datasets import S2EFDataset, IS2REDataset, s2ef_devset, is2re_devset
-from ocpmodels.datasets.materials_project import MaterialsProjectDataset, materialsproject_devset
+from ocpmodels.datasets.materials_project import (
+    MaterialsProjectDataset,
+    materialsproject_devset,
+)
 from ocpmodels.datasets.multi_dataset import MultiDataset
 from ocpmodels.lightning.data_utils import MultiDataModule
 
@@ -9,8 +12,12 @@ from ocpmodels.lightning.data_utils import MultiDataModule
 @pytest.fixture
 def datamodule():
     dset = MultiDataset(
-        [S2EFDataset(s2ef_devset), IS2REDataset(is2re_devset), MaterialsProjectDataset(materialsproject_devset)]
-        )
+        [
+            S2EFDataset(s2ef_devset),
+            IS2REDataset(is2re_devset),
+            MaterialsProjectDataset(materialsproject_devset),
+        ]
+    )
     dm = MultiDataModule(train_dataset=dset, batch_size=8)
     return dm
 
@@ -23,4 +30,9 @@ def test_setup(datamodule):
 @pytest.mark.dependency(depends=["test_setup"])
 def test_target_keys(datamodule):
     keys = datamodule.target_keys
-    assert keys == datamodule.datasets["train"].target_keys
+    expected = {
+        "S2EFDataset": {"regression": ["energy", "force"]},
+        "IS2REDataset": {"regression": ["energy_init", "energy_relaxed"]},
+        "MaterialsProjectDataset": {"regression": ["band_gap"]},
+    }
+    assert keys == expected
