@@ -1712,6 +1712,7 @@ class MultiTaskLitModule(pl.LightningModule):
         self,
         *tasks: Tuple[str, BaseTaskModule],
         task_scaling: Optional[Iterable[float]] = None,
+        task_keys: Optional[Dict[str, List[str]]] = None,
         **encoder_opt_kwargs,
     ) -> None:
         """
@@ -1751,6 +1752,13 @@ class MultiTaskLitModule(pl.LightningModule):
         self.dataset_names = dset_names
         self.task_scaling = task_scaling
         self.encoder_opt_kwargs = encoder_opt_kwargs
+        if task_keys is not None:
+            _ = self.configure_optimizers()
+            for pair in self.dataset_task_pairs:
+                # unpack 2-tuple
+                dataset_name, task_type = pair
+                relevant_keys = task_keys[dataset_name][task_type]
+                self._initialize_subtask_output(dataset_name, task_type, task_keys=relevant_keys)
         self.automatic_optimization = False
 
     @property
