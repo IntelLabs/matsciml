@@ -138,6 +138,10 @@ class MaterialsProjectDataset(BaseLMDBDataset):
 
     @property
     def target_keys(self) -> List[str]:
+        keys = getattr(self, "_target_keys", None)
+        if not keys:
+            # grab a sample from the data to set the keys
+            _ = self.__getitem__(0)
         return self._target_keys
 
     @target_keys.setter
@@ -181,7 +185,7 @@ class MaterialsProjectDataset(BaseLMDBDataset):
             ["structure", "symmetry", "fields_not_requested"]
             + data["fields_not_requested"]
         )
-        target_keys = getattr(self, "target_keys", None)
+        target_keys = getattr(self, "_target_keys", None)
         # in the event we're getting data for the first time
         if not target_keys:
             target_keys = set(data.keys()).difference(not_targets)
