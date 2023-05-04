@@ -234,7 +234,7 @@ class BaseLMDBDataset(Dataset):
         return samples
 
     @abstractproperty
-    def target_keys(self) -> List[str]:
+    def target_keys(self) -> Dict[str, List[str]]:
         """
         Indicates what the expected keys are for targets.
 
@@ -243,8 +243,8 @@ class BaseLMDBDataset(Dataset):
 
         Returns
         -------
-        List[str]
-            List of target keys
+        Dict[str, List[str]]
+            Target keys, nested by task type
         """
         ...
 
