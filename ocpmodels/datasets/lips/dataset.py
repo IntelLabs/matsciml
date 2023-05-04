@@ -141,8 +141,8 @@ class LiPSDataset(BaseLMDBDataset):
         return data
 
     @property
-    def target_keys(self) -> List[str]:
-        return ["energy", "force"]
+    def target_keys(self) -> Dict[str, List[str]]:
+        return {"regression": ["energy", "force"]}
 
 if _has_dgl:
     import dgl

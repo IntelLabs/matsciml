@@ -41,4 +41,4 @@ def test_graph_batch():
 @pytest.mark.dependency(depends=["test_load_dataset"])
 def test_dataset_target_keys():
     dset = LiPSDataset(lips_devset)
-    assert dset.target_keys == ["energy", "force"]
+    assert dset.target_keys == {"regression": ["energy", "force"]}
