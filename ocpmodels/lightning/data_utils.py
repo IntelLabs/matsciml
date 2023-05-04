@@ -120,6 +120,16 @@ class GraphDataModule(pl.LightningDataModule):
         for key, path in self.paths.items():
             self.data_splits[key] = self.dataset_class(path, transforms=self.transforms)
 
+    @property
+    def target_keys(self) -> List[str]:
+        splits = getattr(self, "data_splits", None)
+        if splits is None:
+            self.setup()
+            splits = self.data_splits
+        # get the first dataset we can get
+        dset = list(splits.values())[0]
+        return dset.target_keys
+
     def train_dataloader(self):
         split = self.data_splits.get("train")
         return split.data_loader(
@@ -339,6 +349,10 @@ class BaseLightningDataModule(pl.LightningDataModule):
     @abstractclassmethod
     def from_devset(cls, *args, **kwargs):
         ...
+
+    @property
+    def target_keys(self) -> List[str]:
+        return self.dataset.target_keys
 
 
 class MaterialsProjectDataModule(BaseLightningDataModule):
