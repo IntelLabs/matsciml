@@ -54,7 +54,7 @@ def test_target_keys():
 
     joint = MultiDataset([is2re, mp])
     keys = joint.target_keys
-    expected_is2re = ["energy_init", "energy_relaxed"]
-    expected_mp = ["band_gap"]
+    expected_is2re = {"regression": ["energy_init", "energy_relaxed"]}
+    expected_mp = {"regression": ["band_gap"]}
     assert keys["IS2REDataset"] == expected_is2re, f"IS2REDataset expected {expected_is2re}, got {keys['IS2REDataset']}"
     assert keys["MaterialsProjectDataset"] == expected_mp, f"MaterialsProjectDataset expected {expected_mp}, got {keys['MaterialsProjectDataset']}"

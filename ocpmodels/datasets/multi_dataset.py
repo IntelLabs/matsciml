@@ -80,7 +80,7 @@ class MultiDataset(ConcatDataset):
         return all_data
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> Dict[str, Dict[str, List[str]]]:
         keys = {}
         for dset in self.datasets:
             name = dset.__class__.__name__
