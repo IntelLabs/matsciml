@@ -1959,29 +1959,34 @@ class MultiTaskLitModule(pl.LightningModule):
         batch
             [TODO:description]
         """
-        task_instance = self.task_map[dataset][task_type]
+        task_instance: BaseTaskModule = self.task_map[dataset][task_type]
         if batch is None and task_keys is None:
             raise ValueError(f"Unable to initialize output heads for {dataset}-{task_type}; neither batch nor task keys provided.")
         if not hasattr(task_instance, "output_head"):
             # get the task keys from the batch, depends on usage
-            if self.is_multidata:
-                subset = batch[dataset]
-            else:
-                subset = batch
+            if batch is not None:
+                if self.is_multidata:
+                    subset = batch[dataset]
+                else:
+                    subset = batch
             if task_keys is None:
                 task_keys = subset["target_types"][task_type]
-            # set task keys, then call make output heads
-            task_instance.task_keys = task_instance._filter_task_keys(task_keys, subset)
+                # if keys aren't explicitly provided, apply filter
+                task_keys = task_instance._filter_task_keys(task_keys, subset)
+                # set task keys, then call make output heads
+            task_instance.task_keys = task_keys
             task_instance.output_heads = task_instance._make_output_heads()
             if task_type == "regression":
                 task_instance.normalizers = task_instance._make_normalizers()
-            # now look up which optimizer it belongs to and add the parameters
-            ref = (dataset, task_type)
-            opt_index = self.optimizer_names.index(ref)
-            # this adds the output head weights to optimizer
-            self.optimizers()[opt_index].add_param_group(
-                {"params": task_instance.output_heads.parameters()}
-            )
+            if batch is not None:
+                # if batch was provided then this is done after configure_optimizers
+                # so we need to add their parameters to the right optimizer
+                ref = (dataset, task_type)
+                opt_index = self.optimizer_names.index(ref)
+                # this adds the output head weights to optimizer
+                self.optimizers()[opt_index].add_param_group(
+                    {"params": task_instance.output_heads.parameters()}
+                )
         self.has_initialized = True
 
     def embed(self, *args, **kwargs) -> Any:
