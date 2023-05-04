@@ -121,7 +121,7 @@ class GraphDataModule(pl.LightningDataModule):
             self.data_splits[key] = self.dataset_class(path, transforms=self.transforms)
 
     @property
-    def target_keys(self) -> List[str]:
+    def target_keys(self) -> Dict[str, List[str]]:
         splits = getattr(self, "data_splits", None)
         if splits is None:
             self.setup()
@@ -351,7 +351,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
         ...
 
     @property
-    def target_keys(self) -> List[str]:
+    def target_keys(self) -> Dict[str, List[str]]:
         return self.dataset.target_keys
 
 
@@ -476,7 +476,7 @@ class MultiDataModule(pl.LightningDataModule):
         }
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> Dict[str, Dict[str, List[str]]]:
         joint_keys = {}
         # basically loop over each split, and combine the target keys
         # into a set
