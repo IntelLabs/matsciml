@@ -72,8 +72,8 @@ class S2EFDataset(DGLDataset):
         return output_data
 
     @property
-    def target_keys(self) -> List[str]:
-        return ["energy", "force"]
+    def target_keys(self) -> Dict[str, List[str]]:
+        return {"regression": ["energy", "force"]}
 
 
 class IS2REDataset(DGLDataset):
@@ -107,5 +107,5 @@ class IS2REDataset(DGLDataset):
         return data
 
     @property
-    def target_keys(self) -> List[str]:
-        return ["energy_init", "energy_relaxed"]
+    def target_keys(self) -> Dict[str, List[str]]:
+        return {"regression": ["energy_init", "energy_relaxed"]}
