@@ -973,6 +973,7 @@ class AbstractEnergyModel(AbstractTask):
 
     def __init__(self):
         super().__init__()
+        self.save_hyperparameters()
 
     def forward(self, graph: dgl.DGLGraph) -> Tensor:
         """
