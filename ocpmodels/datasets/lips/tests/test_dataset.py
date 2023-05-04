@@ -36,3 +36,9 @@ def test_graph_batch():
     batch = dset.collate_fn(samples)
     assert "graph" in batch
     assert batch["graph"].batch_size == 10
+
+
+@pytest.mark.dependency(depends=["test_load_dataset"])
+def test_dataset_target_keys():
+    dset = LiPSDataset(lips_devset)
+    assert dset.target_keys == {"regression": ["energy", "force"]}

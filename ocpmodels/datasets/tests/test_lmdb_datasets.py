@@ -76,3 +76,13 @@ def test_s2ef_collate():
     assert batched["targets"]["energy"].size(0) == 5
     num_nodes = batched["graph"].num_nodes()
     assert batched["targets"]["force"].shape == (num_nodes, 3)
+
+
+def test_s2ef_target_keys():
+    dset = S2EFDataset(s2ef_devset)
+    assert dset.target_keys == {"regression": ["energy", "force"]}
+
+
+def test_is2re_target_keys():
+    dset = IS2REDataset(is2re_devset)
+    assert dset.target_keys == {"regression": ["energy_init", "energy_relaxed"]}

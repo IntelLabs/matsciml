@@ -3,6 +3,7 @@ from typing import Iterable, Tuple, Any, Dict, Union, Optional, List, Callable
 from importlib.util import find_spec
 from pathlib import Path
 from math import pi
+from copy import deepcopy
 
 import torch
 import numpy as np
@@ -137,12 +138,39 @@ class MaterialsProjectDataset(BaseLMDBDataset):
             return_dict["symmetry"] = symmetry_data
 
     @property
-    def target_keys(self) -> List[str]:
+    def target_keys(self) -> Dict[str, List[str]]:
+        # This returns the standardized dictionary of task_type/key mapping.
+        keys = getattr(self, "_target_keys", None)
+        if not keys:
+            # grab a sample from the data to set the keys
+            _ = self.__getitem__(0)
         return self._target_keys
 
+    @property
+    def target_key_list(self) -> Union[List[str], None]:
+        # this returns a flat list of keys, primarily used in the `data_from_key`
+        # call. This does not provide the task type/key mapping used to initialize
+        # output heads
+        keys = getattr(self, "_target_keys", None)
+        if not keys:
+            return keys
+        else:
+            _keys = []
+            for key_list in keys.values():
+                _keys.extend(key_list)
+            return _keys
+
     @target_keys.setter
-    def target_keys(self, values: List[str]) -> None:
-        self._target_keys = values
+    def target_keys(self, values: Dict[str, List[str]]) -> None:
+        remove_keys = []
+        copy_dict = deepcopy(values)
+        # loop over the keys and remove empty tasks
+        for key, value in values.items():
+            if len(value) == 0:
+                remove_keys.append(key)
+        for key in remove_keys:
+            del copy_dict[key]
+        self._target_keys = copy_dict
 
     def data_from_key(
         self, lmdb_index: int, subindex: int
@@ -181,12 +209,13 @@ class MaterialsProjectDataset(BaseLMDBDataset):
             ["structure", "symmetry", "fields_not_requested"]
             + data["fields_not_requested"]
         )
-        target_keys = getattr(self, "target_keys", None)
+        # target_keys = getattr(self, "_target_keys", None)
+        target_keys = self.target_key_list
         # in the event we're getting data for the first time
         if not target_keys:
             target_keys = set(data.keys()).difference(not_targets)
             # cache the result
-            self.target_keys = list(target_keys)
+            target_keys = list(target_keys)
         targets = {key: self._standardize_values(data[key]) for key in target_keys}
         return_dict["targets"] = targets
         # compress all the targets into a single tensor for convenience
@@ -202,6 +231,7 @@ class MaterialsProjectDataset(BaseLMDBDataset):
                     target_type = "classification" if isinstance(item, int) else "regression"
                     target_types[target_type].append(key)
         return_dict["target_types"] = target_types
+        self.target_keys = target_types
         return return_dict
 
     @staticmethod

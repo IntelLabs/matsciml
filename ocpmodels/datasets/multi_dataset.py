@@ -78,3 +78,11 @@ class MultiDataset(ConcatDataset):
         for key in all_data.keys():
             all_data[key] = collate_registry[key](all_data[key])
         return all_data
+
+    @property
+    def target_keys(self) -> Dict[str, Dict[str, List[str]]]:
+        keys = {}
+        for dset in self.datasets:
+            name = dset.__class__.__name__
+            keys[name] = dset.target_keys
+        return keys

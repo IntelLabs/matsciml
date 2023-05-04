@@ -81,3 +81,11 @@ def test_dgl_collate(devset_dir):
     # should be ten graphs
     assert batch["graph"].batch_size == 10
     assert all([key in batch["graph"].ndata for key in ["pos", "atomic_numbers"]])
+
+
+@pytest.mark.dependency(depends=["test_dataset_load"])
+@pytest.mark.local
+def test_dataset_target_keys(devset_dir):
+    # this tests target key property without manually grabbing a batch
+    dset = MaterialsProjectDataset(devset_dir)
+    assert dset.target_keys == {"regression": ["band_gap"]}

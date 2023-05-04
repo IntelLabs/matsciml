@@ -1712,6 +1712,7 @@ class MultiTaskLitModule(pl.LightningModule):
         self,
         *tasks: Tuple[str, BaseTaskModule],
         task_scaling: Optional[Iterable[float]] = None,
+        task_keys: Optional[Dict[str, List[str]]] = None,
         **encoder_opt_kwargs,
     ) -> None:
         """
@@ -1751,7 +1752,23 @@ class MultiTaskLitModule(pl.LightningModule):
         self.dataset_names = dset_names
         self.task_scaling = task_scaling
         self.encoder_opt_kwargs = encoder_opt_kwargs
+        if task_keys is not None:
+            _ = self.configure_optimizers()
+            for pair in self.dataset_task_pairs:
+                # unpack 2-tuple
+                dataset_name, task_type = pair
+                relevant_keys = task_keys[dataset_name][task_type]
+                self._initialize_subtask_output(dataset_name, task_type, task_keys=relevant_keys)
         self.automatic_optimization = False
+
+    @property
+    def dataset_task_pairs(self) -> List[Tuple[str, str]]:
+        pairs = []
+        for dataset in self.dataset_names:
+            task_types = self.task_map[dataset].keys()
+            for task_type in task_types:
+                pairs.append((dataset, task_type))
+        return pairs
 
     def configure_optimizers(self) -> List[Optimizer]:
         optimizers = []
@@ -1939,9 +1956,10 @@ class MultiTaskLitModule(pl.LightningModule):
         self,
         dataset: str,
         task_type: str,
-        batch: Dict[
+        batch: Optional[Dict[
             str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ],
+        ]] = None,
+        task_keys: Optional[List[str]] = None
     ):
         """
         For a given dataset and task type, this function will check and initialize corresponding
@@ -1958,26 +1976,34 @@ class MultiTaskLitModule(pl.LightningModule):
         batch
             [TODO:description]
         """
-        task_instance = self.task_map[dataset][task_type]
+        task_instance: BaseTaskModule = self.task_map[dataset][task_type]
+        if batch is None and task_keys is None:
+            raise ValueError(f"Unable to initialize output heads for {dataset}-{task_type}; neither batch nor task keys provided.")
         if not hasattr(task_instance, "output_head"):
             # get the task keys from the batch, depends on usage
-            if self.is_multidata:
-                subset = batch[dataset]
-            else:
-                subset = batch
-            task_keys = subset["target_types"][task_type]
-            # set task keys, then call make output heads
-            task_instance.task_keys = task_instance._filter_task_keys(task_keys, subset)
+            if batch is not None:
+                if self.is_multidata:
+                    subset = batch[dataset]
+                else:
+                    subset = batch
+            if task_keys is None:
+                task_keys = subset["target_types"][task_type]
+                # if keys aren't explicitly provided, apply filter
+                task_keys = task_instance._filter_task_keys(task_keys, subset)
+                # set task keys, then call make output heads
+            task_instance.task_keys = task_keys
             task_instance.output_heads = task_instance._make_output_heads()
             if task_type == "regression":
                 task_instance.normalizers = task_instance._make_normalizers()
-            # now look up which optimizer it belongs to and add the parameters
-            ref = (dataset, task_type)
-            opt_index = self.optimizer_names.index(ref)
-            # this adds the output head weights to optimizer
-            self.optimizers()[opt_index].add_param_group(
-                {"params": task_instance.output_heads.parameters()}
-            )
+            if batch is not None:
+                # if batch was provided then this is done after configure_optimizers
+                # so we need to add their parameters to the right optimizer
+                ref = (dataset, task_type)
+                opt_index = self.optimizer_names.index(ref)
+                # this adds the output head weights to optimizer
+                self.optimizers()[opt_index].add_param_group(
+                    {"params": task_instance.output_heads.parameters()}
+                )
         self.has_initialized = True
 
     def embed(self, *args, **kwargs) -> Any:

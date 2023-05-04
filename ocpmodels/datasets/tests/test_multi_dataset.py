@@ -45,3 +45,16 @@ def test_joint_batching_shuffled():
     batch = next(iter(loader))
     # check both datasets are in the batch
     assert all([key in batch for key in ["MaterialsProjectDataset", "IS2REDataset"]])
+
+
+@pytest.mark.dependency(depends=["test_joint_dataset"])
+def test_target_keys():
+    is2re = IS2REDataset(is2re_devset)
+    mp = MaterialsProjectDataset(materialsproject_devset)
+
+    joint = MultiDataset([is2re, mp])
+    keys = joint.target_keys
+    expected_is2re = {"regression": ["energy_init", "energy_relaxed"]}
+    expected_mp = {"regression": ["band_gap"]}
+    assert keys["IS2REDataset"] == expected_is2re, f"IS2REDataset expected {expected_is2re}, got {keys['IS2REDataset']}"
+    assert keys["MaterialsProjectDataset"] == expected_mp, f"MaterialsProjectDataset expected {expected_mp}, got {keys['MaterialsProjectDataset']}"

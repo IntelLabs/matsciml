@@ -233,6 +233,21 @@ class BaseLMDBDataset(Dataset):
         samples = [self.__getitem__(i) for i in indices]
         return samples
 
+    @abstractproperty
+    def target_keys(self) -> Dict[str, List[str]]:
+        """
+        Indicates what the expected keys are for targets.
+
+        Primarily serves as a method of peeking into what the task will entail
+        for the task modules to initialize output heads.
+
+        Returns
+        -------
+        Dict[str, List[str]]
+            Target keys, nested by task type
+        """
+        ...
+
 
 class DGLDataset(BaseLMDBDataset):
     @staticmethod

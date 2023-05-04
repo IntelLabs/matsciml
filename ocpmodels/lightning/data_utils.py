@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT License
 
 from abc import abstractclassmethod
-from typing import Union, Optional, Type, List, Callable
+from typing import Union, Optional, Type, List, Callable, Dict
 from pathlib import Path
 from warnings import warn
 from os import getenv
@@ -119,6 +119,16 @@ class GraphDataModule(pl.LightningDataModule):
         # set up each of the dataset splits
         for key, path in self.paths.items():
             self.data_splits[key] = self.dataset_class(path, transforms=self.transforms)
+
+    @property
+    def target_keys(self) -> Dict[str, List[str]]:
+        splits = getattr(self, "data_splits", None)
+        if splits is None:
+            self.setup()
+            splits = self.data_splits
+        # get the first dataset we can get
+        dset = list(splits.values())[0]
+        return dset.target_keys
 
     def train_dataloader(self):
         split = self.data_splits.get("train")
@@ -340,6 +350,10 @@ class BaseLightningDataModule(pl.LightningDataModule):
     def from_devset(cls, *args, **kwargs):
         ...
 
+    @property
+    def target_keys(self) -> Dict[str, List[str]]:
+        return self.dataset.target_keys
+
 
 class MaterialsProjectDataModule(BaseLightningDataModule):
     @classmethod
@@ -460,6 +474,10 @@ class MultiDataModule(pl.LightningDataModule):
                 [train_dataset, val_dataset, test_dataset, predict_dataset],
             )
         }
+
+    @property
+    def target_keys(self) -> Dict[str, Dict[str, List[str]]]:
+        return self.datasets["train"].target_keys
 
     def train_dataloader(self) -> Union[DataLoader, None]:
         data = self.datasets.get("train", None)
