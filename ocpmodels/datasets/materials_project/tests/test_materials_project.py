@@ -88,4 +88,4 @@ def test_dgl_collate(devset_dir):
 def test_dataset_target_keys(devset_dir):
     # this tests target key property without manually grabbing a batch
     dset = MaterialsProjectDataset(devset_dir)
-    assert dset.target_keys == ["band_gap"]
+    assert dset.target_keys == {"regression": ["band_gap"]}
