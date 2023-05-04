@@ -60,3 +60,9 @@ def test_graph_all_setup():
     for key in ["train", "val", "test", "predict"]:
         loader = getattr(dset, f"{key}_dataloader")()
         batch = next(iter(loader))
+
+
+@pytest.mark.dependency(depends=["test_pc_setup"])
+def test_mp_target_keys():
+    dset = MaterialsProjectDataModule.from_devset()
+    assert dset.target_keys == ["band_gap"]
