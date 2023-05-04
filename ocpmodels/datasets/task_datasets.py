@@ -71,6 +71,10 @@ class S2EFDataset(DGLDataset):
             output_data["target_types"]["regression"].append(key)
         return output_data
 
+    @property
+    def target_keys(self) -> List[str]:
+        return ["energy", "force"]
+
 
 class IS2REDataset(DGLDataset):
     """
@@ -101,3 +105,7 @@ class IS2REDataset(DGLDataset):
             data["targets"][f"energy_{suffix}"] = data.get(f"y_{suffix}")
             data["target_types"]["regression"].append(f"energy_{suffix}")
         return data
+
+    @property
+    def target_keys(self) -> List[str]:
+        return ["energy_init", "energy_relaxed"]
