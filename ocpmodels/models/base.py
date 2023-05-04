@@ -1753,6 +1753,15 @@ class MultiTaskLitModule(pl.LightningModule):
         self.encoder_opt_kwargs = encoder_opt_kwargs
         self.automatic_optimization = False
 
+    @property
+    def dataset_task_pairs(self) -> List[Tuple[str, str]]:
+        pairs = []
+        for dataset in self.dataset_names:
+            task_types = self.task_map[dataset].keys()
+            for task_type in task_types:
+                pairs.append((dataset, task_type))
+        return pairs
+
     def configure_optimizers(self) -> List[Optimizer]:
         optimizers = []
         optimizer_names = []
