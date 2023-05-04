@@ -80,9 +80,9 @@ def test_s2ef_collate():
 
 def test_s2ef_target_keys():
     dset = S2EFDataset(s2ef_devset)
-    assert dset.target_keys == ["energy", "force"]
+    assert dset.target_keys == {"regression": ["energy", "force"]}
 
 
 def test_is2re_target_keys():
     dset = IS2REDataset(is2re_devset)
-    assert dset.target_keys == ["energy_init", "energy_relaxed"]
+    assert dset.target_keys == {"regression": ["energy_init", "energy_relaxed"]}
