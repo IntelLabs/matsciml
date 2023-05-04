@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT License
 
 from abc import abstractclassmethod
-from typing import Union, Optional, Type, List, Callable
+from typing import Union, Optional, Type, List, Callable, Dict
 from pathlib import Path
 from warnings import warn
 from os import getenv
@@ -474,6 +474,24 @@ class MultiDataModule(pl.LightningDataModule):
                 [train_dataset, val_dataset, test_dataset, predict_dataset],
             )
         }
+
+    @property
+    def target_keys(self) -> Dict[str, List[str]]:
+        joint_keys = {}
+        # basically loop over each split, and combine the target keys
+        # into a set
+        for dset in self.datasets.values():
+            if dset is not None:
+               dset_keys = dset.target_keys
+               for dset_name, key_list in dset_keys.items():
+                   if dset_name not in joint_keys:
+                       joint_keys[dset_name] = set()
+                   joint_keys[dset_name].update(key_list)
+        dset_names = list(joint_keys.keys())
+        # convert sets to lists
+        for name in dset_names:
+            joint_keys[name] = list(joint_keys[name])
+        return joint_keys
 
     def train_dataloader(self) -> Union[DataLoader, None]:
         data = self.datasets.get("train", None)
