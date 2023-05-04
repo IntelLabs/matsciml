@@ -1942,6 +1942,7 @@ class MultiTaskLitModule(pl.LightningModule):
         batch: Dict[
             str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
         ],
+        task_keys: Optional[List[str]] = None
     ):
         """
         For a given dataset and task type, this function will check and initialize corresponding
@@ -1965,7 +1966,8 @@ class MultiTaskLitModule(pl.LightningModule):
                 subset = batch[dataset]
             else:
                 subset = batch
-            task_keys = subset["target_types"][task_type]
+            if task_keys is None:
+                task_keys = subset["target_types"][task_type]
             # set task keys, then call make output heads
             task_instance.task_keys = task_instance._filter_task_keys(task_keys, subset)
             task_instance.output_heads = task_instance._make_output_heads()
