@@ -1939,9 +1939,9 @@ class MultiTaskLitModule(pl.LightningModule):
         self,
         dataset: str,
         task_type: str,
-        batch: Dict[
+        batch: Optional[Dict[
             str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ],
+        ]] = None,
         task_keys: Optional[List[str]] = None
     ):
         """
@@ -1960,6 +1960,8 @@ class MultiTaskLitModule(pl.LightningModule):
             [TODO:description]
         """
         task_instance = self.task_map[dataset][task_type]
+        if batch is None and task_keys is None:
+            raise ValueError(f"Unable to initialize output heads for {dataset}-{task_type}; neither batch nor task keys provided.")
         if not hasattr(task_instance, "output_head"):
             # get the task keys from the batch, depends on usage
             if self.is_multidata:
