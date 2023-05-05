@@ -1014,6 +1014,8 @@ class BaseTaskModule(pl.LightningModule):
         **kwargs,
     ) -> None:
         super().__init__()
+        if encoder is not None:
+            warn(f"Encoder object was passed directly into {self.__class__.__name__}; saved hyperparameters will be incomplete!")
         if encoder_class is not None and encoder_kwargs:
             try:
                 encoder = encoder_class(**encoder_kwargs)
