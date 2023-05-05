@@ -15,6 +15,7 @@ from typing import (
 from abc import abstractmethod
 from contextlib import nullcontext, ExitStack
 import logging
+from warnings import warn
 from dgl.utils import data
 
 import pytorch_lightning as pl
@@ -1025,7 +1026,6 @@ class BaseTaskModule(pl.LightningModule):
             self.encoder = encoder
         else:
             raise ValueError(f"No valid encoder passed.")
-        self.task_keys = task_keys
         if isinstance(loss_func, Type):
             loss_func = loss_func()
         self.loss_func = loss_func
@@ -1033,6 +1033,7 @@ class BaseTaskModule(pl.LightningModule):
         default_heads.update(output_kwargs)
         self.output_kwargs = default_heads
         self.normalize_kwargs = normalize_kwargs
+        self.task_keys = task_keys
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     @property
@@ -1056,6 +1057,11 @@ class BaseTaskModule(pl.LightningModule):
         if isinstance(values, set):
             values = list(values)
         self._task_keys = values
+        # if we're setting task keys we have enough to initialize
+        # the output heads
+        if not self.has_initialized:
+            self.output_heads = self._make_output_heads()
+        self.hparams["task_keys"] = self._task_keys
 
     @property
     def has_initialized(self) -> bool:
@@ -1380,7 +1386,6 @@ class ScalarRegressionTask(BaseTaskModule):
         if not self.has_initialized:
             keys = batch["target_types"]["regression"]
             self.task_keys = self._filter_task_keys(keys, batch)
-            self.output_heads = self._make_output_heads()
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
@@ -1453,7 +1458,6 @@ class BinaryClassificationTask(BaseTaskModule):
         if not self.has_initialized:
             keys = batch["target_types"]["classification"]
             self.task_keys = keys
-            self.output_heads = self._make_output_heads()
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
@@ -1584,8 +1588,11 @@ class ForceRegressionTask(BaseTaskModule):
         # if there are no task keys set, task has not been initialized yet
         if not self.has_initialized:
             # first round is used to initialize the output head
+            self.task_keys = ["energy"]
             self.output_heads = self._make_output_heads()
-            self.task_keys = ["energy", "force"]
+            # overwrite it so that the loss is computed but we don't make another head
+            # for force outputs
+            self._task_keys = ["energy", "force"]
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
@@ -1704,7 +1711,6 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
             self.task_keys = [
                 "spacegroup",
             ]
-            self.output_heads = self._make_output_heads()
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
