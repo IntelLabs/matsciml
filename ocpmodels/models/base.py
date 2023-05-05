@@ -1377,7 +1377,7 @@ class ScalarRegressionTask(BaseTaskModule):
         """
         status = super().on_train_batch_start(batch, batch_idx)
         # if there are no task keys set, task has not been initialized yet
-        if len(self.task_keys) == 0:
+        if not self.has_initialized:
             keys = batch["target_types"]["regression"]
             self.task_keys = self._filter_task_keys(keys, batch)
             self.output_heads = self._make_output_heads()
@@ -1450,7 +1450,7 @@ class BinaryClassificationTask(BaseTaskModule):
         """
         status = super().on_train_batch_start(batch, batch_idx, unused)
         # if there are no task keys set, task has not been initialized yet
-        if len(self.task_keys) == 0:
+        if not self.has_initialized:
             keys = batch["target_types"]["classification"]
             self.task_keys = keys
             self.output_heads = self._make_output_heads()
@@ -1582,7 +1582,7 @@ class ForceRegressionTask(BaseTaskModule):
         """
         status = super().on_train_batch_start(batch, batch_idx, unused)
         # if there are no task keys set, task has not been initialized yet
-        if len(self.task_keys) == 0:
+        if not self.has_initialized:
             # first round is used to initialize the output head
             self.output_heads = self._make_output_heads()
             self.task_keys = ["energy", "force"]
@@ -1700,7 +1700,7 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         """
         status = super().on_train_batch_start(batch, batch_idx, unused)
         # if there are no task keys set, task has not been initialized yet
-        if len(self.task_keys) == 0:
+        if not self.has_initialized:
             self.task_keys = [
                 "spacegroup",
             ]
