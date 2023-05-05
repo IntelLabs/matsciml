@@ -1002,8 +1002,10 @@ class BaseTaskModule(pl.LightningModule):
 
     def __init__(
         self,
-        encoder: nn.Module,
-        loss_func: Union[Type[nn.Module], nn.Module],
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
+        loss_func: Optional[Union[Type[nn.Module], nn.Module]] = None,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         lr: float = 1e-4,
@@ -1012,7 +1014,15 @@ class BaseTaskModule(pl.LightningModule):
         **kwargs,
     ) -> None:
         super().__init__()
-        self.encoder = encoder
+        if encoder_class is not None and encoder_kwargs:
+            try:
+                encoder = encoder_class(**encoder_kwargs)
+            except:
+                raise ValueError("Unable to instantiate encoder {encoder_class} with kwargs: {encoder_kwargs}.")
+        if encoder is not None:
+            self.encoder = encoder
+        else:
+            raise ValueError(f"No valid encoder passed.")
         self.task_keys = task_keys
         if isinstance(loss_func, Type):
             loss_func = loss_func()
@@ -1277,13 +1287,15 @@ class ScalarRegressionTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: nn.Module,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         **kwargs: Any,
     ) -> None:
-        super().__init__(encoder, loss_func, task_keys, output_kwargs, **kwargs)
+        super().__init__(encoder, encoder_class, encoder_kwargs, loss_func, task_keys, output_kwargs, **kwargs)
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     def _make_output_heads(self) -> nn.ModuleDict:
@@ -1385,13 +1397,15 @@ class BinaryClassificationTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: nn.Module,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.BCEWithLogitsLoss,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         **kwargs,
     ) -> None:
-        super().__init__(encoder, loss_func, task_keys, output_kwargs, **kwargs)
+        super().__init__(encoder, encoder_class, encoder_kwargs, loss_func, task_keys, output_kwargs, **kwargs)
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     def _make_output_heads(self) -> nn.ModuleDict:
@@ -1446,13 +1460,15 @@ class ForceRegressionTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: nn.Module,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.L1Loss,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         **kwargs,
     ) -> None:
-        super().__init__(encoder, loss_func, task_keys, output_kwargs, **kwargs)
+        super().__init__(encoder, encoder_class, encoder_kwargs, loss_func, task_keys, output_kwargs, **kwargs)
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
         # have to enable double backprop
         self.automatic_optimization = False
@@ -1620,7 +1636,9 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: nn.Module,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.CrossEntropyLoss,
         output_kwargs: Dict[str, Any] = {},
         lr: float = 0.0001,
@@ -1630,6 +1648,8 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
     ) -> None:
         super().__init__(
             encoder,
+            encoder_class,
+            encoder_kwargs,
             loss_func,
             None,
             output_kwargs,
