@@ -15,6 +15,7 @@ from typing import (
 from abc import abstractmethod
 from contextlib import nullcontext, ExitStack
 import logging
+from warnings import warn
 from dgl.utils import data
 
 import pytorch_lightning as pl
@@ -973,6 +974,7 @@ class AbstractEnergyModel(AbstractTask):
 
     def __init__(self):
         super().__init__()
+        self.save_hyperparameters()
 
     def forward(self, graph: dgl.DGLGraph) -> Tensor:
         """
@@ -1001,8 +1003,10 @@ class BaseTaskModule(pl.LightningModule):
 
     def __init__(
         self,
-        encoder: nn.Module,
-        loss_func: Union[Type[nn.Module], nn.Module],
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
+        loss_func: Optional[Union[Type[nn.Module], nn.Module]] = None,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         lr: float = 1e-4,
@@ -1011,8 +1015,17 @@ class BaseTaskModule(pl.LightningModule):
         **kwargs,
     ) -> None:
         super().__init__()
-        self.encoder = encoder
-        self.task_keys = task_keys
+        if encoder is not None:
+            warn(f"Encoder object was passed directly into {self.__class__.__name__}; saved hyperparameters will be incomplete!")
+        if encoder_class is not None and encoder_kwargs:
+            try:
+                encoder = encoder_class(**encoder_kwargs)
+            except:
+                raise ValueError("Unable to instantiate encoder {encoder_class} with kwargs: {encoder_kwargs}.")
+        if encoder is not None:
+            self.encoder = encoder
+        else:
+            raise ValueError(f"No valid encoder passed.")
         if isinstance(loss_func, Type):
             loss_func = loss_func()
         self.loss_func = loss_func
@@ -1020,6 +1033,7 @@ class BaseTaskModule(pl.LightningModule):
         default_heads.update(output_kwargs)
         self.output_kwargs = default_heads
         self.normalize_kwargs = normalize_kwargs
+        self.task_keys = task_keys
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     @property
@@ -1043,7 +1057,21 @@ class BaseTaskModule(pl.LightningModule):
         if isinstance(values, set):
             values = list(values)
         self._task_keys = values
+        # if we're setting task keys we have enough to initialize
+        # the output heads
+        if not self.has_initialized:
+            self.output_heads = self._make_output_heads()
+        self.hparams["task_keys"] = self._task_keys
 
+    @property
+    def has_initialized(self) -> bool:
+        if len(self.task_keys) == 0:
+            return False
+        if not hasattr(self, "_output_heads"):
+            return False
+        output_heads = getattr(self, "output_heads")
+        return all([key in output_heads for key in self.task_keys])
+        
     @abstractmethod
     def _make_output_heads(self) -> nn.ModuleDict:
         ...
@@ -1276,13 +1304,15 @@ class ScalarRegressionTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: nn.Module,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         **kwargs: Any,
     ) -> None:
-        super().__init__(encoder, loss_func, task_keys, output_kwargs, **kwargs)
+        super().__init__(encoder, encoder_class, encoder_kwargs, loss_func, task_keys, output_kwargs, **kwargs)
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     def _make_output_heads(self) -> nn.ModuleDict:
@@ -1353,10 +1383,9 @@ class ScalarRegressionTask(BaseTaskModule):
         """
         status = super().on_train_batch_start(batch, batch_idx)
         # if there are no task keys set, task has not been initialized yet
-        if len(self.task_keys) == 0:
+        if not self.has_initialized:
             keys = batch["target_types"]["regression"]
             self.task_keys = self._filter_task_keys(keys, batch)
-            self.output_heads = self._make_output_heads()
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
@@ -1384,13 +1413,15 @@ class BinaryClassificationTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: nn.Module,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.BCEWithLogitsLoss,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         **kwargs,
     ) -> None:
-        super().__init__(encoder, loss_func, task_keys, output_kwargs, **kwargs)
+        super().__init__(encoder, encoder_class, encoder_kwargs, loss_func, task_keys, output_kwargs, **kwargs)
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     def _make_output_heads(self) -> nn.ModuleDict:
@@ -1424,10 +1455,9 @@ class BinaryClassificationTask(BaseTaskModule):
         """
         status = super().on_train_batch_start(batch, batch_idx, unused)
         # if there are no task keys set, task has not been initialized yet
-        if len(self.task_keys) == 0:
+        if not self.has_initialized:
             keys = batch["target_types"]["classification"]
             self.task_keys = keys
-            self.output_heads = self._make_output_heads()
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
@@ -1445,13 +1475,15 @@ class ForceRegressionTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: nn.Module,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.L1Loss,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         **kwargs,
     ) -> None:
-        super().__init__(encoder, loss_func, task_keys, output_kwargs, **kwargs)
+        super().__init__(encoder, encoder_class, encoder_kwargs, loss_func, task_keys, output_kwargs, **kwargs)
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
         # have to enable double backprop
         self.automatic_optimization = False
@@ -1554,10 +1586,13 @@ class ForceRegressionTask(BaseTaskModule):
         """
         status = super().on_train_batch_start(batch, batch_idx, unused)
         # if there are no task keys set, task has not been initialized yet
-        if len(self.task_keys) == 0:
+        if not self.has_initialized:
             # first round is used to initialize the output head
+            self.task_keys = ["energy"]
             self.output_heads = self._make_output_heads()
-            self.task_keys = ["energy", "force"]
+            # overwrite it so that the loss is computed but we don't make another head
+            # for force outputs
+            self._task_keys = ["energy", "force"]
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
@@ -1619,7 +1654,9 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: nn.Module,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.CrossEntropyLoss,
         output_kwargs: Dict[str, Any] = {},
         lr: float = 0.0001,
@@ -1629,6 +1666,8 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
     ) -> None:
         super().__init__(
             encoder,
+            encoder_class,
+            encoder_kwargs,
             loss_func,
             None,
             output_kwargs,
@@ -1668,11 +1707,10 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         """
         status = super().on_train_batch_start(batch, batch_idx, unused)
         # if there are no task keys set, task has not been initialized yet
-        if len(self.task_keys) == 0:
+        if not self.has_initialized:
             self.task_keys = [
                 "spacegroup",
             ]
-            self.output_heads = self._make_output_heads()
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})

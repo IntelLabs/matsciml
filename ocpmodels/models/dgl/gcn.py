@@ -165,7 +165,6 @@ class GraphConvModel(AbstractEnergyModel):
         self.readout = readout
         if not encoder_only:
             self.output = nn.Linear(out_dim, 1)
-        self.save_hyperparameters()
 
     def forward(
         self,
