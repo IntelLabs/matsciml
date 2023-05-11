@@ -2017,7 +2017,7 @@ class MultiTaskLitModule(pl.LightningModule):
         task_instance: BaseTaskModule = self.task_map[dataset][task_type]
         if batch is None and task_keys is None:
             raise ValueError(f"Unable to initialize output heads for {dataset}-{task_type}; neither batch nor task keys provided.")
-        if not hasattr(task_instance, "output_head"):
+        if not task_instance.has_initialized:
             # get the task keys from the batch, depends on usage
             if batch is not None:
                 if self.is_multidata:
