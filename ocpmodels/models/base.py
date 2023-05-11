@@ -1773,6 +1773,7 @@ class MultiTaskLitModule(pl.LightningModule):
         task_map = nn.ModuleDict()
         self.encoder = tasks[0][1].encoder
         dset_names = set()
+        subtask_hparams = {}
         for index, entry in enumerate(tasks):
             # unpack tuple
             (dset_name, task) = entry
@@ -1786,6 +1787,9 @@ class MultiTaskLitModule(pl.LightningModule):
             task_map[dset_name][task.__task__] = task
             # add dataset names to determine forward logic
             dset_names.add(dset_name)
+            # save hyperparameters from subtasks
+            subtask_hparams[(dset_name, task.__class__.__name__)] = task.hparams
+        self.save_hyperparameters({"subtask_hparams": subtask_hparams, "task_scaling": task_scaling, "encoder_opt_kwargs": encoder_opt_kwargs})
         self.task_map = task_map
         self.dataset_names = dset_names
         self.task_scaling = task_scaling
