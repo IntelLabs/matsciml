@@ -206,7 +206,7 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         self._parse_symmetry(data, return_dict)
         # assume every other key are targets
         not_targets = set(
-            ["structure", "symmetry", "fields_not_requested"]
+            ["structure", "symmetry", "fields_not_requested", "formula_pretty"]
             + data["fields_not_requested"]
         )
         # target_keys = getattr(self, "_target_keys", None)
