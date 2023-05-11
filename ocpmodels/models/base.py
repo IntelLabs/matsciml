@@ -2030,7 +2030,6 @@ class MultiTaskLitModule(pl.LightningModule):
                 task_keys = task_instance._filter_task_keys(task_keys, subset)
                 # set task keys, then call make output heads
             task_instance.task_keys = task_keys
-            task_instance.output_heads = task_instance._make_output_heads()
             if task_type == "regression":
                 task_instance.normalizers = task_instance._make_normalizers()
             if batch is not None:
