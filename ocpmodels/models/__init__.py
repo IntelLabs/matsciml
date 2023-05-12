@@ -7,3 +7,5 @@ from ocpmodels.models.base import IS2RELitModule, IS2REPointCloudModule
 
 from ocpmodels.models.dgl import *
 from ocpmodels.models.pyg import *
+
+from ocpmodels.models.utils.io import multitask_from_checkpoint
