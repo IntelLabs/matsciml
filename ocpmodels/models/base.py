@@ -1067,9 +1067,9 @@ class BaseTaskModule(pl.LightningModule):
     def has_initialized(self) -> bool:
         if len(self.task_keys) == 0:
             return False
-        if not hasattr(self, "_output_heads"):
+        output_heads = getattr(self, "output_heads", None)
+        if output_heads is None:
             return False
-        output_heads = getattr(self, "output_heads")
         return all([key in output_heads for key in self.task_keys])
 
     @abstractmethod
