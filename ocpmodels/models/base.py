@@ -1817,7 +1817,6 @@ class MultiTaskLitModule(pl.LightningModule):
         self.task_scaling = task_scaling
         self.encoder_opt_kwargs = encoder_opt_kwargs
         if task_keys is not None:
-            _ = self.configure_optimizers()
             for pair in self.dataset_task_pairs:
                 # unpack 2-tuple
                 dataset_name, task_type = pair
@@ -1825,6 +1824,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 self._initialize_subtask_output(
                     dataset_name, task_type, task_keys=relevant_keys
                 )
+        self.configure_optimizers()
         self.automatic_optimization = False
 
     @property
@@ -1838,24 +1838,27 @@ class MultiTaskLitModule(pl.LightningModule):
 
     def configure_optimizers(self) -> List[Optimizer]:
         optimizers = []
-        optimizer_names = []
+        # this keeps a list of 2-tuples to index optimizers
+        self.optimizer_names = []
         # iterate over tasks
         index = 0
         for data_key, tasks in self.task_map.items():
             for task_type, subtask in tasks.items():
-                optimizer = subtask.configure_optimizers()
-                optimizers.append(optimizer)
-                optimizer_names.append((data_key, task_type))
-                index += 1
+                combo = (data_key, task_type)
+                if combo not in self.optimizer_names:
+                    if subtask.has_initialized:
+                        optimizer = subtask.configure_optimizers()
+                        optimizers.append(optimizer)
+                        self.optimizer_names.append((data_key, task_type))
+                    index += 1
         assert (
             len(optimizers) > 1
         ), f"Only one optimizer was found for multi-task training."
-        opt_kwargs = {"lr": 1e-4}
-        opt_kwargs.update(self.encoder_opt_kwargs)
-        optimizers.append(AdamW(self.encoder.parameters(), **opt_kwargs))
-        optimizer_names.append(("Global", "Encoder"))
-        # this keeps a list of 2-tuples to index optimizers
-        self.optimizer_names = optimizer_names
+        if ("Global", "Encoder") not in self.optimizer_names:
+            opt_kwargs = {"lr": 1e-4}
+            opt_kwargs.update(self.encoder_opt_kwargs)
+            optimizers.append(AdamW(self.encoder.parameters(), **opt_kwargs))
+            self.optimizer_names.append(("Global", "Encoder"))
         return optimizers
 
     @property
