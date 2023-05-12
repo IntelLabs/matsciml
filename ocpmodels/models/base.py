@@ -2233,3 +2233,23 @@ class MultiTaskLitModule(pl.LightningModule):
             batch_size=batch_info["batch_size"],
         )
         return losses
+
+    @classmethod
+    def load_from_checkpoint(cls, checkpoint_path, map_location = None, hparams_file = None, strict: bool = True, **kwargs: Any):
+        # set up so we can dynamically load classes in from this module
+        from sys import modules
+        meta = modules[__name__]
+        # load in the checkpoint file
+        ckpt_data = torch.load(checkpoint_path)
+        hparams = ckpt_data["hyper_parameters"]
+        tasks = []
+        for key, subdict in hparams["subtask_hparams"].items():
+            # unpack dict, then grab task class
+            dset_name, task_name = key
+            task_class = getattr(meta, task_name)
+            import pdb; pdb.set_trace()
+            tasks.append((dset_name, task_class(**subdict)))
+        creation_kwargs = {"tasks": tasks}
+        for key in ["task_scaling", "task_keys", "encoder_opt_kwargs"]:
+            creation_kwargs[key] = hparams.get(key, None)
+        return super().load_from_checkpoint(checkpoint_path, map_location, hparams_file, strict, **creation_kwargs)
