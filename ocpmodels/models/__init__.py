@@ -8,3 +8,5 @@ from ocpmodels.models.diffusion_pipeline import GenerationTask
 
 from ocpmodels.models.dgl import *
 from ocpmodels.models.pyg import *
+
+from ocpmodels.models.utils.io import multitask_from_checkpoint
