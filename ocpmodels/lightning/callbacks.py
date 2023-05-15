@@ -2,7 +2,7 @@ import json
 import os
 import gc
 from datetime import datetime
-from logging import getLogger
+from logging import getLogger, DEBUG
 from pathlib import Path
 from time import time
 from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
@@ -144,6 +144,7 @@ class GradientCheckCallback(Callback):
         super().__init__()
         self.thres = thres
         self.logger = getLogger("pytorch_lightning")
+        self.logger.setLevel(DEBUG)
         self.num_steps = num_steps
 
     def on_before_optimizer_step(
