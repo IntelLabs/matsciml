@@ -1992,6 +1992,32 @@ class MultiTaskLitModule(pl.LightningModule):
         keys = {dset_name: sorted(keys) for dset_name, keys in keys.items()}
         return keys
 
+    @property
+    def has_rnn(self) -> bool:
+        """
+        Property to determine whether or not this LightningModule contains
+        RNNs. This is primarily to determine whether or not to enable/disable
+        contexts with cudnn, as double backprop is not supported.
+
+        Returns
+        -------
+        bool
+            True if any module is a subclass of `RNNBase`, otherwise False.
+        """
+        return any([isinstance(module, nn.RNNBase) for module in self.modules()])
+
+    @property
+    def needs_dynamic_grads(self) -> bool:
+        """
+        Boolean property reflecting whether this multitask in general needs 
+        gradient computation to override inference modes.
+
+        Returns
+        -------
+        bool
+            True if any datasets need input grads, otherwise False
+        """
+        return self.input_grad_keys is not None
     def forward(
         self,
         batch: Dict[
