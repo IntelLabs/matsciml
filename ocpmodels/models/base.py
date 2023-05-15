@@ -1563,7 +1563,7 @@ class ForceRegressionTask(BaseTaskModule):
                 embeddings = batch.get("embeddings")
             else:
                 embeddings = self.encoder(batch)
-            outputs = self.process_embedding(embeddings)
+            outputs = self.process_embedding(embeddings, pos)
         return outputs
 
     def process_embedding(self, embeddings: torch.Tensor, pos: torch.Tensor) -> Dict[str, torch.Tensor]:
