@@ -140,11 +140,12 @@ class GradientCheckCallback(Callback):
     gradient norm and ensure it's above a specified threshold.
     """
 
-    def __init__(self, thres: float = 1e-2, num_steps: int = -1) -> None:
+    def __init__(self, thres: float = 1e-2, num_steps: int = -1, verbose: bool = False) -> None:
         super().__init__()
         self.thres = thres
         self.logger = getLogger("pytorch_lightning")
-        self.logger.setLevel(DEBUG)
+        if verbose:
+            self.logger.setLevel(DEBUG)
         self.num_steps = num_steps
 
     def on_before_optimizer_step(
