@@ -996,6 +996,7 @@ class AbstractEnergyModel(AbstractTask):
 
 class BaseTaskModule(pl.LightningModule):
     __task__ = None
+    __needs_grads__ = []
 
     def __init__(
         self,
