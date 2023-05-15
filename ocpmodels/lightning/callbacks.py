@@ -90,8 +90,18 @@ class LeaderboardWriter(BasePredictionWriter):
             print(f"\nSaved NPZ log file to: {target}\n")
 
 
+def deep_tensor_trawling(input_data: Dict[str, Any]):
+    results = {}
+    for key, value in input_data.items():
+        if isinstance(value, dict):
+            results[key] = deep_tensor_trawling(value)
+        elif isinstance(value, torch.Tensor):
+            results[key] = value.detach()
+    return results
+
+
 def forward_nan_hook(
-    module: nn.Module, input: torch.Tensor, output: torch.Tensor
+        module: nn.Module, inputs: Any, output: torch.Tensor
 ) -> None:
     """
     Create a hook that will save the input/output tensors to a module if there are NaNs
@@ -112,7 +122,7 @@ def forward_nan_hook(
         setattr(
             module,
             "nan_detection",
-            {"input": input.detach(), "output": output.detach()},
+            {"input": deep_tensor_trawling(inputs), "output": output.detach()}
         )
 
 
