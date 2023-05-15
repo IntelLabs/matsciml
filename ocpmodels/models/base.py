@@ -2018,6 +2018,53 @@ class MultiTaskLitModule(pl.LightningModule):
             True if any datasets need input grads, otherwise False
         """
         return self.input_grad_keys is not None
+
+    def _toggle_input_grads(self, batch: Dict[
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            ]) -> None:
+        """
+        Inplace method that will automatically enable gradient tracking for tensors
+        needed by tasks/datasets.
+
+        This function will loop over a batch of data (in the multidata case) and
+        grabs the list of tensor keys as required by a given subtask. The list 
+        of tensor keys are then used to grab the input data from the batch and/or
+        graph, and if it's found will then try and set requires_grad_(True).
+
+        Parameters
+        ----------
+        batch : Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]
+            Batch of data
+        """
+        need_grad_keys = self.input_grad_keys
+        if need_grad_keys is not None:
+            if self.is_multidata:
+                # if this is a multidataset task, loop over each dataset
+                # and enable gradients for the inputs that need them
+                for dset_name, data in batch.items():
+                    input_keys = need_grad_keys.get(dset_name)
+                    for key in input_keys:
+                        # set require grad for both point cloud and graph tensors
+                        try:
+                            if "graph" in data:
+                                data["graph"].ndata[key].requires_grad(True)
+                            if key in data:
+                                data[key].requires_grad_(True)
+                        except KeyError:
+                            pass
+            else:
+                # in the single dataset case, we just need to loop over a single
+                # set of tasks
+                input_keys = list(self.input_grad_keys.values()).pop(0)
+                for key in input_keys:
+                    try:
+                        if "graph" in batch:
+                            batch["graph"].ndata[key].requires_grad(True)
+                        if key in batch:
+                            batch[key].requires_grad_(True)
+                    except KeyError:
+                        pass
+
     def forward(
         self,
         batch: Dict[
