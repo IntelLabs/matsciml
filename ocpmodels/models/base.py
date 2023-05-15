@@ -1070,7 +1070,11 @@ class BaseTaskModule(pl.LightningModule):
         output_heads = getattr(self, "output_heads", None)
         if output_heads is None:
             return False
-        return all([key in output_heads for key in self.task_keys])
+        # basically if we've passed these two assertions, we should have
+        # all the heads. We can't check against self.task_keys, because
+        # some tasks like ForceRegressionTask doesn't actually use an output
+        # head for the forces
+        return True
 
     @abstractmethod
     def _make_output_heads(self) -> nn.ModuleDict:
