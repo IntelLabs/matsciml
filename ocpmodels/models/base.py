@@ -1852,7 +1852,7 @@ class MultiTaskLitModule(pl.LightningModule):
                         self.optimizer_names.append((data_key, task_type))
                     index += 1
         assert (
-            len(optimizers) > 1
+            len(self.optimizer_names) > 1
         ), f"Only one optimizer was found for multi-task training."
         if ("Global", "Encoder") not in self.optimizer_names:
             opt_kwargs = {"lr": 1e-4}
