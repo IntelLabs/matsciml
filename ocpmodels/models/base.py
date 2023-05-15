@@ -2104,7 +2104,8 @@ class MultiTaskLitModule(pl.LightningModule):
         """
         # iterate over datasets in the batch
         results = {}
-        with dynamic_gradients_context(self.needs_dynamic_grads, self.has_rnn):
+        _grads = getattr(self, "needs_dynamic_grads", False)    # default to not needing grads
+        with dynamic_gradients_context(_grads, self.has_rnn):
             # this function switches of `requires_grad_` for input tensors that need them
             self._toggle_input_grads(batch)
             # compute embeddings for each dataset
