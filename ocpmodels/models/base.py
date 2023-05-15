@@ -1969,7 +1969,7 @@ class MultiTaskLitModule(pl.LightningModule):
         self._has_initialized = value
 
     @property
-    def input_grad_keys(self) -> Union[List[str], None]:
+    def input_grad_keys(self) -> Union[Dict[str,List[str]], None]:
         """
         Property to returns a list of keys for inputs that need gradient tracking.
 
@@ -1980,13 +1980,17 @@ class MultiTaskLitModule(pl.LightningModule):
             gradients tracked, this property will return a list of them. Otherwise,
             this returns None.
         """
-        keys = set()
-        for task_group in self.task_map.values():
+        keys = {}
+        for dset_name, task_group in self.task_map.values():
+            if dset_name not in keys:
+                keys[dset_name] = set()
+            dset_keyset = keys.get(dset_name)
             for subtask in task_group.values():
-                keys.update(subtask.__needs_grads__)
-        if len(keys) == 0:
+                dset_keyset.update(subtask.__needs_grads__)
+        if all([len(keyset) == 0 for keyset in keys.values()]):
             return None
-        return list(keys)
+        keys = {dset_name: sorted(keys) for dset_name, keys in keys.items()}
+        return keys
 
     def forward(
         self,
