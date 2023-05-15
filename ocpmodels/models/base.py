@@ -2329,7 +2329,6 @@ class MultiTaskLitModule(pl.LightningModule):
                     opt_index = self.optimizer_names.index(ref)
                     # backprop gradients
                     opt = optimizers[opt_index]
-                    opt = optimizers[opt_index]
                     is_last_opt = opt_index == len(self.optimizer_names) - 2
                     # run hooks between backward
                     self.on_before_backward(subtask_loss["loss"])
