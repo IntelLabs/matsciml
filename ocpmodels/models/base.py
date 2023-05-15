@@ -1885,10 +1885,10 @@ class MultiTaskLitModule(pl.LightningModule):
             for task_type, subtask in tasks.items():
                 combo = (data_key, task_type)
                 if combo not in self.optimizer_names:
-                    if subtask.has_initialized:
-                        optimizer = subtask.configure_optimizers()
-                        optimizers.append(optimizer)
-                        self.optimizer_names.append((data_key, task_type))
+                    # if subtask.has_initialized:
+                    optimizer = subtask.configure_optimizers()
+                    optimizers.append(optimizer)
+                    self.optimizer_names.append((data_key, task_type))
                     index += 1
         assert (
             len(self.optimizer_names) > 1
