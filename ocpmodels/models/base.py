@@ -1867,6 +1867,15 @@ class MultiTaskLitModule(pl.LightningModule):
         self.automatic_optimization = False
 
     @property
+    def task_list(self) -> List[BaseTaskModule]:
+        # return a flat list of tasks to iterate over
+        modules = []
+        for task_group in self.task_map.values():
+            for subtask in task_group.values():
+                modules.append(subtask)
+        return modules
+
+    @property
     def dataset_task_pairs(self) -> List[Tuple[str, str]]:
         pairs = []
         for dataset in self.dataset_names:
