@@ -1977,14 +1977,7 @@ class MultiTaskLitModule(pl.LightningModule):
         bool
             True if first batch has been run already, otherwise False
         """
-        state = getattr(self, "_has_initialized", None)
-        if not state:
-            return False
-        return state
-
-    @has_initialized.setter
-    def has_initialized(self, value: bool) -> None:
-        self._has_initialized = value
+        return all([task.has_initialized for task in self.task_list])
 
     @property
     def input_grad_keys(self) -> Dict[str,List[str]]:
