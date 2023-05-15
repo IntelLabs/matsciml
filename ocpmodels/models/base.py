@@ -1804,7 +1804,7 @@ class MultiTaskLitModule(pl.LightningModule):
             # add dataset names to determine forward logic
             dset_names.add(dset_name)
             # save hyperparameters from subtasks
-            subtask_hparams[(dset_name, task.__class__.__name__)] = task.hparams
+            subtask_hparams[f"{dset_name}_{task.__class__.__name__}"] = task.hparams
         self.save_hyperparameters(
             {
                 "subtask_hparams": subtask_hparams,
