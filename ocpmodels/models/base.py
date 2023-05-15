@@ -1990,12 +1990,18 @@ class MultiTaskLitModule(pl.LightningModule):
             this returns None.
         """
         keys = {}
-        for dset_name, task_group in self.task_map.values():
-            if dset_name not in keys:
-                keys[dset_name] = set()
-            dset_keyset = keys.get(dset_name)
-            for subtask in task_group.values():
-                dset_keyset.update(subtask.__needs_grads__)
+        if self.is_multidata:
+            for dset_name, task_group in self.task_map.values():
+                if dset_name not in keys:
+                    keys[dset_name] = set()
+                dset_keyset = keys.get(dset_name)
+                for subtask in task_group.values():
+                    dset_keyset.update(subtask.__needs_grads__)
+        else:
+            tasks = list(self.task_map.values()).pop(0)
+            keys[self.dataset_names[0]] = set()
+            for task in tasks:
+                keys[self.dataset_names[0]].update(task.__needs_grads__)
         if all([len(keyset) == 0 for keyset in keys.values()]):
             return None
         keys = {dset_name: sorted(keys) for dset_name, keys in keys.items()}
