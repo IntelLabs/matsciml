@@ -1991,7 +1991,7 @@ class MultiTaskLitModule(pl.LightningModule):
         """
         keys = {}
         if self.is_multidata:
-            for dset_name, task_group in self.task_map.values():
+            for dset_name, task_group in self.task_map.items():
                 if dset_name not in keys:
                     keys[dset_name] = set()
                 dset_keyset = keys.get(dset_name)
