@@ -38,8 +38,10 @@ def multitask_from_checkpoint(ckpt_path: Union[str, Path]) -> MultiTaskLitModule
         task_class = getattr(base, task_name)
         tasks.append((dset_name, task_class(**subdict)))
     creation_kwargs = {}
-    for key in ["task_scaling", "task_keys", "encoder_opt_kwargs"]:
+    for key in ["task_scaling", "task_keys"]:
         creation_kwargs[key] = hparams.get(key, None)
+    # try and see if there are additional encoder kwargs to be passed
+    creation_kwargs.update(hparams.get("encoder_opt_kwargs", {}))
     # create the multitask module from tasks
     task_module = MultiTaskLitModule(*tasks, **creation_kwargs)
     # load weights into model
