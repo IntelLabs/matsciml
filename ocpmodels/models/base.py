@@ -1132,6 +1132,25 @@ class BaseTaskModule(pl.LightningModule):
             outputs[key] = head(embedding)
         return outputs
 
+    def process_embedding(self, embeddings: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """
+        Given a set of embeddings, output predictions for each head.
+
+        Parameters
+        ----------
+        embeddings : torch.Tensor
+            Batch of graph/point cloud embeddings
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Predictions per output head
+        """
+        results = {}
+        for key, head in self.output_heads.items():
+            results[key] = head(embeddings)
+        return results
+
     def _get_targets(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
