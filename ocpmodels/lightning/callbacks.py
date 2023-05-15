@@ -289,7 +289,7 @@ class ForwardNaNDetection(Callback):
         for child in pl_module.children():
             child.register_forward_hook(forward_nan_hook)
 
-    def on_batch_end(
+    def on_train_batch_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
         self.step_num = trainer.global_step
