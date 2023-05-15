@@ -34,7 +34,7 @@ def multitask_from_checkpoint(ckpt_path: Union[str, Path]) -> MultiTaskLitModule
     tasks = []
     for key, subdict in hparams["subtask_hparams"].items():
         # unpack dict, then grab task class
-        dset_name, task_name = key
+        dset_name, task_name = key.split("_")
         task_class = getattr(base, task_name)
         tasks.append((dset_name, task_class(**subdict)))
     creation_kwargs = {}
