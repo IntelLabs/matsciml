@@ -40,8 +40,8 @@ def test_multitask_init(is2re_s2ef):
     dm = is2re_s2ef
 
     encoder = GraphConvModel(100, 1, encoder_only=True)
-    is2re = ScalarRegressionTask(encoder)
-    s2ef = ForceRegressionTask(encoder)
+    is2re = ScalarRegressionTask(encoder, task_keys=["energy_init", "energy_relaxed"])
+    s2ef = ForceRegressionTask(encoder, task_keys=["energy"])
 
     # pass task keys to make sure output heads are created
     task = MultiTaskLitModule(
