@@ -2049,7 +2049,7 @@ class MultiTaskLitModule(pl.LightningModule):
         batch : Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]
             Batch of data
         """
-        need_grad_keys = self.input_grad_keys
+        need_grad_keys = getattr(self, "input_grad_keys", None)
         if need_grad_keys is not None:
             if self.is_multidata:
                 # if this is a multidataset task, loop over each dataset
