@@ -162,13 +162,8 @@ class GradientCheckCallback(Callback):
                 if param.requires_grad and param.grad is not None:
                     # check if there are NaNs as well
                     if torch.any(torch.isnan(param.grad)):
-                        grad_fn = getattr(param, "grad_fn")
-                        if grad_fn is not None:
-                            fn_name = grad_fn.name
-                        else:
-                            fn_name = ""
                         self.logger.debug(
-                            f"Step number {step_number} has NaN gradients for parameter {name}/{fn_name}. Zeroing!"
+                            f"Step number {step_number} has NaN gradients for parameter {name}/{param.grad_fn.name()}. Zeroing!"
                         )
                         # zero out gradients
                         param.grad.zero_()
