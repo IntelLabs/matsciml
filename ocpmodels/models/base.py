@@ -1566,7 +1566,9 @@ class ForceRegressionTask(BaseTaskModule):
             outputs = self.process_embedding(embeddings, pos)
         return outputs
 
-    def process_embedding(self, embeddings: torch.Tensor, pos: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def process_embedding(
+        self, embeddings: torch.Tensor, pos: torch.Tensor
+    ) -> Dict[str, torch.Tensor]:
         outputs = {}
         energy = self.output_heads["energy"](embeddings)
         # now use autograd for force calculation
@@ -1724,7 +1726,9 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
             encoder_class,
             encoder_kwargs,
             loss_func,
-            ["spacegroup",],
+            [
+                "spacegroup",
+            ],
             output_kwargs,
             lr,
             weight_decay,
@@ -1980,7 +1984,7 @@ class MultiTaskLitModule(pl.LightningModule):
         return all([task.has_initialized for task in self.task_list])
 
     @property
-    def input_grad_keys(self) -> Dict[str,List[str]]:
+    def input_grad_keys(self) -> Dict[str, List[str]]:
         """
         Property to returns a list of keys for inputs that need gradient tracking.
 
@@ -2024,7 +2028,7 @@ class MultiTaskLitModule(pl.LightningModule):
     @property
     def needs_dynamic_grads(self) -> bool:
         """
-        Boolean property reflecting whether this multitask in general needs 
+        Boolean property reflecting whether this multitask in general needs
         gradient computation to override inference modes.
 
         Returns
@@ -2034,15 +2038,18 @@ class MultiTaskLitModule(pl.LightningModule):
         """
         return sum([len(keys) for keys in self.input_grad_keys.values()]) > 0
 
-    def _toggle_input_grads(self, batch: Dict[
+    def _toggle_input_grads(
+        self,
+        batch: Dict[
             str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-            ]) -> None:
+        ],
+    ) -> None:
         """
         Inplace method that will automatically enable gradient tracking for tensors
         needed by tasks/datasets.
 
         This function will loop over a batch of data (in the multidata case) and
-        grabs the list of tensor keys as required by a given subtask. The list 
+        grabs the list of tensor keys as required by a given subtask. The list
         of tensor keys are then used to grab the input data from the batch and/or
         graph, and if it's found will then try and set requires_grad_(True).
 
@@ -2106,7 +2113,9 @@ class MultiTaskLitModule(pl.LightningModule):
         """
         # iterate over datasets in the batch
         results = {}
-        _grads = getattr(self, "needs_dynamic_grads", False)    # default to not needing grads
+        _grads = getattr(
+            self, "needs_dynamic_grads", False
+        )  # default to not needing grads
         with dynamic_gradients_context(_grads, self.has_rnn):
             # this function switches of `requires_grad_` for input tensors that need them
             self._toggle_input_grads(batch)
@@ -2387,5 +2396,14 @@ class MultiTaskLitModule(pl.LightningModule):
         return losses
 
     @classmethod
-    def load_from_checkpoint(cls, checkpoint_path, map_location = None, hparams_file = None, strict: bool = True, **kwargs: Any):
-        raise NotImplementedError(f"MultiTask should be reloaded using the `ocpmodels.models.multitask_from_checkpoint` function instead.")
+    def load_from_checkpoint(
+        cls,
+        checkpoint_path,
+        map_location=None,
+        hparams_file=None,
+        strict: bool = True,
+        **kwargs: Any,
+    ):
+        raise NotImplementedError(
+            f"MultiTask should be reloaded using the `ocpmodels.models.multitask_from_checkpoint` function instead."
+        )
