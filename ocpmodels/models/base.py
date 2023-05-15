@@ -1126,10 +1126,7 @@ class BaseTaskModule(pl.LightningModule):
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
     ) -> Dict[str, torch.Tensor]:
         embedding = self.encoder(batch)
-        outputs = {}
-        # process each head sequentially
-        for key, head in self.output_heads.items():
-            outputs[key] = head(embedding)
+        outputs = self.process_embedding(embedding)
         return outputs
 
     def process_embedding(self, embeddings: torch.Tensor) -> Dict[str, torch.Tensor]:
