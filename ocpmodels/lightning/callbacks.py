@@ -5,7 +5,7 @@ from datetime import datetime
 from logging import getLogger
 from pathlib import Path
 from time import time
-from typing import Any, Callable, Dict, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pytorch_lightning as pl
@@ -90,7 +90,9 @@ class LeaderboardWriter(BasePredictionWriter):
             print(f"\nSaved NPZ log file to: {target}\n")
 
 
-def deep_tensor_trawling(input_data: Dict[str, Any]):
+def deep_tensor_trawling(input_data: Tuple[Dict[str, Any]]):
+    if len(input_data) == 1:
+        input_data = input_data[0]
     results = {}
     for key, value in input_data.items():
         if isinstance(value, dict):
