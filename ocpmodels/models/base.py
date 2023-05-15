@@ -1559,19 +1559,28 @@ class ForceRegressionTask(BaseTaskModule):
                     f"No atomic positions were found in batch - neither as standalone tensor nor graph."
                 )
             pos.requires_grad_(True)
-            outputs = super().forward(batch)
-            energy = outputs.get("energy")
-            # now use autograd for force calculation
-            force = (
-                -1
-                * torch.autograd.grad(
-                    energy,
-                    pos,
-                    grad_outputs=torch.ones_like(energy),
-                    create_graph=True,
-                )[0]
-            )
-            outputs["force"] = force
+            if "embeddings" in batch:
+                embeddings = batch.get("embeddings")
+            else:
+                embeddings = self.encoder(batch)
+            outputs = self.process_embedding(embeddings)
+        return outputs
+
+    def process_embedding(self, embeddings: torch.Tensor, pos: torch.Tensor) -> Dict[str, torch.Tensor]:
+        outputs = {}
+        energy = self.output_heads["energy"](embeddings)
+        # now use autograd for force calculation
+        force = (
+            -1
+            * torch.autograd.grad(
+                energy,
+                pos,
+                grad_outputs=torch.ones_like(energy),
+                create_graph=True,
+            )[0]
+        )
+        outputs["force"] = force
+        outputs["energy"] = energy
         return outputs
 
     def _get_targets(
