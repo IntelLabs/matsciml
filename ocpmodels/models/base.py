@@ -1125,7 +1125,10 @@ class BaseTaskModule(pl.LightningModule):
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
     ) -> Dict[str, torch.Tensor]:
-        embedding = self.encoder(batch)
+        if "embeddings" in batch:
+            embedding = batch.get("embeddings")
+        else:
+            embedding = self.encoder(batch)
         outputs = self.process_embedding(embedding)
         return outputs
 
