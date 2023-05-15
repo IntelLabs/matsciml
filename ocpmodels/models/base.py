@@ -2091,24 +2091,31 @@ class MultiTaskLitModule(pl.LightningModule):
         """
         # iterate over datasets in the batch
         results = {}
-        # for single dataset usage, we assume the nested structure isn't used
-        if self.is_multidata:
-            for key, data in batch.items():
-                subtasks = self.task_map[key]
-                if key not in results:
-                    results[key] = {}
-                # finally call the task with the data
-                # TODO: refactor this to share an embedding, so the encoder
-                # is only called once
-                for task_type, subtask in subtasks.items():
-                    results[key][task_type] = subtask(data)
-        else:
-            # in the single dataset case, we can skip the outer loop
-            # and just pass the batch into the subtask
-            tasks = list(self.task_map.values()).pop(0)
-            for task_type, subtask in tasks.items():
-                results[task_type] = subtask(batch)
-        return results
+        with dynamic_gradients_context(self.needs_dynamic_grads, self.has_rnn):
+            # this function switches of `requires_grad_` for input tensors that need them
+            self._toggle_input_grads(batch)
+            # compute embeddings for each dataset
+            if self.is_multidata:
+                for key, data in batch.items():
+                    data["embeddings"] = self.encoder(data)
+            else:
+                batch["embeddings"] = self.encoder(batch)
+            # for single dataset usage, we assume the nested structure isn't used
+            if self.is_multidata:
+                for key, data in batch.items():
+                    subtasks = self.task_map[key]
+                    if key not in results:
+                        results[key] = {}
+                    # finally call the task with the data
+                    for task_type, subtask in subtasks.items():
+                        results[key][task_type] = subtask(data)
+            else:
+                # in the single dataset case, we can skip the outer loop
+                # and just pass the batch into the subtask
+                tasks = list(self.task_map.values()).pop(0)
+                for task_type, subtask in tasks.items():
+                    results[task_type] = subtask(batch)
+            return results
 
     def on_train_batch_start(
         self, batch: Any, batch_idx: int, unused: int = 0
