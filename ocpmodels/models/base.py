@@ -1512,6 +1512,7 @@ class BinaryClassificationTask(BaseTaskModule):
 
 class ForceRegressionTask(BaseTaskModule):
     __task__ = "regression"
+    __needs_grads__ = ["pos"]
 
     def __init__(
         self,
