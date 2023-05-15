@@ -1968,6 +1968,26 @@ class MultiTaskLitModule(pl.LightningModule):
     def has_initialized(self, value: bool) -> None:
         self._has_initialized = value
 
+    @property
+    def input_grad_keys(self) -> Union[List[str], None]:
+        """
+        Property to returns a list of keys for inputs that need gradient tracking.
+
+        Returns
+        -------
+        Union[List[str], None]
+            If there are tasks in this multitask that need input variables to have
+            gradients tracked, this property will return a list of them. Otherwise,
+            this returns None.
+        """
+        keys = set()
+        for task_group in self.task_map.values():
+            for subtask in task_group.values():
+                keys.update(subtask.__needs_grads__)
+        if len(keys) == 0:
+            return None
+        return list(keys)
+
     def forward(
         self,
         batch: Dict[
