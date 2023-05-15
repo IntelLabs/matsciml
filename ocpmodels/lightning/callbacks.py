@@ -99,6 +99,8 @@ def deep_tensor_trawling(input_data: Tuple[Dict[str, Any]]):
             results[key] = deep_tensor_trawling(value)
         elif isinstance(value, torch.Tensor):
             results[key] = value.detach()
+        elif key == "graph":
+            results[key] = value
     return results
 
 
