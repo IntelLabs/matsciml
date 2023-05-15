@@ -184,7 +184,6 @@ class BaseModel(nn.Module):
 
 
 class AbstractTask(pl.LightningModule):
-
     __task__ = None
 
     def __init__(self) -> None:
@@ -196,7 +195,6 @@ class AbstractTask(pl.LightningModule):
 
 
 class OCPLitModule(pl.LightningModule):
-
     __normalize_keys__ = ["target", "grad_target"]
 
     def __init__(
@@ -963,7 +961,6 @@ class S2EFPointCloudModule(S2EFLitModule):
 
 
 class AbstractEnergyModel(AbstractTask):
-
     __task__ = "S2EF"
 
     """
@@ -998,7 +995,6 @@ class AbstractEnergyModel(AbstractTask):
 
 
 class BaseTaskModule(pl.LightningModule):
-
     __task__ = None
 
     def __init__(
@@ -1016,12 +1012,16 @@ class BaseTaskModule(pl.LightningModule):
     ) -> None:
         super().__init__()
         if encoder is not None:
-            warn(f"Encoder object was passed directly into {self.__class__.__name__}; saved hyperparameters will be incomplete!")
+            warn(
+                f"Encoder object was passed directly into {self.__class__.__name__}; saved hyperparameters will be incomplete!"
+            )
         if encoder_class is not None and encoder_kwargs:
             try:
                 encoder = encoder_class(**encoder_kwargs)
             except:
-                raise ValueError("Unable to instantiate encoder {encoder_class} with kwargs: {encoder_kwargs}.")
+                raise ValueError(
+                    f"Unable to instantiate encoder {encoder_class} with kwargs: {encoder_kwargs}."
+                )
         if encoder is not None:
             self.encoder = encoder
         else:
@@ -1067,11 +1067,15 @@ class BaseTaskModule(pl.LightningModule):
     def has_initialized(self) -> bool:
         if len(self.task_keys) == 0:
             return False
-        if not hasattr(self, "_output_heads"):
+        output_heads = getattr(self, "output_heads", None)
+        if output_heads is None:
             return False
-        output_heads = getattr(self, "output_heads")
-        return all([key in output_heads for key in self.task_keys])
-        
+        # basically if we've passed these two assertions, we should have
+        # all the heads. We can't check against self.task_keys, because
+        # some tasks like ForceRegressionTask doesn't actually use an output
+        # head for the forces
+        return True
+
     @abstractmethod
     def _make_output_heads(self) -> nn.ModuleDict:
         ...
@@ -1231,9 +1235,7 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = batch["graph"].batch_size
         else:
             batch_size = None
-        self.log_dict(
-            metrics, on_step=True, prog_bar=True, batch_size=batch_size
-        )
+        self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
         return loss_dict
 
     def validation_step(
@@ -1295,7 +1297,6 @@ class BaseTaskModule(pl.LightningModule):
 
 
 class ScalarRegressionTask(BaseTaskModule):
-
     __task__ = "regression"
 
     """
@@ -1312,7 +1313,15 @@ class ScalarRegressionTask(BaseTaskModule):
         output_kwargs: Dict[str, Any] = {},
         **kwargs: Any,
     ) -> None:
-        super().__init__(encoder, encoder_class, encoder_kwargs, loss_func, task_keys, output_kwargs, **kwargs)
+        super().__init__(
+            encoder,
+            encoder_class,
+            encoder_kwargs,
+            loss_func,
+            task_keys,
+            output_kwargs,
+            **kwargs,
+        )
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     def _make_output_heads(self) -> nn.ModuleDict:
@@ -1400,7 +1409,6 @@ class ScalarRegressionTask(BaseTaskModule):
 
 
 class BinaryClassificationTask(BaseTaskModule):
-
     __task__ = "classification"
 
     """
@@ -1421,7 +1429,15 @@ class BinaryClassificationTask(BaseTaskModule):
         output_kwargs: Dict[str, Any] = {},
         **kwargs,
     ) -> None:
-        super().__init__(encoder, encoder_class, encoder_kwargs, loss_func, task_keys, output_kwargs, **kwargs)
+        super().__init__(
+            encoder,
+            encoder_class,
+            encoder_kwargs,
+            loss_func,
+            task_keys,
+            output_kwargs,
+            **kwargs,
+        )
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     def _make_output_heads(self) -> nn.ModuleDict:
@@ -1470,7 +1486,6 @@ class BinaryClassificationTask(BaseTaskModule):
 
 
 class ForceRegressionTask(BaseTaskModule):
-
     __task__ = "regression"
 
     def __init__(
@@ -1483,7 +1498,15 @@ class ForceRegressionTask(BaseTaskModule):
         output_kwargs: Dict[str, Any] = {},
         **kwargs,
     ) -> None:
-        super().__init__(encoder, encoder_class, encoder_kwargs, loss_func, task_keys, output_kwargs, **kwargs)
+        super().__init__(
+            encoder,
+            encoder_class,
+            encoder_kwargs,
+            loss_func,
+            task_keys,
+            output_kwargs,
+            **kwargs,
+        )
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
         # have to enable double backprop
         self.automatic_optimization = False
@@ -1642,14 +1665,11 @@ class ForceRegressionTask(BaseTaskModule):
             batch_size = batch["graph"].batch_size
         else:
             batch_size = None
-        self.log_dict(
-            metrics, on_step=True, prog_bar=True, batch_size=batch_size
-        )
+        self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
         return loss_dict
 
 
 class CrystalSymmetryClassificationTask(BaseTaskModule):
-
     __task__ = "classification"
 
     def __init__(
@@ -1773,6 +1793,7 @@ class MultiTaskLitModule(pl.LightningModule):
         task_map = nn.ModuleDict()
         self.encoder = tasks[0][1].encoder
         dset_names = set()
+        subtask_hparams = {}
         for index, entry in enumerate(tasks):
             # unpack tuple
             (dset_name, task) = entry
@@ -1786,17 +1807,28 @@ class MultiTaskLitModule(pl.LightningModule):
             task_map[dset_name][task.__task__] = task
             # add dataset names to determine forward logic
             dset_names.add(dset_name)
+            # save hyperparameters from subtasks
+            subtask_hparams[f"{dset_name}_{task.__class__.__name__}"] = task.hparams
+        self.save_hyperparameters(
+            {
+                "subtask_hparams": subtask_hparams,
+                "task_scaling": task_scaling,
+                "encoder_opt_kwargs": encoder_opt_kwargs,
+            }
+        )
         self.task_map = task_map
         self.dataset_names = dset_names
         self.task_scaling = task_scaling
         self.encoder_opt_kwargs = encoder_opt_kwargs
         if task_keys is not None:
-            _ = self.configure_optimizers()
             for pair in self.dataset_task_pairs:
                 # unpack 2-tuple
                 dataset_name, task_type = pair
                 relevant_keys = task_keys[dataset_name][task_type]
-                self._initialize_subtask_output(dataset_name, task_type, task_keys=relevant_keys)
+                self._initialize_subtask_output(
+                    dataset_name, task_type, task_keys=relevant_keys
+                )
+        self.configure_optimizers()
         self.automatic_optimization = False
 
     @property
@@ -1810,24 +1842,27 @@ class MultiTaskLitModule(pl.LightningModule):
 
     def configure_optimizers(self) -> List[Optimizer]:
         optimizers = []
-        optimizer_names = []
+        # this keeps a list of 2-tuples to index optimizers
+        self.optimizer_names = []
         # iterate over tasks
         index = 0
         for data_key, tasks in self.task_map.items():
             for task_type, subtask in tasks.items():
-                optimizer = subtask.configure_optimizers()
-                optimizers.append(optimizer)
-                optimizer_names.append((data_key, task_type))
-                index += 1
+                combo = (data_key, task_type)
+                if combo not in self.optimizer_names:
+                    if subtask.has_initialized:
+                        optimizer = subtask.configure_optimizers()
+                        optimizers.append(optimizer)
+                        self.optimizer_names.append((data_key, task_type))
+                    index += 1
         assert (
-            len(optimizers) > 1
+            len(self.optimizer_names) > 1
         ), f"Only one optimizer was found for multi-task training."
-        opt_kwargs = {"lr": 1e-4}
-        opt_kwargs.update(self.encoder_opt_kwargs)
-        optimizers.append(AdamW(self.encoder.parameters(), **opt_kwargs))
-        optimizer_names.append(("Global", "Encoder"))
-        # this keeps a list of 2-tuples to index optimizers
-        self.optimizer_names = optimizer_names
+        if ("Global", "Encoder") not in self.optimizer_names:
+            opt_kwargs = {"lr": 1e-4}
+            opt_kwargs.update(self.encoder_opt_kwargs)
+            optimizers.append(AdamW(self.encoder.parameters(), **opt_kwargs))
+            self.optimizer_names.append(("Global", "Encoder"))
         return optimizers
 
     @property
@@ -1994,10 +2029,13 @@ class MultiTaskLitModule(pl.LightningModule):
         self,
         dataset: str,
         task_type: str,
-        batch: Optional[Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ]] = None,
-        task_keys: Optional[List[str]] = None
+        batch: Optional[
+            Dict[
+                str,
+                Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+            ]
+        ] = None,
+        task_keys: Optional[List[str]] = None,
     ):
         """
         For a given dataset and task type, this function will check and initialize corresponding
@@ -2016,8 +2054,10 @@ class MultiTaskLitModule(pl.LightningModule):
         """
         task_instance: BaseTaskModule = self.task_map[dataset][task_type]
         if batch is None and task_keys is None:
-            raise ValueError(f"Unable to initialize output heads for {dataset}-{task_type}; neither batch nor task keys provided.")
-        if not hasattr(task_instance, "output_head"):
+            raise ValueError(
+                f"Unable to initialize output heads for {dataset}-{task_type}; neither batch nor task keys provided."
+            )
+        if not task_instance.has_initialized:
             # get the task keys from the batch, depends on usage
             if batch is not None:
                 if self.is_multidata:
@@ -2030,7 +2070,6 @@ class MultiTaskLitModule(pl.LightningModule):
                 task_keys = task_instance._filter_task_keys(task_keys, subset)
                 # set task keys, then call make output heads
             task_instance.task_keys = task_keys
-            task_instance.output_heads = task_instance._make_output_heads()
             if task_type == "regression":
                 task_instance.normalizers = task_instance._make_normalizers()
             if batch is not None:
@@ -2201,3 +2240,7 @@ class MultiTaskLitModule(pl.LightningModule):
             batch_size=batch_info["batch_size"],
         )
         return losses
+
+    @classmethod
+    def load_from_checkpoint(cls, checkpoint_path, map_location = None, hparams_file = None, strict: bool = True, **kwargs: Any):
+        raise NotImplementedError(f"MultiTask should be reloaded using the `ocpmodels.models.multitask_from_checkpoint` function instead.")

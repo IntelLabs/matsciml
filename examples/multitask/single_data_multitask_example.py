@@ -53,7 +53,6 @@ model_args = {
     "encoder_only": True,
 }
 
-model = PLEGNNBackbone(**model_args)
 # shared output head arguments
 output_kwargs = {
     "dropout": 0.2,
@@ -75,13 +74,20 @@ mp_norms = {
     "energy_per_atom_std": 1.8614,
 }
 r = ScalarRegressionTask(
-    model,
+    encoder_class=PLEGNNBackbone,
+    encoder_kwargs=model_args,
     lr=1e-3,
     loss_func=L1Loss,
     output_kwargs=output_kwargs,
     normalize_kwargs=mp_norms,
+    task_keys=dm.target_keys["regression"]
 )
-c = BinaryClassificationTask(model, lr=1e-3, output_kwargs=output_kwargs)
+c = BinaryClassificationTask(
+    encoder_class=PLEGNNBackbone,
+    encoder_kwargs=model_args,
+    lr=1e-3, output_kwargs=output_kwargs,
+    task_keys=dm.target_keys["classification"]
+    )
 
 # initialize multitask with regression and classification on materials project
 task = MultiTaskLitModule(
@@ -91,8 +97,6 @@ task = MultiTaskLitModule(
 
 # using manual optimization for multitask, so "grad_clip" args do not work for trainer
 trainer = pl.Trainer(
-    limit_train_batches=100,  # limit batches not max steps, since there are multiple optimizers
-    logger=False,
-    enable_checkpointing=False,
+    max_steps=100
 )
 trainer.fit(task, datamodule=dm)
