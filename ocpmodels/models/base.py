@@ -1203,7 +1203,6 @@ class BaseTaskModule(pl.LightningModule):
     def _compute_losses(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-        embeddings: Optional[torch.Tensor] = None
     ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
         """
         Compute pred versus target for every target, then sum.
@@ -1225,10 +1224,7 @@ class BaseTaskModule(pl.LightningModule):
             containing each individual target loss.
         """
         targets = self._get_targets(batch)
-        if not isinstance(embeddings, torch.Tensor):
-            predictions = self(batch)
-        else:
-            predictions = self.process_embedding(embeddings)
+        predictions = self(batch)
         losses = {}
         for key in self.task_keys:
             target_val = targets[key]
