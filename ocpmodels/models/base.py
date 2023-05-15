@@ -2030,7 +2030,7 @@ class MultiTaskLitModule(pl.LightningModule):
         bool
             True if any datasets need input grads, otherwise False
         """
-        return self.input_grad_keys is not None
+        return sum([len(keys) for keys in self.input_grad_keys.values()]) > 0
 
     def _toggle_input_grads(self, batch: Dict[
             str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
