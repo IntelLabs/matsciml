@@ -1724,7 +1724,7 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
             encoder_class,
             encoder_kwargs,
             loss_func,
-            None,
+            ["spacegroup",],
             output_kwargs,
             lr,
             weight_decay,
