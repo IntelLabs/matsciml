@@ -1978,7 +1978,7 @@ class MultiTaskLitModule(pl.LightningModule):
         self._has_initialized = value
 
     @property
-    def input_grad_keys(self) -> Union[Dict[str,List[str]], None]:
+    def input_grad_keys(self) -> Dict[str,List[str]]:
         """
         Property to returns a list of keys for inputs that need gradient tracking.
 
@@ -2002,8 +2002,6 @@ class MultiTaskLitModule(pl.LightningModule):
             keys[self.dataset_names[0]] = set()
             for task in tasks:
                 keys[self.dataset_names[0]].update(task.__needs_grads__)
-        if all([len(keyset) == 0 for keyset in keys.values()]):
-            return None
         keys = {dset_name: sorted(keys) for dset_name, keys in keys.items()}
         return keys
 
