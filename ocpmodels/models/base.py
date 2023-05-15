@@ -2157,9 +2157,6 @@ class MultiTaskLitModule(pl.LightningModule):
     ):
         # compute predictions for required models
         losses = {}
-        # call the joint encoder and embed input data to be used for each task
-        embeddings = self.encoder(batch)
-        batch["embeddings"] = embeddings
         if self.is_multidata:
             for key, data in batch.items():
                 subtasks = self.task_map[key]
