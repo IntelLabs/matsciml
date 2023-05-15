@@ -2062,7 +2062,7 @@ class MultiTaskLitModule(pl.LightningModule):
                         # set require grad for both point cloud and graph tensors
                         try:
                             if "graph" in data:
-                                data["graph"].ndata[key].requires_grad(True)
+                                data["graph"].ndata[key].requires_grad_(True)
                             if key in data:
                                 data[key].requires_grad_(True)
                         except KeyError:
@@ -2074,7 +2074,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 for key in input_keys:
                     try:
                         if "graph" in batch:
-                            batch["graph"].ndata[key].requires_grad(True)
+                            batch["graph"].ndata[key].requires_grad_(True)
                         if key in batch:
                             batch[key].requires_grad_(True)
                     except KeyError:
