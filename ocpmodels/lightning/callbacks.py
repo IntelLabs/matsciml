@@ -2,10 +2,10 @@ import json
 import os
 import gc
 from datetime import datetime
-from logging import getLogger
+from logging import getLogger, DEBUG
 from pathlib import Path
 from time import time
-from typing import Any, Callable, Dict, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pytorch_lightning as pl
@@ -90,8 +90,23 @@ class LeaderboardWriter(BasePredictionWriter):
             print(f"\nSaved NPZ log file to: {target}\n")
 
 
+def deep_tensor_trawling(input_data: Tuple[Dict[str, Any]]):
+    if len(input_data) == 1:
+        input_data = input_data[0]
+    results = {}
+    for key, value in input_data.items():
+        if isinstance(value, dict):
+            results[key] = deep_tensor_trawling(value)
+        elif isinstance(value, torch.Tensor):
+            results[key] = value.detach()
+        elif key == "graph":
+            for subkey, node_data in value.ndata.items():
+                results[subkey] = node_data.detach()
+    return results
+
+
 def forward_nan_hook(
-    module: nn.Module, input: torch.Tensor, output: torch.Tensor
+        module: nn.Module, inputs: Any, output: torch.Tensor
 ) -> None:
     """
     Create a hook that will save the input/output tensors to a module if there are NaNs
@@ -112,7 +127,7 @@ def forward_nan_hook(
         setattr(
             module,
             "nan_detection",
-            {"input": input.detach(), "output": output.detach()},
+            {"input": deep_tensor_trawling(inputs), "output": output.detach()}
         )
 
 
@@ -125,10 +140,12 @@ class GradientCheckCallback(Callback):
     gradient norm and ensure it's above a specified threshold.
     """
 
-    def __init__(self, thres: float = 1e-2, num_steps: int = -1) -> None:
+    def __init__(self, thres: float = 1e-2, num_steps: int = -1, verbose: bool = False) -> None:
         super().__init__()
         self.thres = thres
         self.logger = getLogger("pytorch_lightning")
+        if verbose:
+            self.logger.setLevel(DEBUG)
         self.num_steps = num_steps
 
     def on_before_optimizer_step(
@@ -146,8 +163,13 @@ class GradientCheckCallback(Callback):
                 if param.requires_grad and param.grad is not None:
                     # check if there are NaNs as well
                     if torch.any(torch.isnan(param.grad)):
+                        grad_fn = getattr(param, "grad_fn", None)
+                        if grad_fn:
+                            node_name = f"/{grad_fn.name()}"
+                        else:
+                            node_name = ""
                         self.logger.debug(
-                            f"Step number {step_number} has NaN gradients for parameter {name}. Zeroing!"
+                            f"Step number {step_number} has NaN gradients for parameter {name}{node_name}. Zeroing!"
                         )
                         # zero out gradients
                         param.grad.zero_()
@@ -289,9 +311,7 @@ class ForwardNaNDetection(Callback):
         for child in pl_module.children():
             child.register_forward_hook(forward_nan_hook)
 
-    def on_batch_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
-    ) -> None:
+    def on_train_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", outputs, batch: Any, batch_idx: int) -> None:
         self.step_num = trainer.global_step
         all_data = []
         for name, child in pl_module.named_children():

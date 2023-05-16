@@ -996,6 +996,7 @@ class AbstractEnergyModel(AbstractTask):
 
 class BaseTaskModule(pl.LightningModule):
     __task__ = None
+    __needs_grads__ = []
 
     def __init__(
         self,
@@ -1125,12 +1126,31 @@ class BaseTaskModule(pl.LightningModule):
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
     ) -> Dict[str, torch.Tensor]:
-        embedding = self.encoder(batch)
-        outputs = {}
-        # process each head sequentially
-        for key, head in self.output_heads.items():
-            outputs[key] = head(embedding)
+        if "embeddings" in batch:
+            embedding = batch.get("embeddings")
+        else:
+            embedding = self.encoder(batch)
+        outputs = self.process_embedding(embedding)
         return outputs
+
+    def process_embedding(self, embeddings: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """
+        Given a set of embeddings, output predictions for each head.
+
+        Parameters
+        ----------
+        embeddings : torch.Tensor
+            Batch of graph/point cloud embeddings
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Predictions per output head
+        """
+        results = {}
+        for key, head in self.output_heads.items():
+            results[key] = head(embeddings)
+        return results
 
     def _get_targets(
         self,
@@ -1195,6 +1215,11 @@ class BaseTaskModule(pl.LightningModule):
         ----------
         batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
             Batch of samples to evaluate on.
+
+        embeddings : Optional[torch.Tensor]
+            If provided, bypasses calling the encoder and obtains predictions
+            from processing the embeddings. Mainly intended for use with multitask
+            abstraction.
 
         Returns
         -------
@@ -1487,6 +1512,7 @@ class BinaryClassificationTask(BaseTaskModule):
 
 class ForceRegressionTask(BaseTaskModule):
     __task__ = "regression"
+    __needs_grads__ = ["pos"]
 
     def __init__(
         self,
@@ -1533,19 +1559,30 @@ class ForceRegressionTask(BaseTaskModule):
                     f"No atomic positions were found in batch - neither as standalone tensor nor graph."
                 )
             pos.requires_grad_(True)
-            outputs = super().forward(batch)
-            energy = outputs.get("energy")
-            # now use autograd for force calculation
-            force = (
-                -1
-                * torch.autograd.grad(
-                    energy,
-                    pos,
-                    grad_outputs=torch.ones_like(energy),
-                    create_graph=True,
-                )[0]
-            )
-            outputs["force"] = force
+            if "embeddings" in batch:
+                embeddings = batch.get("embeddings")
+            else:
+                embeddings = self.encoder(batch)
+            outputs = self.process_embedding(embeddings, pos)
+        return outputs
+
+    def process_embedding(
+        self, embeddings: torch.Tensor, pos: torch.Tensor
+    ) -> Dict[str, torch.Tensor]:
+        outputs = {}
+        energy = self.output_heads["energy"](embeddings)
+        # now use autograd for force calculation
+        force = (
+            -1
+            * torch.autograd.grad(
+                energy,
+                pos,
+                grad_outputs=torch.ones_like(energy),
+                create_graph=True,
+            )[0]
+        )
+        outputs["force"] = force
+        outputs["energy"] = energy
         return outputs
 
     def _get_targets(
@@ -1689,7 +1726,9 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
             encoder_class,
             encoder_kwargs,
             loss_func,
-            None,
+            [
+                "spacegroup",
+            ],
             output_kwargs,
             lr,
             weight_decay,
@@ -1832,7 +1871,17 @@ class MultiTaskLitModule(pl.LightningModule):
         self.automatic_optimization = False
 
     @property
+    def task_list(self) -> List[BaseTaskModule]:
+        # return a flat list of tasks to iterate over
+        modules = []
+        for task_group in self.task_map.values():
+            for subtask in task_group.values():
+                modules.append(subtask)
+        return modules
+
+    @property
     def dataset_task_pairs(self) -> List[Tuple[str, str]]:
+        # Return a list of 2-tuples corresponding to (dataset name, task type)
         pairs = []
         for dataset in self.dataset_names:
             task_types = self.task_map[dataset].keys()
@@ -1841,6 +1890,22 @@ class MultiTaskLitModule(pl.LightningModule):
         return pairs
 
     def configure_optimizers(self) -> List[Optimizer]:
+        """
+        Configure subtask optimizers, as well as the joint encoder optimizer.
+
+        The main logic of this function is to aggregate all of the subtask
+        optimizers together, if they haven't been added yet. This is done
+        by assuming dataset name/task type combinations are unique, and we
+        rely on the subtask's own `configure_optimizers` function.
+
+        The latter half of the function adds the encoder optimizer.
+
+        Returns
+        -------
+        List[Optimizer]
+            List of optimizers that are subsequently passed into Lightning's
+            internal mechanisms
+        """
         optimizers = []
         # this keeps a list of 2-tuples to index optimizers
         self.optimizer_names = []
@@ -1850,10 +1915,10 @@ class MultiTaskLitModule(pl.LightningModule):
             for task_type, subtask in tasks.items():
                 combo = (data_key, task_type)
                 if combo not in self.optimizer_names:
-                    if subtask.has_initialized:
-                        optimizer = subtask.configure_optimizers()
-                        optimizers.append(optimizer)
-                        self.optimizer_names.append((data_key, task_type))
+                    # if subtask.has_initialized:
+                    optimizer = subtask.configure_optimizers()
+                    optimizers.append(optimizer)
+                    self.optimizer_names.append((data_key, task_type))
                     index += 1
         assert (
             len(self.optimizer_names) > 1
@@ -1933,14 +1998,111 @@ class MultiTaskLitModule(pl.LightningModule):
         bool
             True if first batch has been run already, otherwise False
         """
-        state = getattr(self, "_has_initialized", None)
-        if not state:
-            return False
-        return state
+        return all([task.has_initialized for task in self.task_list])
 
-    @has_initialized.setter
-    def has_initialized(self, value: bool) -> None:
-        self._has_initialized = value
+    @property
+    def input_grad_keys(self) -> Dict[str, List[str]]:
+        """
+        Property to returns a list of keys for inputs that need gradient tracking.
+
+        Returns
+        -------
+        Union[List[str], None]
+            If there are tasks in this multitask that need input variables to have
+            gradients tracked, this property will return a list of them. Otherwise,
+            this returns None.
+        """
+        keys = {}
+        if self.is_multidata:
+            for dset_name, task_group in self.task_map.items():
+                if dset_name not in keys:
+                    keys[dset_name] = set()
+                dset_keyset = keys.get(dset_name)
+                for subtask in task_group.values():
+                    dset_keyset.update(subtask.__needs_grads__)
+        else:
+            tasks = list(self.task_map.values()).pop(0)
+            keys[self.dataset_names[0]] = set()
+            for task in tasks:
+                keys[self.dataset_names[0]].update(task.__needs_grads__)
+        keys = {dset_name: sorted(keys) for dset_name, keys in keys.items()}
+        return keys
+
+    @property
+    def has_rnn(self) -> bool:
+        """
+        Property to determine whether or not this LightningModule contains
+        RNNs. This is primarily to determine whether or not to enable/disable
+        contexts with cudnn, as double backprop is not supported.
+
+        Returns
+        -------
+        bool
+            True if any module is a subclass of `RNNBase`, otherwise False.
+        """
+        return any([isinstance(module, nn.RNNBase) for module in self.modules()])
+
+    @property
+    def needs_dynamic_grads(self) -> bool:
+        """
+        Boolean property reflecting whether this multitask in general needs
+        gradient computation to override inference modes.
+
+        Returns
+        -------
+        bool
+            True if any datasets need input grads, otherwise False
+        """
+        return sum([len(keys) for keys in self.input_grad_keys.values()]) > 0
+
+    def _toggle_input_grads(
+        self,
+        batch: Dict[
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        ],
+    ) -> None:
+        """
+        Inplace method that will automatically enable gradient tracking for tensors
+        needed by tasks/datasets.
+
+        This function will loop over a batch of data (in the multidata case) and
+        grabs the list of tensor keys as required by a given subtask. The list
+        of tensor keys are then used to grab the input data from the batch and/or
+        graph, and if it's found will then try and set requires_grad_(True).
+
+        Parameters
+        ----------
+        batch : Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]
+            Batch of data
+        """
+        need_grad_keys = getattr(self, "input_grad_keys", None)
+        if need_grad_keys is not None:
+            if self.is_multidata:
+                # if this is a multidataset task, loop over each dataset
+                # and enable gradients for the inputs that need them
+                for dset_name, data in batch.items():
+                    input_keys = need_grad_keys.get(dset_name)
+                    for key in input_keys:
+                        # set require grad for both point cloud and graph tensors
+                        try:
+                            if "graph" in data:
+                                data["graph"].ndata[key].requires_grad_(True)
+                            if key in data:
+                                data[key].requires_grad_(True)
+                        except KeyError:
+                            pass
+            else:
+                # in the single dataset case, we just need to loop over a single
+                # set of tasks
+                input_keys = list(self.input_grad_keys.values()).pop(0)
+                for key in input_keys:
+                    try:
+                        if "graph" in batch:
+                            batch["graph"].ndata[key].requires_grad_(True)
+                        if key in batch:
+                            batch[key].requires_grad_(True)
+                    except KeyError:
+                        pass
 
     def forward(
         self,
@@ -1951,45 +2113,71 @@ class MultiTaskLitModule(pl.LightningModule):
         """
         Forward method for `MultiTaskLitModule`.
 
-        Uses the number of unique dataset names (specified when creating)
-        a `MultiTaskLitModule`) to determine what kind of batch structure
-        is used. This might not be fully transparent, and might be something
-        that needs to be refactored later.
+        This is devised slightly specially to comprise a variety of scenarios, including
+        wrapping the entire compute in gradient contexts (for force prediction tasks),
+        ensuring inputs that need gradients are enabled, as well as running the 
+        encoder at the beginning and passing the embeddings onto downstream tasks.
 
         Parameters
         ----------
-        batch
-            [TODO:description]
+        batch : Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]
+            Batches of samples per dataset
 
         Returns
         -------
         Dict[str, Dict[str, torch.Tensor]]
-            [TODO:description]
+            Dictionary of predictions, per dataset per subtask
         """
         # iterate over datasets in the batch
         results = {}
-        # for single dataset usage, we assume the nested structure isn't used
-        if self.is_multidata:
-            for key, data in batch.items():
-                subtasks = self.task_map[key]
-                if key not in results:
-                    results[key] = {}
-                # finally call the task with the data
-                # TODO: refactor this to share an embedding, so the encoder
-                # is only called once
-                for task_type, subtask in subtasks.items():
-                    results[key][task_type] = subtask(data)
-        else:
-            # in the single dataset case, we can skip the outer loop
-            # and just pass the batch into the subtask
-            tasks = list(self.task_map.values()).pop(0)
-            for task_type, subtask in tasks.items():
-                results[task_type] = subtask(batch)
-        return results
+        _grads = getattr(
+            self, "needs_dynamic_grads", False
+        )  # default to not needing grads
+        with dynamic_gradients_context(_grads, self.has_rnn):
+            # this function switches of `requires_grad_` for input tensors that need them
+            self._toggle_input_grads(batch)
+            # compute embeddings for each dataset
+            if self.is_multidata:
+                for key, data in batch.items():
+                    data["embeddings"] = self.encoder(data)
+            else:
+                batch["embeddings"] = self.encoder(batch)
+            # for single dataset usage, we assume the nested structure isn't used
+            if self.is_multidata:
+                for key, data in batch.items():
+                    subtasks = self.task_map[key]
+                    if key not in results:
+                        results[key] = {}
+                    # finally call the task with the data
+                    for task_type, subtask in subtasks.items():
+                        results[key][task_type] = subtask(data)
+            else:
+                # in the single dataset case, we can skip the outer loop
+                # and just pass the batch into the subtask
+                tasks = list(self.task_map.values()).pop(0)
+                for task_type, subtask in tasks.items():
+                    results[task_type] = subtask(batch)
+            return results
 
     def on_train_batch_start(
         self, batch: Any, batch_idx: int, unused: int = 0
-    ) -> Optional[int]:
+        ) -> None:
+        """
+        This callback is used to dynamically initialize output heads.
+
+        In the event where `task_keys` are not explicitly provided by the user
+        into the creation of each task, we the incoming batch for tasks
+        that have not been initialized and create the output heads.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to compute
+        batch_idx : int
+            Batch index
+        unused : int
+            Legacy PyTorch Lightning arg
+        """
         # this follows what's implemented in forward to ensure the
         # output heads and optimizers are set properly
         if not self.has_initialized:
@@ -2010,6 +2198,18 @@ class MultiTaskLitModule(pl.LightningModule):
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
     ):
+        """
+        Function for computing the losses over a batch.
+
+        This relies on the `_compute_losses` function of each subtask. Between the single
+        dataset and multidataset settings, the difference is just how the tasks are retrieved;
+        the former skips going through the dataset/task hierarchy.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to calculate losses over
+        """
         # compute predictions for required models
         losses = {}
         if self.is_multidata:
@@ -2041,16 +2241,20 @@ class MultiTaskLitModule(pl.LightningModule):
         For a given dataset and task type, this function will check and initialize corresponding
         output heads and add them to the corresponding optimizer.
 
-        [TODO:description]
+        The behavior of this function changes depending on whether or not the output heads were
+        initialized earlier (i.e. before `on_train_batch_start`), based on whether it sees an
+        incoming batch, or explicitly passed `task_keys`. In the former, we will add the output
+        head parameters to the appropriate optimizer as well.
 
         Parameters
         ----------
-        dataset
-            [TODO:description]
-        task_type
-            [TODO:description]
-        batch
-            [TODO:description]
+        dataset : str
+            Name of the dataset
+        task_type : str
+            String classification of the task type, e.g. "regression"
+        batch : Optional[Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]]
+            For "dynamically" instantiating multitasks, this function relies on an incoming batch
+            to determine what output heads to instantiate.
         """
         task_instance: BaseTaskModule = self.task_map[dataset][task_type]
         if batch is None and task_keys is None:
@@ -2081,7 +2285,6 @@ class MultiTaskLitModule(pl.LightningModule):
                 self.optimizers()[opt_index].add_param_group(
                     {"params": task_instance.output_heads.parameters()}
                 )
-        self.has_initialized = True
 
     def embed(self, *args, **kwargs) -> Any:
         return self.encoder(*args, **kwargs)
@@ -2187,7 +2390,6 @@ class MultiTaskLitModule(pl.LightningModule):
                     opt_index = self.optimizer_names.index(ref)
                     # backprop gradients
                     opt = optimizers[opt_index]
-                    opt = optimizers[opt_index]
                     is_last_opt = opt_index == len(self.optimizer_names) - 2
                     # run hooks between backward
                     self.on_before_backward(subtask_loss["loss"])
@@ -2242,5 +2444,14 @@ class MultiTaskLitModule(pl.LightningModule):
         return losses
 
     @classmethod
-    def load_from_checkpoint(cls, checkpoint_path, map_location = None, hparams_file = None, strict: bool = True, **kwargs: Any):
-        raise NotImplementedError(f"MultiTask should be reloaded using the `ocpmodels.models.multitask_from_checkpoint` function instead.")
+    def load_from_checkpoint(
+        cls,
+        checkpoint_path,
+        map_location=None,
+        hparams_file=None,
+        strict: bool = True,
+        **kwargs: Any,
+    ):
+        raise NotImplementedError(
+            f"MultiTask should be reloaded using the `ocpmodels.models.multitask_from_checkpoint` function instead."
+        )
