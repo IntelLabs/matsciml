@@ -1881,6 +1881,7 @@ class MultiTaskLitModule(pl.LightningModule):
 
     @property
     def dataset_task_pairs(self) -> List[Tuple[str, str]]:
+        # Return a list of 2-tuples corresponding to (dataset name, task type)
         pairs = []
         for dataset in self.dataset_names:
             task_types = self.task_map[dataset].keys()
@@ -1889,6 +1890,22 @@ class MultiTaskLitModule(pl.LightningModule):
         return pairs
 
     def configure_optimizers(self) -> List[Optimizer]:
+        """
+        Configure subtask optimizers, as well as the joint encoder optimizer.
+
+        The main logic of this function is to aggregate all of the subtask
+        optimizers together, if they haven't been added yet. This is done
+        by assuming dataset name/task type combinations are unique, and we
+        rely on the subtask's own `configure_optimizers` function.
+
+        The latter half of the function adds the encoder optimizer.
+
+        Returns
+        -------
+        List[Optimizer]
+            List of optimizers that are subsequently passed into Lightning's
+            internal mechanisms
+        """
         optimizers = []
         # this keeps a list of 2-tuples to index optimizers
         self.optimizer_names = []
@@ -2096,20 +2113,20 @@ class MultiTaskLitModule(pl.LightningModule):
         """
         Forward method for `MultiTaskLitModule`.
 
-        Uses the number of unique dataset names (specified when creating)
-        a `MultiTaskLitModule`) to determine what kind of batch structure
-        is used. This might not be fully transparent, and might be something
-        that needs to be refactored later.
+        This is devised slightly specially to comprise a variety of scenarios, including
+        wrapping the entire compute in gradient contexts (for force prediction tasks),
+        ensuring inputs that need gradients are enabled, as well as running the 
+        encoder at the beginning and passing the embeddings onto downstream tasks.
 
         Parameters
         ----------
-        batch
-            [TODO:description]
+        batch : Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]
+            Batches of samples per dataset
 
         Returns
         -------
         Dict[str, Dict[str, torch.Tensor]]
-            [TODO:description]
+            Dictionary of predictions, per dataset per subtask
         """
         # iterate over datasets in the batch
         results = {}
@@ -2144,7 +2161,23 @@ class MultiTaskLitModule(pl.LightningModule):
 
     def on_train_batch_start(
         self, batch: Any, batch_idx: int, unused: int = 0
-    ) -> Optional[int]:
+        ) -> None:
+        """
+        This callback is used to dynamically initialize output heads.
+
+        In the event where `task_keys` are not explicitly provided by the user
+        into the creation of each task, we the incoming batch for tasks
+        that have not been initialized and create the output heads.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to compute
+        batch_idx : int
+            Batch index
+        unused : int
+            Legacy PyTorch Lightning arg
+        """
         # this follows what's implemented in forward to ensure the
         # output heads and optimizers are set properly
         if not self.has_initialized:
@@ -2165,6 +2198,18 @@ class MultiTaskLitModule(pl.LightningModule):
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
     ):
+        """
+        Function for computing the losses over a batch.
+
+        This relies on the `_compute_losses` function of each subtask. Between the single
+        dataset and multidataset settings, the difference is just how the tasks are retrieved;
+        the former skips going through the dataset/task hierarchy.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to calculate losses over
+        """
         # compute predictions for required models
         losses = {}
         if self.is_multidata:
@@ -2196,16 +2241,20 @@ class MultiTaskLitModule(pl.LightningModule):
         For a given dataset and task type, this function will check and initialize corresponding
         output heads and add them to the corresponding optimizer.
 
-        [TODO:description]
+        The behavior of this function changes depending on whether or not the output heads were
+        initialized earlier (i.e. before `on_train_batch_start`), based on whether it sees an
+        incoming batch, or explicitly passed `task_keys`. In the former, we will add the output
+        head parameters to the appropriate optimizer as well.
 
         Parameters
         ----------
-        dataset
-            [TODO:description]
-        task_type
-            [TODO:description]
-        batch
-            [TODO:description]
+        dataset : str
+            Name of the dataset
+        task_type : str
+            String classification of the task type, e.g. "regression"
+        batch : Optional[Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]]
+            For "dynamically" instantiating multitasks, this function relies on an incoming batch
+            to determine what output heads to instantiate.
         """
         task_instance: BaseTaskModule = self.task_map[dataset][task_type]
         if batch is None and task_keys is None:
@@ -2236,7 +2285,6 @@ class MultiTaskLitModule(pl.LightningModule):
                 self.optimizers()[opt_index].add_param_group(
                     {"params": task_instance.output_heads.parameters()}
                 )
-        self.has_initialized = True
 
     def embed(self, *args, **kwargs) -> Any:
         return self.encoder(*args, **kwargs)
