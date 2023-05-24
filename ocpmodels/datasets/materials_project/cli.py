@@ -92,7 +92,7 @@ if __name__ == "__main__":
         "-s",
         "--split_files",
         nargs="*",
-        help="String names of materials to request separated by spaces, e.g. -s train.yml val.yml.",
+        help="Files that define splits for train, test and validation sets which are specified by material id., e.g. -s train.yml val.yml.",
         required=False,
     )
     args = vars(parser.parse_args())
