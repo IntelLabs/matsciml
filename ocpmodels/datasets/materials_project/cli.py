@@ -1,6 +1,7 @@
 from json import loads, dump
 from argparse import ArgumentParser
 from pathlib import Path
+import yaml
 
 from ocpmodels.datasets.materials_project import MaterialsProjectRequest
 
@@ -87,11 +88,19 @@ if __name__ == "__main__":
         help="Choose a preset task dataset to download. Mutually exclusive with other arguments.",
         required=False,
     )
+    parser.add_argument(
+        "-s",
+        "--split_files",
+        nargs="*",
+        help="String names of materials to request separated by spaces, e.g. -s train.yml val.yml.",
+        required=False,
+    )
     args = vars(parser.parse_args())
     data_dir = args["data_dir"]
     # delete key to prevent unpacking
     del args["data_dir"]
     task = args.get("task", None)
+    split_files = args.get("split_files", None)
     # task takes precedent over everything else
     if task is not None:
         parameters = presets.get(task)
@@ -102,10 +111,22 @@ if __name__ == "__main__":
         if user_kwargs is None:
             user_kwargs = {}
         api_kwargs.update(user_kwargs)
-        client = MaterialsProjectRequest(**parameters, **api_kwargs)
-        data = client.retrieve_data()
-        # if we have a predefined task the name is just the "split"
-        name = task
+        if split_files:
+            for file in split_files:
+                with open(file, "r") as f:
+                    data = yaml.safe_load(f)
+                    split, ids = next(iter(data.keys())), next(iter(data.values()))
+                client = MaterialsProjectRequest(material_ids=ids, **parameters, **api_kwargs)
+                data = client.retrieve_data()
+                # if we have a predefined task the name is just the "split"
+                name = task
+                target = data_dir.joinpath(name, split)
+                client.to_lmdb(target)
+        else:
+            client = MaterialsProjectRequest(**parameters, **api_kwargs)
+            data = client.retrieve_data()
+            # if we have a predefined task the name is just the "split"
+            name = task
     else:
         from hashlib import sha256
 
@@ -127,6 +148,7 @@ if __name__ == "__main__":
     # used to name the data split
     target = data_dir.joinpath(name)
     # export data to target folder
-    client.make_splits(data_dir=data_dir)
+    if split_files is None:
+        client.to_lmdb(target)
     with open(target.joinpath("request.json"), "w+") as write_file:
         dump(client.to_dict(), write_file)
