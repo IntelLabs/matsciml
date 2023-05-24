@@ -127,6 +127,6 @@ if __name__ == "__main__":
     # used to name the data split
     target = data_dir.joinpath(name)
     # export data to target folder
-    client.to_lmdb(target)
+    client.make_splits(data_dir=data_dir)
     with open(target.joinpath("request.json"), "w+") as write_file:
         dump(client.to_dict(), write_file)
