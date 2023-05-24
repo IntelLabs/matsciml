@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 import os
 import numpy as np
-
+import yaml
 
 from emmet.core.summary import SummaryDoc
 from mp_api.client import MPRester
@@ -204,7 +204,14 @@ class MaterialsProjectRequest:
 
         og_data = self.data.copy()
         for split_name, index_list in indices.items():
-            self.data = [og_data[idx] for idx in index_list]
+            id_list = []
+            self.data = []
+            for idx in index_list:
+                id_list.append(og_data[idx].material_id.string)
+                self.data.append(og_data[idx])
+
+            with open(os.path.join(data_dir, split_name + ".yml"), "w") as f:
+                yaml.dump({split_name: id_list}, f, sort_keys=False)
             self.to_lmdb(os.path.join(data_dir, split_name))
 
     def to_lmdb(self, lmdb_path: Union[str, Path]) -> None:
