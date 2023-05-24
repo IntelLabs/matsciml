@@ -177,12 +177,12 @@ class MaterialsProjectRequest:
         self,
         data_dir: str,
         split_value: str = "crystal_class",
-        split_percents: Dict[str, float]={"train": 0.7, "val": 0.2, "test": 0.1},
+        split_percents: Dict[str, float] = {"train": 0.7, "val": 0.2, "test": 0.1},
     ):
         """Make data splits for train, test and validation
 
         Args:
-            data_dir (str): Directory to save the output lmdb's. 
+            data_dir (str): Directory to save the output lmdb's.
             split_value (str, optional): Property used to make the splits. Defaults to "crystal_class".
             split_percents (_type_, optional): Distribution to use for train, test and val splits. Defaults to {"train": 0.7, "val": 0.2, "test": 0.1}.
         """
@@ -191,23 +191,21 @@ class MaterialsProjectRequest:
 
         split_map = get_split_map(self.data, split_value)
 
-        for k, v in split_map.items():
-            v = np.random.permutation(v)
+        for prop_key, prop_idx in split_map.items():
+            prop_idx = np.random.permutation(prop_idx)
             split_idx = [
-                int(sum(split_percent_values[:idx]) * len(v))
+                int(sum(split_percent_values[:idx]) * len(prop_idx))
                 for idx in range(1, len(split_percent_values))
             ]
-            data_splits = np.split(v, split_idx)
+            data_splits = np.split(prop_idx, split_idx)
             sub_dict = dict(zip(indices.keys(), data_splits))
             for sub_k, sub_v in sub_dict.items():
                 indices[sub_k].extend(list(sub_v))
-        
-        og_data = self.data.copy()
-        for k, v in indices.items():
-            self.data = [og_data[idx] for idx in v]
-            self.to_lmdb(os.path.join(data_dir, k))
-        
 
+        og_data = self.data.copy()
+        for split_name, index_list in indices.items():
+            self.data = [og_data[idx] for idx in index_list]
+            self.to_lmdb(os.path.join(data_dir, split_name))
 
     def to_lmdb(self, lmdb_path: Union[str, Path]) -> None:
         """
