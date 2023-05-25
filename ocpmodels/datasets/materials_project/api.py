@@ -4,6 +4,8 @@ from functools import cached_property
 from pathlib import Path
 from datetime import datetime
 import os
+import numpy as np
+import yaml
 
 from emmet.core.summary import SummaryDoc
 from mp_api.client import MPRester
@@ -11,6 +13,7 @@ from tqdm import tqdm
 import lmdb
 
 from ocpmodels.datasets.generate_subsplit import write_data
+from ocpmodels.datasets.materials_project.utils import get_split_map
 
 
 class MaterialsProjectRequest:
@@ -89,7 +92,9 @@ class MaterialsProjectRequest:
         """
         # first deal with the case with no fields; we need structure at the very least
         if values is None:
-            values = ["structure",]
+            values = [
+                "structure",
+            ]
         else:
             # remove duplicates
             values = set(values)
@@ -168,6 +173,47 @@ class MaterialsProjectRequest:
         }
         return cls(["band_gap", "structure"], api_key, **kwargs)
 
+    def make_splits(
+        self,
+        data_dir: str,
+        split_value: str = "crystal_class",
+        split_percents: Dict[str, float] = {"train": 0.7, "val": 0.2, "test": 0.1},
+    ):
+        """Make data splits for train, test and validation
+
+        Args:
+            data_dir (str): Directory to save the output lmdb's.
+            split_value (str, optional): Property used to make the splits. Defaults to "crystal_class".
+            split_percents (_type_, optional): Distribution to use for train, test and val splits. Defaults to {"train": 0.7, "val": 0.2, "test": 0.1}.
+        """
+        split_percent_values = list(split_percents.values())
+        indices = {k: [] for k in split_percents.keys()}
+
+        split_map = get_split_map(self.data, split_value)
+
+        for prop_key, prop_idx in split_map.items():
+            prop_idx = np.random.permutation(prop_idx)
+            split_idx = [
+                int(sum(split_percent_values[:idx]) * len(prop_idx))
+                for idx in range(1, len(split_percent_values))
+            ]
+            data_splits = np.split(prop_idx, split_idx)
+            sub_dict = dict(zip(indices.keys(), data_splits))
+            for sub_k, sub_v in sub_dict.items():
+                indices[sub_k].extend(list(sub_v))
+
+        og_data = self.data.copy()
+        for split_name, index_list in indices.items():
+            id_list = []
+            self.data = []
+            for idx in index_list:
+                id_list.append(og_data[idx].material_id.string)
+                self.data.append(og_data[idx])
+
+            with open(os.path.join(data_dir, split_name + ".yml"), "w") as f:
+                yaml.dump({split_name: id_list}, f, sort_keys=False)
+            self.to_lmdb(os.path.join(data_dir, split_name))
+
     def to_lmdb(self, lmdb_path: Union[str, Path]) -> None:
         """
         Save the retrieved documents to an LMDB file.
@@ -223,4 +269,3 @@ class MaterialsProjectRequest:
         data["retrieved"] = getattr(self, "retrieved", None)
         data["api_kwargs"] = getattr(self, "api_kwargs", None)
         return data
-
