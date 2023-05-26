@@ -274,11 +274,12 @@ class DGLDataModule(S2EFDGLDataModule):
 class BaseLightningDataModule(pl.LightningDataModule):
     def __init__(
         self,
-        dataset: TorchDataset,
+        dataset: Optional[Union[Type[TorchDataset], TorchDataset]] = None,
+        train_path: Optional[Union[str, Path]] = None,
         batch_size: int = 32,
         num_workers: int = 0,
-        val_split: float = 0.0,
-        test_split: float = 0.0,
+        val_split: Optional[Union[str, Path, float]] = 0.0,
+        test_split: Optional[Union[str, Path, float]] = 0.0,
         seed: Optional[int] = None,
     ):
         super().__init__()
