@@ -71,6 +71,26 @@ def test_pc_all_paths():
         batch = next(iter(loader))
 
 
+@pytest.mark.dependency(depends=["test_pc_all_paths"])
+def test_pc_train_with_val_split():
+    dm = MaterialsProjectDataModule(train_path=materialsproject_devset, val_split=0.1, test_split=materialsproject_devset)
+    dm.setup()
+    # get train batch
+    for key in ["train", "val", "test"]:
+        loader = getattr(dm, f"{key}_dataloader")()
+        batch = next(iter(loader))
+
+
+@pytest.mark.dependency(depends=["test_pc_all_paths"])
+def test_pc_train_with_val_test_split():
+    dm = MaterialsProjectDataModule(train_path=materialsproject_devset, val_split=0.1, test_split=0.1)
+    dm.setup()
+    # get train batch
+    for key in ["train", "val", "test"]:
+        loader = getattr(dm, f"{key}_dataloader")()
+        batch = next(iter(loader))
+
+
 @pytest.mark.dependency()
 def test_graph_setup():
     dset = MaterialsProjectDataModule.from_devset(graphs=True)
