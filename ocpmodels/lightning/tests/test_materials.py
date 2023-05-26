@@ -3,6 +3,7 @@ import pytest
 import os
 
 from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
+from ocpmodels.datasets.materials_project import materialsproject_devset
 
 @pytest.mark.dependency()
 def test_pc_setup():
@@ -50,6 +51,14 @@ def test_pc_no_args():
         dm = MaterialsProjectDataModule()
     except AssertionError:
         assert True
+
+
+@pytest.mark.dependency(depends=["test_pc_setup"])
+def test_pc_paths():
+    dm = MaterialsProjectDataModule(train_path=materialsproject_devset)
+    dm.setup()
+    # get train batch
+    batch = next(iter(dm.train_dataloader()))
 
 
 @pytest.mark.dependency()
