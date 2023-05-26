@@ -357,8 +357,10 @@ class BaseLightningDataModule(pl.LightningDataModule):
             assert (
                 num_train >= 0
             ), f"More test/validation samples requested than available samples."
-            splits = random_split(self.dataset, [num_train, num_val, num_test], generator)
-            self.splits = {key: splits[i] for i, key in enumerate(["train", "val", "test"])}
+            splits_list = random_split(self.dataset, [num_train, num_val, num_test], generator)
+            for split, key in zip(splits_list, ["train", "val", "test"]):
+                if split is not None:
+                    splits[key] = split
         # otherwise, just assume paths - if they're not we'll ignore them here
         else:
             for key in ["val", "test"]:
@@ -370,6 +372,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
         # the last case assumes only the dataset is passed, we will treat it as train
         if len(splits) == 0:
             splits["train"] = self.dataset
+        self.splits = splits
 
     def train_dataloader(self):
         split = self.splits.get("train")
