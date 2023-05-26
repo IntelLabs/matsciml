@@ -43,6 +43,15 @@ def test_pc_all_setup():
         batch = next(iter(loader))
 
 
+@pytest.mark.dependency(depends=["test_pc_all_setup"])
+def test_pc_no_args():
+    # this makes sure that when nothing is provided, the code breaks
+    try:
+        dm = MaterialsProjectDataModule()
+    except AssertionError:
+        assert True
+
+
 @pytest.mark.dependency()
 def test_graph_setup():
     dset = MaterialsProjectDataModule.from_devset(graphs=True)
