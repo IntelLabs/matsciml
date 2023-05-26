@@ -356,7 +356,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
         else:
             for key in ["val", "test"]:
                 split_path = getattr(self.hparams, f"{key}_split", None)
-                if split_path:
+                if isinstance(split_path, (str, Path)):
                     dset = self._make_dataset(split_path, self.dataset)
                     splits[key] = dset
             self.splits = splits
