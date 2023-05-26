@@ -281,7 +281,6 @@ class BaseLightningDataModule(pl.LightningDataModule):
         val_split: Optional[Union[str, Path, float]] = 0.0,
         test_split: Optional[Union[str, Path, float]] = 0.0,
         seed: Optional[int] = None,
-        transforms: Optional[List[Callable]] = None,
         dset_kwargs: Optional[Dict[str, Any]] = None
     ):
         super().__init__()
@@ -293,7 +292,6 @@ class BaseLightningDataModule(pl.LightningDataModule):
         if isinstance(dataset, Type):
             assert any([isinstance(p, (str, Path)) for p in [train_path, val_split, test_split]]), "Dataset type passed, but no paths to construct with."
         self.dataset = dataset
-        self.transforms = transforms
         self.dset_kwargs = dset_kwargs
         self.save_hyperparameters(ignore=["dataset"])
 
@@ -317,10 +315,11 @@ class BaseLightningDataModule(pl.LightningDataModule):
         dset_kwargs = getattr(self, "dset_kwargs", {})
         if isinstance(dataset, TorchDataset):
             transforms = getattr(dataset, "transforms", None)
+            dset_kwargs["transforms"] = transforms
             # apply same transforms to this split
-            new_dset = TorchDataset.__class__(path, transforms=transforms, **dset_kwargs)
+            new_dset = TorchDataset.__class__(path, **dset_kwargs)
         else:
-            new_dset = TorchDataset(path, transforms=self.transforms, **dset_kwargs)
+            new_dset = TorchDataset(path, **dset_kwargs)
         return new_dset
 
     def setup(self, stage: Optional[str] = None) -> None:
@@ -425,10 +424,9 @@ class MaterialsProjectDataModule(BaseLightningDataModule):
         val_split: Optional[Union[str, Path, float]] = 0.0,
         test_split: Optional[Union[str, Path, float]] = 0.0,
         seed: Optional[int] = None,
-        transforms: Optional[List[Callable]] = None,
         dset_kwargs: Optional[Dict[str, Any]] = None
     ):
-        super().__init__(dataset, train_path, batch_size, num_workers, val_split, test_split, seed, transforms, dset_kwargs)
+        super().__init__(dataset, train_path, batch_size, num_workers, val_split, test_split, seed, dset_kwargs)
 
     @classmethod
     def from_devset(
