@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT License
 
 from abc import abstractclassmethod
-from typing import Union, Optional, Type, List, Callable, Dict
+from typing import Any, Union, Optional, Type, List, Callable, Dict
 from pathlib import Path
 from warnings import warn
 from os import getenv
@@ -281,7 +281,8 @@ class BaseLightningDataModule(pl.LightningDataModule):
         val_split: Optional[Union[str, Path, float]] = 0.0,
         test_split: Optional[Union[str, Path, float]] = 0.0,
         seed: Optional[int] = None,
-        transforms: Optional[List[Callable]] = None
+        transforms: Optional[List[Callable]] = None,
+        dset_kwargs: Optional[Dict[str, Any]] = None
     ):
         super().__init__()
         # make sure we have something to work with
@@ -319,6 +320,11 @@ class BaseLightningDataModule(pl.LightningDataModule):
         return new_dset
 
     def setup(self, stage: Optional[str] = None) -> None:
+        # set up the training split, if provided
+        if getattr(self.hparams, "train_path", None) is not None:
+            assert isinstance(self.dataset, Type[TorchDataset]), f"Train path provided but no valid dataset class."
+            train_dset = self.dataset(self.hparams.train_path, transforms=self.transforms)
+        # in the case that floats are provided for 
         if self.hparams.seed is None:
             # try read from PyTorch Lightning, if not use a set seed
             seed = getenv("PL_GLOBAL_SEED", 42)
