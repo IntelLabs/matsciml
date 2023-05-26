@@ -61,6 +61,16 @@ def test_pc_paths():
     batch = next(iter(dm.train_dataloader()))
 
 
+@pytest.mark.dependency(depends=["test_pc_paths"])
+def test_pc_all_paths():
+    dm = MaterialsProjectDataModule(train_path=materialsproject_devset, val_split=materialsproject_devset, test_split=materialsproject_devset)
+    dm.setup()
+    # get train batch
+    for key in ["train", "val", "test"]:
+        loader = getattr(dm, f"{key}_dataloader")()
+        batch = next(iter(loader))
+
+
 @pytest.mark.dependency()
 def test_graph_setup():
     dset = MaterialsProjectDataModule.from_devset(graphs=True)
