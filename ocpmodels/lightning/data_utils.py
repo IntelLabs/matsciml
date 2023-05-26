@@ -414,6 +414,20 @@ class BaseLightningDataModule(pl.LightningDataModule):
 
 
 class MaterialsProjectDataModule(BaseLightningDataModule):
+    def __init__(
+        self,
+        train_path: Optional[Union[str, Path]] = None,
+        dataset: Optional[Union[Type[TorchDataset], TorchDataset]] = MaterialsProjectDataset,
+        batch_size: int = 32,
+        num_workers: int = 0,
+        val_split: Optional[Union[str, Path, float]] = 0.0,
+        test_split: Optional[Union[str, Path, float]] = 0.0,
+        seed: Optional[int] = None,
+        transforms: Optional[List[Callable]] = None,
+        dset_kwargs: Optional[Dict[str, Any]] = None
+    ):
+        super().__init__(dataset, train_path, batch_size, num_workers, val_split, test_split, seed, transforms, dset_kwargs)
+
     @classmethod
     def from_devset(
         cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
