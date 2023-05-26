@@ -293,6 +293,31 @@ class BaseLightningDataModule(pl.LightningDataModule):
         self.transforms = transforms
         self.save_hyperparameters(ignore=["dataset"])
 
+    def _make_dataset(self, path: Union[str, Path], dataset: Union[TorchDataset, Type[TorchDataset]]) -> TorchDataset:
+        """
+        Convert a string or path specification of a dataset into a concrete dataset object.
+
+        Parameters
+        ----------
+        spec : Union[str, Path]
+            String or path to data split
+        dataset : Union[Torch.Dataset, Type[TorchDataset]]
+            A dataset object or type. If the former, the transforms from this dataset
+            will be copied over to be applied to the new split.
+
+        Returns
+        -------
+        TorchDataset
+            Dataset corresponding to the given path
+        """
+        if isinstance(dataset, TorchDataset):
+            transforms = getattr(dataset, "transforms", None)
+            # apply same transforms to this split
+            new_dset = TorchDataset.__class__(path, transforms=transforms)
+        else:
+            new_dset = TorchDataset(path, transforms=self.transforms)
+        return new_dset
+
     def setup(self, stage: Optional[str] = None) -> None:
         if self.hparams.seed is None:
             # try read from PyTorch Lightning, if not use a set seed
