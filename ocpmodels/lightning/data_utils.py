@@ -319,9 +319,9 @@ class BaseLightningDataModule(pl.LightningDataModule):
             transforms = getattr(dataset, "transforms", None)
             dset_kwargs["transforms"] = transforms
             # apply same transforms to this split
-            new_dset = TorchDataset.__class__(path, **dset_kwargs)
+            new_dset = dataset.__class__(path, **dset_kwargs)
         else:
-            new_dset = TorchDataset(path, **dset_kwargs)
+            new_dset = dataset(path, **dset_kwargs)
         return new_dset
 
     def setup(self, stage: Optional[str] = None) -> None:
