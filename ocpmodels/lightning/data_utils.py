@@ -283,6 +283,11 @@ class BaseLightningDataModule(pl.LightningDataModule):
         seed: Optional[int] = None,
     ):
         super().__init__()
+        # make sure we have something to work with
+        assert any([i for i in [dataset, train_path, val_split, test_split]]), f"No splits provided to datamodule."
+        # if floats are passed to splits, make sure dataset is provided for inference
+        if any([isinstance(i, float) for i in [val_split, test_split]]):
+            assert dataset is not None, f"Float passed to split, but no dataset provided to split."
         self.dataset = dataset
         self.save_hyperparameters(ignore=["dataset"])
 
