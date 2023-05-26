@@ -437,7 +437,7 @@ class MaterialsProjectDataModule(BaseLightningDataModule):
         dset_class = (
             MaterialsProjectDataset if not graphs else DGLMaterialsProjectDataset
         )
-        return cls(dset_class(materialsproject_devset, transforms=transforms), **kwargs)
+        return cls(dataset=dset_class(materialsproject_devset, transforms=transforms), **kwargs)
 
 
 class LiPSDataModule(BaseLightningDataModule):
