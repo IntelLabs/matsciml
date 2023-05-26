@@ -281,6 +281,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
         val_split: Optional[Union[str, Path, float]] = 0.0,
         test_split: Optional[Union[str, Path, float]] = 0.0,
         seed: Optional[int] = None,
+        transforms: Optional[List[Callable]] = None
     ):
         super().__init__()
         # make sure we have something to work with
@@ -289,6 +290,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
         if any([isinstance(i, float) for i in [val_split, test_split]]):
             assert dataset is not None, f"Float passed to split, but no dataset provided to split."
         self.dataset = dataset
+        self.transforms = transforms
         self.save_hyperparameters(ignore=["dataset"])
 
     def setup(self, stage: Optional[str] = None) -> None:
