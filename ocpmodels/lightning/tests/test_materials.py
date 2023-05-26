@@ -3,6 +3,7 @@ import pytest
 import os
 
 from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
+from ocpmodels.datasets.materials_project import materialsproject_devset
 
 @pytest.mark.dependency()
 def test_pc_setup():
@@ -43,6 +44,53 @@ def test_pc_all_setup():
         batch = next(iter(loader))
 
 
+@pytest.mark.dependency(depends=["test_pc_all_setup"])
+def test_pc_no_args():
+    # this makes sure that when nothing is provided, the code breaks
+    try:
+        dm = MaterialsProjectDataModule()
+    except AssertionError:
+        assert True
+
+
+@pytest.mark.dependency(depends=["test_pc_setup"])
+def test_pc_paths():
+    dm = MaterialsProjectDataModule(train_path=materialsproject_devset)
+    dm.setup()
+    # get train batch
+    batch = next(iter(dm.train_dataloader()))
+
+
+@pytest.mark.dependency(depends=["test_pc_paths"])
+def test_pc_all_paths():
+    dm = MaterialsProjectDataModule(train_path=materialsproject_devset, val_split=materialsproject_devset, test_split=materialsproject_devset)
+    dm.setup()
+    # get train batch
+    for key in ["train", "val", "test"]:
+        loader = getattr(dm, f"{key}_dataloader")()
+        batch = next(iter(loader))
+
+
+@pytest.mark.dependency(depends=["test_pc_all_paths"])
+def test_pc_train_with_val_split():
+    dm = MaterialsProjectDataModule(train_path=materialsproject_devset, val_split=0.1, test_split=materialsproject_devset)
+    dm.setup()
+    # get train batch
+    for key in ["train", "val", "test"]:
+        loader = getattr(dm, f"{key}_dataloader")()
+        batch = next(iter(loader))
+
+
+@pytest.mark.dependency(depends=["test_pc_all_paths"])
+def test_pc_train_with_val_test_split():
+    dm = MaterialsProjectDataModule(train_path=materialsproject_devset, val_split=0.1, test_split=0.1)
+    dm.setup()
+    # get train batch
+    for key in ["train", "val", "test"]:
+        loader = getattr(dm, f"{key}_dataloader")()
+        batch = next(iter(loader))
+
+
 @pytest.mark.dependency()
 def test_graph_setup():
     dset = MaterialsProjectDataModule.from_devset(graphs=True)
@@ -65,4 +113,5 @@ def test_graph_all_setup():
 @pytest.mark.dependency(depends=["test_pc_setup"])
 def test_mp_target_keys():
     dset = MaterialsProjectDataModule.from_devset()
-    assert dset.target_keys == ["band_gap"]
+    assert "regression" in dset.target_keys
+    assert "band_gap" in dset.target_keys["regression"]

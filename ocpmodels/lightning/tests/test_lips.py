@@ -65,5 +65,6 @@ def test_graph_all_setup():
 @pytest.mark.dependency(depends=["test_pc_setup"])
 def test_datamodule_target_keys():
     dset = LiPSDataModule.from_devset()
-    assert dset.target_keys == ["energy", "force"]
+    assert "regression" in dset.target_keys
+    assert all([key in dset.target_keys["regression"] for key in ["energy", "force"]])
 
