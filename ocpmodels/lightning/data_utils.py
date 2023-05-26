@@ -393,8 +393,8 @@ class BaseLightningDataModule(pl.LightningDataModule):
         )
 
     def test_dataloader(self):
-        split = self.splits.get("test")
-        if len(split) == 0:
+        split = self.splits.get("test", None)
+        if split is None:
             return None
         return DataLoader(
             split,
@@ -404,8 +404,8 @@ class BaseLightningDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
-        split = self.splits.get("val")
-        if len(split) == 0:
+        split = self.splits.get("val", None)
+        if split is None:
             return None
         return DataLoader(
             split,
