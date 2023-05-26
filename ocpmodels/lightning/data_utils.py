@@ -451,6 +451,19 @@ class MaterialsProjectDataModule(BaseLightningDataModule):
 
 
 class LiPSDataModule(BaseLightningDataModule):
+    def __init__(
+        self,
+        train_path: Optional[Union[str, Path]] = None,
+        dataset: Optional[Union[Type[TorchDataset], TorchDataset]] = LiPSDataset,
+        batch_size: int = 32,
+        num_workers: int = 0,
+        val_split: Optional[Union[str, Path, float]] = 0.0,
+        test_split: Optional[Union[str, Path, float]] = 0.0,
+        seed: Optional[int] = None,
+        dset_kwargs: Optional[Dict[str, Any]] = None
+    ):
+        super().__init__(dataset, train_path, batch_size, num_workers, val_split, test_split, seed, dset_kwargs)
+
     @classmethod
     def from_devset(
         cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
@@ -458,7 +471,7 @@ class LiPSDataModule(BaseLightningDataModule):
         kwargs.setdefault("batch_size", 8)
         kwargs.setdefault("num_workers", 0)
         dset_class = LiPSDataset if not graphs else DGLLiPSDataset
-        return cls(dset_class(lips_devset, transforms=transforms), **kwargs)
+        return cls(dataset=dset_class(lips_devset, transforms=transforms), **kwargs)
 
 
 class PointCloudDataModule(GraphDataModule):
