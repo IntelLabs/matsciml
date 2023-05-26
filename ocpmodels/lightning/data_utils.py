@@ -292,6 +292,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
             assert dataset is not None, f"Float passed to split, but no dataset provided to split."
         self.dataset = dataset
         self.transforms = transforms
+        self.dset_kwargs = dset_kwargs
         self.save_hyperparameters(ignore=["dataset"])
 
     def _make_dataset(self, path: Union[str, Path], dataset: Union[TorchDataset, Type[TorchDataset]]) -> TorchDataset:
@@ -311,12 +312,13 @@ class BaseLightningDataModule(pl.LightningDataModule):
         TorchDataset
             Dataset corresponding to the given path
         """
+        dset_kwargs = getattr(self, "dset_kwargs", {})
         if isinstance(dataset, TorchDataset):
             transforms = getattr(dataset, "transforms", None)
             # apply same transforms to this split
-            new_dset = TorchDataset.__class__(path, transforms=transforms)
+            new_dset = TorchDataset.__class__(path, transforms=transforms, **dset_kwargs)
         else:
-            new_dset = TorchDataset(path, transforms=self.transforms)
+            new_dset = TorchDataset(path, transforms=self.transforms, **dset_kwargs)
         return new_dset
 
     def setup(self, stage: Optional[str] = None) -> None:
