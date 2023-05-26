@@ -334,7 +334,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
             self.dataset = train_dset
             splits["train"] = train_dset
         # now make test and validation splits. If both are floats, we'll do a joint split
-        if all([isinstance(self.hparams[key], float) for key in ["val_split", "test_split"]]):
+        if any([isinstance(self.hparams[key], float) for key in ["val_split", "test_split"]]):
             # in the case that floats are provided for 
             if self.hparams.seed is None:
                 # try read from PyTorch Lightning, if not use a set seed
@@ -362,13 +362,11 @@ class BaseLightningDataModule(pl.LightningDataModule):
                 if split is not None:
                     splits[key] = split
         # otherwise, just assume paths - if they're not we'll ignore them here
-        else:
-            for key in ["val", "test"]:
-                split_path = getattr(self.hparams, f"{key}_split", None)
-                if isinstance(split_path, (str, Path)):
-                    dset = self._make_dataset(split_path, self.dataset)
-                    splits[key] = dset
-            self.splits = splits
+        for key in ["val", "test"]:
+            split_path = getattr(self.hparams, f"{key}_split", None)
+            if isinstance(split_path, (str, Path)):
+                dset = self._make_dataset(split_path, self.dataset)
+                splits[key] = dset
         # the last case assumes only the dataset is passed, we will treat it as train
         if len(splits) == 0:
             splits["train"] = self.dataset
