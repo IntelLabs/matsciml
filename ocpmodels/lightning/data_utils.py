@@ -343,8 +343,15 @@ class BaseLightningDataModule(pl.LightningDataModule):
                 seed = self.hparams.seed
             generator = torch.Generator().manual_seed(int(seed))
             num_points = len(self.dataset)
-            num_val = int(self.hparams.val_split * num_points)
-            num_test = int(self.hparams.test_split * num_points)
+            # grab the fractional splits, but ignore them if they are not floats
+            val_split = getattr(self.hparams, "val_split")
+            if not isinstance(val_split, float):
+                val_split = 0.
+            test_split = getattr(self.hparams, "test_split")
+            if not isinstance(test_split, float):
+                test_split = 0.
+            num_val = int(val_split * num_points)
+            num_test = int(test_split * num_points)
             # make sure we're not asking for more data than exists
             num_train = num_points - (num_val + num_test)
             assert (
