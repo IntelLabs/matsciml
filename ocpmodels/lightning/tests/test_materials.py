@@ -65,4 +65,5 @@ def test_graph_all_setup():
 @pytest.mark.dependency(depends=["test_pc_setup"])
 def test_mp_target_keys():
     dset = MaterialsProjectDataModule.from_devset()
-    assert dset.target_keys == ["band_gap"]
+    assert "regression" in dset.target_keys
+    assert "band_gap" in dset.target_keys["regression"]
