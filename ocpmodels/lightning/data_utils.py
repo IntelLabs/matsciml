@@ -290,6 +290,8 @@ class BaseLightningDataModule(pl.LightningDataModule):
         # if floats are passed to splits, make sure dataset is provided for inference
         if any([isinstance(i, float) for i in [val_split, test_split]]):
             assert dataset is not None, f"Float passed to split, but no dataset provided to split."
+        if isinstance(dataset, Type):
+            assert any([isinstance(p, (str, Path)) for p in [train_path, val_split, test_split]]), "Dataset type passed, but no paths to construct with."
         self.dataset = dataset
         self.transforms = transforms
         self.dset_kwargs = dset_kwargs
