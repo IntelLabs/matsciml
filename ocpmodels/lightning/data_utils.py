@@ -312,7 +312,9 @@ class BaseLightningDataModule(pl.LightningDataModule):
         TorchDataset
             Dataset corresponding to the given path
         """
-        dset_kwargs = getattr(self, "dset_kwargs", {})
+        dset_kwargs = getattr(self, "dset_kwargs", None)
+        if not dset_kwargs:
+            dset_kwargs = {}
         if isinstance(dataset, TorchDataset):
             transforms = getattr(dataset, "transforms", None)
             dset_kwargs["transforms"] = transforms
