@@ -322,27 +322,44 @@ class BaseLightningDataModule(pl.LightningDataModule):
         return new_dset
 
     def setup(self, stage: Optional[str] = None) -> None:
+        splits = {}
         # set up the training split, if provided
         if getattr(self.hparams, "train_path", None) is not None:
             assert isinstance(self.dataset, Type[TorchDataset]), f"Train path provided but no valid dataset class."
-            train_dset = self.dataset(self.hparams.train_path, transforms=self.transforms)
-        # in the case that floats are provided for 
-        if self.hparams.seed is None:
-            # try read from PyTorch Lightning, if not use a set seed
-            seed = getenv("PL_GLOBAL_SEED", 42)
+            train_dset = self._make_dataset(self.hparams.train_path, self.dataset)
+            # set the main dataset to the train split, since it's used for other splits
+            self.dataset = train_dset
+            splits["train"] = train_dset
+        # now make test and validation splits. If both are floats, we'll do a joint split
+        if all([isinstance(self.hparams[key], float) for key in ["val_split", "test_split"]]):
+            # in the case that floats are provided for 
+            if self.hparams.seed is None:
+                # try read from PyTorch Lightning, if not use a set seed
+                seed = getenv("PL_GLOBAL_SEED", 42)
+            else:
+                seed = self.hparams.seed
+            generator = torch.Generator().manual_seed(int(seed))
+            num_points = len(self.dataset)
+            num_val = int(self.hparams.val_split * num_points)
+            num_test = int(self.hparams.test_split * num_points)
+            # make sure we're not asking for more data than exists
+            num_train = num_points - (num_val + num_test)
+            assert (
+                num_train >= 0
+            ), f"More test/validation samples requested than available samples."
+            splits = random_split(self.dataset, [num_train, num_val, num_test], generator)
+            self.splits = {key: splits[i] for i, key in enumerate(["train", "val", "test"])}
+        # otherwise, just assume paths - if they're not we'll ignore them here
         else:
-            seed = self.hparams.seed
-        generator = torch.Generator().manual_seed(int(seed))
-        num_points = len(self.dataset)
-        num_val = int(self.hparams.val_split * num_points)
-        num_test = int(self.hparams.test_split * num_points)
-        # make sure we're not asking for more data than exists
-        num_train = num_points - (num_val + num_test)
-        assert (
-            num_train >= 0
-        ), f"More test/validation samples requested than available samples."
-        splits = random_split(self.dataset, [num_train, num_val, num_test], generator)
-        self.splits = {key: splits[i] for i, key in enumerate(["train", "val", "test"])}
+            for key in ["val", "test"]:
+                split_path = getattr(self.hparams, f"{key}_split", None)
+                if split_path:
+                    dset = self._make_dataset(split_path, self.dataset)
+                    splits[key] = dset
+            self.splits = splits
+        # the last case assumes only the dataset is passed, we will treat it as train
+        if len(splits) == 0:
+            splits["train"] = self.dataset
 
     def train_dataloader(self):
         split = self.splits.get("train")
