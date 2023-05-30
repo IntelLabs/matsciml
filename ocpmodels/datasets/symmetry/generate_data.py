@@ -18,6 +18,21 @@ from ocpmodels.datasets.symmetry.subgroup_classes import SubgroupGenerator
 from ocpmodels.datasets.generate_subsplit import write_data
 
 
+devset_kwargs = {
+    "lmdb_path": "./devset",
+    "batch_size": 1,
+    "number": 1000,
+    "symmetry": 12,
+    "max-types": 6,
+    "max-size": 50,
+    "multilabel": False,
+    "upsample": False,
+    "seed": 0,
+    "lengthscale": 1.0,
+    "filter_scale": 1e-2,
+}
+
+
 parser = argparse.ArgumentParser(description="Freeze a point group dataset")
 parser.add_argument("lmdb_path", help="Filename to write", type=Path)
 parser.add_argument(
@@ -77,6 +92,9 @@ parser.add_argument(
     type=float,
     default=1e-2,
     help="Distance to use for deduplicating symmetrized points",
+)
+parser.add_argument(
+    "--devset", action="store_true", help="Override settings to generate the devset."
 )
 
 
