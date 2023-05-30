@@ -23,10 +23,11 @@ devset_kwargs = {
     "batch_size": 1,
     "number": 1000,
     "symmetry": 12,
-    "max-types": 6,
-    "max-size": 50,
+    "max_types": 6,
+    "max_size": 50,
     "multilabel": False,
     "upsample": False,
+    "normalize": True,
     "seed": 0,
     "lengthscale": 1.0,
     "filter_scale": 1e-2,
@@ -159,4 +160,8 @@ def main(
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    main(**vars(args))
+    if args.devset:
+        config = devset_kwargs
+    else:
+        config = vars(args)
+    main(**config)
