@@ -141,7 +141,9 @@ def main(
 
     # batches = list(itertools.islice(generator, 0, number))
     batches = itertools.islice(generator, 0, number)
-    for index, batch in tqdm(enumerate(batches), desc="Entries processed.", total=number):
+    for index, batch in tqdm(
+        enumerate(batches), desc="Entries processed.", total=number
+    ):
         # convert batch object into dict for pickling
         batch = batch._asdict()
         converted_dict = {}
