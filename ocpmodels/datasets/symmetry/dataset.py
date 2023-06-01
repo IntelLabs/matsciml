@@ -76,7 +76,7 @@ class OTFPointGroupDataset(IterableDataset):
     ...
 
 
-class PointGroupDataset(BaseLMDBDataset):
+class SyntheticPointGroupDataset(BaseLMDBDataset):
     def __init__(
         self,
         lmdb_root_path: Union[str, Path],
