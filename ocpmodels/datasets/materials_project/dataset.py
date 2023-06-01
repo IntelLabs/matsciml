@@ -11,7 +11,7 @@ from pymatgen.core import Structure
 from emmet.core.symmetry import SymmetryData
 
 from ocpmodels.datasets.base import BaseLMDBDataset
-from ocpmodels.datasets.symmetry.dataset import point_cloud_featurization
+from ocpmodels.datasets.utils import concatenate_keys, point_cloud_featurization
 
 
 _has_dgl = find_spec("dgl") is not None
@@ -99,7 +99,12 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         coords = torch.from_numpy(structure.cart_coords).float()
         return_dict["pos"] = coords[None, :] - coords[:, None]
         return_dict["coords"] = coords
+        atom_numbers = torch.LongTensor(structure.atomic_numbers)
+        # uses one-hot encoding featurization
+        pc_features = point_cloud_featurization(atom_numbers, atom_numbers, 200)
+        # keep atomic numbers for graph featurization
         return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
+        return_dict["pc_features"] = pc_features
         return_dict["distance_matrix"] = torch.from_numpy(
             structure.distance_matrix
         ).float()
