@@ -2327,6 +2327,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 if "graph" in subset:
                     counts = subset["graph"].batch_size
                 elif len(subset["targets"]) > 0:
+                    key = next(iter(batch["targets"]))
                     sample = subset["targets"][key]
                     if isinstance(sample, dgl.DGLGraph):
                         counts = sample.batch_size
