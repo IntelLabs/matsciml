@@ -25,6 +25,7 @@ from ocpmodels.datasets.materials_project import (
     DGLMaterialsProjectDataset,
 )
 from ocpmodels.datasets.lips import LiPSDataset, DGLLiPSDataset, lips_devset
+from ocpmodels.datasets.symmetry import DGLSyntheticPointGroupDataset, SyntheticPointGroupDataset, symmetry_devset
 
 
 class GraphDataModule(pl.LightningDataModule):
@@ -472,6 +473,39 @@ class LiPSDataModule(BaseLightningDataModule):
         kwargs.setdefault("num_workers", 0)
         dset_class = LiPSDataset if not graphs else DGLLiPSDataset
         return cls(dataset=dset_class(lips_devset, transforms=transforms), **kwargs)
+
+
+class SyntheticPointGroupDataModule(BaseLightningDataModule):
+    def __init__(
+        self,
+        dataset: Optional[Union[Type[TorchDataset], TorchDataset]] = None,
+        train_path: Optional[Union[str, Path]] = None,
+        batch_size: int = 32,
+        num_workers: int = 0,
+        val_split: Optional[Union[str, Path, float]] = 0,
+        test_split: Optional[Union[str, Path, float]] = 0,
+        seed: Optional[int] = None,
+        dset_kwargs: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(
+            dataset,
+            train_path,
+            batch_size,
+            num_workers,
+            val_split,
+            test_split,
+            seed,
+            dset_kwargs,
+        )
+
+    @classmethod
+    def from_devset(
+            cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
+    ):
+        kwargs.setdefault("batch_size", 8)
+        kwargs.setdefault("num_workers", 0)
+        dset_class = SyntheticPointGroupDataset if not graphs else DGLSyntheticPointGroupDataset
+        return cls(dataset=dset_class(symmetry_devset, transforms=transforms), **kwargs)
 
 
 class PointCloudDataModule(GraphDataModule):
