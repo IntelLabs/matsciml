@@ -46,6 +46,20 @@ train_kwargs = {
     "lengthscale": 1.0,
     "filter_scale": 1e-2,
 }
+val_kwargs = {
+    "lmdb_path": "./symmetry/validation",
+    "batch_size": 1,
+    "number": 30000,
+    "symmetry": 12,
+    "max_types": 100,
+    "max_size": 40,
+    "multilabel": False,
+    "upsample": False,
+    "normalize": True,
+    "seed": 2160,
+    "lengthscale": 1.0,
+    "filter_scale": 1e-2,
+}
 
 
 parser = argparse.ArgumentParser(description="Freeze a point group dataset")
@@ -112,7 +126,10 @@ parser.add_argument(
     "--devset", action="store_true", help="Override settings to generate the devset."
 )
 parser.add_argument(
-    "--train_set", action="store_true", help="Override settings to generate the devset."
+    "--train_set", action="store_true", help="Override settings to generate the train set."
+)
+parser.add_argument(
+    "--val_set", action="store_true", help="Override settings to generate the validation set."
 )
 
 
@@ -185,6 +202,8 @@ if __name__ == "__main__":
         config = devset_kwargs
     elif args.train_set:
         config = train_kwargs
+    elif args.val_set:
+        config = val_kwargs
     else:
         config = vars(args)
     main(**config)
