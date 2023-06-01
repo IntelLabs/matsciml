@@ -32,6 +32,20 @@ devset_kwargs = {
     "lengthscale": 1.0,
     "filter_scale": 1e-2,
 }
+train_kwargs = {
+    "lmdb_path": "./symmetry/train",
+    "batch_size": 1,
+    "number": 200000,
+    "symmetry": 12,
+    "max_types": 100,
+    "max_size": 40,
+    "multilabel": False,
+    "upsample": False,
+    "normalize": True,
+    "seed": 121,
+    "lengthscale": 1.0,
+    "filter_scale": 1e-2,
+}
 
 
 parser = argparse.ArgumentParser(description="Freeze a point group dataset")
@@ -96,6 +110,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--devset", action="store_true", help="Override settings to generate the devset."
+)
+parser.add_argument(
+    "--train_set", action="store_true", help="Override settings to generate the devset."
 )
 
 
@@ -166,6 +183,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.devset:
         config = devset_kwargs
+    elif args.train_set:
+        config = train_kwargs
     else:
         config = vars(args)
     main(**config)
