@@ -11,6 +11,7 @@ from ocpmodels.datasets.materials_project import (
 )
 from ocpmodels.datasets.task_datasets import IS2REDataset, S2EFDataset
 from ocpmodels.datasets.lips import DGLLiPSDataset, LiPSDataset
+from ocpmodels.datasets.symmetry import DGLSyntheticPointGroupDataset, SyntheticPointGroupDataset
 
 # quasi-registry of functions for collating based on dataset class name
 collate_registry = {
@@ -22,6 +23,8 @@ collate_registry = {
         S2EFDataset,
         DGLLiPSDataset,
         LiPSDataset,
+        DGLSyntheticPointGroupDataset,
+        SyntheticPointGroupDataset
     ]
 }
 
