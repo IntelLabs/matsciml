@@ -435,7 +435,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_path', required=True)
     parser.add_argument('--label', default='')
-    parser.add_argument('--n_samples', default=2)
+    parser.add_argument('--n_samples', default=2, type=int)
     parser.add_argument('--tasks', nargs='+', default=['recon', 'gen', 'opt'])
     parser.add_argument('--eval_name', required=True)
     args = parser.parse_args()
