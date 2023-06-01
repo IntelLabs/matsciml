@@ -1,17 +1,24 @@
 
 from ocpmodels.datasets.symmetry import symmetry_devset
-from ocpmodels.datasets.symmetry.dataset import PointGroupDataset
+from ocpmodels.datasets.symmetry.dataset import SyntheticPointGroupDataset, DGLSyntheticPointGroupDataset
 
 
 def test_devset_init():
-    dset = PointGroupDataset(symmetry_devset)
+    dset = SyntheticPointGroupDataset(symmetry_devset)
     sample = dset.__getitem__(0)
-    assert all([key in sample for key in ["pos", "symmetry", "atomic_numbers"]])
-    num_particles = sample["pos"].shape[0]
-    assert len(sample["atomic_numbers"]) == num_particles
+    assert all([key in sample for key in ["pos", "symmetry", "pc_features"]])
 
 
 def test_devset_collate():
-    dset = PointGroupDataset(symmetry_devset)
+    dset = SyntheticPointGroupDataset(symmetry_devset)
     samples = [dset.__getitem__(i) for i in range(8)]
     batch = dset.collate_fn(samples)
+    assert all([key in batch for key in ["pc_features", "pos", "symmetry"]])
+
+
+def test_devset_collate():
+    dset = DGLSyntheticPointGroupDataset(symmetry_devset)
+    samples = [dset.__getitem__(i) for i in range(8)]
+    batch = dset.collate_fn(samples)
+    assert "graph" in batch
+    assert all([key in batch["graph"].ndata for key in ["pos", "atomic_numbers"]])
