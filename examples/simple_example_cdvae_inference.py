@@ -74,6 +74,8 @@ def load_model(model_path, load_data):
             decoder=decoder,
             **cdvae_config
         )
+    else:
+        model = GenerationTask.load_from_checkpoint(model_path)
 
     print(f"Passing scaler from datamodule to model <{dm.scaler}>")
     model.lattice_scaler = dm.lattice_scaler.copy()
@@ -255,7 +257,7 @@ def optimization(model, ld_kwargs, data_loader,
 def main(args):
     # load_data if do reconstruction.
     #model_path = Path(args.model_path)
-    model_path = None  ## TODO: change when a trained model is available 
+    model_path = None if args.model_path is None else args.model_path
     model, test_loader, cfg = load_model(
         model_path, load_data=('recon' in args.tasks) or
         ('opt' in args.tasks and args.start_from == 'data'))
