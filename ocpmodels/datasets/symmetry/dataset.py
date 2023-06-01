@@ -103,7 +103,8 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
             sample["source_types"], sample["dest_types"], self.max_types
         )
         sample["symmetry"] = {"number": sample["label"].item()}
-        sample["num_points"] = len(sample["atomic_numbers"])
+        sample["num_centers"] = len(sample["source_types"])
+        sample["num_neighbors"] = len(sample["dest_types"])
         # clean up keys
         for key in ["label"]:
             del sample[key]
