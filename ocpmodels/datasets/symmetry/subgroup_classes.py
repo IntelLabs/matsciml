@@ -270,7 +270,7 @@ class SubgroupGenerator:
                     if self.multilabel:
                         batch_y[i] = self.subgroup_map.subgroup_row_map[name_choice]
                     else:
-                        batch_y[i] = self.subgroup_map.column_name_map[name_choice]
+                        batch_y[i] = self.subgroup_map.column_name_map[name_choice] + 1
                     i += 1
 
             if self.normalize:
