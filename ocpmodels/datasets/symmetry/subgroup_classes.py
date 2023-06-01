@@ -257,7 +257,8 @@ class SubgroupGenerator:
                 r = rng.normal(size=(n, 3))
                 symop = self.subgroup_transform_getter(name_choice)
                 r = symop(r)
-                v = np.tile(v, len(r) // len(v))
+                num_tiles = len(r) // len(v)
+                v = np.tile(v, num_tiles)
                 r, v = filter_discrete(r, v, self.encoding_filter)
                 orders[name_choice] = len(r) / n
                 if len(r) <= self.max_size:
