@@ -137,7 +137,7 @@ class GenerationTask(BaseTaskModule):
         return mu, log_var, z
     
     def decode_stats(self, z, gt_num_atoms=None, gt_lengths=None, gt_angles=None,
-                     teacher_forcing=False):
+                     teacher_forcing=False, debug=False):
         """
         decode key stats from latent embeddings.
         batch is input during training for teach-forcing.
@@ -152,6 +152,10 @@ class GenerationTask(BaseTaskModule):
                 angles = gt_angles
         else:
             num_atoms = self.predict_num_atoms(z).argmax(dim=-1)
+
+            # TODO: ugly hack for debugging when model can predict 0 atoms in a lattice
+            if debug:
+                num_atoms[num_atoms == 0] = self.hparams.max_atoms
             lengths_and_angles, lengths, angles = (
                 self.predict_lattice(z, num_atoms))
             composition_per_atom = self.predict_composition(z, num_atoms)
@@ -178,7 +182,10 @@ class GenerationTask(BaseTaskModule):
 
         # obtain key stats.
         num_atoms, _, lengths, angles, composition_per_atom = self.decode_stats(
-            z, gt_num_atoms)
+            z, gt_num_atoms, debug=True)
+        
+        # TODO: ugly hack for debugging when model can predict 0 atoms in a lattice
+        # num_atoms[num_atoms == 0] = self.hparams.max_atoms
         if gt_num_atoms is not None:
             num_atoms = gt_num_atoms
 

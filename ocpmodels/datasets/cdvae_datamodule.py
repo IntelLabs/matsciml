@@ -102,6 +102,7 @@ class CrystDataModule(pl.LightningDataModule):
                 val_dataset.lattice_scaler = self.lattice_scaler
                 val_dataset.scaler = self.scaler
 
+        if stage is None or stage == "test":
         #if stage is None or stage == "test":
             # self.test_datasets = [
             #     hydra.utils.instantiate(dataset_cfg)
