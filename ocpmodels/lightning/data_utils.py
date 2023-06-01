@@ -282,21 +282,32 @@ class BaseLightningDataModule(pl.LightningDataModule):
         val_split: Optional[Union[str, Path, float]] = 0.0,
         test_split: Optional[Union[str, Path, float]] = 0.0,
         seed: Optional[int] = None,
-        dset_kwargs: Optional[Dict[str, Any]] = None
+        dset_kwargs: Optional[Dict[str, Any]] = None,
     ):
         super().__init__()
         # make sure we have something to work with
-        assert any([i for i in [dataset, train_path, val_split, test_split]]), f"No splits provided to datamodule."
+        assert any(
+            [i for i in [dataset, train_path, val_split, test_split]]
+        ), f"No splits provided to datamodule."
         # if floats are passed to splits, make sure dataset is provided for inference
         if any([isinstance(i, float) for i in [val_split, test_split]]):
-            assert dataset is not None, f"Float passed to split, but no dataset provided to split."
+            assert (
+                dataset is not None
+            ), f"Float passed to split, but no dataset provided to split."
         if isinstance(dataset, Type):
-            assert any([isinstance(p, (str, Path)) for p in [train_path, val_split, test_split]]), "Dataset type passed, but no paths to construct with."
+            assert any(
+                [
+                    isinstance(p, (str, Path))
+                    for p in [train_path, val_split, test_split]
+                ]
+            ), "Dataset type passed, but no paths to construct with."
         self.dataset = dataset
         self.dset_kwargs = dset_kwargs
         self.save_hyperparameters(ignore=["dataset"])
 
-    def _make_dataset(self, path: Union[str, Path], dataset: Union[TorchDataset, Type[TorchDataset]]) -> TorchDataset:
+    def _make_dataset(
+        self, path: Union[str, Path], dataset: Union[TorchDataset, Type[TorchDataset]]
+    ) -> TorchDataset:
         """
         Convert a string or path specification of a dataset into a concrete dataset object.
 
@@ -329,14 +340,21 @@ class BaseLightningDataModule(pl.LightningDataModule):
         splits = {}
         # set up the training split, if provided
         if getattr(self.hparams, "train_path", None) is not None:
-            assert isinstance(self.dataset, Type), f"Train path provided but no valid dataset class."
+            assert isinstance(
+                self.dataset, Type
+            ), f"Train path provided but no valid dataset class."
             train_dset = self._make_dataset(self.hparams.train_path, self.dataset)
             # set the main dataset to the train split, since it's used for other splits
             self.dataset = train_dset
             splits["train"] = train_dset
         # now make test and validation splits. If both are floats, we'll do a joint split
-        if any([isinstance(self.hparams[key], float) for key in ["val_split", "test_split"]]):
-            # in the case that floats are provided for 
+        if any(
+            [
+                isinstance(self.hparams[key], float)
+                for key in ["val_split", "test_split"]
+            ]
+        ):
+            # in the case that floats are provided for
             if self.hparams.seed is None:
                 # try read from PyTorch Lightning, if not use a set seed
                 seed = getenv("PL_GLOBAL_SEED", 42)
@@ -347,10 +365,10 @@ class BaseLightningDataModule(pl.LightningDataModule):
             # grab the fractional splits, but ignore them if they are not floats
             val_split = getattr(self.hparams, "val_split")
             if not isinstance(val_split, float):
-                val_split = 0.
+                val_split = 0.0
             test_split = getattr(self.hparams, "test_split")
             if not isinstance(test_split, float):
-                test_split = 0.
+                test_split = 0.0
             num_val = int(val_split * num_points)
             num_test = int(test_split * num_points)
             # make sure we're not asking for more data than exists
@@ -358,7 +376,9 @@ class BaseLightningDataModule(pl.LightningDataModule):
             assert (
                 num_train >= 0
             ), f"More test/validation samples requested than available samples."
-            splits_list = random_split(self.dataset, [num_train, num_val, num_test], generator)
+            splits_list = random_split(
+                self.dataset, [num_train, num_val, num_test], generator
+            )
             for split, key in zip(splits_list, ["train", "val", "test"]):
                 if split is not None:
                     splits[key] = split
@@ -429,15 +449,26 @@ class MaterialsProjectDataModule(BaseLightningDataModule):
     def __init__(
         self,
         train_path: Optional[Union[str, Path]] = None,
-        dataset: Optional[Union[Type[TorchDataset], TorchDataset]] = MaterialsProjectDataset,
+        dataset: Optional[
+            Union[Type[TorchDataset], TorchDataset]
+        ] = MaterialsProjectDataset,
         batch_size: int = 32,
         num_workers: int = 0,
         val_split: Optional[Union[str, Path, float]] = 0.0,
         test_split: Optional[Union[str, Path, float]] = 0.0,
         seed: Optional[int] = None,
-        dset_kwargs: Optional[Dict[str, Any]] = None
+        dset_kwargs: Optional[Dict[str, Any]] = None,
     ):
-        super().__init__(dataset, train_path, batch_size, num_workers, val_split, test_split, seed, dset_kwargs)
+        super().__init__(
+            dataset,
+            train_path,
+            batch_size,
+            num_workers,
+            val_split,
+            test_split,
+            seed,
+            dset_kwargs,
+        )
 
     @classmethod
     def from_devset(
@@ -448,7 +479,9 @@ class MaterialsProjectDataModule(BaseLightningDataModule):
         dset_class = (
             MaterialsProjectDataset if not graphs else DGLMaterialsProjectDataset
         )
-        return cls(dataset=dset_class(materialsproject_devset, transforms=transforms), **kwargs)
+        return cls(
+            dataset=dset_class(materialsproject_devset, transforms=transforms), **kwargs
+        )
 
 
 class LiPSDataModule(BaseLightningDataModule):
@@ -461,9 +494,18 @@ class LiPSDataModule(BaseLightningDataModule):
         val_split: Optional[Union[str, Path, float]] = 0.0,
         test_split: Optional[Union[str, Path, float]] = 0.0,
         seed: Optional[int] = None,
-        dset_kwargs: Optional[Dict[str, Any]] = None
+        dset_kwargs: Optional[Dict[str, Any]] = None,
     ):
-        super().__init__(dataset, train_path, batch_size, num_workers, val_split, test_split, seed, dset_kwargs)
+        super().__init__(
+            dataset,
+            train_path,
+            batch_size,
+            num_workers,
+            val_split,
+            test_split,
+            seed,
+            dset_kwargs,
+        )
 
     @classmethod
     def from_devset(
