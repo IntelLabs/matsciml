@@ -66,16 +66,18 @@ def load_model(model_path, load_data):
         batch_size=4
     )
     
-    if model_path is None:
-        encoder = DimeNetPlusPlusWrap(**enc_config)
-        decoder = GemNetTDecoder(**dec_config)
-        model = GenerationTask(
-            encoder=encoder, 
-            decoder=decoder,
-            **cdvae_config
-        )
-    else:
-        model = GenerationTask.load_from_checkpoint(model_path)
+    
+    encoder = DimeNetPlusPlusWrap(**enc_config)
+    decoder = GemNetTDecoder(**dec_config)
+    model = GenerationTask(
+        encoder=encoder, 
+        decoder=decoder,
+        **cdvae_config
+    )
+    if model_path is not None:
+        checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
+        model.load_state_dict(checkpoint['state_dict'])
+
 
     print(f"Passing scaler from datamodule to model <{dm.scaler}>")
     model.lattice_scaler = dm.lattice_scaler.copy()
