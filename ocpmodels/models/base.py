@@ -1062,6 +1062,7 @@ class BaseTaskModule(pl.LightningModule):
         # the output heads
         if not self.has_initialized:
             self.output_heads = self._make_output_heads()
+            self.normalizers = self._make_normalizers()
         self.hparams["task_keys"] = self._task_keys
 
     @property
@@ -1393,7 +1394,7 @@ class ScalarRegressionTask(BaseTaskModule):
         return keys
 
     def on_train_batch_start(
-        self, batch: Any, batch_idx: int, unused: int = 0
+        self, batch: Any, batch_idx: int
     ) -> Optional[int]:
         """
         PyTorch Lightning hook to check OutputHeads are created.
@@ -1417,7 +1418,7 @@ class ScalarRegressionTask(BaseTaskModule):
         """
         status = super().on_train_batch_start(batch, batch_idx)
         # if there are no task keys set, task has not been initialized yet
-        if not self.has_initialized:
+        if len(self.task_keys) == 0:
             keys = batch["target_types"]["regression"]
             self.task_keys = self._filter_task_keys(keys, batch)
             # now add the parameters to our task's optimizer
@@ -1472,7 +1473,7 @@ class BinaryClassificationTask(BaseTaskModule):
         return nn.ModuleDict(modules)
 
     def on_train_batch_start(
-        self, batch: Any, batch_idx: int, unused: int = 0
+        self, batch: Any, batch_idx: int
     ) -> Optional[int]:
         """
         PyTorch Lightning hook to check OutputHeads are created.
@@ -1496,7 +1497,7 @@ class BinaryClassificationTask(BaseTaskModule):
         """
         status = super().on_train_batch_start(batch, batch_idx, unused)
         # if there are no task keys set, task has not been initialized yet
-        if not self.has_initialized:
+        if len(self.task_keys) == 0:
             keys = batch["target_types"]["classification"]
             self.task_keys = keys
             # now add the parameters to our task's optimizer
@@ -1622,7 +1623,7 @@ class ForceRegressionTask(BaseTaskModule):
         return target_dict
 
     def on_train_batch_start(
-        self, batch: Any, batch_idx: int, unused: int = 0
+        self, batch: Any, batch_idx: int
     ) -> Optional[int]:
         """
         PyTorch Lightning hook to check OutputHeads are created.
@@ -1644,9 +1645,9 @@ class ForceRegressionTask(BaseTaskModule):
         Optional[int]
             Just returns the parent result.
         """
-        status = super().on_train_batch_start(batch, batch_idx, unused)
+        status = super().on_train_batch_start(batch, batch_idx)
         # if there are no task keys set, task has not been initialized yet
-        if not self.has_initialized:
+        if len(self.task_keys) == 0:
             # first round is used to initialize the output head
             self.task_keys = ["energy"]
             self.output_heads = self._make_output_heads()
@@ -1656,6 +1657,8 @@ class ForceRegressionTask(BaseTaskModule):
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
+            # create normalizers for each target
+            self.normalizers = self._make_normalizers()
         return status
 
     def training_step(
@@ -1688,10 +1691,8 @@ class ForceRegressionTask(BaseTaskModule):
         loss_dict = self._compute_losses(batch)
         loss = loss_dict["loss"]
         # sandwich lightning callbacks
-        self.on_before_backward(loss)
         self.manual_backward(loss, retain_graph=True)
         self.manual_backward(loss)
-        self.on_after_backward()
         self.on_before_optimizer_step(opt, 0)
         opt.step()
         metrics = {}
@@ -1742,7 +1743,7 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         return nn.ModuleDict(modules)
 
     def on_train_batch_start(
-        self, batch: Any, batch_idx: int, unused: int = 0
+        self, batch: Any, batch_idx: int
     ) -> Optional[int]:
         """
         PyTorch Lightning hook to check OutputHeads are created.
@@ -1764,9 +1765,9 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         Optional[int]
             Just returns the parent result.
         """
-        status = super().on_train_batch_start(batch, batch_idx, unused)
+        status = super().on_train_batch_start(batch, batch_idx)
         # if there are no task keys set, task has not been initialized yet
-        if not self.has_initialized:
+        if len(self.task_keys) == 0:
             self.task_keys = [
                 "spacegroup",
             ]
