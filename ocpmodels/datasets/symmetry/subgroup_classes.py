@@ -1,4 +1,3 @@
-from typing import Callable
 import collections
 import functools
 
@@ -194,16 +193,14 @@ class SubgroupGenerator:
     :param upsample: If True, randomly fill leftover space (up to max_size) in point clouds with identical replicas of points
     :param encoding_filter: Lengthscale to use in `filter_discrete`
     :param blacklist: List of symmetries or symmetry groups to exclude from consideration
-    :param seed: RNG seed for generation
     :param multilabel: If True, learn group-subgroup relations in a binary classification setting; if False, learn a single-class classification task
     :param normalize: If True, normalize points to the surface of a sphere; if False, points are allowed to have arbitrary length
-    :param sum_difference_types: If True, use a symmetric one-hot sum-difference encoding for type vectors
     :param lengthscale: Lengthscale for generated point clouds
 
     """
 
     BatchType = collections.namedtuple(
-        "BatchType", ["coordinates", "source_types", "dest_types", "label"]
+        "BatchType", ["coordinates", "source_types", "dest_types", "label", "num_tiles", "point_group"]
     )
 
     def __init__(
@@ -286,4 +283,4 @@ class SubgroupGenerator:
                 0, self.type_max, (self.batch_size, self.max_size), dtype=np.int64
             )
 
-            yield self.BatchType(batch_r, batch_source_v, batch_v, batch_y)
+            yield self.BatchType(batch_r, batch_source_v, batch_v, batch_y, [num_tiles,], [name_choice,])
