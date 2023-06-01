@@ -11,6 +11,7 @@ from pymatgen.core import Structure
 from emmet.core.symmetry import SymmetryData
 
 from ocpmodels.datasets.base import BaseLMDBDataset
+from ocpmodels.datasets.symmetry.dataset import point_cloud_featurization
 
 
 _has_dgl = find_spec("dgl") is not None
