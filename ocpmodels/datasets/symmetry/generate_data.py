@@ -153,6 +153,9 @@ def main(
             # cast to single precision if it's double
             if array.dtype == np.float64:
                 array = array.astype(np.float32)
+            # for node types, cast to long
+            if array.dtype == np.int32:
+                array = array.astype(np.int64)
             array = torch.from_numpy(array.squeeze())
             converted_dict[key] = array
         write_data(index, converted_dict, target_env)
