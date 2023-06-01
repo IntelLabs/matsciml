@@ -5,6 +5,11 @@ import numpy as np
 import rowan
 import re
 
+"""
+Original implementation by Matthew Spellings (Vector Institute) 5/25/2023
+
+Modifications by Kelvin Lee to integrate into matsciml
+"""
 
 def filter_discrete(x, values=None, delta=1e-2):
     """Remove duplicate points in a point cloud by discretizing by a given lengthscale.
