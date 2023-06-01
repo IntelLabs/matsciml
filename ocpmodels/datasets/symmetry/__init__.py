@@ -9,3 +9,5 @@ if not _has_rowan:
     warn(f"`rowan` dependency was not installed. To generate the symmetry dataset, please install matsciml with `pip install './[symmetry]'`.")
 
 symmetry_devset = Path(__file__).parents[0].joinpath("devset")
+
+from ocpmodels.datasets.symmetry.dataset import DGLSyntheticPointGroupDataset, SyntheticPointGroupDataset
