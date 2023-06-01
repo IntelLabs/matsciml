@@ -1105,7 +1105,7 @@ class BaseTaskModule(pl.LightningModule):
     def uses_normalizers(self) -> bool:
         # property determines if we normalize targets or not
         norms = getattr(self, "normalizers", None)
-        if norms is None:
+        if norms is None or self.__task__ in ["classification", "symmetry"]:
             return False
         return True
 
@@ -1916,8 +1916,13 @@ class MultiTaskLitModule(pl.LightningModule):
             for task_type, subtask in tasks.items():
                 combo = (data_key, task_type)
                 if combo not in self.optimizer_names:
-                    # if subtask.has_initialized:
+                    output_head = getattr(subtask, "output_heads", None)
+                    assert output_head is not None, f"{subtask} does not contain output heads; ensure `task_keys` are set: {subtask.task_keys}"
                     optimizer = subtask.configure_optimizers()
+                    # remove all the optimizer parameters, and re-add only the output heads
+                    optimizer.param_groups.clear()
+                    optimizer.add_param_group({"params": output_head.parameters()})
+                    # add optimizer to the pile
                     optimizers.append(optimizer)
                     self.optimizer_names.append((data_key, task_type))
                     index += 1
