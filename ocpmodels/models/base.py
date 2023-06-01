@@ -2324,31 +2324,36 @@ class MultiTaskLitModule(pl.LightningModule):
             break_down = {}
             for dataset, subset in batch.items():
                 # extract out targets to figure batch size for this subset of data
-                key = next(iter(subset["targets"]))
-                sample = subset["targets"][key]
-                if isinstance(sample, dgl.DGLGraph):
-                    counts = sample.batch_size
-                elif isinstance(sample, torch.Tensor):
-                    # assume first dimension is the batch size
-                    counts = sample.size(0)
-                else:
-                    # assume the object is like a list
-                    counts = len(sample)
-                # track how much data from each dataset
+                if "graph" in subset:
+                    counts = subset["graph"].batch_size
+                elif len(subset["targets"]) > 0:
+                    sample = subset["targets"][key]
+                    if isinstance(sample, dgl.DGLGraph):
+                        counts = sample.batch_size
+                    elif isinstance(sample, torch.Tensor):
+                        # assume first dimension is the batch size
+                        counts = sample.size(0)
+                    else:
+                        # assume the object is like a list
+                        counts = len(sample)
+                    # track how much data from each dataset
                 break_down[dataset] = counts
                 batch_size += counts
             batch_info["breakdown"] = break_down
         else:
-            key = next(iter(batch["targets"]))
-            sample = batch["targets"][key]
-            if isinstance(sample, dgl.DGLGraph):
-                batch_size = sample.batch_size
-            elif isinstance(sample, torch.Tensor):
-                # assume first dimension is the batch size
-                batch_size = sample.size(0)
-            else:
-                # assume the object is like a list
-                batch_size = len(sample)
+            if "graph" in batch:
+                batch_size = batch["graph"].batch_size
+            elif len(subset["targets"]) > 0:
+                key = next(iter(batch["targets"]))
+                sample = batch["targets"][key]
+                if isinstance(sample, dgl.DGLGraph):
+                    batch_size = sample.batch_size
+                elif isinstance(sample, torch.Tensor):
+                    # assume first dimension is the batch size
+                    batch_size = sample.size(0)
+                else:
+                    # assume the object is like a list
+                    batch_size = len(sample)
         batch_info["batch_size"] = batch_size
         return batch_info
 
