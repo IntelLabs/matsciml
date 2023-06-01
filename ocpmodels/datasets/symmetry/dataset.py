@@ -39,7 +39,9 @@ def concatenate_keys(
     return batched_data
 
 
-def point_cloud_featurization(src_types: torch.Tensor, dst_types: torch.Tensor, max_types: int = 100) -> torch.Tensor:
+def point_cloud_featurization(
+    src_types: torch.Tensor, dst_types: torch.Tensor, max_types: int = 100
+) -> torch.Tensor:
     """
     Featurizes an atom-centered point cloud, given source and destination node types.
 
@@ -75,7 +77,12 @@ class OTFPointGroupDataset(IterableDataset):
 
 
 class PointGroupDataset(BaseLMDBDataset):
-    def __init__(self, lmdb_root_path: Union[str, Path], transforms: Optional[List[Callable]] = None, max_types: int = 200) -> None:
+    def __init__(
+        self,
+        lmdb_root_path: Union[str, Path],
+        transforms: Optional[List[Callable]] = None,
+        max_types: int = 200,
+    ) -> None:
         super().__init__(lmdb_root_path, transforms)
         self.max_types = max_types
 
@@ -92,7 +99,9 @@ class PointGroupDataset(BaseLMDBDataset):
         # remap to the same keys as other datasets
         sample["pos"] = pc_pos
         # have filler keys to pretend like other data
-        sample["pc_features"] = point_cloud_featurization(sample["source_types"], sample["dest_types"], self.max_types)
+        sample["pc_features"] = point_cloud_featurization(
+            sample["source_types"], sample["dest_types"], self.max_types
+        )
         sample["symmetry"] = {"number": sample["label"].item()}
         sample["num_points"] = len(sample["atomic_numbers"])
         # clean up keys
