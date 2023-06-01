@@ -1,11 +1,14 @@
 from typing import Any, List, Tuple, Union, Dict, Optional, Callable
 from pathlib import Path
+from importlib.util import find_spec
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import IterableDataset, DataLoader
 
 from ocpmodels.datasets.base import BaseLMDBDataset
+
+_has_dgl = find_spec("dgl") is not None
 
 
 def concatenate_keys(
