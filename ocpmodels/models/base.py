@@ -1105,7 +1105,7 @@ class BaseTaskModule(pl.LightningModule):
     def uses_normalizers(self) -> bool:
         # property determines if we normalize targets or not
         norms = getattr(self, "normalizers", None)
-        if norms is None:
+        if norms is None or self.__task__ in ["classification", "symmetry"]:
             return False
         return True
 
