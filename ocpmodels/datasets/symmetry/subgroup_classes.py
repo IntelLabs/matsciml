@@ -243,11 +243,11 @@ class SubgroupGenerator:
 
         while True:
             batch_r = np.zeros((self.batch_size, self.max_size, 3))
-            batch_v = np.zeros((self.batch_size, self.max_size), dtype=np.int32)
+            batch_v = np.zeros((self.batch_size, self.max_size), dtype=np.int64)
             if self.multilabel:
-                batch_y = np.zeros((self.batch_size, y_dim), dtype=np.int32)
+                batch_y = np.zeros((self.batch_size, y_dim), dtype=np.int64)
             else:
-                batch_y = np.zeros(self.batch_size, dtype=np.int32)
+                batch_y = np.zeros(self.batch_size, dtype=np.int64)
             i = 0
             while i < self.batch_size:
                 name_choice = rng.choice(classes)
@@ -283,7 +283,7 @@ class SubgroupGenerator:
             batch_r *= self.lengthscale
 
             batch_source_v = rng.integers(
-                0, self.type_max, (self.batch_size, self.max_size), dtype=np.int32
+                0, self.type_max, (self.batch_size, self.max_size), dtype=np.int64
             )
 
             yield self.BatchType(batch_r, batch_source_v, batch_v, batch_y)
