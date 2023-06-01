@@ -1708,7 +1708,7 @@ class ForceRegressionTask(BaseTaskModule):
 
 
 class CrystalSymmetryClassificationTask(BaseTaskModule):
-    __task__ = "classification"
+    __task__ = "symmetry"
 
     def __init__(
         self,
