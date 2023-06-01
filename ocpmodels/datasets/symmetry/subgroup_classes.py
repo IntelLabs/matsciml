@@ -233,7 +233,7 @@ class SubgroupGenerator:
 
         self.subgroup_transform_getter = functools.lru_cache(PointGroup.get)
 
-        self.subgroup_map = SubgroupClassMap(type_max, blacklist)
+        self.subgroup_map = SubgroupClassMap(sym_max, blacklist)
 
     def generate(self, seed):
         rng = np.random.default_rng(seed)
@@ -282,7 +282,7 @@ class SubgroupGenerator:
             batch_r *= self.lengthscale
 
             batch_source_v = rng.integers(
-                0, self.sym_max, (self.batch_size, self.max_size), dtype=np.int32
+                0, self.type_max, (self.batch_size, self.max_size), dtype=np.int32
             )
 
             yield self.BatchType(batch_r, batch_source_v, batch_v, batch_y)
