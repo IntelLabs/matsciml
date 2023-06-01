@@ -1062,6 +1062,7 @@ class BaseTaskModule(pl.LightningModule):
         # the output heads
         if not self.has_initialized:
             self.output_heads = self._make_output_heads()
+            self.normalizers = self._make_normalizers()
         self.hparams["task_keys"] = self._task_keys
 
     @property
