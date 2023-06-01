@@ -52,8 +52,12 @@ class PointGroupDataset(BaseLMDBDataset):
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
         sample = super().data_from_key(lmdb_index, subindex)
+        # coordinates remains the original particle positions
+        coords = sample["coordinates"]
+        pc_pos = coords[None, :] - coords[:, None]
         # remap to the same keys as other datasets
-        sample["pos"] = sample["coordinates"]
+        sample["pos"] = pc_pos
+        # have filler keys to pretend like other data
         sample["atomic_numbers"] = sample["source_types"]
         sample["symmetry"] = {"number": sample["label"].item()}
         sample["num_points"] = len(sample["atomic_numbers"])
