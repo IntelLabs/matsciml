@@ -105,7 +105,7 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         sample["symmetry"] = {"number": sample["label"].item()}
         sample["num_points"] = len(sample["atomic_numbers"])
         # clean up keys
-        for key in ["coordinates", "source_types", "label"]:
+        for key in ["label"]:
             del sample[key]
         sample["targets"] = []
         sample["target_keys"] = {"regression": [], "classification": []}
