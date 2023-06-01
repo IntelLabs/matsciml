@@ -95,7 +95,9 @@ class MaterialsProjectDataset(BaseLMDBDataset):
             raise ValueError(
                 "Structure not found in data - workflow needs a structure to use!"
             )
-        return_dict["coords"] = torch.from_numpy(structure.cart_coords).float()
+        coords = torch.from_numpy(structure.cart_coords).float()
+        return_dict["pos"] = coords[None, :] - coords[:, None]
+        return_dict["coords"] = coords
         return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
         return_dict["distance_matrix"] = torch.from_numpy(
             structure.distance_matrix
