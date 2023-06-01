@@ -151,12 +151,13 @@ def main(
         # loop over each point cloud property and convert them to tensors from NumPy
         for key, array in batch.items():
             # cast to single precision if it's double
-            if array.dtype == np.float64:
-                array = array.astype(np.float32)
-            # for node types, cast to long
-            if array.dtype == np.int32:
-                array = array.astype(np.int64)
-            array = torch.from_numpy(array.squeeze())
+            if isinstance(array, np.ndarray):
+                if array.dtype == np.float64:
+                    array = array.astype(np.float32)
+                # for node types, cast to long
+                if array.dtype == np.int32:
+                    array = array.astype(np.int64)
+                array = torch.from_numpy(array.squeeze())
             converted_dict[key] = array
         write_data(index, converted_dict, target_env)
 
