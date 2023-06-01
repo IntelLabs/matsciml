@@ -1920,6 +1920,10 @@ class MultiTaskLitModule(pl.LightningModule):
                     assert output_head is not None, f"{subtask} does not contain output heads; ensure `task_keys` are set: {subtask.task_keys}"
                     # if subtask.has_initialized:
                     optimizer = subtask.configure_optimizers()
+                    # remove all the optimizer parameters, and re-add only the output heads
+                    optimizer.param_groups.clear()
+                    optimizer.add_param_group({"params": output_head.parameters()})
+                    # add optimizer to the pile
                     optimizers.append(optimizer)
                     self.optimizer_names.append((data_key, task_type))
                     index += 1
