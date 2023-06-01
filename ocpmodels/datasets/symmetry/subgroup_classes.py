@@ -5,6 +5,12 @@ import numpy as np
 
 from ocpmodels.datasets.symmetry.point_groups import filter_discrete, PointGroup
 
+"""
+Original implementation by Matthew Spellings (Vector Institute) 5/25/2023
+
+Modifications by Kelvin Lee to integrate into matsciml
+"""
+
 
 class SubgroupClassMap:
     """Generate a list of point-group symmetries and their subgroups.
