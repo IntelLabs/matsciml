@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Tuple
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
@@ -55,6 +55,43 @@ def concatenate_keys(
         if key in sample:
             batched_data[key] = sample[key]
     return batched_data
+
+
+def pad_point_cloud(data: List[torch.Tensor], sizes: List[int]) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Pads a point cloud to the maximum size within a batch.
+
+    All this does is just initialize two tensors with an added batch dimension,
+    with the number of centers/neighbors padded to the maximum point cloud
+    size within a batch. This assumes "symmetric" point clouds, i.e. where
+    the number of atom centers is the same as the number of neighbors.
+
+    Parameters
+    ----------
+    data : List[torch.Tensor]
+        List of point cloud data to batch
+    sizes : List[int]
+        Number of particles per point cloud
+
+    Returns
+    -------
+    Tuple[torch.Tensor, torch.Tensor]
+        Returns the padded data, along with a mask
+    """
+    batch_size = len(data)
+    max_size = max(sizes)
+    # get the feature dimension
+    feat_dim = data[0].size(-1)
+    result = torch.zeros((batch_size, max_size, max_size, feat_dim))
+    mask = torch.zeros_like(result).bool()
+    for index, entry in enumerate(data):
+        assert entry.size(0) == entry.size(1), f"Point cloud padding assumes the same number of centers and neighbors."
+        num_particles = entry.size(0)
+        # copy over data
+        result[index, :num_particles, :num_particles, :] = entry
+        # this indicates which elements correspond to unpadded stuff
+        mask[index, :num_particles, :num_particles, :] = True
+    return (result, mask)
 
 
 def point_cloud_featurization(
