@@ -11,6 +11,7 @@ from pymatgen.core import Structure
 from emmet.core.symmetry import SymmetryData
 
 from ocpmodels.datasets.base import BaseLMDBDataset
+from ocpmodels.datasets.utils import concatenate_keys, point_cloud_featurization, pad_point_cloud
 
 
 _has_dgl = find_spec("dgl") is not None
@@ -95,8 +96,16 @@ class MaterialsProjectDataset(BaseLMDBDataset):
             raise ValueError(
                 "Structure not found in data - workflow needs a structure to use!"
             )
-        return_dict["pos"] = torch.from_numpy(structure.cart_coords).float()
+        coords = torch.from_numpy(structure.cart_coords).float()
+        return_dict["pos"] = coords[None, :] - coords[:, None]
+        return_dict["coords"] = coords
+        atom_numbers = torch.LongTensor(structure.atomic_numbers)
+        # uses one-hot encoding featurization
+        pc_features = point_cloud_featurization(atom_numbers, atom_numbers, 200)
+        # keep atomic numbers for graph featurization
         return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
+        return_dict["pc_features"] = pc_features
+        return_dict["num_particles"] = len(atom_numbers)
         return_dict["distance_matrix"] = torch.from_numpy(
             structure.distance_matrix
         ).float()
@@ -321,13 +330,12 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         """
         joint_data = {}
         sample = batch[0]
-        pad_keys = ["pos", "atomic_numbers"]
+        pad_keys = ["pos", "pc_features"]
         # get the biggest point cloud size for padding
         if any([key in sample.keys() for key in pad_keys]):
-            max_size = max([s["pos"].size(0) for s in batch])
-            batch_size = len(batch)
+            max_size = max([s["num_particles"] for s in batch])
         for key, value in sample.items():
-            # for dictionaries, we need to go one level deeper
+           # for dictionaries, we need to go one level deeper
             if isinstance(value, dict):
                 if key != "target_keys":
                     joint_data[key] = {}
@@ -347,23 +355,11 @@ class MaterialsProjectDataset(BaseLMDBDataset):
                     value, torch.Tensor
                 ), f"{key} in batch should be a tensor."
                 # get the dimensionality
-                tensor_dim = value.size(-1)
-                if value.ndim == 2:
-                    data = torch.zeros(
-                        batch_size, max_size, tensor_dim, dtype=value.dtype
-                    )
-                else:
-                    data = torch.zeros(batch_size, max_size, dtype=value.dtype)
-                # pack the batched tensor with each sample now
-                for index, s in enumerate(batch):
-                    tensor: torch.Tensor = s[key]
-                    if tensor.ndim == 2:
-                        lengths = tensor.shape
-                        data[index, : lengths[0], : lengths[1]] = tensor[:, :]
-                    else:
-                        length = len(tensor)
-                        data[index, :length] = tensor[:]
+                data_to_pad = [s.get(key) for s in batch]
+                # padded data and a mask for which elements are real
+                data, mask = pad_point_cloud(data_to_pad, max_size)
                 joint_data[key] = data
+                joint_data["mask"] = mask
             else:
                 # aggregate all the data
                 data = [s.get(key) for s in batch]
@@ -467,11 +463,11 @@ if _has_dgl:
             # number of nodes has to be passed explicitly since cutoff
             # radius may result in shorter adj_list
             graph = dgl.graph(adj_list, num_nodes=len(data["atomic_numbers"]))
-            graph.ndata["pos"] = data["pos"]
+            graph.ndata["pos"] = data["coords"]
             graph.ndata["atomic_numbers"] = data["atomic_numbers"]
             data["graph"] = graph
             # delete the keys to reduce data redundancy
-            for key in ["pos", "atomic_numbers", "distance_matrix"]:
+            for key in ["pos", "coords", "atomic_numbers", "distance_matrix", "pc_features"]:
                 del data[key]
             return data
 
