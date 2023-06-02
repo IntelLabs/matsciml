@@ -105,6 +105,7 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         # keep atomic numbers for graph featurization
         return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
         return_dict["pc_features"] = pc_features
+        return_dict["num_particles"] = len(atom_numbers)
         return_dict["distance_matrix"] = torch.from_numpy(
             structure.distance_matrix
         ).float()
