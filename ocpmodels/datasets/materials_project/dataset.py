@@ -463,11 +463,11 @@ if _has_dgl:
             # number of nodes has to be passed explicitly since cutoff
             # radius may result in shorter adj_list
             graph = dgl.graph(adj_list, num_nodes=len(data["atomic_numbers"]))
-            graph.ndata["pos"] = data["pos"]
+            graph.ndata["pos"] = data["coords"]
             graph.ndata["atomic_numbers"] = data["atomic_numbers"]
             data["graph"] = graph
             # delete the keys to reduce data redundancy
-            for key in ["pos", "atomic_numbers", "distance_matrix"]:
+            for key in ["pos", "coords", "atomic_numbers", "distance_matrix", "pc_features"]:
                 del data[key]
             return data
 
