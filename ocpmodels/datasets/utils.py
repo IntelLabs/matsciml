@@ -84,7 +84,6 @@ def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tens
     result = torch.zeros((batch_size, max_size, max_size, feat_dim), dtype=data[0].dtype)
     mask = torch.zeros((batch_size, max_size, max_size), dtype=torch.bool)
     for index, entry in enumerate(data):
-        assert entry.size(0) == entry.size(1), f"Point cloud padding assumes the same number of centers and neighbors."
         num_particles = entry.size(0)
         # copy over data
         result[index, :num_particles, :num_particles, :] = entry
