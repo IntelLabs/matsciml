@@ -330,7 +330,7 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         """
         joint_data = {}
         sample = batch[0]
-        pad_keys = ["pos", "atomic_numbers"]
+        pad_keys = ["pos", "pc_features"]
         # get the biggest point cloud size for padding
         if any([key in sample.keys() for key in pad_keys]):
             max_size = max([s["num_particles"] for s in batch])
