@@ -89,3 +89,19 @@ def test_dataset_target_keys(devset_dir):
     # this tests target key property without manually grabbing a batch
     dset = MaterialsProjectDataset(devset_dir)
     assert dset.target_keys == {"regression": ["band_gap"]}
+
+
+def test_saved_devset_pointcloud():
+    dset = MaterialsProjectDataset(materialsproject_devset)
+    samples = [dset.__getitem__(i) for i in range(16)]
+    batch = dset.collate_fn(samples)
+    assert all([key in batch for key in ["pos", "pc_features", "mask", "targets"]])
+
+
+def test_saved_devset_graph():
+    dset = DGLMaterialsProjectDataset(materialsproject_devset)
+    samples = [dset.__getitem__(i) for i in range(16)]
+    batch = dset.collate_fn(samples)
+    assert all([key in batch for key in ["graph", "targets"]])
+    assert "graph" in batch
+    assert all([key in batch["graph"].ndata for key in ["pos", "atomic_numbers"]])
