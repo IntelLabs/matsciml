@@ -355,7 +355,7 @@ class MaterialsProjectDataset(BaseLMDBDataset):
                     value, torch.Tensor
                 ), f"{key} in batch should be a tensor."
                 # get the dimensionality
-                data_to_pad = [s[key] for s in batch]
+                data_to_pad = [s.get(key) for s in batch]
                 # padded data and a mask for which elements are real
                 data, mask = pad_point_cloud(data_to_pad, max_size)
                 joint_data[key] = data
