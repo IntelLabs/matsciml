@@ -57,7 +57,7 @@ def concatenate_keys(
     return batched_data
 
 
-def pad_point_cloud(data: List[torch.Tensor], sizes: List[int]) -> Tuple[torch.Tensor, torch.Tensor]:
+def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Pads a point cloud to the maximum size within a batch.
 
@@ -70,7 +70,7 @@ def pad_point_cloud(data: List[torch.Tensor], sizes: List[int]) -> Tuple[torch.T
     ----------
     data : List[torch.Tensor]
         List of point cloud data to batch
-    sizes : List[int]
+    max_size : int
         Number of particles per point cloud
 
     Returns
@@ -79,18 +79,17 @@ def pad_point_cloud(data: List[torch.Tensor], sizes: List[int]) -> Tuple[torch.T
         Returns the padded data, along with a mask
     """
     batch_size = len(data)
-    max_size = max(sizes)
     # get the feature dimension
     feat_dim = data[0].size(-1)
-    result = torch.zeros((batch_size, max_size, max_size, feat_dim))
-    mask = torch.zeros_like(result).bool()
+    result = torch.zeros((batch_size, max_size, max_size, feat_dim), dtype=data[0].dtype)
+    mask = torch.zeros((batch_size, max_size, max_size), dtype=torch.bool)
     for index, entry in enumerate(data):
         assert entry.size(0) == entry.size(1), f"Point cloud padding assumes the same number of centers and neighbors."
         num_particles = entry.size(0)
         # copy over data
         result[index, :num_particles, :num_particles, :] = entry
         # this indicates which elements correspond to unpadded stuff
-        mask[index, :num_particles, :num_particles, :] = True
+        mask[index, :num_particles, :num_particles] = True
     return (result, mask)
 
 
