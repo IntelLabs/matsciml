@@ -11,7 +11,7 @@ from pymatgen.core import Structure
 from emmet.core.symmetry import SymmetryData
 
 from ocpmodels.datasets.base import BaseLMDBDataset
-from ocpmodels.datasets.utils import concatenate_keys, point_cloud_featurization
+from ocpmodels.datasets.utils import concatenate_keys, point_cloud_featurization, pad_point_cloud
 
 
 _has_dgl = find_spec("dgl") is not None
@@ -333,10 +333,9 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         pad_keys = ["pos", "atomic_numbers"]
         # get the biggest point cloud size for padding
         if any([key in sample.keys() for key in pad_keys]):
-            max_size = max([s["pos"].size(0) for s in batch])
-            batch_size = len(batch)
+            max_size = max([s["num_particles"] for s in batch])
         for key, value in sample.items():
-            # for dictionaries, we need to go one level deeper
+           # for dictionaries, we need to go one level deeper
             if isinstance(value, dict):
                 if key != "target_keys":
                     joint_data[key] = {}
@@ -356,23 +355,11 @@ class MaterialsProjectDataset(BaseLMDBDataset):
                     value, torch.Tensor
                 ), f"{key} in batch should be a tensor."
                 # get the dimensionality
-                tensor_dim = value.size(-1)
-                if value.ndim == 2:
-                    data = torch.zeros(
-                        batch_size, max_size, tensor_dim, dtype=value.dtype
-                    )
-                else:
-                    data = torch.zeros(batch_size, max_size, dtype=value.dtype)
-                # pack the batched tensor with each sample now
-                for index, s in enumerate(batch):
-                    tensor: torch.Tensor = s[key]
-                    if tensor.ndim == 2:
-                        lengths = tensor.shape
-                        data[index, : lengths[0], : lengths[1]] = tensor[:, :]
-                    else:
-                        length = len(tensor)
-                        data[index, :length] = tensor[:]
+                data_to_pad = [s[key] for s in batch]
+                # padded data and a mask for which elements are real
+                data, mask = pad_point_cloud(data_to_pad, max_size)
                 joint_data[key] = data
+                joint_data["mask"] = mask
             else:
                 # aggregate all the data
                 data = [s.get(key) for s in batch]
