@@ -18,6 +18,8 @@ try:
         enc_config, dec_config, cdvae_config, carbon_config,
         perov_config, mp20_config
     )
+    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
+    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset
 
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -27,6 +29,9 @@ except:
     from ocpmodels.datasets.cdvae_datamodule import CrystDataModule
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
+    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
+    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset
+
     from examples.cdvae_configs import (
         enc_config, dec_config, cdvae_config, carbon_config, 
         perov_config, mp20_config
@@ -64,18 +69,24 @@ def main():
     cdvae_config['teacher_forcing_max_epoch'] = data_config['teacher_forcing_max_epoch']
     cdvae_config['lattice_scale_method'] = data_config['lattice_scale_method']
 
+    #dataset = PyGMaterialsProjectDataset()
+    dm = MaterialsProjectDataModule.from_devset(pyg=True)
+    dm.dataset.target_keys_list = ['formation_energy_per_atom']
+
+
+    # dataclass = partial(CrystDataset, **data_config)
+    # splits = [
+    #     dataclass(path=f"{data_config['root_path']}/{split}.csv") for split in ['train', 'val', 'test'] 
+    # ]
+    # dm = CrystDataModule(
+    #     train=splits[0], 
+    #     valid=splits[1],
+    #     test=splits[2],
+    #     num_workers=0,
+    #     batch_size=4
+    # )
+
     
-    dataclass = partial(CrystDataset, **data_config)
-    splits = [
-        dataclass(path=f"{data_config['root_path']}/{split}.csv") for split in ['train', 'val', 'test'] 
-    ]
-    dm = CrystDataModule(
-        train=splits[0], 
-        valid=splits[1],
-        test=splits[2],
-        num_workers=0,
-        batch_size=4
-    )
 
     #dm = MaterialsProjectDataModule(dset, batch_size=32)
 
@@ -87,9 +98,11 @@ def main():
         **cdvae_config
     )
 
-    print(f"Passing scaler from datamodule to model <{dm.scaler}>")
-    model.lattice_scaler = dm.lattice_scaler.copy()
-    model.scaler = dm.scaler.copy()
+    # print(f"Passing scaler from datamodule to model <{dm.scaler}>")
+    # model.lattice_scaler = dm.lattice_scaler.copy()
+    # model.scaler = dm.scaler.copy()
+
+
     # torch.save(dm.lattice_scaler, hydra_dir / 'lattice_scaler.pt')
     # torch.save(dm.scaler, hydra_dir / 'prop_scaler.pt')
 
