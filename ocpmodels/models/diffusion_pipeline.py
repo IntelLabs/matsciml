@@ -261,7 +261,7 @@ class GenerationTask(BaseTaskModule):
         # Decode Z
         (pred_num_atoms, pred_lengths_and_angles, pred_lengths, pred_angles, 
          pred_composition_per_atom) = self.decode_stats(
-            z, batch['num_atoms'], batch['lengths'], batch['angles'], teacher_forcing)
+            z, batch['num_atoms'], batch['lengths'], batch['angles'], teacher_forcing, debug=True)
         
         # Diffusion stuff 
         # sample noise levels.

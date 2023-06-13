@@ -1,5 +1,24 @@
 import torch
 
+mp_config = {
+    "name": "Formation energy train",
+    "root_path": "ocpmodels/datasets/mp_20",
+    "prop": "formation_energy_per_atom",
+    "num_targets": 1,
+    "niggli": True,
+    "primitive": False,
+    "graph_method": "crystalnn",
+    "lattice_scale_method": "scale_length",
+    "preprocess_workers": 30,
+    "readout": "mean",
+    "max_atoms": 25,
+    "otf_graph": False,
+    "eval_model_name": "mp20",
+    "train_max_epochs": 1000,
+    "early_stopping_patience": 100000,
+    "teacher_forcing_max_epoch": 500,
+}
+
 mp20_config = {
     "name": "Formation energy train",
     "root_path": "ocpmodels/datasets/mp_20",

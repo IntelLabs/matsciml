@@ -156,7 +156,7 @@ class BaseLMDBDataset(Dataset):
             return pickle.loads(txn.get(f"{subindex}".encode("ascii")))
 
     @property
-    @cache
+    #@cache
     def keys(self) -> List[Tuple[int, int]]:
         return self._load_keys()
 

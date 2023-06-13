@@ -4,14 +4,21 @@ from importlib.util import find_spec
 from pathlib import Path
 from math import pi
 from copy import deepcopy
+from functools import cache
+from tqdm import tqdm
 
 import torch
 import numpy as np
+import pickle
 from pymatgen.core import Structure
+from pymatgen.analysis.graphs import StructureGraph
+from pymatgen.analysis import local_env
 from emmet.core.symmetry import SymmetryData
+from torch_geometric.data import Data
 
 from ocpmodels.datasets.base import BaseLMDBDataset
 from ocpmodels.datasets.utils import concatenate_keys, point_cloud_featurization, pad_point_cloud
+from ocpmodels.models.diffusion_utils.data_utils import get_scaler_from_data_list
 
 
 _has_dgl = find_spec("dgl") is not None
@@ -497,3 +504,305 @@ if _has_dgl:
             ).collate_fn(batch)
             batched_data["graph"] = dgl.batch(batched_data["graph"])
             return batched_data
+
+
+if _has_pyg:
+    from torch_geometric.data import Data, Batch
+    CrystalNN = local_env.CrystalNN(
+    distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False)
+
+    class PyGMaterialsProjectDataset(MaterialsProjectDataset):
+        """
+        Subclass of `MaterialsProjectDataset` that will emit PyG graphs.
+
+        This class should be used until a future refactor to unify data
+        structures, and a transform interface is created for PyG graph creation.
+        )
+        """
+
+        def __init__(
+            self,
+            lmdb_root_path: Union[str, Path],
+            cutoff_dist: float = 5.0,
+            transforms: Optional[List[Callable]] = None,
+        ) -> None:
+            """
+            Instantiate a `PyGMaterialsProjectDataset` object.
+
+            In addition to specifying an optional list of transforms and an
+            LMDB path, the `cutoff_dist` parameter is used to control edge
+            creation: we take a point cloud structure and create edges for
+            all atoms/sites that are within this cut off distance.
+
+            Parameters
+            ----------
+            lmdb_root_path : Union[str, Path]
+                Path to a folder containing LMDB files for Materials Project.
+            cutoff_dist : float
+                Distance to cut off edge creation; interatomic distances greater
+                than this value will not have an edge.
+            transforms : Optional[List[Callable]], by default None
+                List of transforms to apply to the data.
+            """
+            super().__init__(lmdb_root_path, transforms)
+            self.cutoff_dist = cutoff_dist
+
+        @property
+        def cutoff_dist(self) -> float:
+            return self._cutoff_dist
+
+        @cutoff_dist.setter
+        def cutoff_dist(self, value: float) -> None:
+            """
+            Setter method for the cut off distance property.
+
+            For now this doesn't do anything special, but can be modified
+            to include checks for valid value, etc.
+
+            Parameters
+            ----------
+            value : float
+                Value to set the cut off distance
+            """
+            self._cutoff_dist = value
+
+        def data_from_key(
+            self, lmdb_index: int, subindex: int
+        ) -> Dict[str, Union[torch.Tensor, Data, Dict[str, torch.Tensor]]]:
+            """
+            Maps a pair of indices to a specific data sample from LMDB.
+
+            This method in particular wraps the parent's method, which emits
+            a point cloud among other data from Materials Project. The additional
+            steps here are to: 1) compute an adjacency list, 2) pack data into a
+            PyG Data structure, 3) clean up redundant data.
+
+            Parameters
+            ----------
+            lmdb_index : int
+                Index corresponding to which LMDB environment to parse from.
+            subindex : int
+                Index within an LMDB file that maps to a sample.
+
+            Returns
+            -------
+            Dict[str, Union[torch.Tensor, pyg.Data, Dict[str, torch.Tensor]]]
+                Single data sample from Materials Project with a "graph" key
+            """
+            data = super().data_from_key(lmdb_index, subindex)
+            dist_mat: np.ndarray = data.get("distance_matrix").numpy()
+            lower_tri = np.tril(dist_mat)
+            # mask out self loops and atoms that are too far away
+            mask = (0.0 < lower_tri) * (lower_tri < self.cutoff_dist)
+            adj_list = np.argwhere(mask).tolist()  # DGLGraph only takes lists
+            # number of nodes has to be passed explicitly since cutoff
+            # radius may result in shorter adj_list
+            graph = Data(edge_index=torch.LongTensor(adj_list), num_nodes=len(data["atomic_numbers"]))
+            graph["pos"] = data["coords"]
+            graph["atomic_numbers"] = data["atomic_numbers"]
+            data["graph"] = graph
+            # delete the keys to reduce data redundancy
+            for key in ["pos", "coords", "atomic_numbers", "distance_matrix", "pc_features"]:
+                del data[key]
+            return data
+
+        @staticmethod
+        def collate_fn(
+            batch: List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
+        ) -> Dict[str, Union[torch.Tensor, Data, Dict[str, torch.Tensor]]]:
+            """
+            Collate function for DGLGraph variant of the Materials Project.
+
+            Basically uses the same workflow as that for `MaterialsProjectDataset`,
+            but with the added step of calling `dgl.batch` on the graph data
+            that is left unprocessed by the parent method.
+
+            Parameters
+            ----------
+            batch : List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
+                List of Materials Project samples
+
+            Returns
+            -------
+            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+                Batched data, including graph
+            """
+            batched_data = Batch.from_data_list(batch)
+            return batched_data
+        
+    class PyGCdvaeDataset(PyGMaterialsProjectDataset):
+        
+        def __init__(self,
+            lmdb_root_path: Union[str, Path],
+            cutoff_dist: float = 5.0,
+            transforms: Optional[List[Callable]] = None,
+            max_atoms: int = 25,
+        ) -> None:
+            super().__init__(lmdb_root_path, cutoff_dist, transforms)
+
+            self.max_atoms = max_atoms
+            # TODO: create lattice scaler and prop_scaler
+            self.lattice_scaler = None
+            self.scaler = None
+            # self.lattice_scaler = get_scaler_from_data_list(
+            #     train_dataset.cached_data,
+            #     key='scaled_lattice')
+            # self.scaler = get_scaler_from_data_list(
+            #     train_dataset.cached_data,
+            #     key='formation_energy_per_atom')
+
+        def data_from_key(
+                self, lmdb_index: int, subindex: int
+            ) -> Dict[str, Union[torch.Tensor, Data, Dict[str, torch.Tensor]]]:
+            
+            data = super(PyGMaterialsProjectDataset, self).data_from_key(lmdb_index, subindex)
+            num_nodes = len(data["atomic_numbers"])
+            if num_nodes > 25:
+                return {}
+            edge_index = data["edge_index"]
+            lattice_params = data["lattice_features"]["lattice_params"]
+            y = data["targets"]["formation_energy_per_atom"]
+            # scale target property
+            if self.scaler is not None:
+                prop = self.scaler.transform(y)
+            else:
+                prop = torch.Tensor([y])
+            # (frac_coords, atom_types, lengths, angles, edge_indices,
+            # to_jimages, num_atoms) = data_dict['graph_arrays']
+            
+            # atom_coords are fractional coordinates
+            # edge_index is incremented during batching
+            # https://pytorch-geometric.readthedocs.io/en/latest/notes/batching.html
+            data = Data(
+                frac_coords=torch.Tensor(data["frac_coords"]),
+                atom_types=torch.LongTensor(data["atomic_numbers"]),
+                lengths=torch.Tensor(lattice_params[:3]).view(1, -1),
+                angles=torch.Tensor(lattice_params[3:]).view(1, -1),
+                edge_index=edge_index,  # shape (2, num_edges)
+                to_jimages=data["to_jimages"],
+                num_atoms=len(data["atomic_numbers"]),
+                num_bonds=edge_index.shape[1],
+                num_nodes=len(data["atomic_numbers"]),  # special attribute used for batching in pytorch geometric
+                y=prop.view(1, -1),
+            )
+            return data
+        
+        def _parse_structure(
+            self, data: Dict[str, Any], return_dict: Dict[str, Any]
+        ) -> None:
+            """
+            The same as OG with the addition of jimages field
+            """
+            structure: Union[None, Structure] = data.get("structure", None)
+            if structure is None:
+                raise ValueError(
+                    "Structure not found in data - workflow needs a structure to use!"
+                )
+            coords = torch.from_numpy(structure.cart_coords).float()
+            return_dict["pos"] = coords[None, :] - coords[:, None]
+            return_dict["coords"] = coords
+            return_dict["frac_coords"] = structure.frac_coords
+            atom_numbers = torch.LongTensor(structure.atomic_numbers)
+            # uses one-hot encoding featurization
+            pc_features = point_cloud_featurization(atom_numbers, atom_numbers, 200)
+            # keep atomic numbers for graph featurization
+            return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
+            return_dict["pc_features"] = pc_features
+            return_dict["num_particles"] = len(atom_numbers)
+            return_dict["distance_matrix"] = torch.from_numpy(
+                structure.distance_matrix
+            ).float()
+            # jimages
+            crystal_graph = StructureGraph.with_local_env_strategy(
+                structure, CrystalNN
+            )
+            edge_indices, to_jimages = [], []
+            for i, j, to_jimage in crystal_graph.graph.edges(data='to_jimage'):
+                edge_indices.append([j, i])
+                to_jimages.append(to_jimage)
+                edge_indices.append([i, j])
+                to_jimages.append(tuple(-tj for tj in to_jimage))
+            return_dict["to_jimages"] = torch.LongTensor(to_jimages)
+            return_dict["edge_index"] = torch.LongTensor(edge_indices).T
+            # grab lattice properties
+            space_group = structure.get_space_group_info()[-1]
+            # convert lattice angles into radians
+            # lattice_params = torch.FloatTensor(
+            #     structure.lattice.abc + tuple(a * (pi / 180.) for a in structure.lattice.angles)
+            # )
+            lattice_params = torch.FloatTensor(
+                structure.lattice.abc + tuple(structure.lattice.angles)
+            )
+            lattice_features = {
+                "space_group": space_group,
+                "lattice_params": lattice_params,
+            }
+            return_dict["lattice_features"] = lattice_features
+
+        @cache
+        def _load_keys(self) -> List[Tuple[int, int]]:
+            """
+            Load in all of the indices from each LMDB file. This creates an
+            easy lookup of which data point is mapped to which total dataset
+            index, as the former is returned as a simple 2-tuple of lmdb
+            file index and the subindex (i.e. the actual data to read in).
+
+            Returns
+            -------
+            List[Tuple[int, int]]
+                2-tuple of LMDB file index and data index within the file
+            """
+            indices = []
+            for lmdb_index, env in enumerate(self._envs):
+                with env.begin() as txn:
+                    # this gets all the keys within the LMDB file, including metadata
+                    lmdb_keys = [
+                        value.decode("utf-8")
+                        for value in txn.cursor().iternext(values=False)
+                    ]
+                    # filter out non-numeric keys
+                    subindices = filter(lambda x: x.isnumeric(), lmdb_keys)
+
+                    for idx in tqdm(subindices):
+                        item = pickle.loads(txn.get(f"{idx}".encode("ascii")))
+                        num_atoms = len(item['structure'].atomic_numbers)
+                        if num_atoms <= self.max_atoms:
+                            indices.append((lmdb_index, int(idx)))
+                    
+                    #indices.extend([(lmdb_index, int(subindex)) for subindex in subindices])
+                    
+            return indices
+        
+        def __getitem__(self, index: int) -> Any:
+            """
+            Implements the __getitem__ method that PyTorch `DataLoader` need
+            to retrieve a piece of data. This implementation should not require
+            tampering: child classes should just call `super().__getitem__(idx)`
+            to get the raw data out, and post-process as required.
+
+            The overall work flow is to look up the `keys` (a 2-tuple of
+            LMDB file and subindex) from the `index` (i.e. `range(len(dataset))`),
+            and return the unpickled data.
+
+            Parameters
+            ----------
+            index : int
+                Dataset index
+
+            Returns
+            -------
+            Any
+                Returns un-pickled data from the LMDB file.
+            """
+            keys = self.keys[index]
+            data = self.data_from_key(*keys)
+            data["dataset"] = self.__class__.__name__
+            # if some callable transforms have been provided, transform
+            # the data sequentially
+            if self.transforms:
+                # TODO transform interface should act on a dictionary
+                for transform in self.transforms:
+                    data = transform(data)
+            return data
+        
+
