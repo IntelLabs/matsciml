@@ -252,15 +252,11 @@ class GalaPotential(AbstractEnergyModel):
 
     def _forward(self, inputs: torch.Tensor, positions: torch.Tensor) -> torch.Tensor:
 
-        positions_2 = torch.div(positions, 1)
+        positions = torch.div(positions, 1)
 
-        (r, v) = (positions_2, inputs)
-        r_pos = torch.as_tensor(r)
-        v = torch.as_tensor(v)
-
-        last_r_mv = self.vec2mv(r_pos)
+        last_r_mv = self.vec2mv(positions)
         last_r = last_r_mv
-        last = self.up_project(v)
+        last = self.up_project(inputs)
 
         for i in range(self.depth + 1):
             residual = last
