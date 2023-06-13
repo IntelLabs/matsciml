@@ -73,8 +73,7 @@ class GalaPotential(AbstractEnergyModel):
         self.encoder_only = encoder_only
 
         self.vec2mv = gala.Vector2Multivector()
-        # self.up_project = torch.nn.Linear(2 * D_in, self.hidden_dim)
-        self.up_project = torch.nn.Linear(D_in, self.hidden_dim)
+        self.up_project = torch.nn.Linear(2 * D_in, self.hidden_dim)
         self.final_mlp = self.make_value_net(self.hidden_dim)
         self.energy_projection = torch.nn.Linear(self.hidden_dim, 1, bias=False)
 
