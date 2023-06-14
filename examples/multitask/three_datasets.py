@@ -1,10 +1,4 @@
-# import pytorch_lightning as pl
-import sys
-
 import pytorch_lightning as pl
-import torch
-
-sys.path.append("/store/code/open-catalyst/private-repo/matsciml-fork")
 
 from ocpmodels.datasets.lips import DGLLiPSDataset, lips_devset
 from ocpmodels.datasets.multi_dataset import MultiDataset
