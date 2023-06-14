@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 from .layers import VectorAttention
-
+import geometric_algebra_attention.pytorch as gala
 
 class MLP(nn.Module):
     def __init__(
@@ -160,3 +160,74 @@ class GAANet(nn.Module):
             return x, attentions
 
         return x
+
+
+class TiedMultivectorAttention(
+    gala.Multivector2MultivectorAttention, gala.MultivectorAttention
+):
+
+    def __init__(
+        self,
+        n_dim,
+        score_net,
+        value_net,
+        scale_net,
+        reduce=True,
+        merge_fun="mean",
+        join_fun="mean",
+        rank=2,
+        invariant_mode="single",
+        covariant_mode="partial",
+        include_normalized_products=False,
+        convex_covariants=False,
+        **kwargs
+    ):
+        gala.Multivector2MultivectorAttention.__init__(
+            self,
+            n_dim=n_dim,
+            score_net=score_net,
+            value_net=value_net,
+            scale_net=scale_net,
+            reduce=reduce,
+            merge_fun=merge_fun,
+            join_fun=join_fun,
+            rank=rank,
+            invariant_mode=invariant_mode,
+            covariant_mode=covariant_mode,
+            include_normalized_products=include_normalized_products,
+            convex_covariants=convex_covariants,
+            **kwargs
+        )
+
+        if type(self) == TiedMultivectorAttention:
+            self.init()
+
+    def _evaluate(self, inputs, mask=None):
+        parsed_inputs = self._parse_inputs(inputs)
+        products = self._get_product_summary(parsed_inputs)
+        invar_values = self.value_net(products.summary.invariants)
+
+        joined_values = self._join_fun(invar_values, products.values)
+        covariants = self._covariants(products.summary.covariants)
+        new_invar_values = products.weights * joined_values
+        new_covar_values = products.weights * covariants * self.scale_net(joined_values)
+
+        scores = self.score_net(joined_values)
+        old_shape = self.math.shape(scores)
+
+        scores = self._mask_scores(scores, products.broadcast_indices, mask)
+
+        attention, invar_output = self._calculate_attention(
+            scores, new_invar_values, old_shape
+        )
+        attention, covar_output = self._calculate_attention(
+            scores, new_covar_values, old_shape
+        )
+        output = (covar_output, invar_output)
+        return self.OutputType(
+            attention,
+            output,
+            products.summary.invariants,
+            invar_values,
+            new_invar_values,
+        )
