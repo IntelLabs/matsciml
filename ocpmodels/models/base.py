@@ -2455,6 +2455,59 @@ class MultiTaskLitModule(pl.LightningModule):
         )
         return losses
 
+    def validation_step(
+        self,
+        batch: Dict[
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        ],
+        batch_idx: int,
+    ) -> Dict[str, Dict[str, torch.Tensor]]:
+        """
+        Manual training logic for multi tasks.
+        We sequentially step through each loss returned, and perform
+        backpropagation. The logic looks complicated, because we have
+        to match each loss with its corresponding optimizer.
+        Parameters
+        ----------
+        batch : Dict[str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]]
+            Batch of data from one or more datasets.
+        batch_idx : int
+            Index of current batch
+        """
+        losses = self._compute_losses(batch)
+        loss_logging = {}
+        # for multiple datasets, we step through each dataset
+        if self.is_multidata:
+            for dataset_name, task_loss in losses.items():
+                for task_name, subtask_loss in task_loss.items():
+                    prepend_affix(subtask_loss["log"], dataset_name)
+                    loss_logging.update(subtask_loss["log"])
+        # for single dataset, we can just unpack the dictionary directly
+        else:
+            dataset_name = self.dataset_names[0]
+            for task_name, loss in losses.items():
+                loss_logging.update(loss["log"])
+        # compoute the joint loss for logging purposes
+        loss_logging["total_loss"] = sum(list(loss_logging.values()))
+        # add train prefix to metric logs
+        prepend_affix(loss_logging, "val")
+        batch_info = self._calculate_batch_size(batch)
+        if "breakdown" in batch_info:
+            for key, value in batch_info["breakdown"].items():
+                self.log(
+                    f"{key}.num_samples",
+                    float(value),
+                    on_epoch=True,
+                    reduce_fx="min",
+                )
+        self.log_dict(
+            loss_logging,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=batch_info["batch_size"],
+        )
+        return losses
+
     @classmethod
     def load_from_checkpoint(
         cls,
