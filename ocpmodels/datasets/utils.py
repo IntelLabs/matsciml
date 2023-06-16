@@ -79,26 +79,20 @@ def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tens
         Returns the padded data, along with a mask
     """
     batch_size = len(data)
-    if data[0].dim() == 1:
-        result = torch.zeros((batch_size, max_size), dtype=data[0].dtype)
-        mask = torch.zeros((batch_size, max_size), dtype=torch.bool)
-        for index, entry in enumerate(data):
-            num_particles = entry.size(0)
-            # copy over data
-            result[index, :num_particles] = entry
-            # this indicates which elements correspond to unpadded stuff
-            mask[index, :num_particles] = True
-    else:
-        # get the feature dimension
-        feat_dim = data[0].size(-1)
-        result = torch.zeros((batch_size, max_size, max_size, feat_dim), dtype=data[0].dtype)
-        mask = torch.zeros((batch_size, max_size, max_size), dtype=torch.bool)
-        for index, entry in enumerate(data):
-            num_particles = entry.size(0)
-            # copy over data
-            result[index, :num_particles, :num_particles, :] = entry
-            # this indicates which elements correspond to unpadded stuff
-            mask[index, :num_particles, :num_particles] = True
+    data_dim = data[0].dim()
+    # get the feature dimension
+    feat_dim = data[0].size(-1)
+    zeros_dims = [batch_size, *[max_size]*(data_dim-1), feat_dim]
+    result = torch.zeros((zeros_dims), dtype=data[0].dtype)
+    mask =  torch.zeros((zeros_dims[:-1]), dtype=torch.bool)
+
+    for index, entry in enumerate(data):
+        # Get all indices from entry, we we can use them to pad result. Add batch idx to the beginning.
+        indices = [torch.tensor(index)] + [torch.arange(size) for size in entry.shape]
+        indices = torch.meshgrid(*indices)
+        # Use the index_put method to pop entry into result.
+        result = torch.index_put(result, tuple(indices), entry)
+
     return (result, mask)
 
 
