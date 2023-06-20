@@ -47,7 +47,7 @@ task = ScalarRegressionTask(
 dm = MaterialsProjectDataModule(
     dataset=DGLMaterialsProjectDataset("mp_data/base", cutoff_dist=10.0),
     val_split=0.2,
-    batch_size=12,
+    batch_size=128,
     num_workers=16,
 )
 

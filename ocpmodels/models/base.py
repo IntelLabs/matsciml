@@ -2343,7 +2343,7 @@ class MultiTaskLitModule(pl.LightningModule):
         else:
             if "graph" in batch:
                 batch_size = batch["graph"].batch_size
-            elif len(batch["targets"]) > 0:
+            elif len(subset["targets"]) > 0:
                 key = next(iter(batch["targets"]))
                 sample = batch["targets"][key]
                 if isinstance(sample, dgl.DGLGraph):
