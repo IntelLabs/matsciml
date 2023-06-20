@@ -63,11 +63,10 @@ data_module = S2EFDGLDataModule(
 
 trainer = pl.Trainer(accelerator="gpu", strategy="ddp", devices=2, max_epochs=epochs)
 
-trainer.fit(model, datamodule=data_module)
-
 print('IS2RE Training')
 
-trainer = pl.Trainer(accelerator="gpu", strategy="ddp", devices=2)
+trainer.fit(model, datamodule=data_module)
+
 
 
 # use the GNN in the LitModule for all the logging, loss computation, etc.
