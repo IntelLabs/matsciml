@@ -79,16 +79,26 @@ def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tens
         Returns the padded data, along with a mask
     """
     batch_size = len(data)
-    # get the feature dimension
-    feat_dim = data[0].size(-1)
-    result = torch.zeros((batch_size, max_size, max_size, feat_dim), dtype=data[0].dtype)
-    mask = torch.zeros((batch_size, max_size, max_size), dtype=torch.bool)
-    for index, entry in enumerate(data):
-        num_particles = entry.size(0)
-        # copy over data
-        result[index, :num_particles, :num_particles, :] = entry
-        # this indicates which elements correspond to unpadded stuff
-        mask[index, :num_particles, :num_particles] = True
+    if data[0].dim() == 1:
+        result = torch.zeros((batch_size, max_size), dtype=data[0].dtype)
+        mask = torch.zeros((batch_size, max_size), dtype=torch.bool)
+        for index, entry in enumerate(data):
+            num_particles = entry.size(0)
+            # copy over data
+            result[index, :num_particles] = entry
+            # this indicates which elements correspond to unpadded stuff
+            mask[index, :num_particles] = True
+    else:
+        # get the feature dimension
+        feat_dim = data[0].size(-1)
+        result = torch.zeros((batch_size, max_size, max_size, feat_dim), dtype=data[0].dtype)
+        mask = torch.zeros((batch_size, max_size, max_size), dtype=torch.bool)
+        for index, entry in enumerate(data):
+            num_particles = entry.size(0)
+            # copy over data
+            result[index, :num_particles, :num_particles, :] = entry
+            # this indicates which elements correspond to unpadded stuff
+            mask[index, :num_particles, :num_particles] = True
     return (result, mask)
 
 

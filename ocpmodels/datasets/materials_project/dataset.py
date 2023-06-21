@@ -103,7 +103,7 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(atom_numbers, atom_numbers, 200)
         # keep atomic numbers for graph featurization
-        return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
+        return_dict["atomic_numbers"] = atom_numbers
         return_dict["pc_features"] = pc_features
         return_dict["num_particles"] = len(atom_numbers)
         return_dict["distance_matrix"] = torch.from_numpy(
@@ -330,7 +330,7 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         """
         joint_data = {}
         sample = batch[0]
-        pad_keys = ["pos", "pc_features"]
+        pad_keys = ["pos", "pc_features", "atomic_numbers"]
         # get the biggest point cloud size for padding
         if any([key in sample.keys() for key in pad_keys]):
             max_size = max([s["num_particles"] for s in batch])
