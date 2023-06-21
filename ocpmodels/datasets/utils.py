@@ -81,7 +81,10 @@ def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tens
     batch_size = len(data)
     data_dim = data[0].dim()
     # get the feature dimension
-    feat_dim = data[0].size(-1)
+    if data_dim == 1:
+        feat_dim = max_size
+    else:
+        feat_dim = data[0].size(-1)
     zeros_dims = [batch_size, *[max_size]*(data_dim-1), feat_dim]
     result = torch.zeros((zeros_dims), dtype=data[0].dtype)
     mask =  torch.zeros((zeros_dims[:-1]), dtype=torch.bool)
@@ -89,7 +92,7 @@ def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tens
     for index, entry in enumerate(data):
         # Get all indices from entry, we we can use them to pad result. Add batch idx to the beginning.
         indices = [torch.tensor(index)] + [torch.arange(size) for size in entry.shape]
-        indices = torch.meshgrid(*indices)
+        indices = torch.meshgrid(*indices, indexing="ij")
         # Use the index_put method to pop entry into result.
         result = torch.index_put(result, tuple(indices), entry)
 
