@@ -94,7 +94,8 @@ def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tens
         indices = [torch.tensor(index)] + [torch.arange(size) for size in entry.shape]
         indices = torch.meshgrid(*indices, indexing="ij")
         # Use the index_put method to pop entry into result.
-        result = torch.index_put(result, tuple(indices), entry)
+        result.index_put_(tuple(indices), entry)
+        mask.index_put_(indices[:-1], torch.tensor(True))
 
     return (result, mask)
 
