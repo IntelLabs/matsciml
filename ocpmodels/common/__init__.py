@@ -9,4 +9,10 @@ LICENSE file in the root directory of this source tree.
 """
 
 from ocpmodels.common.packages import package_registry
-from ocpmodels.common.types import DataType, DataDict, BatchDict
+from ocpmodels.common.types import (
+    DataType,
+    DataDict,
+    BatchDict,
+    ModelingTypes,
+    GraphTypes,
+)
