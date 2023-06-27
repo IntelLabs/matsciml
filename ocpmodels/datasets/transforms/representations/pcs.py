@@ -42,16 +42,17 @@ class GraphToPointCloudTransform(RepresentationTransform):
     if package_registry["dgl"]:
         import dgl
 
-        @staticmethod
-        def _convert_dgl(g: dgl.DGLGraph, data: DataDict, atom_centered: bool) -> None:
+        def _convert_dgl(self, g: dgl.DGLGraph, data: DataDict) -> None:
+            import dgl
+
             assert isinstance(
                 g, dgl.DGLGraph
             ), f"Expected DGL graph as input, but got {g} which is type {type(g)}"
             features = g.ndata["atomic_numbers"]
             pos = g.ndata["pos"]
             # compute atom-centered point clouds
-            if atom_centered:
-                features = utils.point_cloud_featurization(features, features, 200)
+            if self.atom_centered:
+                features = utils.point_cloud_featurization(features, features, 100)
                 pos = pos[None, :] - pos[:, None]
             data["pos"] = pos
             data["pc_features"] = features
@@ -65,11 +66,11 @@ class GraphToPointCloudTransform(RepresentationTransform):
             ...
 
     def convert(self, data: DataDict) -> None:
-        graph = data["graph"]
+        graph: AbstractGraph = data["graph"]
         if self.backend == "dgl":
-            self._convert_dgl(graph, data, self.atom_centered)
+            self._convert_dgl(graph, data)
         else:
-            self._convert_pyg(graph, data, self.atom_centered)
+            self._convert_pyg(graph, data)
 
     def epilogue(self, data: DataDict) -> None:
         try:
