@@ -12,13 +12,13 @@ from ocpmodels.datasets.transforms.representations import RepresentationTransfor
 Construct graphs from point clouds
 """
 
-__all__ = ["PointCloudToGraph"]
+__all__ = ["PointCloudToGraphTransform"]
 
 
 log = getLogger(__name__)
 
 
-class PointCloudToGraph(RepresentationTransform):
+class PointCloudToGraphTransform(RepresentationTransform):
     def __init__(
         self,
         backend: str,
