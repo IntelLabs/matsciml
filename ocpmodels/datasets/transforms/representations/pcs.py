@@ -67,9 +67,9 @@ class GraphToPointCloudTransform(RepresentationTransform):
     def convert(self, data: DataDict) -> None:
         graph = data["graph"]
         if self.backend == "dgl":
-            self._convert_dgl(graph, data)
+            self._convert_dgl(graph, data, self.atom_centered)
         else:
-            self._convert_pyg(graph, data)
+            self._convert_pyg(graph, data, self.atom_centered)
 
     def epilogue(self, data: DataDict) -> None:
         try:
