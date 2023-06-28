@@ -10,6 +10,14 @@ from ocpmodels.datasets import utils
 Transforms that create point cloud representations from graphs.
 """
 
+if package_registry["dgl"]:
+    import dgl
+    from dgl import DGLGraph
+
+if package_registry["pyg"]:
+    import torch_geometric
+    from torch_geometric.data import Data as PyGGraph
+
 __all__ = ["GraphToPointCloudTransform"]
 
 
@@ -40,11 +48,8 @@ class GraphToPointCloudTransform(RepresentationTransform):
         return super().prologue(data)
 
     if package_registry["dgl"]:
-        import dgl
 
         def _convert_dgl(self, g: dgl.DGLGraph, data: DataDict) -> None:
-            import dgl
-
             assert isinstance(
                 g, dgl.DGLGraph
             ), f"Expected DGL graph as input, but got {g} which is type {type(g)}"
@@ -58,8 +63,6 @@ class GraphToPointCloudTransform(RepresentationTransform):
             data["pc_features"] = features
 
     if package_registry["pyg"]:
-        import torch_geometric
-        from torch_geometric.data import Data as PyGData
 
         @staticmethod
         def _convert_pyg(g, data: DataDict) -> None:
