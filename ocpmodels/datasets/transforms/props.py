@@ -28,9 +28,7 @@ class DistancesTransform(AbstractDataTransform):
         mu = (m_a * m_b) / (m_a + m_b)
         return {"r": r, "mu": mu}
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         graph.apply_edges(self.pairwise_distance)
         return data
@@ -43,9 +41,7 @@ class GraphVariablesTransform(AbstractDataTransform):
     as the "graph_variables" key.
     """
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         # retrieve the DGL graph
         graph = data.get("graph")
         # isolate the subtrate
@@ -134,9 +130,7 @@ class RemoveTagZeroNodes(AbstractDataTransform):
         super().__init__()
         self.overwrite = overwrite
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         tag_zero_mask = graph.ndata["tags"] != 0
         select_node_indices = graph.nodes()[tag_zero_mask]
@@ -168,9 +162,7 @@ class GraphSuperNodes(AbstractDataTransform):
         # understand the embedding lookup index for the graph supernode
         return self.atom_max_embed_index
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         # check to make sure the nodes
         assert (
@@ -235,9 +227,7 @@ class AtomicSuperNodes(AbstractDataTransform):
             index += 1
         return index
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         # check to see if there are graph supernodes already, which will offset
         # the atomic supernode indices
@@ -312,9 +302,7 @@ class GraphReordering(AbstractDataTransform):
         self.edge_algo = edge_algo
         self.sort_kwargs = sort_kwargs
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         graph = dgl.reorder_graph(
             graph, self.node_algo, self.edge_algo, permute_config=self.sort_kwargs
@@ -328,7 +316,7 @@ class CoordinateScaling(AbstractDataTransform):
         self.value = value
         self.key = key
 
-    def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, data: DataDict) -> DataDict:
         if "graph" in data:
             graph = data["graph"]
             assert self.key in graph.ndata, f"{self.key} not found in graph node data."
@@ -357,7 +345,7 @@ class COMShift(AbstractDataTransform):
         self.pos_key = pos_key
         self.mass_key = mass_key
 
-    def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, data: DataDict) -> DataDict:
         if "graph" in data:
             target_dict = data["graph"].ndata
         else:
@@ -389,7 +377,7 @@ class ScaleRegressionTargets(AbstractDataTransform):
         self.value = value if value else 1.0
         self.values = values if values else {}
 
-    def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, data: DataDict) -> DataDict:
         target_keys = data["target_types"]["regression"]
         for key in target_keys:
             # first check if it's been specified
