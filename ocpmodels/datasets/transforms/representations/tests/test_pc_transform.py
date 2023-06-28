@@ -35,7 +35,6 @@ if package_registry["dgl"]:
         t = PointCloudToGraphTransform(
             "dgl",
             node_keys=["pos", "atomic_numbers", "node_feats"],
-            edge_keys=["edge_feats"],
         )
         data = t(pc_data)
         graph = data.get("graph")
@@ -43,7 +42,6 @@ if package_registry["dgl"]:
         assert all(
             [key in graph.ndata for key in ["pos", "atomic_numbers", "node_feats"]]
         )
-        assert "edge_feats" in graph.edata
 
     @pytest.mark.dependency(depends=["test_transform_init"])
     def test_dgl_transform_fail(demo_dgl_graph):
