@@ -44,9 +44,8 @@ if package_registry["dgl"]:
         )
 
     @pytest.mark.dependency(depends=["test_transform_init"])
-    def test_dgl_transform_fail(demo_dgl_graph):
-        data = demo_dgl_graph
-        t = GraphToPointCloudTransform("dgl")
-        del data["graph"]
+    def test_dgl_transform_fail(pc_data):
+        t = PointCloudToGraphTransform("dgl")
+        del pc_data["coords"]
         with pytest.raises(AssertionError):
-            t(data)
+            t(pc_data)
