@@ -14,6 +14,13 @@ Construct graphs from point clouds
 
 __all__ = ["PointCloudToGraphTransform"]
 
+if package_registry["dgl"]:
+    from dgl import DGLGraph
+    from dgl import graph as dgl_graph
+
+if package_registry["pyg"]:
+    import torch_geometric
+    from torch_geometric.data import Data as PyGGraph
 
 log = getLogger(__name__)
 
@@ -59,8 +66,6 @@ class PointCloudToGraphTransform(RepresentationTransform):
         return adj_list
 
     if package_registry["dgl"]:
-        from dgl import DGLGraph
-        from dgl import graph as dgl_graph
 
         def _copy_node_keys_dgl(self, data: DataDict, graph: DGLGraph) -> None:
             # DGL variant of node data copying
