@@ -87,6 +87,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                     log.warning(
                         f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}"
                     )
+            graph.ndata["pos"] = graph.ndata["coords"]
 
         def _copy_edge_keys_dgl(self, data: DataDict, graph: DGLGraph) -> None:
             # DGL variant of edge data copying
