@@ -53,7 +53,7 @@ class GraphToPointCloudTransform(RepresentationTransform):
             assert isinstance(
                 g, dgl.DGLGraph
             ), f"Expected DGL graph as input, but got {g} which is type {type(g)}"
-            features = g.ndata["atomic_numbers"]
+            features = g.ndata["atomic_numbers"].long()
             pos = g.ndata["pos"]
             # compute atom-centered point clouds
             if self.atom_centered:
