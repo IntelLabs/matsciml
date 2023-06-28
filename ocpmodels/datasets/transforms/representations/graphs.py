@@ -38,6 +38,17 @@ class PointCloudToGraphTransform(RepresentationTransform):
         self.node_keys = node_keys
         self.edge_keys = edge_keys
 
+    @property
+    def node_keys(self) -> List[str]:
+        return self._node_keys
+
+    @node_keys.setter
+    def node_keys(self, values: List[str]) -> None:
+        values = set(values)
+        for key in ["pos", "atomic_numbers"]:
+            values.add(key)
+        self._node_keys = list(values)
+
     def prologue(self, data: DataDict) -> None:
         assert not self._check_for_type(
             data, GraphTypes
@@ -69,13 +80,12 @@ class PointCloudToGraphTransform(RepresentationTransform):
 
         def _copy_node_keys_dgl(self, data: DataDict, graph: DGLGraph) -> None:
             # DGL variant of node data copying
-            node_keys = getattr(self, "node_keys")
-            for key in node_keys:
+            for key in self.node_keys:
                 try:
                     graph.ndata[key] = data[key]
                 except KeyError:
                     log.warning(
-                        f"Expected node data {key} but was not found in data sample: {list(data.keys())}"
+                        f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}"
                     )
 
         def _copy_edge_keys_dgl(self, data: DataDict, graph: DGLGraph) -> None:
