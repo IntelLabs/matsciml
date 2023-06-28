@@ -8,6 +8,7 @@ from ocpmodels.datasets.materials_project import (
 )
 from ocpmodels.datasets.lips import lips_devset, LiPSDataset
 from ocpmodels.datasets.symmetry import symmetry_devset, SyntheticPointGroupDataset
+from ocpmodels.datasets import is2re_devset, IS2REDataset
 from ocpmodels.datasets.transforms import PointCloudToGraphTransform
 from ocpmodels.common import package_registry
 
@@ -84,3 +85,15 @@ if package_registry["dgl"]:
         assert "graph" in sample.keys()
         g = sample.get("graph")
         assert all([key in g.ndata for key in ["pos", "atomic_numbers"]])
+
+    @pytest.mark.dependency(depends=["test_transform_init", "test_dgl_create"])
+    def test_dgl_is2re_fail():
+        # this checks to make sure usage with IS2RE will raise an error
+        dset = IS2REDataset(
+            is2re_devset, transforms=[PointCloudToGraphTransform("dgl")]
+        )
+        with pytest.raises(
+            AssertionError,
+            match="Data structure already contains a graph: transform shouldn't be required.",
+        ):
+            sample = dset.__getitem__(0)
