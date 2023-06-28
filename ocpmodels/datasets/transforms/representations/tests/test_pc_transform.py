@@ -7,6 +7,7 @@ from ocpmodels.datasets.materials_project import (
     MaterialsProjectDataset,
 )
 from ocpmodels.datasets.lips import lips_devset, LiPSDataset
+from ocpmodels.datasets.symmetry import symmetry_devset, SyntheticPointGroupDataset
 from ocpmodels.datasets.transforms import PointCloudToGraphTransform
 from ocpmodels.common import package_registry
 
@@ -72,3 +73,14 @@ if package_registry["dgl"]:
         assert "graph" in sample.keys()
         g = sample.get("graph")
         assert all([key in g.ndata for key in ["pos", "atomic_numbers", "force"]])
+
+    @pytest.mark.skip(reason="SyntheticPointGroup is still not finalized")
+    def test_dgl_symmetry():
+        dset = SyntheticPointGroupDataset(
+            symmetry_devset, transforms=[PointCloudToGraphTransform("dgl")]
+        )
+        # TODO output sample only contains 'coordinates' and nothing similar to 'atomic numbers'
+        sample = dset.__getitem__(0)
+        assert "graph" in sample.keys()
+        g = sample.get("graph")
+        assert all([key in g.ndata for key in ["pos", "atomic_numbers"]])
