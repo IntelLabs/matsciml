@@ -2,6 +2,7 @@ import pytest
 
 import torch
 
+from ocpmodels.datasets import is2re_devset, IS2REDataset
 from ocpmodels.datasets.transforms import GraphToPointCloudTransform
 from ocpmodels.common import package_registry
 
@@ -40,3 +41,17 @@ if package_registry["dgl"]:
         del data["graph"]
         with pytest.raises(AssertionError):
             t(data)
+
+    @pytest.mark.dependency(
+        depends=["test_transform_init", "test_dgl_atom_center_transform"]
+    )
+    def test_dgl_is2re():
+        dset = IS2REDataset(
+            is2re_devset,
+            transforms=[GraphToPointCloudTransform("dgl", atom_centered=True)],
+        )
+        sample = dset.__getitem__(0)
+        assert "pc_features" in sample
+        assert "pos" in sample
+        # make sure positions are atom centered
+        assert sample["pos"].ndim == 3
