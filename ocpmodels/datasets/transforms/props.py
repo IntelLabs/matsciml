@@ -7,6 +7,12 @@ from ocpmodels.common import package_registry
 from ocpmodels.common.types import DataDict
 from ocpmodels.datasets.transforms.base import AbstractDataTransform
 
+if package_registry["dgl"]:
+    import dgl
+
+if package_registry["pyg"]:
+    import torch_geometric
+
 
 class DistancesTransform(AbstractDataTransform):
     """
