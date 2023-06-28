@@ -30,7 +30,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
         self,
         backend: str,
         cutoff_dist: float = 7.0,
-        node_keys: List[str] = ["pos", "atomic_numbers", "force"],
+        node_keys: List[str] = ["coords", "atomic_numbers", "force"],
         edge_keys: Optional[List[str]] = None,
     ) -> None:
         super().__init__(backend=backend)
@@ -45,7 +45,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
     @node_keys.setter
     def node_keys(self, values: List[str]) -> None:
         values = set(values)
-        for key in ["pos", "atomic_numbers"]:
+        for key in ["coords", "atomic_numbers"]:
             values.add(key)
         self._node_keys = list(values)
 
