@@ -13,6 +13,18 @@ if package_registry["dgl"]:
 if package_registry["pyg"]:
     import torch_geometric
 
+__all__ = [
+    "DistancesTransform",
+    "GraphVariablesTransform",
+    "RemoveTagZeroNodes",
+    "AtomicSuperNodes",
+    "GraphSuperNodes",
+    "GraphReordering",
+    "CoordinateScaling",
+    "COMShift",
+    "ScaleRegressionTargets",
+]
+
 
 class DistancesTransform(AbstractDataTransform):
     """
