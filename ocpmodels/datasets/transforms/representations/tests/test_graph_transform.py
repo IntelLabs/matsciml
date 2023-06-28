@@ -3,6 +3,10 @@ import pytest
 import torch
 
 from ocpmodels.datasets import is2re_devset, IS2REDataset, s2ef_devset, S2EFDataset
+from ocpmodels.datasets.materials_project import (
+    materialsproject_devset,
+    MaterialsProjectDataset,
+)
 from ocpmodels.datasets.transforms import GraphToPointCloudTransform
 from ocpmodels.common import package_registry
 
@@ -69,3 +73,18 @@ if package_registry["dgl"]:
         assert "pos" in sample
         # make sure positions are atom centered
         assert sample["pos"].ndim == 3
+
+    @pytest.mark.dependency(
+        depends=["test_transform_init", "test_dgl_atom_center_transform"]
+    )
+    def test_dgl_materials_project_fail():
+        # makes sure this cannot be applied to a dataset with point clouds already
+        dset = MaterialsProjectDataset(
+            materialsproject_devset,
+            transforms=[GraphToPointCloudTransform("dgl", atom_centered=True)],
+        )
+        with pytest.raises(
+            AssertionError,
+            match="No graphs to transform into point clouds!",
+        ):
+            sample = dset.__getitem__(0)
