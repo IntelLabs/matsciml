@@ -8,7 +8,7 @@ from ocpmodels.common.types import DataDict
 from ocpmodels.datasets.transforms.base import AbstractDataTransform
 
 
-class DistancesTransform(AbstractGraphTransform):
+class DistancesTransform(AbstractDataTransform):
     """
     Compute the distance and reduced mass between a pair of
     bonded nodes.
@@ -36,7 +36,7 @@ class DistancesTransform(AbstractGraphTransform):
         return data
 
 
-class GraphVariablesTransform(AbstractGraphTransform):
+class GraphVariablesTransform(AbstractDataTransform):
     """
     Transform to compute graph-level variables for use in models
     like MegNet. These will be included in the output dictionary
@@ -115,7 +115,7 @@ class GraphVariablesTransform(AbstractGraphTransform):
         return [avg_dist, std_dist, avg_mu, std_mu, sub_distance]
 
 
-class RemoveTagZeroNodes(AbstractGraphTransform):
+class RemoveTagZeroNodes(AbstractDataTransform):
     """
     Create a subgraph representation where atoms tagged with
     zero are absent.
@@ -150,7 +150,7 @@ class RemoveTagZeroNodes(AbstractGraphTransform):
         return data
 
 
-class GraphSuperNodes(AbstractGraphTransform):
+class GraphSuperNodes(AbstractDataTransform):
     """
     Generates a super node based on tag zero nodes.
 
@@ -204,7 +204,7 @@ class GraphSuperNodes(AbstractGraphTransform):
         return data
 
 
-class AtomicSuperNodes(AbstractGraphTransform):
+class AtomicSuperNodes(AbstractDataTransform):
     def __init__(self, atom_max_embedding: int) -> None:
         super().__init__()
         self.atom_max_embedding = atom_max_embedding
@@ -296,7 +296,7 @@ class AtomicSuperNodes(AbstractGraphTransform):
         return data
 
 
-class GraphReordering(AbstractGraphTransform):
+class GraphReordering(AbstractDataTransform):
     """
     Implements a graph node/edge reordering transform, which nominally
     may help with graph processing performance. This transform
@@ -323,7 +323,7 @@ class GraphReordering(AbstractGraphTransform):
         return data
 
 
-class CoordinateScaling(object):
+class CoordinateScaling(AbstractDataTransform):
     def __init__(self, value: float, key: str = "pos") -> None:
         self.value = value
         self.key = key
@@ -336,13 +336,15 @@ class CoordinateScaling(object):
         elif self.key in data:
             target_tensor: torch.Tensor = data[self.key]
         else:
-            raise KeyError(f"{self.key} not found in samples, or graph was not present.")
+            raise KeyError(
+                f"{self.key} not found in samples, or graph was not present."
+            )
         # perform inplace rescaling
         target_tensor.mul_(self.value)
         return data
 
 
-class COMShift(object):
+class COMShift(AbstractDataTransform):
     """
     Shift coordinates of a point cloud or graph based on its center of mass.
 
@@ -350,6 +352,7 @@ class COMShift(object):
     proportional to mass). The center of mass is then subtracted off the atom
     positions.
     """
+
     def __init__(self, pos_key: str = "pos", mass_key: str = "atomic_numbers") -> None:
         self.pos_key = pos_key
         self.mass_key = mass_key
@@ -359,8 +362,12 @@ class COMShift(object):
             target_dict = data["graph"].ndata
         else:
             target_dict = data
-        assert self.pos_key in target_dict, f"Coordinates expected in {self.pos_key}, but not found in data."
-        assert self.mass_key in target_dict, f"Masses expected in {self.mass_key}, but not found in data."
+        assert (
+            self.pos_key in target_dict
+        ), f"Coordinates expected in {self.pos_key}, but not found in data."
+        assert (
+            self.mass_key in target_dict
+        ), f"Masses expected in {self.mass_key}, but not found in data."
         coords: torch.Tensor = target_dict[self.pos_key]
         masses: torch.Tensor = target_dict[self.mass_key]
         mass_sum = masses.sum()
@@ -371,11 +378,15 @@ class COMShift(object):
         return data
 
 
-class ScaleRegressionTargets(object):
-    def __init__(self, value: Optional[float] = None, values: Optional[Dict[str, float]] = None) -> None:
+class ScaleRegressionTargets(AbstractDataTransform):
+    def __init__(
+        self, value: Optional[float] = None, values: Optional[Dict[str, float]] = None
+    ) -> None:
         if value is None and values is None:
-            raise ValueError(f"No values provided - must provide either value or values arguments.")
-        self.value = value if value else 1.
+            raise ValueError(
+                f"No values provided - must provide either value or values arguments."
+            )
+        self.value = value if value else 1.0
         self.values = values if values else {}
 
     def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -387,4 +398,3 @@ class ScaleRegressionTargets(object):
                 scaling = self.value
             data["targets"][key] *= scaling
         return data
-
