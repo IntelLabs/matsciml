@@ -6,6 +6,7 @@ from ocpmodels.datasets.materials_project import (
     materialsproject_devset,
     MaterialsProjectDataset,
 )
+from ocpmodels.datasets.lips import lips_devset, LiPSDataset
 from ocpmodels.datasets.transforms import PointCloudToGraphTransform
 from ocpmodels.common import package_registry
 
@@ -63,3 +64,11 @@ if package_registry["dgl"]:
         assert "graph" in sample.keys()
         g = sample.get("graph")
         assert all([key in g.ndata for key in ["pos", "atomic_numbers"]])
+
+    @pytest.mark.dependency(depends=["test_transform_init", "test_dgl_create"])
+    def test_dgl_lips():
+        dset = LiPSDataset(lips_devset, transforms=[PointCloudToGraphTransform("dgl")])
+        sample = dset.__getitem__(0)
+        assert "graph" in sample.keys()
+        g = sample.get("graph")
+        assert all([key in g.ndata for key in ["pos", "atomic_numbers", "force"]])
