@@ -2,10 +2,11 @@ from typing import List, Dict, Any, Union, Tuple
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
+from ocpmodels.common.types import DataDict, BatchDict, GraphTypes
+from ocpmodels.common import package_registry
 
-def concatenate_keys(
-    batch: List[Dict[str, Any]], pad_keys: List[str] = []
-) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
+
+def concatenate_keys(batch: List[DataDict], pad_keys: List[str] = []) -> BatchDict:
     """
     Function for concatenating data along keys within a dictionary.
 
