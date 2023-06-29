@@ -119,6 +119,7 @@ def data_to_cdvae(item):
     
 
 def main(args: Namespace):
+    print("Start")
     input_path = Path(args.src_lmdb)
     output_path = Path(args.output_folder)
     if not input_path.exists():
@@ -162,7 +163,8 @@ def main(args: Namespace):
                     # convert the key before writing
                     key = key.decode("utf-8")
                     write_data(key, metadata, target_env)
-
+    
+    print("Done")
 
 if __name__ == "__main__":
     parser = ArgumentParser()
