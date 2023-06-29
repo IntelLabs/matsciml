@@ -50,7 +50,15 @@ def concatenate_keys(batch: List[DataDict], pad_keys: List[str] = []) -> BatchDi
                 if isinstance(value, torch.Tensor):
                     # for tensors that need to be padded
                     if key in pad_keys:
-                        result = pad_sequence(elements, batch_first=True)
+                        # for 1D tensors like atomic numbers, we need to know the
+                        # maximum number of nodes
+                        if value.ndim == 1:
+                            max_size = max([len(t) for t in elements])
+                        else:
+                            # for other tensors, pad
+                            max_size = max([max(t.shape[:-1]) for t in elements])
+                        result, mask = pad_point_cloud(elements, max_size=max_size)
+                        batched_data["mask"] = mask
                     else:
                         result = torch.vstack(elements)
                 # for scalar values (typically labels) pack them
