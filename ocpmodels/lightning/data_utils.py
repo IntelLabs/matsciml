@@ -339,7 +339,8 @@ class BaseLightningDataModule(pl.LightningDataModule):
     def setup(self, stage: Optional[str] = None) -> None:
         splits = {}
         # set up the training split, if provided
-        if getattr(self.hparams, "train_path", None) is not None:
+        if getattr(self.hparams, "train_path", None) is not None and not hasattr(self, "splits"):
+        #if getattr(self.hparams, "train_path", None) is not None:
             assert isinstance(
                 self.dataset, Type
             ), f"Train path provided but no valid dataset class."
