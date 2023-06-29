@@ -10,6 +10,8 @@ if package_registry["dgl"]:
 
 if package_registry["pyg"]:
     import torch_geometric
+    from torch_geometric.data import Data as PyGGraph
+    from torch_geometric.data import Batch as PyGBatch
 
 
 def concatenate_keys(batch: List[DataDict], pad_keys: List[str] = []) -> BatchDict:
@@ -54,6 +56,14 @@ def concatenate_keys(batch: List[DataDict], pad_keys: List[str] = []) -> BatchDi
                 # for scalar values (typically labels) pack them
                 elif isinstance(value, (float, int)):
                     result = torch.tensor(elements)
+                # for graph types, descend into framework specific method
+                elif isinstance(value, GraphTypes):
+                    if package_registry["dgl"] and isinstance(value, dgl.DGLGraph):
+                        result = dgl.batch(elements)
+                    elif package_registry["pyg"] and isinstance(value, PyGGraph):
+                        result = PyGBatch.from_data_list(elements)
+                    else:
+                        raise ValueError(f"Graph type unsupported: {type(value)}")
                 # for everything else, just return a list
                 else:
                     result = elements
