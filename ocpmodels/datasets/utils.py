@@ -41,7 +41,7 @@ def concatenate_keys(batch: List[DataDict], pad_keys: List[str] = []) -> BatchDi
     sample = batch[0]
     batched_data = {}
     for key, value in sample.items():
-        if key not in ["targets", "target_keys"]:
+        if key not in ["target_types", "target_keys"]:
             if isinstance(value, dict):
                 # apply function recursively on dictionaries
                 result = concatenate_keys([s[key] for s in batch])
@@ -68,7 +68,7 @@ def concatenate_keys(batch: List[DataDict], pad_keys: List[str] = []) -> BatchDi
                 else:
                     result = elements
             batched_data[key] = result
-    for key in ["targets", "target_keys"]:
+    for key in ["target_types", "target_keys"]:
         if key in sample:
             batched_data[key] = sample[key]
     return batched_data
