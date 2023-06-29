@@ -7,7 +7,10 @@ from ocpmodels.datasets.materials_project import (
     materialsproject_devset,
     MaterialsProjectDataset,
 )
-from ocpmodels.datasets.transforms import GraphToPointCloudTransform
+from ocpmodels.datasets.transforms import (
+    GraphToPointCloudTransform,
+    OCPGraphToPointCloudTransform,
+)
 from ocpmodels.common import package_registry
 
 
@@ -88,3 +91,20 @@ if package_registry["dgl"]:
             match="No graphs to transform into point clouds!",
         ):
             sample = dset.__getitem__(0)
+
+    @pytest.mark.dependency(
+        depends=["test_transform_init", "test_dgl_atom_center_transform"]
+    )
+    def test_dgl_ocp_special():
+        dset = S2EFDataset(
+            s2ef_devset,
+            transforms=[OCPGraphToPointCloudTransform("dgl", atom_centered=True)],
+        )
+        sample = dset.__getitem__(0)
+        assert "pc_features" in sample
+        assert "pos" in sample
+        # make sure positions are atom centered
+        assert sample["pos"].ndim == 3
+        pos = sample["pos"]
+        pc_features = sample["pc_features"]
+        assert all([pos.size(i) == pc_features.size(i) for i in [0, 1]])
