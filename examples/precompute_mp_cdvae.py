@@ -3,7 +3,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 import os
 import pickle
-
+import sys, os
 import lmdb
 import dgl
 import torch
@@ -13,6 +13,9 @@ from torch_geometric.data import Data, Batch
 from pymatgen.core import Structure
 from pymatgen.analysis.graphs import StructureGraph
 from pymatgen.analysis import local_env
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+sys.path.append("{}/../".format(dir_path))
 
 from ocpmodels.datasets.generate_subsplit import connect_db_read, write_data
 
