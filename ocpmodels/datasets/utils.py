@@ -5,6 +5,12 @@ from torch.nn.utils.rnn import pad_sequence
 from ocpmodels.common.types import DataDict, BatchDict, GraphTypes
 from ocpmodels.common import package_registry
 
+if package_registry["dgl"]:
+    import dgl
+
+if package_registry["pyg"]:
+    import torch_geometric
+
 
 def concatenate_keys(batch: List[DataDict], pad_keys: List[str] = []) -> BatchDict:
     """
