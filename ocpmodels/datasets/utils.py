@@ -58,7 +58,9 @@ def concatenate_keys(batch: List[DataDict], pad_keys: List[str] = []) -> BatchDi
     return batched_data
 
 
-def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tensor, torch.Tensor]:
+def pad_point_cloud(
+    data: List[torch.Tensor], max_size: int
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Pads a point cloud to the maximum size within a batch.
 
@@ -86,9 +88,9 @@ def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tens
         feat_dim = max_size
     else:
         feat_dim = data[0].size(-1)
-    zeros_dims = [batch_size, *[max_size]*(data_dim-1), feat_dim]
+    zeros_dims = [batch_size, *[max_size] * (data_dim - 1), feat_dim]
     result = torch.zeros((zeros_dims), dtype=data[0].dtype)
-    mask =  torch.zeros((zeros_dims[:-1]), dtype=torch.bool)
+    mask = torch.zeros((zeros_dims[:-1]), dtype=torch.bool)
 
     for index, entry in enumerate(data):
         # Get all indices from entry, we we can use them to pad result. Add batch idx to the beginning.
