@@ -41,10 +41,11 @@ task = ScalarRegressionTask(
     model,
     output_kwargs={"norm": LazyBatchNorm1d, "hidden_dim": 256, "activation": SiLU},
     lr=1e-3,
+    task_keys=["efermi"],
 )
 
 dm = MaterialsProjectDataModule(
-    DGLMaterialsProjectDataset("mp_data/base", cutoff_dist=10.0),
+    dataset=DGLMaterialsProjectDataset("mp_data/base", cutoff_dist=10.0),
     val_split=0.2,
     batch_size=128,
     num_workers=16,

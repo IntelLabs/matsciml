@@ -18,7 +18,8 @@ task = CrystalSymmetryClassificationTask(
 
 # the base set is required because the devset does not contain symmetry labels
 dm = MaterialsProjectDataModule(
-    DGLMaterialsProjectDataset("mp_data/base", cutoff_dist=10.0), val_split=0.2
+    dataset=DGLMaterialsProjectDataset("mp_data/base", cutoff_dist=10.0),
+    val_split=0.2,
 )
 
 trainer = pl.Trainer(max_epochs=10, enable_checkpointing=False)

@@ -79,10 +79,18 @@ r_is2re = ScalarRegressionTask(
     task_keys=["energy_relaxed"],
 )
 r_s2ef = ForceRegressionTask(
-    model, lr=1e-3, output_kwargs=output_kwargs, normalize_kwargs=s2ef_norm
+    model,
+    lr=1e-3,
+    output_kwargs=output_kwargs,
+    normalize_kwargs=s2ef_norm,
+    task_keys=["force"],
 )
 r_lips = ForceRegressionTask(
-    model, lr=1e-3, output_kwargs=output_kwargs, normalize_kwargs=lips_norm
+    model,
+    lr=1e-3,
+    output_kwargs=output_kwargs,
+    normalize_kwargs=lips_norm,
+    task_keys=["force"],
 )
 
 # initialize multitask with regression and classification on materials project and OCP

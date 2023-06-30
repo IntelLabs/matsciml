@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT License
 
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.plugins.environments import SLURMEnvironment
 from pytorch_lightning.strategies import DDPStrategy
 import dgl
@@ -79,6 +80,8 @@ data_module = IS2REDGLDataModule(DATA_PATH, batch_size=BATCH_SIZE, num_workers=0
 environment = SLURMEnvironment(auto_requeue=False)
 # "mpi" can also be swapped for "ccl" for oneCCL optimized communications
 strategy = DDPStrategy(process_group_backend="mpi", cluster_environment=environment)
+# create logger
+logger = CSVLogger("lightning_logs", name="DimeNetPP")
 
 # configure trainer: accelerator can also be GPU if desired
 trainer = pl.Trainer(

@@ -117,7 +117,7 @@ def rnn_force_train_mode(module: nn.Module) -> None:
         _ = torch.cuda.current_device()
         if isinstance(module, nn.RNNBase):
             module.train()
-    except RuntimeError:
+    except AssertionError:
         pass
 
 
@@ -410,8 +410,7 @@ class OCPLitModule(pl.LightningModule):
             Dictionary containing the IDs of each batch item, and the corresponding
             energy result.
         """
-        input_data = self._get_inputs(batch)
-        prediction = self(*input_data)
+        prediction = self(batch)
         normalizer = self.normalizers.get("target", None)
         if normalizer is not None:
             prediction = normalizer.denorm(prediction)

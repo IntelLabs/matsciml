@@ -20,9 +20,9 @@ pl.seed_everything(1616)
 
 # include transforms to the data: shift center of mass and rescale magnitude of coordinates
 dset = DGLMaterialsProjectDataset(
-    "../materials_project/mp_data/base", transforms=[COMShift(), CoordinateScaling(0.1)]
+    "mp_data/base", transforms=[COMShift(), CoordinateScaling(0.1)]
 )
-dm = MaterialsProjectDataModule(dset, batch_size=32)
+dm = MaterialsProjectDataModule(dataset=dset, batch_size=32)
 
 # configure EGNN
 model_args = {
