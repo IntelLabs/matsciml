@@ -11,10 +11,9 @@ import pickle
 import lmdb
 import torch
 from torch.utils.data import Dataset, DataLoader
-from torch.nn.utils.rnn import pad_sequence
 import dgl
 from dgl.nn.pytorch.factory import KNNGraph
-from munch import Munch
+from ocpmodels.datasets.utils import concatenate_keys
 
 
 # this provides some backwards compatiability to Python ~3.7
@@ -206,11 +205,8 @@ class BaseLMDBDataset(Dataset):
         for env in self._envs:
             env.close()
 
-    @abstractstaticmethod
-    def collate_fn(batch: List[Any]) -> List[Any]:
-        raise NotImplementedError(
-            "Collate function is not implemented for this class, {self.__class__.__name__}."
-        )
+    def collate_fn(self, batch: List[Any]) -> List[Any]:
+        return concatenate_keys(batch, self.pad_keys)
 
     def sample(self, num_samples: int) -> List[Any]:
         """
