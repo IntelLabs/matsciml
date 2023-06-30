@@ -3,7 +3,7 @@
 
 from typing import Union, List, Any, Tuple, Callable, Optional, Dict
 from pathlib import Path
-from abc import abstractstaticmethod, abstractproperty
+from abc import abstractstaticmethod, abstractmethod
 from random import sample
 import functools
 import pickle
@@ -98,7 +98,8 @@ class BaseLMDBDataset(Dataset):
         self._envs = [read_lmdb_file(path) for path in db_paths]
         self.transforms = transforms
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def data_loader(self) -> DataLoader:
         raise NotImplementedError(
             f"No data loader specified for {self.__class__.__name__}."
@@ -233,7 +234,8 @@ class BaseLMDBDataset(Dataset):
         samples = [self.__getitem__(i) for i in indices]
         return samples
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def target_keys(self) -> Dict[str, List[str]]:
         """
         Indicates what the expected keys are for targets.
