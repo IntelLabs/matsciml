@@ -10,7 +10,7 @@ import dgl
 from dgl.dataloading import GraphDataLoader
 from munch import Munch
 
-from ocpmodels.datasets.base import BaseLMDBDataset, DGLDataset
+from ocpmodels.datasets.base import BaseLMDBDataset
 
 
 class OpenCatalystDataset(BaseLMDBDataset):
