@@ -162,7 +162,7 @@ class BaseLMDBDataset(Dataset):
     def keys(self) -> List[Tuple[int, int]]:
         return self._load_keys()
 
-    def __getitem__(self, index: int) -> Any:
+    def __getitem__(self, index: int) -> DataDict:
         """
         Implements the __getitem__ method that PyTorch `DataLoader` need
         to retrieve a piece of data. This implementation should not require
@@ -207,7 +207,7 @@ class BaseLMDBDataset(Dataset):
         for env in self._envs:
             env.close()
 
-    def collate_fn(self, batch: List[Any]) -> List[Any]:
+    def collate_fn(self, batch: List[DataDict]) -> BatchDict:
         return concatenate_keys(batch, self.pad_keys)
 
     def sample(self, num_samples: int) -> List[Any]:
