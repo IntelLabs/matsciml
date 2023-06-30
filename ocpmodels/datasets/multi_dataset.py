@@ -9,7 +9,7 @@ from ocpmodels.datasets.materials_project import (
     MaterialsProjectDataset,
     DGLMaterialsProjectDataset,
 )
-from ocpmodels.datasets.task_datasets import IS2REDataset, S2EFDataset
+from ocpmodels.datasets.ocp_datasets import IS2REDataset, S2EFDataset
 from ocpmodels.datasets.lips import DGLLiPSDataset, LiPSDataset
 from ocpmodels.datasets.symmetry import DGLSyntheticPointGroupDataset, SyntheticPointGroupDataset
 

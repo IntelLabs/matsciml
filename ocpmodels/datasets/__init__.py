@@ -26,5 +26,5 @@ s2ef_devset = devset_path
 is2re_devset = Path(__file__).parents[0].joinpath("dev-is2re-dgl")
 
 from ocpmodels.datasets.base import PointCloudDataset
-from ocpmodels.datasets.task_datasets import IS2REDataset, S2EFDataset
+from ocpmodels.datasets.ocp_datasets import IS2REDataset, S2EFDataset
 from ocpmodels.datasets.multi_dataset import MultiDataset
