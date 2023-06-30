@@ -280,12 +280,15 @@ class PointCloudDataset(Dataset):
 
     def __init__(
         self,
-        dataset: DGLDataset,
+        dataset: BaseLMDBDataset,
         point_cloud_size: Optional[int] = 24,
         sample_size: Optional[int] = 80,
         transforms: Optional[List[Callable]] = None,
         natom_types: int = 100,
     ) -> None:
+        raise TypeError(
+            "PointCloudDataset has been deprecated. Please use transforms to obtain point clouds."
+        )
         super().__init__()
         # additional point cloud arguments needed for the KNN graph
         # and sampling
