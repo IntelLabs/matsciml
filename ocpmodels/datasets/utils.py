@@ -2,10 +2,19 @@ from typing import List, Dict, Any, Union, Tuple
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
+from ocpmodels.common.types import DataDict, BatchDict, GraphTypes
+from ocpmodels.common import package_registry
 
-def concatenate_keys(
-    batch: List[Dict[str, Any]], pad_keys: List[str] = []
-) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
+if package_registry["dgl"]:
+    import dgl
+
+if package_registry["pyg"]:
+    import torch_geometric
+    from torch_geometric.data import Data as PyGGraph
+    from torch_geometric.data import Batch as PyGBatch
+
+
+def concatenate_keys(batch: List[DataDict], pad_keys: List[str] = []) -> BatchDict:
     """
     Function for concatenating data along keys within a dictionary.
 
@@ -32,7 +41,7 @@ def concatenate_keys(
     sample = batch[0]
     batched_data = {}
     for key, value in sample.items():
-        if key not in ["targets", "target_keys"]:
+        if key not in ["target_types", "target_keys"]:
             if isinstance(value, dict):
                 # apply function recursively on dictionaries
                 result = concatenate_keys([s[key] for s in batch])
@@ -41,23 +50,41 @@ def concatenate_keys(
                 if isinstance(value, torch.Tensor):
                     # for tensors that need to be padded
                     if key in pad_keys:
-                        result = pad_sequence(elements, batch_first=True)
+                        # for 1D tensors like atomic numbers, we need to know the
+                        # maximum number of nodes
+                        if value.ndim == 1:
+                            max_size = max([len(t) for t in elements])
+                        else:
+                            # for other tensors, pad
+                            max_size = max([max(t.shape[:-1]) for t in elements])
+                        result, mask = pad_point_cloud(elements, max_size=max_size)
+                        batched_data["mask"] = mask
                     else:
                         result = torch.vstack(elements)
                 # for scalar values (typically labels) pack them
                 elif isinstance(value, (float, int)):
                     result = torch.tensor(elements)
+                # for graph types, descend into framework specific method
+                elif isinstance(value, GraphTypes):
+                    if package_registry["dgl"] and isinstance(value, dgl.DGLGraph):
+                        result = dgl.batch(elements)
+                    elif package_registry["pyg"] and isinstance(value, PyGGraph):
+                        result = PyGBatch.from_data_list(elements)
+                    else:
+                        raise ValueError(f"Graph type unsupported: {type(value)}")
                 # for everything else, just return a list
                 else:
                     result = elements
             batched_data[key] = result
-    for key in ["targets", "target_keys"]:
+    for key in ["target_types", "target_keys"]:
         if key in sample:
             batched_data[key] = sample[key]
     return batched_data
 
 
-def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tensor, torch.Tensor]:
+def pad_point_cloud(
+    data: List[torch.Tensor], max_size: int
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Pads a point cloud to the maximum size within a batch.
 
@@ -85,9 +112,9 @@ def pad_point_cloud(data: List[torch.Tensor], max_size: int) -> Tuple[torch.Tens
         feat_dim = max_size
     else:
         feat_dim = data[0].size(-1)
-    zeros_dims = [batch_size, *[max_size]*(data_dim-1), feat_dim]
+    zeros_dims = [batch_size, *[max_size] * (data_dim - 1), feat_dim]
     result = torch.zeros((zeros_dims), dtype=data[0].dtype)
-    mask =  torch.zeros((zeros_dims[:-1]), dtype=torch.bool)
+    mask = torch.zeros((zeros_dims[:-1]), dtype=torch.bool)
 
     for index, entry in enumerate(data):
         # Get all indices from entry, we we can use them to pad result. Add batch idx to the beginning.
