@@ -100,6 +100,20 @@ class BaseLMDBDataset(Dataset):
         self.transforms = transforms
 
     @property
+    def transforms(self) -> List[Callable]:
+        return self._transforms
+
+    @transforms.setter
+    def transforms(self, values: Union[List[Callable], None]) -> None:
+        # if transforms are passed, this gives an opportunity for
+        # each transform to modify the state of this dataset
+        if values:
+            for transform in values:
+                if hasattr(transform, "setup_transform"):
+                    transform.setup_transform(self)
+        self._transforms = values
+
+    @property
     @abstractmethod
     def data_loader(self) -> DataLoader:
         raise NotImplementedError(
@@ -206,8 +220,9 @@ class BaseLMDBDataset(Dataset):
         for env in self._envs:
             env.close()
 
-    def collate_fn(self, batch: List[DataDict]) -> BatchDict:
-        return concatenate_keys(batch, self.pad_keys)
+    @staticmethod
+    def collate_fn(batch: List[DataDict]) -> BatchDict:
+        return concatenate_keys(batch)
 
     def sample(self, num_samples: int) -> List[Any]:
         """

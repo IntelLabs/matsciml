@@ -1,4 +1,5 @@
 import pytest
+import torch
 
 from ocpmodels.datasets.utils import concatenate_keys
 from ocpmodels.datasets.materials_project import (
@@ -61,3 +62,11 @@ def test_collate_is2re_pc():
             for key in ["pos", "pc_features", "mask", "targets", "target_types"]
         ]
     )
+    new_batch = dset.collate_fn(samples)
+    assert sorted(batch.keys()) == sorted(new_batch.keys())
+    for key in new_batch.keys():
+        a, b = batch.get(key), new_batch.get(key)
+        if isinstance(a, torch.Tensor):
+            assert torch.allclose(a, b)
+        elif not isinstance(a, dict):
+            assert a == b
