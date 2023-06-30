@@ -255,6 +255,11 @@ class BaseLMDBDataset(Dataset):
     def representation(self) -> str:
         ...
 
+    @property
+    @abstractmethod
+    def pad_keys(self) -> List[str]:
+        ...
+
 
 class DGLDataset(BaseLMDBDataset):
     @staticmethod
