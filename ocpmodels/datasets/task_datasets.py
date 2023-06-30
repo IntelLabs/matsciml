@@ -37,7 +37,7 @@ class OpenCatalystDataset(BaseLMDBDataset):
         return GraphDataLoader
 
 
-class S2EFDataset(DGLDataset):
+class S2EFDataset(OpenCatalystDataset):
     def data_from_key(
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
@@ -101,7 +101,7 @@ class S2EFDataset(DGLDataset):
         return {"regression": ["energy", "force"]}
 
 
-class IS2REDataset(DGLDataset):
+class IS2REDataset(OpenCatalystDataset):
     """
     Currently, this class doesn't have anything special implemented,
     but carries on the abstraction so that if there are modifications
