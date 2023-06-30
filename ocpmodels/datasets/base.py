@@ -194,7 +194,6 @@ class BaseLMDBDataset(Dataset):
                 data = transform(data)
         return data
 
-    # @cache
     def __len__(self) -> int:
         """
         This is a simple implementation so that the `__len__` function
