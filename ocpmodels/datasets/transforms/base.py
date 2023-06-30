@@ -1,12 +1,11 @@
 from abc import abstractmethod
-from typing import Union
-from torch.utils.data import Dataset
 
 from ocpmodels.common import DataDict
+from ocpmodels.datasets.base import BaseLMDBDataset
 
 
 class AbstractDataTransform(object):
-    def setup_transform(self, dataset: Dataset) -> None:
+    def setup_transform(self, dataset: BaseLMDBDataset) -> None:
         return None
 
     @abstractmethod
