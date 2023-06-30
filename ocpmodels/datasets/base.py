@@ -251,13 +251,21 @@ class BaseLMDBDataset(Dataset):
         ...
 
     @property
-    @abstractmethod
     def representation(self) -> str:
         ...
 
-    @property
+    @representation.setter
     @abstractmethod
+    def representation(self) -> None:
+        ...
+
+    @property
     def pad_keys(self) -> List[str]:
+        ...
+
+    @pad_keys.setter
+    @abstractmethod
+    def pad_keys(self, keys: List[str]) -> None:
         ...
 
 
