@@ -3,7 +3,7 @@
 
 from typing import Union, List, Any, Tuple, Callable, Optional, Dict
 from pathlib import Path
-from abc import abstractstaticmethod, abstractmethod
+from abc import abstractmethod
 from random import sample
 import functools
 import pickle
@@ -13,6 +13,8 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import dgl
 from dgl.nn.pytorch.factory import KNNGraph
+
+from ocpmodels.common.types import DataDict, BatchDict
 from ocpmodels.datasets.utils import concatenate_keys
 
 
