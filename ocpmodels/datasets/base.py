@@ -250,6 +250,11 @@ class BaseLMDBDataset(Dataset):
         """
         ...
 
+    @property
+    @abstractmethod
+    def representation(self) -> str:
+        ...
+
 
 class DGLDataset(BaseLMDBDataset):
     @staticmethod
