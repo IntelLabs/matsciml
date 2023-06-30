@@ -1,10 +1,14 @@
 from abc import abstractmethod
 from typing import Union
+from torch.utils.data import Dataset
 
 from ocpmodels.common import DataDict
 
 
 class AbstractDataTransform(object):
+    def setup_transform(self, dataset: Dataset) -> None:
+        return None
+
     @abstractmethod
     def __call__(self, data: DataDict) -> DataDict:
         """
