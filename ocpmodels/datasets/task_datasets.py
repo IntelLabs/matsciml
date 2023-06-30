@@ -7,9 +7,34 @@ from pathlib import Path
 
 import torch
 import dgl
+from dgl.dataloading import GraphDataLoader
 from munch import Munch
 
-from ocpmodels.datasets.base import DGLDataset
+from ocpmodels.datasets.base import BaseLMDBDataset, DGLDataset
+
+
+class OpenCatalystDataset(BaseLMDBDataset):
+    @property
+    def representation(self) -> str:
+        return self._representation
+
+    @representation.setter
+    def representation(self, value: str) -> None:
+        value = value.lower()
+        assert value in [
+            "graph",
+            "point_cloud",
+        ], "Supported representations are 'graph' and 'point_cloud'."
+        self._representation = value
+
+    @property
+    def pad_keys(self) -> List:
+        # in the event this i
+        return ["pc_features"]
+
+    @property
+    def data_loader(self) -> GraphDataLoader:
+        return GraphDataLoader
 
 
 class S2EFDataset(DGLDataset):
