@@ -14,9 +14,12 @@ is2re_devset = Path(__file__).parents[0].joinpath("dev-is2re-dgl")
 
 
 from ocpmodels.datasets.ocp_datasets import IS2REDataset, S2EFDataset
-from ocpmodels.datasets.materials_project import MaterialsProjectDataset
-from ocpmodels.datasets.lips import LiPSDataset
-from ocpmodels.datasets.symmetry import SyntheticPointGroupDataset
+from ocpmodels.datasets.materials_project import (
+    MaterialsProjectDataset,
+    materialsproject_devset,
+)
+from ocpmodels.datasets.lips import LiPSDataset, lips_devset
+from ocpmodels.datasets.symmetry import SyntheticPointGroupDataset, symmetry_devset
 from ocpmodels.datasets.multi_dataset import MultiDataset
 
 __all__ = [
@@ -26,4 +29,9 @@ __all__ = [
     "LiPSDataset",
     "SyntheticPointGroupDataset",
     "MultiDataset",
+    "s2ef_devset",
+    "is2redevset",
+    "materialsproject_devset",
+    "lips_devset",
+    "symmetry_devset",
 ]
