@@ -11,6 +11,7 @@ from dgl.dataloading import GraphDataLoader
 from munch import Munch
 
 from ocpmodels.datasets.base import BaseLMDBDataset
+from ocpmodels.common.registry import registry
 
 
 class OpenCatalystDataset(BaseLMDBDataset):
@@ -37,6 +38,7 @@ class OpenCatalystDataset(BaseLMDBDataset):
         return GraphDataLoader
 
 
+@registry.register_dataset("S2EFDataset")
 class S2EFDataset(OpenCatalystDataset):
     def data_from_key(
         self, lmdb_index: int, subindex: int
@@ -85,7 +87,7 @@ class S2EFDataset(OpenCatalystDataset):
                 output_data[key] = data.get(key)
             output_data["graph"] = graph
         # This is the case for test set data for s2ef with dgl format.
-        elif 'graph' in data.keys():
+        elif "graph" in data.keys():
             output_data = data
         # tacking on metadata about the task; energy and force regression
         output_data["targets"] = {}
@@ -101,6 +103,7 @@ class S2EFDataset(OpenCatalystDataset):
         return {"regression": ["energy", "force"]}
 
 
+@registry.register_dataset("IS2REDataset")
 class IS2REDataset(OpenCatalystDataset):
     """
     Currently, this class doesn't have anything special implemented,

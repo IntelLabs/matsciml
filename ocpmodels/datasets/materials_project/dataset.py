@@ -11,7 +11,12 @@ from pymatgen.core import Structure
 from emmet.core.symmetry import SymmetryData
 
 from ocpmodels.datasets.base import BaseLMDBDataset
-from ocpmodels.datasets.utils import concatenate_keys, point_cloud_featurization, pad_point_cloud
+from ocpmodels.datasets.utils import (
+    concatenate_keys,
+    point_cloud_featurization,
+    pad_point_cloud,
+)
+from ocpmodels.common.registry import registry
 
 
 _has_dgl = find_spec("dgl") is not None
@@ -48,6 +53,7 @@ def item_from_structure(data: Any, *keys: str) -> Any:
     return data
 
 
+@registry.register_dataset("MaterialsProjectDataset")
 class MaterialsProjectDataset(BaseLMDBDataset):
     def index_to_key(self, index: int) -> Tuple[int]:
         """
@@ -113,7 +119,8 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         space_group = structure.get_space_group_info()[-1]
         # convert lattice angles into radians
         lattice_params = torch.FloatTensor(
-            structure.lattice.abc + tuple(a * (pi / 180.) for a in structure.lattice.angles)
+            structure.lattice.abc
+            + tuple(a * (pi / 180.0) for a in structure.lattice.angles)
         )
         lattice_features = {
             "space_group": space_group,
@@ -237,7 +244,9 @@ class MaterialsProjectDataset(BaseLMDBDataset):
                     target_types["regression"].append(key)
             else:
                 if isinstance(item, (float, int)):
-                    target_type = "classification" if isinstance(item, int) else "regression"
+                    target_type = (
+                        "classification" if isinstance(item, int) else "regression"
+                    )
                     target_types[target_type].append(key)
         return_dict["target_types"] = target_types
         self.target_keys = target_types
@@ -275,7 +284,7 @@ class MaterialsProjectDataset(BaseLMDBDataset):
                 return torch.Tensor(value).type(dtype)
         # for missing data, set to zero
         elif value is None:
-            return 0.
+            return 0.0
         else:
             # for scalars, just return the value
             return value
@@ -335,7 +344,7 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         if any([key in sample.keys() for key in pad_keys]):
             max_size = max([s["num_particles"] for s in batch])
         for key, value in sample.items():
-           # for dictionaries, we need to go one level deeper
+            # for dictionaries, we need to go one level deeper
             if isinstance(value, dict):
                 if key != "target_keys":
                     joint_data[key] = {}
@@ -467,7 +476,13 @@ if _has_dgl:
             graph.ndata["atomic_numbers"] = data["atomic_numbers"]
             data["graph"] = graph
             # delete the keys to reduce data redundancy
-            for key in ["pos", "coords", "atomic_numbers", "distance_matrix", "pc_features"]:
+            for key in [
+                "pos",
+                "coords",
+                "atomic_numbers",
+                "distance_matrix",
+                "pc_features",
+            ]:
                 del data[key]
             return data
 

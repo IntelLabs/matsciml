@@ -11,6 +11,7 @@ from ocpmodels.datasets.utils import (
     point_cloud_featurization,
     pad_point_cloud,
 )
+from ocpmodels.common.registry import registry
 
 
 _has_dgl = find_spec("dgl") is not None
@@ -47,6 +48,7 @@ def item_from_structure(data: Any, *keys: str) -> Any:
     return data
 
 
+@registry.register_dataset("LiPSDataset")
 class LiPSDataset(BaseLMDBDataset):
     def index_to_key(self, index: int) -> Tuple[int]:
         return (0, index)
