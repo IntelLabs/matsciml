@@ -95,41 +95,5 @@ class Registry:
     def get_transform_class(cls: Registry, name: str):
         return cls.__entries__["transforms"].get(name, None)
 
-    @classmethod
-    def get(cls, name, default=None, no_warning=False):
-        r"""Get an item from registry with key 'name'
-
-        Args:
-            name (string): Key whose value needs to be retreived.
-            default: If passed and key is not in registry, default value will
-                     be returned with a warning. Default: None
-            no_warning (bool): If passed as True, warning when key doesn't exist
-                               will not be generated. Useful for cgcnn's
-                               internal operations. Default: False
-        Usage::
-
-            from ocpmodels.common.registry import registry
-
-            config = registry.get("config")
-        """
-        original_name = name
-        name = name.split(".")
-        value = cls.mapping["state"]
-        for subname in name:
-            value = value.get(subname, default)
-            if value is default:
-                break
-
-        if (
-            "writer" in cls.mapping["state"]
-            and value == default
-            and no_warning is False
-        ):
-            cls.mapping["state"]["writer"].write(
-                "Key {} is not present in registry, returning default value "
-                "of {}".format(original_name, default)
-            )
-        return value
-
 
 registry = Registry()
