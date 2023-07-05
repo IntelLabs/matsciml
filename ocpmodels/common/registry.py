@@ -38,7 +38,7 @@ class Registry:
     @classmethod
     def register_task(cls: Registry, name: str):
         def wrap(func):
-            cls.mapping["tasks"][name] = func
+            cls.__entries__["tasks"][name] = func
             return func
 
         return wrap
@@ -46,7 +46,7 @@ class Registry:
     @classmethod
     def register_dataset(cls: Registry, name: str):
         def wrap(func):
-            cls.mapping["datasets"][name] = func
+            cls.__entries__["datasets"][name] = func
             return func
 
         return wrap
@@ -54,7 +54,7 @@ class Registry:
     @classmethod
     def register_datamodule(cls: Registry, name: str):
         def wrap(func):
-            cls.mapping["datamodules"][name] = func
+            cls.__entries__["datamodules"][name] = func
             return func
 
         return wrap
@@ -62,7 +62,7 @@ class Registry:
     @classmethod
     def register_model(cls: Registry, name: str):
         def wrap(func):
-            cls.mapping["models"][name] = func
+            cls.__entries__["models"][name] = func
             return func
 
         return wrap
@@ -70,30 +70,30 @@ class Registry:
     @classmethod
     def register_transform(cls: Registry, name: str):
         def wrap(func):
-            cls.mapping["transforms"][name] = func
+            cls.__entries__["transforms"][name] = func
             return func
 
         return wrap
 
     @classmethod
     def get_task_class(cls: Registry, name: str):
-        return cls.mapping["tasks"].get(name, None)
+        return cls.__entries__["tasks"].get(name, None)
 
     @classmethod
     def get_dataset_class(cls: Registry, name: str):
-        return cls.mapping["datasets"].get(name, None)
+        return cls.__entries__["datasets"].get(name, None)
 
     @classmethod
     def get_datamodule_class(cls: Registry, name: str):
-        return cls.mapping["datamodules"].get(name, None)
+        return cls.__entries__["datamodules"].get(name, None)
 
     @classmethod
     def get_model_class(cls: Registry, name: str):
-        return cls.mapping["models"].get(name, None)
+        return cls.__entries__["models"].get(name, None)
 
     @classmethod
     def get_transform_class(cls: Registry, name: str):
-        return cls.mapping["models"].get(name, None)
+        return cls.__entries__["transforms"].get(name, None)
 
     @classmethod
     def get(cls, name, default=None, no_warning=False):
