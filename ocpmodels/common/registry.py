@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Copyright (c) Facebook, Inc. and its affiliates.
 
@@ -25,172 +27,73 @@ Various decorators for registry different kind of classes with unique keys
 
 class Registry:
     r"""Class for registry object which acts as central source of truth."""
-    mapping = {
-        # Mappings to respective classes.
-        "task_name_mapping": {},
-        "dataset_name_mapping": {},
-        "model_name_mapping": {},
-        "logger_name_mapping": {},
-        "trainer_name_mapping": {},
-        "state": {},
+    __entries__ = {
+        "datasets": {},
+        "datamodules": {},
+        "models": {},
+        "tasks": {},
+        "transforms": {},
     }
 
     @classmethod
-    def register_task(cls, name):
-        r"""Register a new task to registry with key 'name'
-        Args:
-            name: Key with which the task will be registered.
-        Usage::
-            from ocpmodels.common.registry import registry
-            from ocpmodels.tasks import BaseTask
-            @registry.register_task("train")
-            class TrainTask(BaseTask):
-                ...
-        """
-
+    def register_task(cls: Registry, name: str):
         def wrap(func):
-            cls.mapping["task_name_mapping"][name] = func
+            cls.mapping["tasks"][name] = func
             return func
 
         return wrap
 
     @classmethod
-    def register_dataset(cls, name):
-        r"""Register a dataset to registry with key 'name'
-
-        Args:
-            name: Key with which the dataset will be registered.
-
-        Usage::
-
-            from ocpmodels.common.registry import registry
-            from ocpmodels.datasets import BaseDataset
-
-            @registry.register_dataset("qm9")
-            class QM9(BaseDataset):
-                ...
-        """
-
+    def register_dataset(cls: Registry, name: str):
         def wrap(func):
-            cls.mapping["dataset_name_mapping"][name] = func
+            cls.mapping["datasets"][name] = func
             return func
 
         return wrap
 
     @classmethod
-    def register_model(cls, name):
-        r"""Register a model to registry with key 'name'
-
-        Args:
-            name: Key with which the model will be registered.
-
-        Usage::
-
-            from ocpmodels.common.registry import registry
-            from ocpmodels.modules.layers import CGCNNConv
-
-            @registry.register_model("cgcnn")
-            class CGCNN():
-                ...
-        """
-
+    def register_datamodule(cls: Registry, name: str):
         def wrap(func):
-            cls.mapping["model_name_mapping"][name] = func
+            cls.mapping["datamodules"][name] = func
             return func
 
         return wrap
 
     @classmethod
-    def register_logger(cls, name):
-        r"""Register a logger to registry with key 'name'
-
-        Args:
-            name: Key with which the logger will be registered.
-
-        Usage::
-
-            from ocpmodels.common.registry import registry
-
-            @registry.register_logger("tensorboard")
-            class WandB():
-                ...
-        """
-
+    def register_model(cls: Registry, name: str):
         def wrap(func):
-            from ocpmodels.common.logger import Logger
-
-            assert issubclass(
-                func, Logger
-            ), "All loggers must inherit Logger class"
-            cls.mapping["logger_name_mapping"][name] = func
+            cls.mapping["models"][name] = func
             return func
 
         return wrap
 
     @classmethod
-    def register_trainer(cls, name):
-        r"""Register a trainer to registry with key 'name'
-
-        Args:
-            name: Key with which the trainer will be registered.
-
-        Usage::
-
-            from ocpmodels.common.registry import registry
-
-            @registry.register_trainer("active_discovery")
-            class ActiveDiscoveryTrainer():
-                ...
-        """
-
+    def register_transform(cls: Registry, name: str):
         def wrap(func):
-            cls.mapping["trainer_name_mapping"][name] = func
+            cls.mapping["transforms"][name] = func
             return func
 
         return wrap
 
     @classmethod
-    def register(cls, name, obj):
-        r"""Register an item to registry with key 'name'
-
-        Args:
-            name: Key with which the item will be registered.
-
-        Usage::
-
-            from ocpmodels.common.registry import registry
-
-            registry.register("config", {})
-        """
-        path = name.split(".")
-        current = cls.mapping["state"]
-
-        for part in path[:-1]:
-            if part not in current:
-                current[part] = {}
-            current = current[part]
-
-        current[path[-1]] = obj
+    def get_task_class(cls: Registry, name: str):
+        return cls.mapping["tasks"].get(name, None)
 
     @classmethod
-    def get_task_class(cls, name):
-        return cls.mapping["task_name_mapping"].get(name, None)
+    def get_dataset_class(cls: Registry, name: str):
+        return cls.mapping["datasets"].get(name, None)
 
     @classmethod
-    def get_dataset_class(cls, name):
-        return cls.mapping["dataset_name_mapping"].get(name, None)
+    def get_datamodule_class(cls: Registry, name: str):
+        return cls.mapping["datamodules"].get(name, None)
 
     @classmethod
-    def get_model_class(cls, name):
-        return cls.mapping["model_name_mapping"].get(name, None)
+    def get_model_class(cls: Registry, name: str):
+        return cls.mapping["models"].get(name, None)
 
     @classmethod
-    def get_logger_class(cls, name):
-        return cls.mapping["logger_name_mapping"].get(name, None)
-
-    @classmethod
-    def get_trainer_class(cls, name):
-        return cls.mapping["trainer_name_mapping"].get(name, None)
+    def get_transform_class(cls: Registry, name: str):
+        return cls.mapping["models"].get(name, None)
 
     @classmethod
     def get(cls, name, default=None, no_warning=False):
@@ -227,20 +130,6 @@ class Registry:
                 "of {}".format(original_name, default)
             )
         return value
-
-    @classmethod
-    def unregister(cls, name):
-        r"""Remove an item from registry with key 'name'
-
-        Args:
-            name: Key which needs to be removed.
-        Usage::
-
-            from ocpmodels.common.registry import registry
-
-            config = registry.unregister("config")
-        """
-        return cls.mapping["state"].pop(name, None)
 
 
 registry = Registry()
