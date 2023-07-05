@@ -9,9 +9,7 @@
 
 from pathlib import Path
 
-# TODO homogenize the variable and folder names
-devset_path = Path(__file__).parents[0].joinpath("dev-s2ef-dgl")
-s2ef_devset = devset_path
+s2ef_devset = Path(__file__).parents[0].joinpath("dev-s2ef-dgl")
 is2re_devset = Path(__file__).parents[0].joinpath("dev-is2re-dgl")
 
 
