@@ -308,78 +308,10 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         return (targets.mean(0, keepdim=True), targets.std(0, keepdim=True))
 
     @staticmethod
-    def collate_fn(
-        batch: List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
-    ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
-        """
-        Relatively verbose function to batch up materials project data.
-
-        At a high level, we basically go through and check what data types
-        are needed for the full batch, based on the first sample, and use
-        that to determine what to do: tensors are stacked, 1D lists are
-        converted into their appropriate tensor types. For dictionaries,
-        we do the same thing but at their level (i.e. we preserve the
-        original structure of a sample). For strings, we are not currently
-        doing anything with them and so they are preserved as lists of strings.
-
-        We define a `pad_keys` list of keys that are explicitly meant to
-        be padded, which correspond to point cloud entities. For memory
-        considerations, the interatomic distance matrix is not batched
-        and just left as a list of tensors.
-
-        Parameters
-        ----------
-        batch : List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
-            List of Materials Project samples
-
-        Returns
-        -------
-        Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
-            Dictionary of batched data
-        """
-        joint_data = {}
-        sample = batch[0]
-        pad_keys = ["pos", "pc_features", "atomic_numbers"]
-        # get the biggest point cloud size for padding
-        if any([key in sample.keys() for key in pad_keys]):
-            max_size = max([s["num_particles"] for s in batch])
-        for key, value in sample.items():
-            # for dictionaries, we need to go one level deeper
-            if isinstance(value, dict):
-                if key != "target_keys":
-                    joint_data[key] = {}
-                    for subkey, subvalue in value.items():
-                        data = [item_from_structure(s, key, subkey) for s in batch]
-                        # for numeric types, cast to a float tensor
-                        if isinstance(subvalue, (int, float)):
-                            data = torch.FloatTensor(data).unsqueeze(-1)
-                        elif isinstance(subvalue, torch.Tensor):
-                            data = torch.vstack(data)
-                        # for string types, we just return a list
-                        else:
-                            pass
-                        joint_data[key][subkey] = data
-            elif key in pad_keys:
-                assert isinstance(
-                    value, torch.Tensor
-                ), f"{key} in batch should be a tensor."
-                # get the dimensionality
-                data_to_pad = [s.get(key) for s in batch]
-                # padded data and a mask for which elements are real
-                data, mask = pad_point_cloud(data_to_pad, max_size)
-                joint_data[key] = data
-                joint_data["mask"] = mask
-            else:
-                # aggregate all the data
-                data = [s.get(key) for s in batch]
-                if isinstance(value, torch.Tensor) and key != "distance_matrix":
-                    data = torch.vstack(data)
-                elif isinstance(value, (int, float)):
-                    data = torch.FloatTensor(data).unsqueeze(-1)
-                # return anything else as just a list
-                joint_data[key] = data
-        joint_data["target_types"] = sample["target_types"]
-        return joint_data
+    def collate_fn(batch: List[DataDict]) -> BatchDict:
+        # since this class returns point clouds by default, we have to pad
+        # the atom-centered point cloud data
+        return concatenate_keys(batch, pad_keys=["pc_features", "pos"])
 
 
 if _has_dgl:
