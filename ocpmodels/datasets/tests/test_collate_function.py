@@ -13,6 +13,7 @@ from ocpmodels.datasets.transforms import (
 )
 
 
+@pytest.mark.dependency()
 def test_collate_mp_pc():
     # uses point clouds
     dset = MaterialsProjectDataset(materialsproject_devset)
@@ -30,6 +31,7 @@ def test_collate_mp_pc():
     assert torch.allclose(batch["pc_features"], new_batch["pc_features"])
 
 
+@pytest.mark.dependency(depends=["test_collate_mp_pc"])
 def test_collate_mp_dgl():
     # uses graphs instead
     dset = MaterialsProjectDataset(
@@ -50,6 +52,7 @@ def test_collate_mp_dgl():
     assert torch.allclose(new_batch["graph"].ndata["pos"], graph.ndata["pos"])
 
 
+@pytest.mark.dependency()
 def test_collate_is2re_dgl():
     dset = IS2REDataset(is2re_devset)
     samples = [dset.__getitem__(i) for i in range(4)]
@@ -61,6 +64,7 @@ def test_collate_is2re_dgl():
     assert all([key in batch for key in ["targets", "target_types"]])
 
 
+@pytest.mark.dependency(depends=["test_collate_is2re_dgl"])
 def test_collate_is2re_pc():
     dset = IS2REDataset(is2re_devset, transforms=[OCPGraphToPointCloudTransform("dgl")])
     samples = [dset.__getitem__(i) for i in range(4)]
