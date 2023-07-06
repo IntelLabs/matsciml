@@ -418,30 +418,3 @@ if _has_dgl:
             ]:
                 del data[key]
             return data
-
-        @staticmethod
-        def collate_fn(
-            batch: List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
-        ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]:
-            """
-            Collate function for DGLGraph variant of the Materials Project.
-
-            Basically uses the same workflow as that for `MaterialsProjectDataset`,
-            but with the added step of calling `dgl.batch` on the graph data
-            that is left unprocessed by the parent method.
-
-            Parameters
-            ----------
-            batch : List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
-                List of Materials Project samples
-
-            Returns
-            -------
-            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-                Batched data, including graph
-            """
-            batched_data = super(
-                DGLMaterialsProjectDataset, DGLMaterialsProjectDataset
-            ).collate_fn(batch)
-            batched_data["graph"] = dgl.batch(batched_data["graph"])
-            return batched_data
