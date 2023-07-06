@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
 from abc import abstractclassmethod
@@ -15,7 +15,6 @@ from torch.utils.data import random_split
 from ocpmodels.datasets import (
     IS2REDataset,
     S2EFDataset,
-    PointCloudDataset,
     MultiDataset,
 )
 from ocpmodels.datasets import s2ef_devset, is2re_devset
@@ -25,7 +24,11 @@ from ocpmodels.datasets.materials_project import (
     DGLMaterialsProjectDataset,
 )
 from ocpmodels.datasets.lips import LiPSDataset, DGLLiPSDataset, lips_devset
-from ocpmodels.datasets.symmetry import DGLSyntheticPointGroupDataset, SyntheticPointGroupDataset, symmetry_devset
+from ocpmodels.datasets.symmetry import (
+    DGLSyntheticPointGroupDataset,
+    SyntheticPointGroupDataset,
+    symmetry_devset,
+)
 
 
 class GraphDataModule(pl.LightningDataModule):
@@ -542,81 +545,14 @@ class SyntheticPointGroupDataModule(BaseLightningDataModule):
 
     @classmethod
     def from_devset(
-            cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
+        cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
     ):
         kwargs.setdefault("batch_size", 8)
         kwargs.setdefault("num_workers", 0)
-        dset_class = SyntheticPointGroupDataset if not graphs else DGLSyntheticPointGroupDataset
-        return cls(dataset=dset_class(symmetry_devset, transforms=transforms), **kwargs)
-
-
-class PointCloudDataModule(GraphDataModule):
-    def __init__(
-        self,
-        dataset_class: Type[TorchDataset],
-        train_path: Optional[str] = None,
-        batch_size: int = 32,
-        num_workers: int = 0,
-        point_cloud_size: int = 6,
-        sample_size: int = 10,
-        val_path: Optional[str] = None,
-        test_path: Optional[str] = None,
-        predict_path: Optional[str] = None,
-        transforms: Optional[List[Callable]] = None,
-    ):
-        super().__init__(
-            train_path,
-            dataset_class,
-            batch_size,
-            num_workers,
-            val_path,
-            test_path,
-            predict_path,
-            transforms,
+        dset_class = (
+            SyntheticPointGroupDataset if not graphs else DGLSyntheticPointGroupDataset
         )
-        self._point_cloud_size = point_cloud_size
-        self._sample_size = sample_size
-        self.collate_fn = PointCloudDataset.collate_fn
-
-    def setup(self, stage: Union[str, None] = None) -> None:
-        """
-        This class modifies the base behavior slightly, by wrapping the base
-        dataset with `PointCloudDataset`.
-        """
-        self.data_splits = {}
-        # set up each of the dataset splits
-        for key, path in self.paths.items():
-            self.data_splits[key] = PointCloudDataset(
-                self.dataset_class(path), self._point_cloud_size, self._sample_size
-            )
-
-    @classmethod
-    def from_s2ef(cls, **kwargs):
-        """
-        Convenient method to instantiate a `PointCloudDataModule` using
-        the S2EF dataset. Kwargs are passed into the constructor
-        method, and this method only overrides the dataset class explicitly.
-
-        Returns
-        -------
-        PointCloudDataModule
-            A point cloud lightning module configured to use the S2EF data.
-        """
-        return cls(dataset_class=S2EFDataset, **kwargs)
-
-    @classmethod
-    def from_is2re(cls, **kwargs):
-        """
-        Convenient method to instantiate a `PointCloudDataModule` using
-        the S2EF dataset. Kwargs are passed into the constructor
-        method, and this method only overrides the dataset class explicitly.
-
-        Returns
-        -------
-        PointCloudDataModule
-            A point cloud lightning module configured to use the IS2RE data.
-        """
-        return cls(dataset_class=IS2REDataset, **kwargs)
+        return cls(dataset=dset_class(symmetry_devset, transforms=transforms), **kwargs)
 
 
 class MultiDataModule(pl.LightningDataModule):
