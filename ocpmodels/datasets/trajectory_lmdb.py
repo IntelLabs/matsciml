@@ -21,8 +21,6 @@ from torch.utils.data import Dataset
 
 # from torch_geometric.data import Batch
 
-from ocpmodels.common.registry import registry
-
 # from ocpmodels.common.utils import pyg2_data_transform
 from dgl.nn.pytorch.factory import KNNGraph
 from dgl.data import DGLDataset
@@ -33,7 +31,6 @@ from dgl.convert import graph as dgl_graph
 
 
 def munch_to_dgl(munch_obj: munch.Munch, g: dgl_graph):
-
     exclude_list = ["edge_index", "natoms", "y"]
 
     natoms = int(munch_obj["natoms"])
@@ -42,7 +39,6 @@ def munch_to_dgl(munch_obj: munch.Munch, g: dgl_graph):
     graph_variables.label = munch_obj.y
 
     for key, value in munch_obj.items():
-
         # print('key ', key)
 
         if key in exclude_list:
@@ -59,7 +55,6 @@ def munch_to_dgl(munch_obj: munch.Munch, g: dgl_graph):
     return g, graph_variables
 
 
-@registry.register_dataset("trajectory_lmdb")
 class TrajectoryLmdbDataset(Dataset):
     r"""Dataset class to load from LMDB files containing relaxation trajectories.
     Useful for Structure to Energy & Force (S2EF) and Initial State to
@@ -135,7 +130,6 @@ class TrajectoryLmdbDataset(Dataset):
             env.close()
 
 
-@registry.register_dataset("trajectory_lmdb_dgl")
 class TrajectoryLmdbDataset_DGL(DGLDataset):
     r"""Dataset class to load from LMDB files containing relaxation trajectories.
     Useful for Structure to Energy & Force (S2EF) and Initial State to
@@ -178,11 +172,9 @@ class TrajectoryLmdbDataset_DGL(DGLDataset):
         return self.num_samples
 
     def download(self):
-
         pass
 
     def process(self):
-
         pass
 
     def __getitem__(self, idx):
@@ -260,7 +252,6 @@ def data_list_collater_dgl(data_list, otf_graph=False):
 
 
 def data_list_collater_gaanet(data_list, otf_graph=None, pc_size=6, sample_size=10):
-
     """
     1. Get the DGL Data Lists
     2. Find out the molecule indexes inside the given structure
@@ -281,7 +272,6 @@ def data_list_collater_gaanet(data_list, otf_graph=None, pc_size=6, sample_size=
     batch_force_list = []
 
     for g in graphs:
-
         # g = graphs[0]
 
         g_feat_list = []
@@ -307,7 +297,6 @@ def data_list_collater_gaanet(data_list, otf_graph=None, pc_size=6, sample_size=
         substrate_idx_sample = substrate_idx[substrate_idx_sample_idx]
 
         for subs_id in substrate_idx_sample:
-
             l3 = [edge_0 == subs_id]  # atom index
             l4 = [edge_1[l3]]  # neighbor indexes
 
@@ -352,7 +341,6 @@ def data_list_collater_gaanet(data_list, otf_graph=None, pc_size=6, sample_size=
         for ii, (feats, pos, forces) in enumerate(
             zip(g_feat_list, g_pos_list, g_force_list)
         ):
-
             node_feats[ii][0 : shape_list[ii]] = feats
             positions[ii][0 : shape_list[ii]] = pos
             true_forces[ii][0 : shape_list[ii]] = forces

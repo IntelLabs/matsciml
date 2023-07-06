@@ -7,6 +7,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import IterableDataset, DataLoader
 
 from ocpmodels.datasets.base import BaseLMDBDataset
+from ocpmodels.common.registry import registry
 
 _has_dgl = find_spec("dgl") is not None
 
@@ -102,6 +103,7 @@ class OTFPointGroupDataset(IterableDataset):
     ...
 
 
+@registry.register_dataset("SyntheticPointGroupDataset")
 class SyntheticPointGroupDataset(BaseLMDBDataset):
     def __init__(
         self,
@@ -146,15 +148,24 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         batched_data = concatenate_keys(batch, pad_keys)
         return batched_data
 
+
 if _has_dgl:
     import dgl
 
     class DGLSyntheticPointGroupDataset(SyntheticPointGroupDataset):
-        def __init__(self, lmdb_root_path: Union[str, Path], transforms: Optional[List[Callable]] = None, max_types: int = 200, cutoff_dist: float = 5.) -> None:
+        def __init__(
+            self,
+            lmdb_root_path: Union[str, Path],
+            transforms: Optional[List[Callable]] = None,
+            max_types: int = 200,
+            cutoff_dist: float = 5.0,
+        ) -> None:
             super().__init__(lmdb_root_path, transforms, max_types)
             self.cutoff_dist = cutoff_dist
 
-        def data_from_key(self, lmdb_index: int, subindex: int) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
+        def data_from_key(
+            self, lmdb_index: int, subindex: int
+        ) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
             sample = super().data_from_key(lmdb_index, subindex)
             pos = sample["coordinates"]
             dist_mat = torch.cdist(pos, pos)
@@ -173,7 +184,11 @@ if _has_dgl:
             return sample
 
         @staticmethod
-        def collate_fn(batch: List[Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]]):
-            batch = super(DGLSyntheticPointGroupDataset, DGLSyntheticPointGroupDataset).collate_fn(batch)
+        def collate_fn(
+            batch: List[Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]]
+        ):
+            batch = super(
+                DGLSyntheticPointGroupDataset, DGLSyntheticPointGroupDataset
+            ).collate_fn(batch)
             batch["graph"] = dgl.batch(batch["graph"])
             return batch

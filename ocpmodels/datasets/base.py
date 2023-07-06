@@ -3,7 +3,7 @@
 
 from typing import Union, List, Any, Tuple, Callable, Optional, Dict
 from pathlib import Path
-from abc import abstractstaticmethod, abstractproperty
+from abc import abstractmethod
 from random import sample
 import functools
 import pickle
@@ -11,10 +11,11 @@ import pickle
 import lmdb
 import torch
 from torch.utils.data import Dataset, DataLoader
-from torch.nn.utils.rnn import pad_sequence
 import dgl
 from dgl.nn.pytorch.factory import KNNGraph
-from munch import Munch
+
+from ocpmodels.common.types import DataDict, BatchDict
+from ocpmodels.datasets.utils import concatenate_keys
 
 
 # this provides some backwards compatiability to Python ~3.7
@@ -98,7 +99,22 @@ class BaseLMDBDataset(Dataset):
         self._envs = [read_lmdb_file(path) for path in db_paths]
         self.transforms = transforms
 
-    @abstractproperty
+    @property
+    def transforms(self) -> List[Callable]:
+        return self._transforms
+
+    @transforms.setter
+    def transforms(self, values: Union[List[Callable], None]) -> None:
+        # if transforms are passed, this gives an opportunity for
+        # each transform to modify the state of this dataset
+        if values:
+            for transform in values:
+                if hasattr(transform, "setup_transform"):
+                    transform.setup_transform(self)
+        self._transforms = values
+
+    @property
+    @abstractmethod
     def data_loader(self) -> DataLoader:
         raise NotImplementedError(
             f"No data loader specified for {self.__class__.__name__}."
@@ -160,7 +176,7 @@ class BaseLMDBDataset(Dataset):
     def keys(self) -> List[Tuple[int, int]]:
         return self._load_keys()
 
-    def __getitem__(self, index: int) -> Any:
+    def __getitem__(self, index: int) -> DataDict:
         """
         Implements the __getitem__ method that PyTorch `DataLoader` need
         to retrieve a piece of data. This implementation should not require
@@ -192,7 +208,6 @@ class BaseLMDBDataset(Dataset):
                 data = transform(data)
         return data
 
-    # @cache
     def __len__(self) -> int:
         """
         This is a simple implementation so that the `__len__` function
@@ -205,11 +220,9 @@ class BaseLMDBDataset(Dataset):
         for env in self._envs:
             env.close()
 
-    @abstractstaticmethod
-    def collate_fn(batch: List[Any]) -> List[Any]:
-        raise NotImplementedError(
-            "Collate function is not implemented for this class, {self.__class__.__name__}."
-        )
+    @staticmethod
+    def collate_fn(batch: List[DataDict]) -> BatchDict:
+        return concatenate_keys(batch)
 
     def sample(self, num_samples: int) -> List[Any]:
         """
@@ -233,7 +246,8 @@ class BaseLMDBDataset(Dataset):
         samples = [self.__getitem__(i) for i in indices]
         return samples
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def target_keys(self) -> Dict[str, List[str]]:
         """
         Indicates what the expected keys are for targets.
@@ -248,78 +262,23 @@ class BaseLMDBDataset(Dataset):
         """
         ...
 
+    @property
+    def representation(self) -> str:
+        ...
 
-class DGLDataset(BaseLMDBDataset):
-    @staticmethod
-    def collate_fn(
-        batch: List[Dict[str, Union[torch.Tensor, dgl.DGLGraph]]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
-        """
-        Collate a batch of DGL data together.
-
-        A batch of DGL data comprises multiple keys with Tensor values,
-        except for `graph` which contains a `DGLGraph`. For the former,
-        we just batch them as one would with regular tensors, and for the
-        latter, we use the native `dgl.batch` function to pack them together.
-
-        Parameters
-        ----------
-        batch : List[Dict[str, Union[torch.Tensor, dgl.DGLGraph]]]
-            A list containing individual IS2RE data points
-
-        Returns
-        -------
-        Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-            Dictionary with keys: ["graph", "natoms", "y", "sid", "fid", "cell"]
-            of batched data.
-        """
-        batched_graphs = dgl.batch([entry["graph"] for entry in batch])
-        batched_data = {"graph": batched_graphs}
-        # get keys from the first batch entry
-        sample = batch[0]
-        for key, value in sample.items():
-            # ignore graph since we've already batched it
-            if key != "graph":
-                # this collates nested data
-                if isinstance(value, dict):
-                    batched_data[key] = {}
-                    for subkey, subvalue in value.items():
-                        # aggregate nested data from batch
-                        data = [s[key][subkey] for s in batch]
-                        if isinstance(subvalue, (int, float)):
-                            data = torch.FloatTensor(data).unsqueeze(-1)
-                        elif isinstance(subvalue, torch.Tensor):
-                            data = torch.vstack(data)
-                        else:
-                            pass
-                        batched_data[key][subkey] = data
-                # for everything else, assume tensors and just stack them
-                else:
-                    data = [entry.get(key) for entry in batch]
-                    if isinstance(value, torch.Tensor):
-                        data = torch.vstack(data)
-                    elif isinstance(value, (int, float)):
-                        data = torch.FloatTensor(data).unsqueeze(-1)
-                    batched_data[key] = data
-        # copy over metadata without "collating"
-        batched_data["target_types"] = sample["target_types"]
-        return batched_data
+    @representation.setter
+    @abstractmethod
+    def representation(self) -> None:
+        ...
 
     @property
-    def data_loader(self) -> dgl.dataloading.GraphDataLoader:
-        """
-        Return the bogstandard DGL graph dataloader.
+    def pad_keys(self) -> List[str]:
+        ...
 
-        Honestly not sure if it functionally makes a difference from
-        the stock PyTorch DataLoader, but for the sake of consistency
-        here we are :P
-
-        Returns
-        -------
-        dgl.dataloading.GraphDataLoader
-            Referenece to the DGL DataLoader
-        """
-        return dgl.dataloading.GraphDataLoader
+    @pad_keys.setter
+    @abstractmethod
+    def pad_keys(self, keys: List[str]) -> None:
+        ...
 
 
 class PointCloudDataset(Dataset):
@@ -336,12 +295,15 @@ class PointCloudDataset(Dataset):
 
     def __init__(
         self,
-        dataset: DGLDataset,
+        dataset: BaseLMDBDataset,
         point_cloud_size: Optional[int] = 24,
         sample_size: Optional[int] = 80,
         transforms: Optional[List[Callable]] = None,
         natom_types: int = 100,
     ) -> None:
+        raise TypeError(
+            "PointCloudDataset has been deprecated. Please use transforms to obtain point clouds."
+        )
         super().__init__()
         # additional point cloud arguments needed for the KNN graph
         # and sampling

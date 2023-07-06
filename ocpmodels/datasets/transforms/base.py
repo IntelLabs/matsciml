@@ -1,10 +1,13 @@
 from abc import abstractmethod
-from typing import Union
 
 from ocpmodels.common import DataDict
+from ocpmodels.datasets.base import BaseLMDBDataset
 
 
 class AbstractDataTransform(object):
+    def setup_transform(self, dataset: BaseLMDBDataset) -> None:
+        return None
+
     @abstractmethod
     def __call__(self, data: DataDict) -> DataDict:
         """

@@ -4,12 +4,7 @@
 import dgl
 
 from ocpmodels.datasets import is2re_devset, s2ef_devset
-from ocpmodels.datasets.base import BaseLMDBDataset
-from ocpmodels.datasets.task_datasets import IS2REDataset, S2EFDataset
-
-"""
-TODO make the tests have proper fixtures and dependencies
-"""
+from ocpmodels.datasets.ocp_datasets import IS2REDataset, S2EFDataset
 
 
 def test_base_s2ef_read():
@@ -19,12 +14,14 @@ def test_base_s2ef_read():
     of the dataset.
     """
     # no transforms
-    dset = BaseLMDBDataset(s2ef_devset)
+    dset = S2EFDataset(s2ef_devset)
     # get the first entry
     data = dset.__getitem__(0)
-    # now try get the length
-    dset_length = len(dset)
-    end_data = dset.__getitem__(dset_length - 1)
+    assert all([key in data for key in ["graph", "targets", "target_types"]])
+    assert isinstance(
+        data["graph"], dgl.DGLGraph
+    ), f"Expected graph to be DGLGraph, got {type(data['graph'])}"
+    assert all([key in data["graph"].ndata for key in ["pos", "force"]])
 
 
 def test_base_is2re_read():
@@ -32,20 +29,15 @@ def test_base_is2re_read():
     This test will try and obtain the first and last elements
     of the dev IS2RE dataset and check its length
     """
-    dset = BaseLMDBDataset(is2re_devset)
+    dset = IS2REDataset(is2re_devset)
     # get the first entry
     data = dset.__getitem__(0)
-    # now try get the length
-    dset_length = len(dset)
-    end_data = dset.__getitem__(dset_length - 1)
-
-
-def test_s2ef_get():
-    dset = S2EFDataset(s2ef_devset)
-    data = dset.__getitem__(0)
-    # make sure we format the data correctly
-    assert isinstance(data["graph"], dgl.DGLGraph)
-    assert data["graph"].num_nodes() == data["natoms"]
+    assert all([key in data for key in ["graph", "targets", "target_types"]])
+    assert isinstance(
+        data["graph"], dgl.DGLGraph
+    ), f"Expected graph to be DGLGraph, got {type(data['graph'])}"
+    assert "pos" in data["graph"].ndata
+    assert all([key in data["targets"] for key in ["energy_relaxed", "energy_init"]])
 
 
 def test_is2re_collate():

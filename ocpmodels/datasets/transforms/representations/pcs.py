@@ -1,9 +1,11 @@
 from typing import List, Union, Optional
+from functools import partial
 
 import torch
 
 from ocpmodels.common import DataDict, package_registry
 from ocpmodels.common.types import DataDict, GraphTypes, AbstractGraph
+from ocpmodels.datasets.base import BaseLMDBDataset
 from ocpmodels.datasets.transforms.representations import RepresentationTransform
 from ocpmodels.datasets import utils
 
@@ -37,6 +39,21 @@ class GraphToPointCloudTransform(RepresentationTransform):
         """
         super().__init__(backend=backend)
         self.atom_centered = atom_centered
+
+    def setup_transform(self, dataset: BaseLMDBDataset) -> None:
+        """
+        This modifies the dataset's collate function by replacing it with
+        a partial with pad_keys specified.
+
+        Parameters
+        ----------
+        dataset : BaseLMDBDataset
+            A dataset object which is a subclass of `BaseLMDBDataset`.
+        """
+        dataset.representation = "point_cloud"
+        collate_fn = partial(utils.concatenate_keys, pad_keys=["pos", "pc_features"])
+        dataset.collate_fn = staticmethod(collate_fn).__func__
+        return super().setup_transform(dataset)
 
     def prologue(self, data: DataDict) -> None:
         assert self._check_for_type(
