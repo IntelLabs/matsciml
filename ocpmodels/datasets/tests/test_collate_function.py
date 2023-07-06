@@ -24,6 +24,10 @@ def test_collate_mp_pc():
     assert pos.size(-1) == 3
     assert pos.size(0) == 4
     assert "mask" in batch
+    # now try and collate with the class method
+    new_batch = dset.collate_fn(samples)
+    assert torch.allclose(batch["pos"], new_batch["pos"])
+    assert torch.allclose(batch["pc_features"], new_batch["pc_features"])
 
 
 def test_collate_mp_dgl():
@@ -38,6 +42,12 @@ def test_collate_mp_dgl():
     graph = batch["graph"]
     assert graph.batch_size == 4
     assert all([key in batch for key in ["targets", "target_types"]])
+    # now try and collate with the class method
+    new_batch = dset.collate_fn(samples)
+    assert torch.allclose(
+        new_batch["graph"].ndata["atomic_numbers"], graph.ndata["atomic_numbers"]
+    )
+    assert torch.allclose(new_batch["graph"].ndata["pos"], graph.ndata["pos"])
 
 
 def test_collate_is2re_dgl():
