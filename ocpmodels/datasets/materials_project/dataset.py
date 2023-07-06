@@ -9,6 +9,7 @@ import torch
 import numpy as np
 from pymatgen.core import Structure
 from emmet.core.symmetry import SymmetryData
+from ocpmodels.common.types import BatchDict, DataDict
 
 from ocpmodels.datasets.base import BaseLMDBDataset
 from ocpmodels.datasets.utils import (
