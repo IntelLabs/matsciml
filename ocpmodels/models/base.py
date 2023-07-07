@@ -28,6 +28,17 @@ from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
 from ocpmodels.common.types import DataDict, BatchDict
 
+__all__ = [
+    "ScalarRegressionTask",
+    "BinaryClassificationTask",
+    "ForceRegressionTask",
+    "CrystalSymmetryClassificationTask",
+    "MultiTaskLitModule",
+    "OpenCatalystInference",
+    "IS2REInference",
+    "S2EFInference",
+]
+
 """
 base.py
 
