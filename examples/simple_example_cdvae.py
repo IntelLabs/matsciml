@@ -44,12 +44,12 @@ except:
 
 SCALER_LIMIT = 100
 
-def get_scalers(datamodule):
+def get_scalers(dataset):
     #loader = datamodule.train_dataloader()
     print("Building scalers")
     lattice_vals, prop_vals = [], []
     
-    for i, data in tqdm(enumerate(datamodule.dataset)):
+    for i, data in tqdm(enumerate(dataset)):
         try:
             flag = len(data.keys()) == 1
             continue
@@ -62,8 +62,8 @@ def get_scalers(datamodule):
         ys = data['y']
         lattice_vals.append(torch.cat([lengths, angles], dim=-1))
         prop_vals.append(ys)
-        if i > SCALER_LIMIT:
-            break
+        # if i > SCALER_LIMIT:
+        #     break
 
 
     lattice_vals = torch.cat(lattice_vals)
@@ -84,7 +84,8 @@ def main():
     # dset = DGLMaterialsProjectDataset(
     #     "../materials_project/mp_data/base", transforms=[COMShift(), CoordinateScaling(0.1)]
     # )
-    data_config = mp_config
+    #data_config = mp_config
+    data_config = mp20_config
     #data_config = carbon_config
 
     # init dataset-specific params in encoder/decoder
@@ -98,14 +99,15 @@ def main():
 
     # dataset = PyGMaterialsProjectDataset()
     dm = MaterialsProjectDataModule(
-        dataset=PyGCdvaeDataset(Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/train/")),
-        val_split=0.1,
-        # train_path=PyGMaterialsProjectDataset(Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/train/")),
-        # val_split=PyGMaterialsProjectDataset(Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/val/")),
-        # test_split=PyGMaterialsProjectDataset(Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/test/")),
-        batch_size=4,
+        dataset=PyGCdvaeDataset, #PyGCdvaeDataset(Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/train/")),
+        #val_split=0.1,
+        train_path=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/train/"),
+        val_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/val/"),
+        test_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/test/"),
+        batch_size=512,
     )
-    lattice_scaler, prop_scaler = get_scalers(dm)
+    dm.setup()
+    lattice_scaler, prop_scaler = get_scalers(dm.splits['train'])
     dm.dataset.lattice_scaler = lattice_scaler.copy()
     dm.dataset.scaler = prop_scaler.copy()
 
@@ -137,19 +139,12 @@ def main():
     model.lattice_scaler = lattice_scaler.copy()
     model.scaler = prop_scaler.copy()
 
-
     # torch.save(dm.lattice_scaler, hydra_dir / 'lattice_scaler.pt')
     # torch.save(dm.scaler, hydra_dir / 'prop_scaler.pt')
 
-    # # use the GNN in the LitModule for all the logging, loss computation, etc.
-    # model = IS2RELitModule(dpp, lr=1e-3, gamma=0.1)
-    # data_module = IS2REDGLDataModule.from_devset(
-    #     batch_size=BATCH_SIZE, num_workers=NUM_WORKERS
-    # )
-
     print('Training')
     trainer = pl.Trainer(accelerator="cpu", #strategy="ddp", 
-                        devices=1, max_epochs=5)
+                        devices=1, max_epochs=5) #profiler="pytorch")
 
     trainer.fit(model, datamodule=dm)
 
