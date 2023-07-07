@@ -628,9 +628,7 @@ class ScalarRegressionTask(BaseTaskModule):
         keys = list(filter(checker, keys))
         return keys
 
-    def on_train_batch_start(
-        self, batch: Any, batch_idx: int
-    ) -> Optional[int]:
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
         """
         PyTorch Lightning hook to check OutputHeads are created.
 
@@ -707,9 +705,7 @@ class BinaryClassificationTask(BaseTaskModule):
             modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
         return nn.ModuleDict(modules)
 
-    def on_train_batch_start(
-        self, batch: Any, batch_idx: int
-    ) -> Optional[int]:
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
         """
         PyTorch Lightning hook to check OutputHeads are created.
 
@@ -857,9 +853,7 @@ class ForceRegressionTask(BaseTaskModule):
                 ) from e
         return target_dict
 
-    def on_train_batch_start(
-        self, batch: Any, batch_idx: int
-    ) -> Optional[int]:
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
         """
         PyTorch Lightning hook to check OutputHeads are created.
 
@@ -977,9 +971,7 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         modules = {"spacegroup": OutputHead(230, **self.output_kwargs).to(self.device)}
         return nn.ModuleDict(modules)
 
-    def on_train_batch_start(
-        self, batch: Any, batch_idx: int
-    ) -> Optional[int]:
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
         """
         PyTorch Lightning hook to check OutputHeads are created.
 
@@ -1152,7 +1144,9 @@ class MultiTaskLitModule(pl.LightningModule):
                 combo = (data_key, task_type)
                 if combo not in self.optimizer_names:
                     output_head = getattr(subtask, "output_heads", None)
-                    assert output_head is not None, f"{subtask} does not contain output heads; ensure `task_keys` are set: {subtask.task_keys}"
+                    assert (
+                        output_head is not None
+                    ), f"{subtask} does not contain output heads; ensure `task_keys` are set: {subtask.task_keys}"
                     optimizer = subtask.configure_optimizers()
                     # remove all the optimizer parameters, and re-add only the output heads
                     optimizer.param_groups.clear()
@@ -1356,7 +1350,7 @@ class MultiTaskLitModule(pl.LightningModule):
 
         This is devised slightly specially to comprise a variety of scenarios, including
         wrapping the entire compute in gradient contexts (for force prediction tasks),
-        ensuring inputs that need gradients are enabled, as well as running the 
+        ensuring inputs that need gradients are enabled, as well as running the
         encoder at the beginning and passing the embeddings onto downstream tasks.
 
         Parameters
@@ -1792,7 +1786,7 @@ class IS2REInference(OpenCatalystInference):
             pretrained_model, (AbstractEnergyModel, ScalarRegressionTask)
         ), f"IS2REInference expects a pretrained energy model or 'ScalarRegressionTask' as input."
         super().__init__(pretrained_model)
-    
+
     def forward(self, batch: BatchDict) -> DataDict:
         predictions = self.model(batch)
         return predictions
