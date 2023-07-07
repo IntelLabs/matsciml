@@ -741,7 +741,7 @@ class BinaryClassificationTask(BaseTaskModule):
         Optional[int]
             Just returns the parent result.
         """
-        status = super().on_train_batch_start(batch, batch_idx, unused)
+        status = super().on_train_batch_start(batch, batch_idx)
         # if there are no task keys set, task has not been initialized yet
         if len(self.task_keys) == 0:
             keys = batch["target_types"]["classification"]
