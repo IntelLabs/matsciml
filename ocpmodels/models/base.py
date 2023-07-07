@@ -26,6 +26,7 @@ from torch.optim import AdamW, Optimizer
 
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
+from ocpmodels.common.types import DataDict, BatchDict
 
 """
 base.py
@@ -2470,6 +2471,10 @@ class OpenCatalystInference(ABC, pl.LightningModule):
     for OpenCatalyst leaderboard submissions.
     """
 
+    def __init__(self, pretrained_model: nn.Module) -> None:
+        super().__init__()
+        self.model = pretrained_model
+
     def _raise_inference_error(self):
         raise NotImplementedError(
             f"{self.__class__.__name__} is solely used for OpenCatalyst leaderboard submissions; please call 'predict' from trainer."
@@ -2487,3 +2492,71 @@ class OpenCatalystInference(ABC, pl.LightningModule):
     @abstractmethod
     def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
         ...
+
+
+class IS2REInference(OpenCatalystInference):
+    def __init__(
+        self, pretrained_model: Union[AbstractEnergyModel, ScalarRegressionTask]
+    ) -> None:
+        assert isinstance(
+            pretrained_model, (AbstractEnergyModel, ScalarRegressionTask)
+        ), f"IS2REInference expects a pretrained energy model or 'ScalarRegressionTask' as input."
+        super().__init__(pretrained_model)
+    
+    def forward(self, batch: BatchDict) -> DataDict:
+        predictions = self.model(batch)
+        return predictions
+
+
+class S2EFInference(OpenCatalystInference):
+    def __init__(self, pretrained_model: ForceRegressionTask) -> None:
+        assert isinstance(
+            pretrained_model, ForceRegressionTask
+        ), f"S2EFInference expects a pretrained 'ForceRegressionTask' instance as input."
+        super().__init__(pretrained_model)
+
+    def forward(self, batch: BatchDict) -> DataDict:
+        predictions = self.model(batch)
+        return predictions
+
+    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
+        # force gradients when running predictions
+        predictions = self(batch)
+        energy, force = predictions["energy"], predictions["force"]
+        energy = energy.detach().cpu().to(torch.float16)
+        force = force.detach().cpu()
+        ids, chunk_ids = batch.get("sid"), batch.get("fid")
+        # ids are formatted differently for force tasks
+        system_ids = [f"{i}_{j}" for i, j in zip(ids, chunk_ids)]
+        predictions = {
+            "ids": system_ids,
+            "chunk_ids": chunk_ids,
+            "energy": energy,
+        }
+        # processing the forces is a bit more complicated because apparently
+        # only the free atoms are considered
+        if self.regress_forces:
+            if "graph" in batch:
+                graph = batch.get("graph")
+                fixed = graph.ndata["fixed"]
+            else:
+                # otherwise it's a point cloud
+                fixed = batch.get("fixed")
+            fixed_mask = fixed == 0
+            # retrieve only forces corresponding to unfixed nodes
+            predictions["forces"] = force[fixed_mask]
+            natoms = tuple(batch.get("natoms").cpu().numpy().astype(int))
+            chunk_split = torch.split(graph.ndata["fixed"], natoms)
+            chunk_ids = []
+            for chunk in chunk_split:
+                ids = (len(chunk) - sum(chunk)).cpu().numpy().astype(int)
+                chunk_ids.append(int(ids))
+
+            predictions["chunk_ids"] = chunk_ids
+        return predictions
+
+    def on_predict_batch_end(
+        self, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int
+    ) -> None:
+        # reset gradients to ensure no contamination between batches
+        self.zero_grad(set_to_none=True)
