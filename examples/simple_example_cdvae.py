@@ -34,7 +34,7 @@ except:
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
     from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset
+    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset, CdvaeLMDBDataset
     from ocpmodels.models.diffusion_utils.data_utils import StandardScalerTorch
 
     from examples.cdvae_configs import (
@@ -84,8 +84,8 @@ def main():
     # dset = DGLMaterialsProjectDataset(
     #     "../materials_project/mp_data/base", transforms=[COMShift(), CoordinateScaling(0.1)]
     # )
-    #data_config = mp_config
-    data_config = mp20_config
+    data_config = mp_config
+    #data_config = mp20_config
     #data_config = carbon_config
 
     # init dataset-specific params in encoder/decoder
@@ -99,11 +99,11 @@ def main():
 
     # dataset = PyGMaterialsProjectDataset()
     dm = MaterialsProjectDataModule(
-        dataset=PyGCdvaeDataset, #PyGCdvaeDataset(Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/train/")),
+        dataset=CdvaeLMDBDataset, #PyGCdvaeDataset(Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/train/")),
         #val_split=0.1,
-        train_path=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/train/"),
-        val_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/val/"),
-        test_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/test/"),
+        train_path=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/train/"),
+        val_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/val/"),
+        test_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/test/"),
         batch_size=512,
     )
     dm.setup()

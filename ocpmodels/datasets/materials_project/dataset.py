@@ -508,8 +508,7 @@ if _has_dgl:
 
 if _has_pyg:
     from torch_geometric.data import Data, Batch
-    CrystalNN = local_env.CrystalNN(
-    distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False)
+    CrystalNN = local_env.CrystalNN(distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False)#, search_cutoff=15.0)
 
     class PyGMaterialsProjectDataset(MaterialsProjectDataset):
         """
@@ -659,7 +658,7 @@ if _has_pyg:
             num_nodes = len(data["atomic_numbers"])
             if num_nodes > 25:
                 return {}
-            edge_index = data["edge_index"]
+            edge_index = data["edge_index"]  # torch.LongTensor([[0, 1], [1, 0]])
             lattice_params = data["lattice_features"]["lattice_params"]
             y = data["targets"]["formation_energy_per_atom"]
             # scale target property
@@ -704,15 +703,17 @@ if _has_pyg:
             return_dict["frac_coords"] = structure.frac_coords
             atom_numbers = torch.LongTensor(structure.atomic_numbers)
             # uses one-hot encoding featurization
-            pc_features = point_cloud_featurization(atom_numbers, atom_numbers, 200)
+            # pc_features = point_cloud_featurization(atom_numbers, atom_numbers, 200)
             # keep atomic numbers for graph featurization
             return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
-            return_dict["pc_features"] = pc_features
+            #return_dict["pc_features"] = pc_features
             return_dict["num_particles"] = len(atom_numbers)
             return_dict["distance_matrix"] = torch.from_numpy(
                 structure.distance_matrix
             ).float()
             # jimages
+
+            # TODO
             crystal_graph = StructureGraph.with_local_env_strategy(
                 structure, CrystalNN
             )
@@ -721,11 +722,14 @@ if _has_pyg:
                 edge_indices.append([j, i])
                 to_jimages.append(to_jimage)
                 edge_indices.append([i, j])
-                to_jimages.append(tuple(-tj for tj in to_jimage))
+                to_jimages.append(tuple(-tj for tj in to_jimage))            
             return_dict["to_jimages"] = torch.LongTensor(to_jimages)
             return_dict["edge_index"] = torch.LongTensor(edge_indices).T
+
+            
             # grab lattice properties
-            space_group = structure.get_space_group_info()[-1]
+            # SUPER SLOW
+            # space_group = structure.get_space_group_info()[-1]
             # convert lattice angles into radians
             # lattice_params = torch.FloatTensor(
             #     structure.lattice.abc + tuple(a * (pi / 180.) for a in structure.lattice.angles)
@@ -734,7 +738,7 @@ if _has_pyg:
                 structure.lattice.abc + tuple(structure.lattice.angles)
             )
             lattice_features = {
-                "space_group": space_group,
+                #"space_group": space_group,
                 "lattice_params": lattice_params,
             }
             return_dict["lattice_features"] = lattice_features
@@ -799,6 +803,53 @@ if _has_pyg:
             data["dataset"] = self.__class__.__name__
             # if some callable transforms have been provided, transform
             # the data sequentially
+            if self.transforms:
+                # TODO transform interface should act on a dictionary
+                for transform in self.transforms:
+                    data = transform(data)
+            return data
+        
+    class CdvaeLMDBDataset(PyGMaterialsProjectDataset):
+        
+        def __init__(self,
+            lmdb_root_path: Union[str, Path],
+            cutoff_dist: float = 5.0,
+            transforms: Optional[List[Callable]] = None,
+            max_atoms: int = 25,
+        ) -> None:
+            super().__init__(lmdb_root_path, cutoff_dist, transforms)
+
+            self.max_atoms = max_atoms
+            self.lattice_scaler = None
+            self.scaler = None
+
+        def data_from_key(
+                self, lmdb_index: int, subindex: int
+            ) -> Dict[str, Union[torch.Tensor, Data, Dict[str, torch.Tensor]]]:
+            # The LMDB dataset already has prepared PyG graphs
+            data = super(MaterialsProjectDataset, self).data_from_key(lmdb_index, subindex)
+            return data
+        
+        @cache
+        def _load_keys(self) -> List[Tuple[int, int]]:
+            indices = []
+            for lmdb_index, env in enumerate(self._envs):
+                with env.begin() as txn:
+                    # this gets all the keys within the LMDB file, including metadata
+                    lmdb_keys = [
+                        value.decode("utf-8")
+                        for value in txn.cursor().iternext(values=False)
+                    ]
+                    # filter out non-numeric keys
+                    subindices = filter(lambda x: x.isnumeric(), lmdb_keys)
+                    indices.extend([(lmdb_index, int(subindex)) for subindex in subindices])
+                    
+            return indices
+        
+        def __getitem__(self, index: int) -> Any:
+            keys = self.keys[index]
+            data = self.data_from_key(*keys)
+            data["dataset"] = self.__class__.__name__
             if self.transforms:
                 # TODO transform interface should act on a dictionary
                 for transform in self.transforms:
