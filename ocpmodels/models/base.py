@@ -12,7 +12,7 @@ from typing import (
     List,
     Any,
 )
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from contextlib import nullcontext, ExitStack
 import logging
 from warnings import warn
@@ -2462,3 +2462,28 @@ class MultiTaskLitModule(pl.LightningModule):
         raise NotImplementedError(
             f"MultiTask should be reloaded using the `ocpmodels.models.multitask_from_checkpoint` function instead."
         )
+
+
+class OpenCatalystInference(ABC, pl.LightningModule):
+    """
+    Implement a set of bare bones LightningModules that are solely used
+    for OpenCatalyst leaderboard submissions.
+    """
+
+    def _raise_inference_error(self):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} is solely used for OpenCatalyst leaderboard submissions; please call 'predict' from trainer."
+        )
+
+    def training_step(self, *args: Any, **kwargs: Any) -> None:
+        self._raise_inference_error()
+
+    def validation_step(self, *args: Any, **kwargs: Any) -> None:
+        self._raise_inference_error()
+
+    def test_step(self, *args: Any, **kwargs: Any) -> None:
+        self._raise_inference_error()
+
+    @abstractmethod
+    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
+        ...
