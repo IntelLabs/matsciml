@@ -1400,9 +1400,7 @@ class MultiTaskLitModule(pl.LightningModule):
                     results[task_type] = subtask(batch)
             return results
 
-    def on_train_batch_start(
-        self, batch: Any, batch_idx: int, unused: int = 0
-        ) -> None:
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> None:
         """
         This callback is used to dynamically initialize output heads.
 
