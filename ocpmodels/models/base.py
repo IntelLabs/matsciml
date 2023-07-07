@@ -27,6 +27,7 @@ from torch.optim import AdamW, Optimizer
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
 from ocpmodels.common.types import DataDict, BatchDict
+from ocpmodels.common.registry import registry
 
 __all__ = [
     "ScalarRegressionTask",
@@ -240,6 +241,7 @@ class AbstractEnergyModel(AbstractTask):
         return energy
 
 
+@registry.register_task("BaseTaskModule")
 class BaseTaskModule(pl.LightningModule):
     __task__ = None
     __needs_grads__ = []
@@ -568,6 +570,7 @@ class BaseTaskModule(pl.LightningModule):
         return normalizers
 
 
+@registry.register_task("ScalarRegressionTask")
 class ScalarRegressionTask(BaseTaskModule):
     __task__ = "regression"
 
@@ -678,6 +681,7 @@ class ScalarRegressionTask(BaseTaskModule):
         self.on_train_batch_start(batch, batch_idx)
 
 
+@registry.register_task("BinaryClassificationTask")
 class BinaryClassificationTask(BaseTaskModule):
     __task__ = "classification"
 
@@ -753,6 +757,7 @@ class BinaryClassificationTask(BaseTaskModule):
         self.on_train_batch_start(batch, batch_idx)
 
 
+@registry.register_task("ForceRegressionTask")
 class ForceRegressionTask(BaseTaskModule):
     __task__ = "regression"
     __needs_grads__ = ["pos"]
@@ -947,6 +952,7 @@ class ForceRegressionTask(BaseTaskModule):
         return loss_dict
 
 
+@registry.register_task("CrystalSymmetryClassificationTask")
 class CrystalSymmetryClassificationTask(BaseTaskModule):
     __task__ = "symmetry"
 
@@ -1043,6 +1049,7 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         return target_dict
 
 
+@registry.register_task("MultiTaskLitModule")
 class MultiTaskLitModule(pl.LightningModule):
     def __init__(
         self,
@@ -1760,6 +1767,7 @@ class MultiTaskLitModule(pl.LightningModule):
         )
 
 
+@registry.register_task("OpenCatalystInference")
 class OpenCatalystInference(ABC, pl.LightningModule):
     """
     Implement a set of bare bones LightningModules that are solely used
@@ -1789,6 +1797,7 @@ class OpenCatalystInference(ABC, pl.LightningModule):
         ...
 
 
+@registry.register_task("IS2REInference")
 class IS2REInference(OpenCatalystInference):
     def __init__(
         self, pretrained_model: Union[AbstractEnergyModel, ScalarRegressionTask]
@@ -1803,6 +1812,7 @@ class IS2REInference(OpenCatalystInference):
         return predictions
 
 
+@registry.register_task("S2EFInference")
 class S2EFInference(OpenCatalystInference):
     def __init__(self, pretrained_model: ForceRegressionTask) -> None:
         assert isinstance(
