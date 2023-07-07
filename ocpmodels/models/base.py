@@ -2519,6 +2519,10 @@ class S2EFInference(OpenCatalystInference):
         predictions = self.model(batch)
         return predictions
 
+    def on_predict_start(self) -> None:
+        self.apply(rnn_force_train_mode)
+        return super().on_predict_start()
+
     def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
         # force gradients when running predictions
         predictions = self(batch)
