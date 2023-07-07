@@ -902,63 +902,6 @@ class S2EFLitModule(OCPLitModule):
         return predictions
 
 
-class S2EFPointCloudModule(S2EFLitModule):
-    def forward(
-        self, features: torch.Tensor, positions: torch.Tensor, *args, **kwargs
-    ) -> Union[torch.Tensor, Tuple[torch.Tensor]]:
-        """
-        Use the embedded point cloud model to compute the energy, and if `regress_forces` is
-        True, compute the force (as the derivative of energy w.r.t. atomic
-        positions) as well.
-
-        Parameters
-        ----------
-        features : torch.Tensor
-            N-D tensor containing features of the point cloud
-        positions : torch.Tensor
-            N-D tensor containing atom/point positions
-
-        Returns
-        -------
-        Union[torch.Tensor, Tuple[torch.Tensor]]
-            If `regress_forces` is True, return a 2-tuple of energy, force.
-            Otherwise, just return the energy.
-        """
-        if self.regress_forces:
-            # make sure atomic positions are tracking gradients
-            # for the force computation
-            positions.requires_grad_(True)
-        # decorate the GNN's forward method, which will enable/disable
-        # gradient computation as necessary
-        compute_func = lit_conditional_grad(self.regress_forces)(self.model.forward)
-        energy = compute_func(features, positions, *args, **kwargs)
-        if self.regress_forces:
-            forces = (
-                -1
-                * torch.autograd.grad(
-                    energy,
-                    positions,
-                    grad_outputs=torch.ones_like(energy),
-                    create_graph=True,
-                )[0]
-            )
-            return (energy, forces)
-        return energy
-
-    def _get_inputs(
-        self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Tuple[Union[torch.Tensor, dgl.DGLGraph]]:
-        """Get the input data from keys `pc_features` and `pos`"""
-        features, positions = batch.get("pc_features"), batch.get("pos")
-        return (features, positions)
-
-    def _get_batch_size(
-        self, batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> int:
-        """Determine the batch size from the first dimension of `pc_features`"""
-        return int(batch.get("pc_features").size(0))
-
-
 class AbstractEnergyModel(AbstractTask):
     __task__ = "S2EF"
 
