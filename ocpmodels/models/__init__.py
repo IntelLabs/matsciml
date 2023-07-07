@@ -1,7 +1,7 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from ocpmodels.models.base import AbstractTask, AbstractEnergyModel
+from ocpmodels.models.base import *
 
 from ocpmodels.models.dgl import *
 from ocpmodels.models.pyg import *

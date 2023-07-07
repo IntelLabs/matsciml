@@ -30,6 +30,7 @@ from ocpmodels.common.types import DataDict, BatchDict
 from ocpmodels.common.registry import registry
 
 __all__ = [
+    "AbstractEnergyModel",
     "ScalarRegressionTask",
     "BinaryClassificationTask",
     "ForceRegressionTask",
