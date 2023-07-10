@@ -368,7 +368,7 @@ if package_registry["dgl"]:
             atomic_numbers = data["graph"].ndata["atomic_numbers"].long()
             node_embeddings = self.atom_embedding(atomic_numbers)
             pos = graph.ndata["pos"]
-            node_features = torch.hcat([pos, node_embeddings])
+            node_features = torch.hstack([pos, node_embeddings])
             data["node_feats"] = node_features
             # these keys are left as None, but are filler for concrete models to extract
             data.setdefault("edge_feats", None)
@@ -377,6 +377,7 @@ if package_registry["dgl"]:
 
 
 if package_registry["pyg"]:
+
     class AbstractPyGModel(AbstractGraphModel):
         def read_batch(self, batch: BatchDict) -> DataDict:
             """
@@ -405,7 +406,7 @@ if package_registry["pyg"]:
             atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers")
             node_embeddings = self.atom_embedding(atomic_numbers)
             pos: torch.Tensor = getattr(graph, "pos")
-            node_features = torch.hcat([pos, node_embeddings])
+            node_features = torch.hstack([pos, node_embeddings])
             data["node_feats"] = node_features
             return data
 
