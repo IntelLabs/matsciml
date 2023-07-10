@@ -335,6 +335,28 @@ class AbstractGraphModel(AbstractTask):
         graph = batch.get("graph")
         return {"graph": graph}
 
+    @staticmethod
+    def join_position_embeddings(pos: torch.Tensor, node_feats: torch.Tensor) -> torch.Tensor:
+        """
+        This is a method for conveniently embedding both positions and node features
+        together. Given that not every type of model will use this approach, it is
+        left for concrete classes to utilize rather than being the default.
+
+        Parameters
+        ----------
+        pos : torch.Tensor
+            2D tensor with [N, 3] containing coordinates of each node in N
+        node_feats : torch.Tensor
+            2D tensor with [N, D] containing features of each node in N. Typically
+            this pertains to the embedding lookup features, but up to the developer
+
+        Returns
+        -------
+        torch.Tensor
+            2D tensor with shape [N, D + 3]
+        """
+        return torch.hstack([pos, node_feats])
+
     @abstractmethod
     def _forward(
         self,
