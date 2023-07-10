@@ -299,6 +299,51 @@ class AbstractGraphModel(AbstractTask):
         graph = batch.get("graph")
         return {"graph": graph}
 
+
+class AbstractDGLModel(AbstractGraphModel):
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        """
+        Extract DGLGraph structure and features to pass into the model.
+
+        More complicated models can override this method to extract out edge and
+        graph features as well.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data to process.
+
+        Returns
+        -------
+        DataDict
+            Dictionary of input features to pass into the model
+        """
+        data = super().read_batch(batch)
+        graph = data.get("graph")
+        assert isinstance(
+            graph, dgl.DGLGraph
+        ), f"Model {self.__class__.__name__} expects DGL graphs, but data in 'graph' key is type {type(graph)}"
+        atomic_numbers = data["graph"].ndata["atomic_numbers"].long()
+        node_embeddings = self.atom_embedding(atomic_numbers)
+        data["node_feats"] = node_embeddings
+        data["pos"] = graph.ndata["pos"]
+        # these keys are left as None, but are filler for concrete models to extract
+        data.setdefault("edge_feats", None)
+        data.setdefault("graph_feats", None)
+        return data
+
+    @abstractmethod
+    def _forward(
+        self,
+        graph: dgl.DGLGraph,
+        pos: torch.Tensor,
+        node_feats: torch.Tensor,
+        edge_feats: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+    ) -> DataDict:
+        ...
+
+
 class AbstractEnergyModel(AbstractTask):
 
     """
