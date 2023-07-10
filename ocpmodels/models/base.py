@@ -198,8 +198,6 @@ class BaseModel(nn.Module):
 
 
 class AbstractTask(pl.LightningModule):
-    __task__ = None
-
     def __init__(self) -> None:
         super().__init__()
 
@@ -209,7 +207,6 @@ class AbstractTask(pl.LightningModule):
 
 
 class AbstractEnergyModel(AbstractTask):
-    __task__ = "S2EF"
 
     """
     At a minimum, the point of this is to help register associated models
