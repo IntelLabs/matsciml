@@ -287,6 +287,35 @@ class AbstractTask(ABC, pl.LightningModule):
         return outputs
 
 
+class AbstractPointCloudModel(AbstractTask):
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        data = {key: batch.get(key) for key in ["pc_features", "pos"]}
+        return data
+
+    @abstractmethod
+    def _forward(
+        self, pos: torch.Tensor, pc_features: torch.Tensor, **kwargs
+    ) -> torch.Tensor:
+        """
+        Sets expected patterns for args for point cloud based modeling, whereby
+        the bare minimum expected data are 'pos' and 'pc_features' akin to graph
+        approaches.
+
+        Parameters
+        ----------
+        pos : torch.Tensor
+            N-D tensor containing node positions
+        pc_features : torch.Tensor
+            N-D tensor containing node features
+
+        Returns
+        -------
+        torch.Tensor
+            Output of a point cloud model; system-level embedding or predictions
+        """
+        ...
+
+
 class AbstractGraphModel(AbstractTask):
     def __init__(
         self,
