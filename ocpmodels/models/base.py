@@ -203,12 +203,14 @@ class AbstractTask(pl.LightningModule):
         atom_embedding_dim: int,
         num_atom_embedding: int = 100,
         embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
     ) -> None:
         super().__init__()
         embedding_kwargs.setdefault("padding_idx", 0)
         self.atom_embedding = nn.Embedding(
             num_atom_embedding, atom_embedding_dim, **embedding_kwargs
         )
+        self.save_hyperparameters()
 
     @property
     def num_params(self) -> int:
