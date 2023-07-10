@@ -367,8 +367,9 @@ if package_registry["dgl"]:
             ), f"Model {self.__class__.__name__} expects DGL graphs, but data in 'graph' key is type {type(graph)}"
             atomic_numbers = data["graph"].ndata["atomic_numbers"].long()
             node_embeddings = self.atom_embedding(atomic_numbers)
-            data["node_feats"] = node_embeddings
-            data["pos"] = graph.ndata["pos"]
+            pos = graph.ndata["pos"]
+            node_features = torch.hcat([pos, node_embeddings])
+            data["node_feats"] = node_features
             # these keys are left as None, but are filler for concrete models to extract
             data.setdefault("edge_feats", None)
             data.setdefault("graph_feats", None)
