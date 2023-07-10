@@ -384,12 +384,13 @@ if package_registry["pyg"]:
             assert isinstance(
                 graph, (pyg.data.Data, pyg.data.Batch)
             ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
-            for key in ["atomic_numbers", "pos", "edge_feats", "graph_feats"]:
+            for key in ["edge_feats", "graph_feats"]:
                 data[key] = getattr(graph, key, None)
-            for key in ["atomic_numbers", "pos"]:
-                assert (
-                    data[key] is not None
-                ), f"Model {self.__class__.__name__} needs '{key}' data within the PyG graph, but was not found."
+            atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers")
+            node_embeddings = self.atom_embedding(atomic_numbers)
+            pos: torch.Tensor = getattr(graph, "pos")
+            node_features = torch.hcat([pos, node_embeddings])
+            data["node_feats"] = node_features
             return data
 
 
