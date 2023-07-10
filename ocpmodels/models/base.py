@@ -342,6 +342,7 @@ class AbstractGraphModel(AbstractTask):
 
 
 if package_registry["dgl"]:
+
     class AbstractDGLModel(AbstractGraphModel):
         def read_batch(self, batch: BatchDict) -> DataDict:
             """
