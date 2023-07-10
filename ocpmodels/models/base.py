@@ -413,12 +413,14 @@ if package_registry["pyg"]:
             return data
 
 
-class AbstractEnergyModel(AbstractTask):
+class AbstractEnergyModel(pl.LightningModule):
 
     """
     At a minimum, the point of this is to help register associated models
     with PyTorch Lightning ModelRegistry; the expectation is that you get
     the graph energy as well as the atom forces.
+
+    TODO - replace this class with `AbstractTask`, see #167 and #168
     """
 
     def __init__(self):
