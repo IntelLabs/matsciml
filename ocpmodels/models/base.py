@@ -197,7 +197,7 @@ class BaseModel(nn.Module):
         return sum(p.numel() for p in self.parameters())
 
 
-class AbstractTask(pl.LightningModule):
+class AbstractTask(ABC, pl.LightningModule):
     def __init__(
         self,
         atom_embedding_dim: int,
@@ -223,6 +223,61 @@ class AbstractTask(pl.LightningModule):
         inherits from 'nn.RNNBase'.
         """
         return any([isinstance(block, nn.RNNBase) for block in self.modules()])
+
+    @abstractmethod
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        """
+        This method must be implemented by subclasses to extract
+        input data out of a batch and into a dictionary format ready
+        to be ingested by the actual model.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of input data to be read
+
+        Returns
+        -------
+        DataDict
+            Dictionary containing input data, i.e. graphs and other
+            tensor structures to be passed into the model
+        """
+        ...
+
+    @abstractmethod
+    def _forward(self, *args, **kwargs) -> DataDict:
+        """
+        Implements the actual logic of the architecture. Given a set
+        of input features, produce outputs/predictions from the model.
+
+        Returns
+        -------
+        DataDict
+            Output predictions as key/value pairs
+        """
+        ...
+
+    def forward(self, batch: BatchDict) -> DataDict:
+        """
+        Given a batch structure, extract out data and pass it into the
+        neural network architecture. This implements the 'forward' method
+        as expected of all children of 'nn.Module'; it is not intended to
+        be overridden, instead modify the 'read_batch' and '_forward' methods
+        to change how this model/class of models interact with data.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data to process
+
+        Returns
+        -------
+        DataDict
+            Output predictions as key/value pairs
+        """
+        input_data = self.read_batch(batch)
+        outputs = self._forward(**input_data)
+        return outputs
 
 
 class AbstractEnergyModel(AbstractTask):
