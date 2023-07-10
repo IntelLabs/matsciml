@@ -280,6 +280,25 @@ class AbstractTask(ABC, pl.LightningModule):
         return outputs
 
 
+class AbstractGraphModel(AbstractTask):
+    def __init__(
+        self,
+        atom_embedding_dim: int,
+        num_atom_embedding: int = 100,
+        embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
+    ) -> None:
+        super().__init__(
+            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
+
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        assert (
+            "graph" in batch
+        ), f"Model {self.__class__.__name__} expects graph structures, but 'graph' key was not found in batch."
+        graph = batch.get("graph")
+        return {"graph": graph}
+
 class AbstractEnergyModel(AbstractTask):
 
     """
