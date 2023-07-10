@@ -251,19 +251,19 @@ class AbstractTask(ABC, pl.LightningModule):
         ...
 
     @abstractmethod
-    def _forward(self, *args, **kwargs) -> DataDict:
+    def _forward(self, *args, **kwargs) -> torch.Tensor:
         """
         Implements the actual logic of the architecture. Given a set
         of input features, produce outputs/predictions from the model.
 
         Returns
         -------
-        DataDict
-            Output predictions as key/value pairs
+        torch.Tensor
+            Output of the model; can be embeddings or projected values
         """
         ...
 
-    def forward(self, batch: BatchDict) -> DataDict:
+    def forward(self, batch: BatchDict) -> torch.Tensor:
         """
         Given a batch structure, extract out data and pass it into the
         neural network architecture. This implements the 'forward' method
@@ -278,8 +278,8 @@ class AbstractTask(ABC, pl.LightningModule):
 
         Returns
         -------
-        DataDict
-            Output predictions as key/value pairs
+        torch.Tensor
+            Output of the model; can be embeddings or projected values
         """
         input_data = self.read_batch(batch)
         outputs = self._forward(**input_data)
@@ -313,7 +313,7 @@ class AbstractGraphModel(AbstractTask):
         edge_feats: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
-    ) -> DataDict:
+    ) -> torch.Tensor:
         """
         Sets args/kwargs for the expected components of a graph-based
         model. At the bare minimum, we expect some kind of abstract
@@ -335,8 +335,8 @@ class AbstractGraphModel(AbstractTask):
 
         Returns
         -------
-        DataDict
-            Model outputs as key/value pairs
+        torch.Tensor
+            Model output; either embedding or projected output
         """
         ...
 
