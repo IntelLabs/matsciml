@@ -339,6 +339,7 @@ class AbstractGraphModel(AbstractTask):
     def _forward(
         self,
         graph: AbstractGraph,
+        pos: torch.Tensor,
         node_feats: torch.Tensor,
         edge_feats: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
@@ -356,8 +357,9 @@ class AbstractGraphModel(AbstractTask):
         ----------
         graph : AbstractGraph
             Graph structure implemented in a particular framework
+
         node_feats : torch.Tensor
-            Atomic numbers, typically shape [N,] for N nuclei
+            Atomic numbers or other featurizations, typically shape [N, ...] for N nuclei
         edge_feats : Optional[torch.Tensor], optional
             Edge features to process, by default None
         graph_feats : Optional[torch.Tensor], optional
