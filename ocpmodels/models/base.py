@@ -25,7 +25,7 @@ from torch.optim import AdamW, Optimizer
 
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
-from ocpmodels.common.types import DataDict, BatchDict, GraphTypes
+from ocpmodels.common.types import DataDict, BatchDict, AbstractGraph
 from ocpmodels.common.registry import registry
 from ocpmodels.common import package_registry
 
