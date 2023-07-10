@@ -21,13 +21,19 @@ from dgl.utils import data
 import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn
-import dgl
 from torch.optim import AdamW, Optimizer
 
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
-from ocpmodels.common.types import DataDict, BatchDict
+from ocpmodels.common.types import DataDict, BatchDict, AbstractGraph
 from ocpmodels.common.registry import registry
+from ocpmodels.common import package_registry
+
+if package_registry["dgl"]:
+    import dgl
+
+if package_registry["pyg"]:
+    import torch_geometric as pyg
 
 __all__ = [
     "AbstractEnergyModel",
@@ -197,24 +203,283 @@ class BaseModel(nn.Module):
         return sum(p.numel() for p in self.parameters())
 
 
-class AbstractTask(pl.LightningModule):
-    __task__ = None
-
-    def __init__(self) -> None:
+class AbstractTask(ABC, pl.LightningModule):
+    # TODO the intention is for this class to supersede AbstractEnergyModel for DGL
+    def __init__(
+        self,
+        atom_embedding_dim: int,
+        num_atom_embedding: int = 100,
+        embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
+    ) -> None:
         super().__init__()
+        embedding_kwargs.setdefault("padding_idx", 0)
+        self.atom_embedding = nn.Embedding(
+            num_atom_embedding, atom_embedding_dim, **embedding_kwargs
+        )
+        self.save_hyperparameters()
 
     @property
     def num_params(self) -> int:
         return sum(p.numel() for p in self.parameters())
 
+    @property
+    def has_rnn(self) -> bool:
+        """
+        Returns True if any components of this model contains an RNN unit that
+        inherits from 'nn.RNNBase'.
+        """
+        return any([isinstance(block, nn.RNNBase) for block in self.modules()])
 
-class AbstractEnergyModel(AbstractTask):
-    __task__ = "S2EF"
+    @abstractmethod
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        """
+        This method must be implemented by subclasses to extract
+        input data out of a batch and into a dictionary format ready
+        to be ingested by the actual model.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of input data to be read
+
+        Returns
+        -------
+        DataDict
+            Dictionary containing input data, i.e. graphs and other
+            tensor structures to be passed into the model
+        """
+        ...
+
+    @abstractmethod
+    def _forward(self, *args, **kwargs) -> torch.Tensor:
+        """
+        Implements the actual logic of the architecture. Given a set
+        of input features, produce outputs/predictions from the model.
+
+        Returns
+        -------
+        torch.Tensor
+            Output of the model; can be embeddings or projected values
+        """
+        ...
+
+    def forward(self, batch: BatchDict) -> torch.Tensor:
+        """
+        Given a batch structure, extract out data and pass it into the
+        neural network architecture. This implements the 'forward' method
+        as expected of all children of 'nn.Module'; it is not intended to
+        be overridden, instead modify the 'read_batch' and '_forward' methods
+        to change how this model/class of models interact with data.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data to process
+
+        Returns
+        -------
+        torch.Tensor
+            Output of the model; can be embeddings or projected values
+        """
+        input_data = self.read_batch(batch)
+        outputs = self._forward(**input_data)
+        return outputs
+
+
+class AbstractPointCloudModel(AbstractTask):
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        data = {key: batch.get(key) for key in ["pc_features", "pos"]}
+        return data
+
+    @abstractmethod
+    def _forward(
+        self, pos: torch.Tensor, pc_features: torch.Tensor, **kwargs
+    ) -> torch.Tensor:
+        """
+        Sets expected patterns for args for point cloud based modeling, whereby
+        the bare minimum expected data are 'pos' and 'pc_features' akin to graph
+        approaches.
+
+        Parameters
+        ----------
+        pos : torch.Tensor
+            N-D tensor containing node positions
+        pc_features : torch.Tensor
+            N-D tensor containing node features
+
+        Returns
+        -------
+        torch.Tensor
+            Output of a point cloud model; system-level embedding or predictions
+        """
+        ...
+
+
+class AbstractGraphModel(AbstractTask):
+    def __init__(
+        self,
+        atom_embedding_dim: int,
+        num_atom_embedding: int = 100,
+        embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
+    ) -> None:
+        super().__init__(
+            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
+
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        assert (
+            "graph" in batch
+        ), f"Model {self.__class__.__name__} expects graph structures, but 'graph' key was not found in batch."
+        graph = batch.get("graph")
+        return {"graph": graph}
+
+    @staticmethod
+    def join_position_embeddings(
+        pos: torch.Tensor, node_feats: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        This is a method for conveniently embedding both positions and node features
+        together. Given that not every type of model will use this approach, it is
+        left for concrete classes to utilize rather than being the default.
+
+        Parameters
+        ----------
+        pos : torch.Tensor
+            2D tensor with [N, 3] containing coordinates of each node in N
+        node_feats : torch.Tensor
+            2D tensor with [N, D] containing features of each node in N. Typically
+            this pertains to the embedding lookup features, but up to the developer
+
+        Returns
+        -------
+        torch.Tensor
+            2D tensor with shape [N, D + 3]
+        """
+        return torch.hstack([pos, node_feats])
+
+    @abstractmethod
+    def _forward(
+        self,
+        graph: AbstractGraph,
+        node_feats: torch.Tensor,
+        pos: Optional[torch.Tensor] = None,
+        edge_feats: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
+    ) -> torch.Tensor:
+        """
+        Sets args/kwargs for the expected components of a graph-based
+        model. At the bare minimum, we expect some kind of abstract
+        graph structure, along with tensors of atomic coordinates and
+        numbers to process. Optionally, models can include edge and graph
+        features, but is left for concrete classes to implement how
+        these are obtained.
+
+        Parameters
+        ----------
+        graph : AbstractGraph
+            Graph structure implemented in a particular framework
+        node_feats : torch.Tensor
+            Atomic numbers or other featurizations, typically shape [N, ...] for N nuclei
+        pos : Optional[torch.Tensor]
+            Atom positions with shape [N, 3], by default None to make this optional
+            as some architectures may pass them as 'node_feats'
+        edge_feats : Optional[torch.Tensor], optional
+            Edge features to process, by default None
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-level attributes/features to use, by default None
+
+        Returns
+        -------
+        torch.Tensor
+            Model output; either embedding or projected output
+        """
+        ...
+
+
+if package_registry["dgl"]:
+
+    class AbstractDGLModel(AbstractGraphModel):
+        def read_batch(self, batch: BatchDict) -> DataDict:
+            """
+            Extract DGLGraph structure and features to pass into the model.
+
+            More complicated models can override this method to extract out edge and
+            graph features as well.
+
+            Parameters
+            ----------
+            batch : BatchDict
+                Batch of data to process.
+
+            Returns
+            -------
+            DataDict
+                Dictionary of input features to pass into the model
+            """
+            data = super().read_batch(batch)
+            graph = data.get("graph")
+            assert isinstance(
+                graph, dgl.DGLGraph
+            ), f"Model {self.__class__.__name__} expects DGL graphs, but data in 'graph' key is type {type(graph)}"
+            atomic_numbers = data["graph"].ndata["atomic_numbers"].long()
+            node_embeddings = self.atom_embedding(atomic_numbers)
+            pos = graph.ndata["pos"]
+            # optionally can fuse into a single tensor with `self.join_position_embeddings`
+            data["node_feats"] = node_embeddings
+            data["pos"] = pos
+            # these keys are left as None, but are filler for concrete models to extract
+            data.setdefault("edge_feats", None)
+            data.setdefault("graph_feats", None)
+            return data
+
+
+if package_registry["pyg"]:
+
+    class AbstractPyGModel(AbstractGraphModel):
+        def read_batch(self, batch: BatchDict) -> DataDict:
+            """
+            Extract PyG structure and features to pass into the model.
+
+            More complicated models can override this method to extract out edge and
+            graph features as well.
+
+            Parameters
+            ----------
+            batch : BatchDict
+                Batch of data to process.
+
+            Returns
+            -------
+            DataDict
+                Dictionary of input features to pass into the model
+            """
+            data = super().read_batch(batch)
+            graph = data.get("graph")
+            assert isinstance(
+                graph, (pyg.data.Data, pyg.data.Batch)
+            ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
+            for key in ["edge_feats", "graph_feats"]:
+                data[key] = getattr(graph, key, None)
+            atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers")
+            node_embeddings = self.atom_embedding(atomic_numbers)
+            pos: torch.Tensor = getattr(graph, "pos")
+            # optionally can fuse into a single tensor with `self.join_position_embeddings`
+            data["node_feats"] = node_embeddings
+            data["pos"] = pos
+            return data
+
+
+class AbstractEnergyModel(pl.LightningModule):
 
     """
     At a minimum, the point of this is to help register associated models
     with PyTorch Lightning ModelRegistry; the expectation is that you get
     the graph energy as well as the atom forces.
+
+    TODO - replace this class with `AbstractTask`, see #167 and #168
     """
 
     def __init__(self):
