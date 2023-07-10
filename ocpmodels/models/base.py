@@ -205,6 +205,14 @@ class AbstractTask(pl.LightningModule):
     def num_params(self) -> int:
         return sum(p.numel() for p in self.parameters())
 
+    @property
+    def has_rnn(self) -> bool:
+        """
+        Returns True if any components of this model contains an RNN unit that
+        inherits from 'nn.RNNBase'.
+        """
+        return any([isinstance(block, nn.RNNBase) for block in self.modules()])
+
 
 class AbstractEnergyModel(AbstractTask):
 
