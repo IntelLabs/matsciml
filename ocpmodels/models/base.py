@@ -305,6 +305,44 @@ class AbstractGraphModel(AbstractTask):
         graph = batch.get("graph")
         return {"graph": graph}
 
+    @abstractmethod
+    def _forward(
+        self,
+        graph: AbstractGraph,
+        pos: torch.Tensor,
+        node_feats: torch.Tensor,
+        edge_feats: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
+    ) -> DataDict:
+        """
+        Sets args/kwargs for the expected components of a graph-based
+        model. At the bare minimum, we expect some kind of abstract
+        graph structure, along with tensors of atomic coordinates and
+        numbers to process. Optionally, models can include edge and graph
+        features, but is left for concrete classes to implement how
+        these are obtained.
+
+        Parameters
+        ----------
+        graph : AbstractGraph
+            Graph structure implemented in a particular framework
+        pos : torch.Tensor
+            Atomic coordinates, typically shape [N, 3] for N nuclei
+        node_feats : torch.Tensor
+            Atomic numbers, typically shape [N,] for N nuclei
+        edge_feats : Optional[torch.Tensor], optional
+            Edge features to process, by default None
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-level attributes/features to use, by default None
+
+        Returns
+        -------
+        DataDict
+            Model outputs as key/value pairs
+        """
+        ...
+
 
 class AbstractDGLModel(AbstractGraphModel):
     def read_batch(self, batch: BatchDict) -> DataDict:
