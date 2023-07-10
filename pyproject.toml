@@ -53,6 +53,9 @@ symmetry = [
 pyg = [
   "torch_geometric==2.3.1"
 ]
+all = [
+  "ocpmodels[dev,symmetry,pyg]"
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
