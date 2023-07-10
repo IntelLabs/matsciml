@@ -336,7 +336,9 @@ class AbstractGraphModel(AbstractTask):
         return {"graph": graph}
 
     @staticmethod
-    def join_position_embeddings(pos: torch.Tensor, node_feats: torch.Tensor) -> torch.Tensor:
+    def join_position_embeddings(
+        pos: torch.Tensor, node_feats: torch.Tensor
+    ) -> torch.Tensor:
         """
         This is a method for conveniently embedding both positions and node features
         together. Given that not every type of model will use this approach, it is
@@ -425,8 +427,9 @@ if package_registry["dgl"]:
             atomic_numbers = data["graph"].ndata["atomic_numbers"].long()
             node_embeddings = self.atom_embedding(atomic_numbers)
             pos = graph.ndata["pos"]
-            node_features = torch.hstack([pos, node_embeddings])
-            data["node_feats"] = node_features
+            # optionally can fuse into a single tensor with `self.join_position_embeddings`
+            data["node_feats"] = node_embeddings
+            data["pos"] = pos
             # these keys are left as None, but are filler for concrete models to extract
             data.setdefault("edge_feats", None)
             data.setdefault("graph_feats", None)
@@ -463,8 +466,9 @@ if package_registry["pyg"]:
             atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers")
             node_embeddings = self.atom_embedding(atomic_numbers)
             pos: torch.Tensor = getattr(graph, "pos")
-            node_features = torch.hstack([pos, node_embeddings])
-            data["node_feats"] = node_features
+            # optionally can fuse into a single tensor with `self.join_position_embeddings`
+            data["node_feats"] = node_embeddings
+            data["pos"] = pos
             return data
 
 
