@@ -21,13 +21,19 @@ from dgl.utils import data
 import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn
-import dgl
 from torch.optim import AdamW, Optimizer
 
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
-from ocpmodels.common.types import DataDict, BatchDict
+from ocpmodels.common.types import DataDict, BatchDict, GraphTypes
 from ocpmodels.common.registry import registry
+from ocpmodels.common import package_registry
+
+if package_registry["dgl"]:
+    import dgl
+
+if package_registry["pyg"]:
+    import torch_geometric as pyg
 
 __all__ = [
     "AbstractEnergyModel",
