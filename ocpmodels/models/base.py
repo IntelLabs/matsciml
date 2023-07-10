@@ -379,6 +379,21 @@ if package_registry["dgl"]:
             return data
 
 
+if package_registry["pyg"]:
+    class AbstractPyGModel(AbstractGraphModel):
+        def read_batch(self, batch: BatchDict) -> DataDict:
+            data = super().read_batch(batch)
+            graph = data.get("graph")
+            assert isinstance(
+                graph, (pyg.data.Data, pyg.data.Batch)
+            ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
+            for key in ["atomic_numbers", "pos", "edge_feats", "graph_feats"]:
+                data[key] = getattr(graph, key, None)
+            for key in ["atomic_numbers", "pos"]:
+                assert (
+                    data[key] is not None
+                ), f"Model {self.__class__.__name__} needs '{key}' data within the PyG graph, but was not found."
+            return data
 
 
 class AbstractEnergyModel(AbstractTask):
