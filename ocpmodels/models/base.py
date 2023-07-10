@@ -379,6 +379,22 @@ if package_registry["dgl"]:
 if package_registry["pyg"]:
     class AbstractPyGModel(AbstractGraphModel):
         def read_batch(self, batch: BatchDict) -> DataDict:
+            """
+            Extract PyG structure and features to pass into the model.
+
+            More complicated models can override this method to extract out edge and
+            graph features as well.
+
+            Parameters
+            ----------
+            batch : BatchDict
+                Batch of data to process.
+
+            Returns
+            -------
+            DataDict
+                Dictionary of input features to pass into the model
+            """
             data = super().read_batch(batch)
             graph = data.get("graph")
             assert isinstance(
