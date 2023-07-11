@@ -26,6 +26,7 @@ class SchNet(AbstractDGLModel):
         embedding_kwargs: Dict[str, Any] = {},
         encoder_only: bool = True,
     ) -> None:
+        r"""
         Instantiate a stack of SchNet layers.
 
         This wrapper also comprises a readout function, and integrates into the
@@ -33,7 +34,7 @@ class SchNet(AbstractDGLModel):
 
         Parameters
         ----------
-        node_feats : int
+        atom_embedding_dim : int
             Dimensionality of the node embeddings
         hidden_feats : Optional[List[int]], default None
             Simultaneously sets the dimensionality of each SchNet layer
