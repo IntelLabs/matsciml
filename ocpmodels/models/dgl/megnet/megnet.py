@@ -131,6 +131,45 @@ class MEGNet(AbstractDGLModel):
 
         self.is_classification = is_classification
 
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        """
+        Extracts data needed by MEGNet from the batch and graph
+        structures.
+
+        In particular, we pack node features as positions + atom embeddings,
+        and looks for graph level variables alongside edge data 'r' and 'mu'.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data to be processed
+
+        Returns
+        -------
+        DataDict
+            Input data for MEGNet as a dictionary.
+        """
+        data = super().read_batch(batch)
+        graph = data.get("graph")
+        # stack atom embeddings from table and positions together
+        node_feats = self.join_position_embeddings(
+            graph.ndata["pos"], data["node_feats"]
+        )
+        data["node_feats"] = node_feats
+        assert (
+            "graph_variables" in batch
+        ), f"MEGNet expects graph level features. Please include 'GraphVariablesTransform in your data pipeline."
+        data["graph_feats"] = batch.get("graph_variables")
+        assert (
+            "r" in graph.edata
+        ), f"MEGNet expects interatomic distances in edge data. Please include 'DistancesTransform' in your data pipeline."
+        assert (
+            "mu" in graph.edata
+        ), f"MEGNet expects reduced masses in edge data. Please include 'DistancesTransform' in your data pipeline."
+        edge_feats = torch.hstack([graph.edata["r"], graph.edata["mu"].unsqueeze(-1)])
+        data["edge_feats"] = edge_feats
+        return data
+
     def forward(
         self,
         batch: Optional[Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]] = None,
