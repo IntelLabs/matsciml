@@ -17,7 +17,7 @@ if package_registry["dgl"]:
         graph = dgl.add_self_loop(graph)
         graph.ndata["pos"] = torch.rand(15, 3)
         graph.ndata["atomic_numbers"] = torch.randint(0, 100, (15,))
-        graph.edata["r"] = torch.rand(20, 1)
+        graph.edata["r"] = torch.rand(graph.num_edges(), 1)
         return {"graph": graph}
 
     @pytest.mark.dependency()
