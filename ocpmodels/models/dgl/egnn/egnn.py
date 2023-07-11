@@ -67,8 +67,9 @@ class PLEGNNBackbone(AbstractDGLModel):
             k_linears=embed_k_linears,
             use_attention=embed_use_attention,
             attention_norm=self._get_attention_norm(embed_attention_norm),
-            num_atoms_embedding=num_atoms_embedding,
+            num_atoms_embedding=num_atom_embedding,
         )
+        self.embed.atom_embedding = self.atom_embedding
 
         self.encoder_only = encoder_only
         node_projection_dims = self._get_node_projection_dims(
