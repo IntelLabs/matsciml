@@ -25,7 +25,7 @@ S2EFLitModule(
 )
 
 """
-from typing import Optional, Type, Union, Dict
+from typing import Any, Optional, Type, Union, Dict
 
 from argparse import ArgumentParser
 import numpy as np
@@ -34,7 +34,7 @@ import dgl
 from dgl.nn import pytorch as dgl_nn
 from torch import nn
 
-from ocpmodels.models.base import AbstractEnergyModel
+from ocpmodels.models.base import AbstractDGLModel
 
 
 class GraphConvBlock(nn.Module):
@@ -113,7 +113,7 @@ class GraphConvBlock(nn.Module):
         return nn.Sequential(*layers)
 
 
-class GraphConvModel(AbstractEnergyModel):
+class GraphConvModel(AbstractDGLModel):
     def __init__(
         self,
         atom_embedding_dim: int,
@@ -122,8 +122,13 @@ class GraphConvModel(AbstractEnergyModel):
         num_fc_layers: Optional[int] = 3,
         activation: Optional[Type[nn.Module]] = nn.SiLU,
         readout: Optional[Type[nn.Module]] = dgl_nn.SumPooling,
-        encoder_only: bool = False
-    ):
+        num_atom_embedding: int = 100,
+        embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
+    ) -> None:
+        super().__init__(
+            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
         """
         A simple baseline graph convolution model for use with energy/force
         regression. This model uses learnable atomic embeddings same as
