@@ -174,7 +174,7 @@ class GraphConvModel(AbstractDGLModel):
         self,
         graph: dgl.DGLGraph,
         node_feats: torch.Tensor,
-        pos: Optional[torch.Tensor] = None,
+        pos: torch.Tensor,
         edge_feats: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
