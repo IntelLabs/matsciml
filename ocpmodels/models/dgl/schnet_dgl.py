@@ -11,6 +11,7 @@ from torch import nn
 from dgl.nn.pytorch import glob
 
 from ocpmodels.models.base import AbstractDGLModel
+from ocpmodels.common.types import BatchDict, DataDict
 
 
 class SchNet(AbstractDGLModel):
@@ -76,7 +77,9 @@ class SchNet(AbstractDGLModel):
             if isinstance(readout, str):
                 readout_cls = find_spec(readout, "dgl.nn.pytorch.glob")
                 if readout_cls is None:
-                    raise ImportError(f"Class name passed to `readout`, but not found in `dgl.nn.pytorch.glob`.")
+                    raise ImportError(
+                        f"Class name passed to `readout`, but not found in `dgl.nn.pytorch.glob`."
+                    )
             else:
                 # assume it's generic type
                 readout_cls = readout
