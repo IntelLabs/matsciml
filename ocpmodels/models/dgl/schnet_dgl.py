@@ -59,10 +59,6 @@ class SchNet(AbstractDGLModel):
             Whether to return the graph embeddings only, and not return an
             energy value.
 
-        Raises
-        ------
-        ImportError:
-            [TODO:description]
         """
         super().__init__(
             atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
