@@ -154,8 +154,14 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 dist_mat = self.node_distances(coords)
             else:
                 dist_mat = data.get("distance_matrix")
-            adj_list = self.edges_from_dist(dist_mat, self.cutoff_dist)
-            g = PyGGraph(edge_index=adj_list, pos=coords)
+            # convert ensure edges are in the right format for PyG
+            edge_index = torch.LongTensor(
+                self.edges_from_dist(dist_mat, self.cutoff_dist)
+            )
+            # if not in the expected shape, transpose and reformat layout
+            if edge_index.size(0) != 2 and edge_index.size(1) == 2:
+                edge_index = edge_index.T.contiguous()
+            g = PyGGraph(edge_index=edge_index, pos=coords)
             g.atomic_numbers = atom_numbers
             data["graph"] = g
 
