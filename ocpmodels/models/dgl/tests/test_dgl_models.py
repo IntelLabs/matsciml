@@ -48,3 +48,16 @@ if package_registry["dgl"]:
         assert hasattr(g_z, "grad_fn")
         # make sure every element is finite
         assert torch.isfinite(g_z).all()
+
+    @pytest.mark.dependency()
+    def test_schnet_dgl(graph):
+        model = SchNet(atom_embedding_dim=128, encoder_only=True)
+        with torch.no_grad():
+            g_z = model(graph)
+        assert g_z.shape == (1, 128)
+
+        # test with grads
+        g_z = model(graph)
+        assert hasattr(g_z, "grad_fn")
+        # make sure every element is finite
+        assert torch.isfinite(g_z).all()
