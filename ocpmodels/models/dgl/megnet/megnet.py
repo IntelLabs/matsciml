@@ -7,7 +7,7 @@ Implementation of MEGNet model.
 Code attributions to https://github.com/materialsvirtuallab/m3gnet-dgl/tree/main/megnet,
 along with contributions and modifications from Marcel Nassar, Santiago Miret, and Kelvin Lee
 """
-from typing import Dict, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union
 
 import dgl
 import torch
@@ -16,14 +16,10 @@ from dgl.nn import Set2Set
 from torch.nn import Dropout, Identity, Module, ModuleList, Softplus
 
 from ocpmodels.models.dgl.megnet import MLP, MEGNetBlock, EdgeSet2Set
-from ocpmodels.models import AbstractEnergyModel
+from ocpmodels.models.base import AbstractDGLModel
 
 
-class MEGNet(AbstractEnergyModel):
-    """
-    DGL implementation of MEGNet.
-    """
-
+class MEGNet(AbstractDGLModel):
     def __init__(
         self,
         edge_feat_dim: int,
@@ -40,8 +36,10 @@ class MEGNet(AbstractEnergyModel):
         edge_embed: Optional[nn.Module] = None,
         attr_embed: Optional[nn.Module] = None,
         dropout: Optional[float] = None,
+        atom_embedding_dim: Optional[int] = None,
         num_atom_embedding: int = 100,
-        encoder_only: bool = False
+        embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
     ) -> None:
         """
         Init method for MEGNet. Also supports learnable embeddings for each
@@ -77,8 +75,9 @@ class MEGNet(AbstractEnergyModel):
             Number of embeddings to use for the atom node embedding table, by
             default is 100.
         """
-        super().__init__()
-
+        super().__init__(
+            node_feat_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
         self.edge_embed = edge_embed if edge_embed else Identity()
         # default behavior for node embeddings is to use a lookup table
         self.node_embed = (
