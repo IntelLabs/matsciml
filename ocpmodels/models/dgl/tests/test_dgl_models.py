@@ -106,3 +106,30 @@ if package_registry["dgl"]:
         assert hasattr(g_z, "grad_fn")
         # make sure every element is finite
         assert torch.isfinite(g_z).all()
+
+    @pytest.mark.dependency()
+    def test_megnet_dgl(graph):
+        megnet_kwargs = {
+            "edge_feat_dim": 2,
+            "node_feat_dim": 64,
+            "graph_feat_dim": 16,
+            "num_blocks": 2,
+            "hiddens": [64, 64],
+            "conv_hiddens": [64, 64],
+            "s2s_num_layers": 2,
+            "s2s_num_iters": 1,
+            "output_hiddens": [64, 64],
+            "is_classification": False,
+        }
+
+        model = MEGNet(**megnet_kwargs)
+        with torch.no_grad():
+            g_z = model(graph)
+        # should match 128 + 128 + 64
+        assert g_z.shape == (1, 320)
+
+        # test with grads
+        g_z = model(graph)
+        assert hasattr(g_z, "grad_fn")
+        # make sure every element is finite
+        assert torch.isfinite(g_z).all()
