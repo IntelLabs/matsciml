@@ -132,7 +132,7 @@ class MEGNet(AbstractDGLModel):
         self.is_classification = is_classification
 
     def read_batch(self, batch: BatchDict) -> DataDict:
-        """
+        r"""
         Extracts data needed by MEGNet from the batch and graph
         structures.
 
