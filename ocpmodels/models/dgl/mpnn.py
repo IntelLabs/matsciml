@@ -10,22 +10,23 @@ import torch
 from torch import nn
 from dgl.nn.pytorch import glob
 
-from ocpmodels.models.base import AbstractEnergyModel
+from ocpmodels.models.base import AbstractDGLModel
 
 
-class MPNN(AbstractEnergyModel):
+class MPNN(AbstractDGLModel):
     def __init__(
         self,
-        node_embedding_dim: int = 64,
+        atom_embedding_dim: int,
         edge_in_dim: int = 1,
         node_out_dim: int = 64,
         edge_out_dim: int = 128,
         num_step_message_passing: int = 3,
         num_atom_embedding: int = 100,
+        embedding_kwargs: Dict[str, Any] = ...,
         readout: Union[Type[nn.Module], str, nn.Module] = glob.AvgPooling,
         readout_kwargs: Optional[Dict[str, Any]] = None,
-        encoder_only: bool = False,
-    ):
+        encoder_only: bool = True,
+    ) -> None:
         """
         Instantiate a stack of SchNet layers.
 
@@ -67,7 +68,9 @@ class MPNN(AbstractEnergyModel):
         ImportError:
             [TODO:description]
         """
-        super().__init__()
+        super().__init__(
+            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
         self.embedding = nn.Embedding(num_atom_embedding, node_embedding_dim)
         self.model = MPNNGNN(
             node_embedding_dim,
