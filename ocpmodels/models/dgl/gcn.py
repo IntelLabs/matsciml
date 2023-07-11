@@ -156,7 +156,6 @@ class GraphConvModel(AbstractDGLModel):
             Class to use for graph readout/pooling, by default dgl_nn.SumPooling
         """
         super().__init__()
-        self.embedding = nn.Embedding(100, atom_embedding_dim)
         self.blocks = self._make_blocks(
             atom_embedding_dim + 3,
             out_dim,
