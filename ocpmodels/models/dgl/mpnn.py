@@ -9,6 +9,7 @@ import dgl
 import torch
 from torch import nn
 from dgl.nn.pytorch import glob
+from ocpmodels.common.types import BatchDict, DataDict
 
 from ocpmodels.models.base import AbstractDGLModel
 
@@ -22,51 +23,37 @@ class MPNN(AbstractDGLModel):
         edge_out_dim: int = 128,
         num_step_message_passing: int = 3,
         num_atom_embedding: int = 100,
-        embedding_kwargs: Dict[str, Any] = ...,
+        embedding_kwargs: Dict[str, Any] = {},
         readout: Union[Type[nn.Module], str, nn.Module] = glob.AvgPooling,
         readout_kwargs: Optional[Dict[str, Any]] = None,
         encoder_only: bool = True,
     ) -> None:
-        """
-        Instantiate a stack of SchNet layers.
-
-        This wrapper also comprises a readout function, and integrates into the
-        matsciml pipeline with `encoder_only`.
+        r"""
+        _summary_
 
         Parameters
         ----------
-        node_embedding_dim : int
-            Dimensionality of the node embeddings
-        edge_in_dim : int
-            Dimensionality of the edge features; default one for pairwise distance
-        node_out_dim : int
-            Dimensionality of the node embeddings after message passing
-        edge_out_dim : int
-            Dimensionality of the hidden edge features
-        num_step_message_passing : int
-            Number of message passing steps
-        num_atom_embedding : int
-            Number of unique atom types
-        cutoff : float
-            Largest center in RBF expansion. Default to 30.
-        gap : float
-            Difference between two adjacent centers in RBF expansion. Default to 0.1.
-        readout : Union[Type[nn.Module], str, nn.Module]
-            Pooling function that aggregates node features after SchNet. You can
-            specify either a reference to the pooling class directly, or an instance
-            of a pooling operation. If a string is passed, we assume it refers to
-            one of the glob functions implemented in DGL.
-        readout_kwargs : Optional[Dict[str, Any]]
-            Kwargs to pass into the construction of the readout function, if an
-            instance was not passed
-        encoder_only : bool
-            Whether to return the graph embeddings only, and not return an
-            energy value.
-
-        Raises
-        ------
-        ImportError:
-            [TODO:description]
+        atom_embedding_dim : int
+            Dimensionality of atom vector embeddings
+        edge_in_dim : int, optional
+            Dimensionality of edge features, by default 1, corresponding
+            with interatomic distances
+        node_out_dim : int, optional
+            Output dimensionality of node features, by default 64
+        edge_out_dim : int, optional
+            Output dimensionality of edge features, by default 128
+        num_step_message_passing : int, optional
+            Number of message passing steps, by default 3
+        num_atom_embedding : int, optional
+            Number of elements in the embedding table, by default 100
+        embedding_kwargs : Dict[str, Any], optional
+            Kwargs to be passed into the embedding table, by default ...
+        readout : Union[Type[nn.Module], str, nn.Module], optional
+            Aggregation function for node to graph embedding, by default glob.AvgPooling
+        readout_kwargs : Optional[Dict[str, Any]], optional
+            Kwargs to be passed into readout object instantiation, by default None
+        encoder_only : bool, optional
+            If True, bypasses the output projection layer, by default True
         """
         super().__init__(
             atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
