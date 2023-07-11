@@ -80,9 +80,7 @@ class MEGNet(AbstractDGLModel):
         )
         self.edge_embed = edge_embed if edge_embed else Identity()
         # default behavior for node embeddings is to use a lookup table
-        self.node_embed = (
-            node_embed if node_embed else nn.Embedding(num_atom_embedding, hiddens[0])
-        )
+        self.node_embed = node_embed if node_embed else self.atom_embedding
         self.attr_embed = attr_embed if attr_embed else Identity()
 
         self.edge_encoder = MLP(
@@ -91,7 +89,9 @@ class MEGNet(AbstractDGLModel):
         # in the event we're using an embedding table, skip the input dim because
         # we're using the hidden dimensionality
         if isinstance(self.node_embed, nn.Embedding):
-            node_encoder = MLP([hiddens[0] + 3] + hiddens, Softplus(), activate_last=True)
+            node_encoder = MLP(
+                [node_feat_dim + 3] + hiddens, Softplus(), activate_last=True
+            )
         else:
             node_encoder = MLP(
                 [node_feat_dim] + hiddens, Softplus(), activate_last=True
