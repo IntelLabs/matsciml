@@ -126,10 +126,7 @@ class GraphConvModel(AbstractDGLModel):
         embedding_kwargs: Dict[str, Any] = {},
         encoder_only: bool = True,
     ) -> None:
-        super().__init__(
-            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
-        )
-        """
+        r"""
         A simple baseline graph convolution model for use with energy/force
         regression. This model uses learnable atomic embeddings same as
         SchNet, and performs sequential graph convolution transformations
@@ -155,7 +152,9 @@ class GraphConvModel(AbstractDGLModel):
         readout : Optional[nn.Module], optional
             Class to use for graph readout/pooling, by default dgl_nn.SumPooling
         """
-        super().__init__()
+        super().__init__(
+            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
         self.blocks = self._make_blocks(
             atom_embedding_dim + 3,
             out_dim,
