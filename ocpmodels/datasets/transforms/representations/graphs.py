@@ -117,11 +117,25 @@ class PointCloudToGraphTransform(RepresentationTransform):
 
     if package_registry["pyg"]:
 
-        def _copy_node_keys_pyg(self, data: DataDict, graph) -> None:
-            ...
+        def _copy_node_keys_pyg(self, data: DataDict, graph: PyGGraph) -> None:
+            for key in self.node_keys:
+                try:
+                    setattr(graph, key, data[key])
+                except KeyError:
+                    log.warning(
+                        f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}"
+                    )
 
-        def _copy_edge_keys_pyg(self, data: DataDict, graph) -> None:
-            ...
+        def _copy_edge_keys_pyg(self, data: DataDict, graph: PyGGraph) -> None:
+            edge_keys = getattr(self, "edge_keys", None)
+            if edge_keys:
+                for key in edge_keys:
+                    try:
+                        setattr(graph, key, data[key])
+                    except KeyError:
+                        log.warning(
+                            f"Expected edge data '{key}' but was not found in data sample: {list(data.keys())}"
+                        )
 
         def _convert_pyg(self, data: DataDict) -> None:
             """
