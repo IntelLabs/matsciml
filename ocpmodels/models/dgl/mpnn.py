@@ -96,6 +96,28 @@ class MPNN(AbstractDGLModel):
         self.encoder_only = encoder_only
         self.output = nn.Linear(node_out_dim, 1)
 
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        r"""
+        Adds an expectation for interatomic distances in the graph edge data,
+        needed by the MPNN model.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data to be processed
+
+        Returns
+        -------
+        DataDict
+            Input data to be passed into MPNN
+        """
+        data = super().read_batch(batch)
+        graph = data["graph"]
+        assert (
+            "r" in graph.edata
+        ), "Expected 'r' key in graph edge data. Please include 'DistancesTransform' in data definition."
+        data["edge_feats"] = graph.edata["r"]
+        return data
     def forward(
         self,
         batch: Optional[
