@@ -10,22 +10,22 @@ import torch
 from torch import nn
 from dgl.nn.pytorch import glob
 
-from ocpmodels.models.base import AbstractEnergyModel
+from ocpmodels.models.base import AbstractDGLModel
 
 
-class SchNet(AbstractEnergyModel):
+class SchNet(AbstractDGLModel):
     def __init__(
         self,
-        node_feats: int = 64,
+        atom_embedding_dim: int,
         hidden_feats: Optional[List[int]] = None,
-        num_atom_embedding: int = 100,
-        cutoff: float = 30.,
+        cutoff: float = 30.0,
         gap: float = 0.1,
         readout: Union[Type[nn.Module], str, nn.Module] = glob.AvgPooling,
         readout_kwargs: Optional[Dict[str, Any]] = None,
-        encoder_only: bool = False,
-    ):
-        """
+        num_atom_embedding: int = 100,
+        embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
+    ) -> None:
         Instantiate a stack of SchNet layers.
 
         This wrapper also comprises a readout function, and integrates into the
@@ -62,8 +62,9 @@ class SchNet(AbstractEnergyModel):
         ImportError:
             [TODO:description]
         """
-        super().__init__()
-        self.model = SchNetGNN(node_feats, hidden_feats, num_atom_embedding, cutoff, gap)
+        super().__init__(
+            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
         if isinstance(readout, (str, Type)):
             # if str, assume it's the name of a class
             if isinstance(readout, str):
