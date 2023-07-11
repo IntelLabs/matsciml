@@ -177,19 +177,45 @@ class PLEGNNBackbone(AbstractDGLModel):
         data.setdefault("graph_feats", None)
         return data
 
+    def _forward(
+        self,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        pos: torch.Tensor,
+        edge_feats: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
     ) -> torch.Tensor:
-        # cast atomic numbers to make sure they're floats, then pass
-        # them into the embedding lookup
-        # import pdb; pdb.set_trace()
-        if batch is not None:
-            graph = batch["graph"]
-        inputs = graph.ndata["atomic_numbers"].long()
-        pos = graph.ndata["pos"]
+        r"""
+        Implement the forward method, which computes the energy of
+        a molecular graph.
 
-        x, _ = self.embed(graph, inputs, pos)
-        x = self.node_projection(x)
-        x = self.readout(graph, x)
-        if not self.encoder_only:
-            x = self.prediction(x)
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            A single or batch of molecular graphs
 
-        return x
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        pos : torch.Tensor
+            XYZ coordinates of each atom
+        edge_feats : Optional[torch.Tensor], optional
+            Tensor containing interatomic distances, by default None and unused.
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
+        Returns
+        -------
+        torch.Tensor
+            Graph embeddings, or output value if not 'encoder_only'
+        """
+        n_z, _ = self.embed(graph, node_feats, pos)
+        n_z = self.node_projection(n_z)
+        g_z = self.readout(graph, n_z)
+        if self.encoder_only:
+            return g_z
+        return self.prediction(g_z)
