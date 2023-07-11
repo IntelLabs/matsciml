@@ -11,6 +11,7 @@ from ocpmodels.datasets.transforms import (
     PointCloudToGraphTransform,
     OCPGraphToPointCloudTransform,
 )
+from ocpmodels.common import package_registry
 
 
 @pytest.mark.dependency()
@@ -31,37 +32,56 @@ def test_collate_mp_pc():
     assert torch.allclose(batch["pc_features"], new_batch["pc_features"])
 
 
-@pytest.mark.dependency(depends=["test_collate_mp_pc"])
-def test_collate_mp_dgl():
-    # uses graphs instead
-    dset = MaterialsProjectDataset(
-        materialsproject_devset, transforms=[PointCloudToGraphTransform("dgl")]
-    )
-    samples = [dset.__getitem__(i) for i in range(4)]
-    # no keys needed to be padded
-    batch = concatenate_keys(samples)
-    assert "graph" in batch
-    graph = batch["graph"]
-    assert graph.batch_size == 4
-    assert all([key in batch for key in ["targets", "target_types"]])
-    # now try and collate with the class method
-    new_batch = dset.collate_fn(samples)
-    assert torch.allclose(
-        new_batch["graph"].ndata["atomic_numbers"], graph.ndata["atomic_numbers"]
-    )
-    assert torch.allclose(new_batch["graph"].ndata["pos"], graph.ndata["pos"])
+if package_registry["pyg"]:
+
+    @pytest.mark.dependency(depends=["test_collate_mp_pc"])
+    def test_collate_mp_pyg():
+        # uses graphs instead
+        dset = MaterialsProjectDataset(
+            materialsproject_devset, transforms=[PointCloudToGraphTransform("pyg")]
+        )
+        samples = [dset.__getitem__(i) for i in range(4)]
+        # no keys needed to be padded
+        batch = concatenate_keys(samples)
+        assert "graph" in batch
+        graph = batch["graph"]
+        # check the batch size
+        assert graph.num_graphs == 4
+        assert all([key in batch for key in ["targets", "target_types"]])
 
 
-@pytest.mark.dependency()
-def test_collate_is2re_dgl():
-    dset = IS2REDataset(is2re_devset)
-    samples = [dset.__getitem__(i) for i in range(4)]
-    # no keys needed to be padded
-    batch = concatenate_keys(samples)
-    assert "graph" in batch
-    graph = batch["graph"]
-    assert graph.batch_size == 4
-    assert all([key in batch for key in ["targets", "target_types"]])
+if package_registry["dgl"]:
+
+    @pytest.mark.dependency(depends=["test_collate_mp_pc"])
+    def test_collate_mp_dgl():
+        # uses graphs instead
+        dset = MaterialsProjectDataset(
+            materialsproject_devset, transforms=[PointCloudToGraphTransform("dgl")]
+        )
+        samples = [dset.__getitem__(i) for i in range(4)]
+        # no keys needed to be padded
+        batch = concatenate_keys(samples)
+        assert "graph" in batch
+        graph = batch["graph"]
+        assert graph.batch_size == 4
+        assert all([key in batch for key in ["targets", "target_types"]])
+        # now try and collate with the class method
+        new_batch = dset.collate_fn(samples)
+        assert torch.allclose(
+            new_batch["graph"].ndata["atomic_numbers"], graph.ndata["atomic_numbers"]
+        )
+        assert torch.allclose(new_batch["graph"].ndata["pos"], graph.ndata["pos"])
+
+    @pytest.mark.dependency()
+    def test_collate_is2re_dgl():
+        dset = IS2REDataset(is2re_devset)
+        samples = [dset.__getitem__(i) for i in range(4)]
+        # no keys needed to be padded
+        batch = concatenate_keys(samples)
+        assert "graph" in batch
+        graph = batch["graph"]
+        assert graph.batch_size == 4
+        assert all([key in batch for key in ["targets", "target_types"]])
 
 
 @pytest.mark.dependency(depends=["test_collate_is2re_dgl"])

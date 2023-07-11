@@ -117,14 +117,53 @@ class PointCloudToGraphTransform(RepresentationTransform):
 
     if package_registry["pyg"]:
 
-        def _copy_node_keys_pyg(self, data: DataDict, graph) -> None:
-            ...
+        def _copy_node_keys_pyg(self, data: DataDict, graph: PyGGraph) -> None:
+            for key in self.node_keys:
+                try:
+                    setattr(graph, key, data[key])
+                except KeyError:
+                    log.warning(
+                        f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}"
+                    )
 
-        def _copy_edge_keys_pyg(self, data: DataDict, graph) -> None:
-            ...
+        def _copy_edge_keys_pyg(self, data: DataDict, graph: PyGGraph) -> None:
+            edge_keys = getattr(self, "edge_keys", None)
+            if edge_keys:
+                for key in edge_keys:
+                    try:
+                        setattr(graph, key, data[key])
+                    except KeyError:
+                        log.warning(
+                            f"Expected edge data '{key}' but was not found in data sample: {list(data.keys())}"
+                        )
 
         def _convert_pyg(self, data: DataDict) -> None:
-            ...
+            """
+            Structure data into a PyG format, which at the minimum, packs the
+            atomic numbers and nuclear coordinates. Mutates the dictionary
+            of data inplace.
+
+            Parameters
+            ----------
+            data : DataDict
+                Data structure read from base class
+            """
+            atom_numbers = data["atomic_numbers"]
+            coords = data["coords"]
+            if "distance_matrix" not in data:
+                dist_mat = self.node_distances(coords)
+            else:
+                dist_mat = data.get("distance_matrix")
+            # convert ensure edges are in the right format for PyG
+            edge_index = torch.LongTensor(
+                self.edges_from_dist(dist_mat, self.cutoff_dist)
+            )
+            # if not in the expected shape, transpose and reformat layout
+            if edge_index.size(0) != 2 and edge_index.size(1) == 2:
+                edge_index = edge_index.T.contiguous()
+            g = PyGGraph(edge_index=edge_index, pos=coords)
+            g.atomic_numbers = atom_numbers
+            data["graph"] = g
 
     def convert(self, data: DataDict) -> None:
         if self.backend == "dgl":
@@ -161,4 +200,4 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 del data[key]
             except KeyError:
                 pass
-        return super().prologue(data)
+        return super().epilogue(data)

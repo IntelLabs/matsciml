@@ -97,3 +97,74 @@ if package_registry["dgl"]:
             match="Data structure already contains a graph: transform shouldn't be required.",
         ):
             sample = dset.__getitem__(0)
+
+
+if package_registry["pyg"]:
+
+    @pytest.mark.dependency()
+    def test_transform_pyg_init():
+        t = PointCloudToGraphTransform("pyg")
+
+    @pytest.mark.dependency(depends=["test_transform_pyg_init"])
+    def test_pyg_create(pc_data):
+        t = PointCloudToGraphTransform("pyg")
+        data = t(pc_data)
+        assert all([key in data for key in ["graph", "dataset"]])
+        assert all(
+            [getattr(data["graph"], key).sum() for key in ["pos", "atomic_numbers"]]
+        )
+
+    @pytest.mark.dependency(depends=["test_pyg_create"])
+    def test_pyg_data_copy(pc_data):
+        t = PointCloudToGraphTransform(
+            "pyg",
+            node_keys=["pos", "atomic_numbers", "node_feats"],
+        )
+        data = t(pc_data)
+        graph = data.get("graph")
+        assert all([key in data for key in ["graph", "dataset"]])
+        assert all([key in graph for key in ["pos", "atomic_numbers", "node_feats"]])
+
+    @pytest.mark.dependency(depends=["test_transform_pyg_init", "test_pyg_create"])
+    def test_pyg_materials_project():
+        dset = MaterialsProjectDataset(
+            materialsproject_devset, transforms=[PointCloudToGraphTransform("pyg")]
+        )
+        sample = dset.__getitem__(0)
+        assert "graph" in sample.keys()
+        g = sample.get("graph")
+        assert all([key in g for key in ["pos", "atomic_numbers"]])
+
+    @pytest.mark.dependency(depends=["test_transform_pyg_init", "test_pyg_create"])
+    def test_pyg_lips():
+        dset = LiPSDataset(
+            lips_devset,
+            transforms=[PointCloudToGraphTransform("pyg", node_keys=["force"])],
+        )
+        sample = dset.__getitem__(0)
+        assert "graph" in sample.keys()
+        g = sample.get("graph")
+        assert all([key in g for key in ["pos", "atomic_numbers", "force"]])
+
+    @pytest.mark.skip(reason="SyntheticPointGroup is still not finalized")
+    def test_pyg_symmetry():
+        dset = SyntheticPointGroupDataset(
+            symmetry_devset, transforms=[PointCloudToGraphTransform("pyg")]
+        )
+        # TODO output sample only contains 'coordinates' and nothing similar to 'atomic numbers'
+        sample = dset.__getitem__(0)
+        assert "graph" in sample.keys()
+        g = sample.get("graph")
+        assert all([key in g for key in ["pos", "atomic_numbers"]])
+
+    @pytest.mark.dependency(depends=["test_transform_pyg_init", "test_pyg_create"])
+    def test_pyg_is2re_fail():
+        # this checks to make sure usage with IS2RE will raise an error
+        dset = IS2REDataset(
+            is2re_devset, transforms=[PointCloudToGraphTransform("pyg")]
+        )
+        with pytest.raises(
+            AssertionError,
+            match="Data structure already contains a graph: transform shouldn't be required.",
+        ):
+            sample = dset.__getitem__(0)
