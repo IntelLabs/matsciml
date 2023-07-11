@@ -118,28 +118,44 @@ class MPNN(AbstractDGLModel):
         ), "Expected 'r' key in graph edge data. Please include 'DistancesTransform' in data definition."
         data["edge_feats"] = graph.edata["r"]
         return data
-    def forward(
+
+    def _forward(
         self,
-        batch: Optional[
-            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ] = None,
-        graph: Optional[dgl.DGLGraph] = None,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        pos: torch.Tensor,
+        edge_feats: torch.Tensor,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
     ) -> torch.Tensor:
-        if batch is not None:
-            graph = batch.get("graph", None)
-        if not graph and not batch:
-            raise ValueError(
-                f"No graph passed, and `graph` key does not exist in batch."
-            )
-        # grab atom numbers and expand into learned embedding
-        node_feats = graph.ndata.get("atomic_numbers").long()
-        node_feats = self.embedding(node_feats)
-        edge_feats = graph.edata.get("r", None)
-        if edge_feats is None:
-            raise ValueError(
-                "`r` key is missing from graph edge data. Please use the `DistancesTransform`."
-            )
-        # run through the model
+        r"""
+        Implement the forward method, which computes the energy of
+        a molecular graph.
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            A single or batch of molecular graphs
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        pos : torch.Tensor
+            XYZ coordinates of each atom
+        edge_feats : torch.Tensor
+            Tensor containing interatomic distances
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
+        Returns
+        -------
+        torch.Tensor
+            Graph embeddings, or output value if not 'encoder_only'
+        """
+        node_feats = self.join_position_embeddings(pos, node_feats)
         n_z = self.model(graph, node_feats, edge_feats)
         g_z = self.readout(graph, n_z)
         if self.encoder_only:
