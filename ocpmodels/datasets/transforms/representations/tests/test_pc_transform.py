@@ -97,3 +97,19 @@ if package_registry["dgl"]:
             match="Data structure already contains a graph: transform shouldn't be required.",
         ):
             sample = dset.__getitem__(0)
+
+
+if package_registry["pyg"]:
+
+    @pytest.mark.dependency()
+    def test_transform_pyg_init():
+        t = PointCloudToGraphTransform("pyg")
+
+    @pytest.mark.dependency(depends=["test_transform_pyg_init"])
+    def test_pyg_create(pc_data):
+        t = PointCloudToGraphTransform("pyg")
+        data = t(pc_data)
+        assert all([key in data for key in ["graph", "dataset"]])
+        assert all(
+            [getattr(data["graph"], key).sum() for key in ["pos", "atomic_numbers"]]
+        )
