@@ -124,7 +124,26 @@ class PointCloudToGraphTransform(RepresentationTransform):
             ...
 
         def _convert_pyg(self, data: DataDict) -> None:
-            ...
+            """
+            Structure data into a PyG format, which at the minimum, packs the
+            atomic numbers and nuclear coordinates. Mutates the dictionary
+            of data inplace.
+
+            Parameters
+            ----------
+            data : DataDict
+                Data structure read from base class
+            """
+            atom_numbers = data["atomic_numbers"]
+            coords = data["coords"]
+            if "distance_matrix" not in data:
+                dist_mat = self.node_distances(coords)
+            else:
+                dist_mat = data.get("distance_matrix")
+            adj_list = self.edges_from_dist(dist_mat, self.cutoff_dist)
+            g = PyGGraph(edge_index=adj_list, pos=coords)
+            g.atomic_numbers = atom_numbers
+            data["graph"] = g
 
     def convert(self, data: DataDict) -> None:
         if self.backend == "dgl":
