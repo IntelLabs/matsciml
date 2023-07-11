@@ -32,6 +32,24 @@ def test_collate_mp_pc():
     assert torch.allclose(batch["pc_features"], new_batch["pc_features"])
 
 
+if package_registry["pyg"]:
+
+    @pytest.mark.dependency(depends=["test_collate_mp_pc"])
+    def test_collate_mp_pyg():
+        # uses graphs instead
+        dset = MaterialsProjectDataset(
+            materialsproject_devset, transforms=[PointCloudToGraphTransform("pyg")]
+        )
+        samples = [dset.__getitem__(i) for i in range(4)]
+        # no keys needed to be padded
+        batch = concatenate_keys(samples)
+        assert "graph" in batch
+        graph = batch["graph"]
+        # check the batch size
+        assert graph.num_graphs == 4
+        assert all([key in batch for key in ["targets", "target_types"]])
+
+
 if package_registry["dgl"]:
 
     @pytest.mark.dependency(depends=["test_collate_mp_pc"])
