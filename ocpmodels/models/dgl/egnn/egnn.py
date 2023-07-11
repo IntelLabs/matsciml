@@ -169,6 +169,7 @@ class PLEGNNBackbone(AbstractDGLModel):
         graph = batch.get("graph")
         atomic_numbers = graph.ndata["atomic_numbers"].long()
         pos = graph.ndata["pos"]
+        data["graph"] = graph
         data["node_feats"] = atomic_numbers
         data["pos"] = pos
         # for now, EGNN assumes no edge features but can be setup
