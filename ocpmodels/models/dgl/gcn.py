@@ -217,49 +217,6 @@ class GraphConvModel(AbstractDGLModel):
         return output
 
     @staticmethod
-    def add_model_specific_args(
-        parent_parser: Type[ArgumentParser],
-    ) -> Type[ArgumentParser]:
-        parser = parent_parser.add_argument_group("GraphConvModel")
-        parser.add_argument(
-            "--atom_embedding_dim",
-            type=int,
-            default=128,
-            help="Atomic embeddings dimensionality",
-        )
-        parser.add_argument(
-            "--out_dim",
-            type=int,
-            default=16,
-            help="Output embeddings dimensionality.",
-        )
-        parser.add_argument(
-            "--num_blocks",
-            type=int,
-            default=3,
-            help="Number of graph convolution/interaction blocks.",
-        )
-        parser.add_argument(
-            "--num_fc_layers",
-            type=int,
-            default=3,
-            help="Number of fully-connected layers within convolution blocks.",
-        )
-        parser.add_argument(
-            "--activation",
-            type=str,
-            default="nn.SiLU",
-            help="String corresponding to the activation function class name. Must be in the launch script scope!",
-        )
-        parser.add_argument(
-            "--readout",
-            type=str,
-            default="dgl_nn.SumPooling",
-            help="String corresponds to the readout function class name. Must be in the launch script scope!",
-        )
-        return parent_parser
-
-    @staticmethod
     def _make_blocks(
         in_dim: int,
         out_dim: int,
