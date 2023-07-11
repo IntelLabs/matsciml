@@ -42,7 +42,7 @@ class MEGNet(AbstractDGLModel):
         embedding_kwargs: Dict[str, Any] = {},
         encoder_only: bool = True,
     ) -> None:
-        """
+        r"""
         Init method for MEGNet. Also supports learnable embeddings for each
         atom, as specified by `num_atom_embedding` for the number of types of
         atoms. The embedding dimensionality is given by the first element of
