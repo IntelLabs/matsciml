@@ -71,9 +71,8 @@ class MPNN(AbstractDGLModel):
         super().__init__(
             atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
         )
-        self.embedding = nn.Embedding(num_atom_embedding, node_embedding_dim)
         self.model = MPNNGNN(
-            node_embedding_dim,
+            atom_embedding_dim + 3,
             edge_in_dim,
             node_out_dim,
             edge_out_dim,
