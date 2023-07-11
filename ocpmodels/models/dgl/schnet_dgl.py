@@ -95,23 +95,76 @@ class SchNet(AbstractDGLModel):
             output_dim = hidden_feats[-1]
         self.output = nn.Linear(output_dim, 1)
 
-    def forward(
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        r"""
+        Adds an expectation for interatomic distances in the graph edge data,
+        needed by the MPNN model.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data to be processed
+
+        Returns
+        -------
+        DataDict
+            Input data to be passed into MPNN
+        """
+        data = {}
+        graph = batch.get("graph")
+        assert isinstance(
+            graph, dgl.DGLGraph
+        ), f"Model {self.__class__.__name__} expects DGL graphs, but data in 'graph' key is type {type(graph)}"
+        # SchNet expects atomic numbers as input to the model, so we do not
+        # read from the embedding table like other models
+        atomic_numbers = graph.ndata["atomic_numbers"].long()
+        data["node_feats"] = atomic_numbers
+        # extract interatomic distances
+        assert (
+            "r" in graph.edata
+        ), f"SchNet expects interatomic distances as edge data under the 'r' key."
+        data["edge_feats"] = graph.edata["r"]
+        data["graph"] = graph
+        data.setdefault("graph_feats", None)
+        data.setdefault("pos", None)
+        return data
+
+    def _forward(
         self,
-        batch: Optional[
-            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ] = None,
-        graph: Optional[dgl.DGLGraph] = None,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        edge_feats: torch.Tensor,
+        pos: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
     ) -> torch.Tensor:
-        if batch is not None:
-            graph = batch.get("graph", None)
-        if not graph and not batch:
-            raise ValueError(f"No graph passed, and `graph` key does not exist in batch.")
-        # extract out node and edge features as expected
-        node_feats = graph.ndata.get("atomic_numbers").long()
-        edge_feats = graph.edata.get("r", None)
-        if edge_feats is None:
-            raise ValueError("`r` key is missing from graph edge data. Please use the `DistancesTransform`.")
-        # run through the model
+        r"""
+        Implement the forward method, which computes the energy of
+        a molecular graph.
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            A single or batch of molecular graphs
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        edge_feats : torch.Tensor
+            Tensor containing interatomic distances
+        pos : Optional[torch.Tensor], optional
+            XYZ coordinates of each atom, by default None and unused.
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
+        Returns
+        -------
+        torch.Tensor
+            Graph embeddings, or output value if not 'encoder_only'
+        """
         n_z = self.model(graph, node_feats, edge_feats)
         g_z = self.readout(graph, n_z)
         if self.encoder_only:
