@@ -170,12 +170,14 @@ class GraphConvModel(AbstractDGLModel):
         if not encoder_only:
             self.output = nn.Linear(out_dim, 1)
 
-    def forward(
+    def _forward(
         self,
-        batch: Optional[
-            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ] = None,
-        graph: Optional[dgl.DGLGraph] = None,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        pos: Optional[torch.Tensor] = None,
+        edge_feats: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
     ) -> torch.Tensor:
         """
         Implement the forward method, which computes the energy of
@@ -191,20 +193,7 @@ class GraphConvModel(AbstractDGLModel):
         torch.Tensor
             Energy tensor [G, 1] for G graphs
         """
-        if batch:
-            graph = batch.get("graph", None)
-        if not batch and not graph:
-            raise ValueError(f"No valid data passed to GraphConv.")
-        if graph.in_degrees().min().item() == 0:
-            graphs = dgl.unbatch(graph)
-            graphs = [dgl.add_self_loop(g) for g in graphs]
-            graph = dgl.batch(graphs)
-        # retrieve atomic embeddings
-        atomic_charges = graph.ndata["atomic_numbers"].long()
-        # this makes sure that the positions are part of the computation graph
-        # for backprop
-        positions = graph.ndata["pos"]
-        n_z = torch.cat((self.embedding(atomic_charges), positions), dim=1)
+        n_z = self.join_position_embeddings(pos, node_feats)
         with graph.local_scope():
             # recursively compress node embeddings, pool, and compute the energy
             for block in self.blocks:
