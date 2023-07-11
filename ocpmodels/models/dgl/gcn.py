@@ -179,7 +179,7 @@ class GraphConvModel(AbstractDGLModel):
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
     ) -> torch.Tensor:
-        """
+        r"""
         Implement the forward method, which computes the energy of
         a molecular graph.
 
@@ -188,10 +188,23 @@ class GraphConvModel(AbstractDGLModel):
         graph : dgl.DGLGraph
             A single or batch of molecular graphs
 
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        pos : torch.Tensor
+            XYZ coordinates of each atom
+        edge_feats : Optional[torch.Tensor], optional
+            Edge-based properties, by default None and unused.
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
         Returns
         -------
         torch.Tensor
-            Energy tensor [G, 1] for G graphs
+            Graph embeddings, or output value if not 'encoder_only'
         """
         n_z = self.join_position_embeddings(pos, node_feats)
         with graph.local_scope():
