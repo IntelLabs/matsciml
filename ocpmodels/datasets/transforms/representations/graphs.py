@@ -200,4 +200,4 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 del data[key]
             except KeyError:
                 pass
-        return super().prologue(data)
+        return super().epilogue(data)
