@@ -7,6 +7,7 @@ import dgl
 import torch
 import torch.nn as nn
 from dgl.nn.pytorch.glob import AvgPooling, MaxPooling, SumPooling, WeightAndSum
+from ocpmodels.common.types import BatchDict, DataDict
 
 from ocpmodels.models.base import AbstractDGLModel
 from ocpmodels.models.dgl.egnn.egnn_model import EGNN, MLP
@@ -160,8 +161,21 @@ class PLEGNNBackbone(AbstractDGLModel):
 
         return prediction_dims
 
-    def forward(
-        self,batch: Optional[Dict[str, Any]]=None, graph: Optional[dgl.DGLGraph]=None, 
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        data = {}
+        assert (
+            "graph" in batch
+        ), f"PLEGNN expects a DGLGraph in the 'graph' key of a batch."
+        graph = batch.get("graph")
+        atomic_numbers = graph.ndata["atomic_numbers"].long()
+        pos = graph.ndata["pos"]
+        data["node_feats"] = atomic_numbers
+        data["pos"] = pos
+        # for now, EGNN assumes no edge features but can be setup
+        data.setdefault("edge_feats", None)
+        data.setdefault("graph_feats", None)
+        return data
+
     ) -> torch.Tensor:
         # cast atomic numbers to make sure they're floats, then pass
         # them into the embedding lookup
