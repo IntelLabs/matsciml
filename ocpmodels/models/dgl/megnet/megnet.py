@@ -14,6 +14,7 @@ import torch
 from torch import nn
 from dgl.nn import Set2Set
 from torch.nn import Dropout, Identity, Module, ModuleList, Softplus
+from ocpmodels.common.types import BatchDict, DataDict
 
 from ocpmodels.models.dgl.megnet import MLP, MEGNetBlock, EdgeSet2Set
 from ocpmodels.models.base import AbstractDGLModel
@@ -170,59 +171,54 @@ class MEGNet(AbstractDGLModel):
         data["edge_feats"] = edge_feats
         return data
 
-    def forward(
+    def _forward(
         self,
-        batch: Optional[Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]] = None,
-        graph: Optional[dgl.DGLGraph] = None,
-        edge_feat: Optional[torch.Tensor] = None,
-        node_labels: Optional[torch.Tensor] = None,
-        node_pos: Optional[torch.Tensor] = None,
-        graph_attr: Optional[torch.Tensor] = None,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        edge_feats: torch.Tensor,
+        graph_feats: torch.Tensor,
+        pos: Optional[torch.Tensor] = None,
+        **kwargs,
     ) -> torch.Tensor:
-        """
-        Forward pass of MEGNet, taking in an input DGL graph and
-        transforming the input features with encoding layers first,
-        followed by blocks of graph convolution and projection.
+        r"""
+        Implement the forward method, which computes the energy of
+        a molecular graph.
 
         Parameters
         ----------
         graph : dgl.DGLGraph
-            _description_
-        edge_feat, node_feat, graph_attr : torch.Tensor
-            Respective feature tensors for each type of representation
+            A single or batch of molecular graphs
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        edge_feats : torch.Tensor
+            Tensor containing interatomic distances
+        graph_feats : torch.Tensor
+            Graph-based properties
+        pos : Optional[torch.Tensor], optional
+            XYZ coordinates of each atom, by default None and unused.
 
         Returns
         -------
         torch.Tensor
-            Output tensor, typically is the energy.
+            Graph embeddings, or output value if not 'encoder_only'
         """
-        if batch is None and graph is None:
-            raise ValueError(f"MegNet requires either batch or graph arguments in its forward call.")
-        if batch is not None:
-            graph = batch["graph"]
-            # get atom properties
-            node_labels = graph.ndata["atomic_numbers"]
-            node_pos = graph.ndata["pos"]
-            graph_attr = batch.get("graph_variables", None)
-            assert graph_attr is not None, "Graph variables are required for MegNet and expected to be in the 'graph_variables' key."
-            edge_feat = torch.hstack((graph.edata["r"], graph.edata["mu"].unsqueeze(-1)))
-        # in the event we're using an embedding table, make sure we're
-        # casting the node features correctly
-        atom_embeddings = self.node_embed(node_labels)
-        node_feat = torch.hstack([node_pos, atom_embeddings])
-
-        edge_feat = self.edge_encoder(self.edge_embed(edge_feat))
-        node_feat = self.node_encoder(node_feat)
-        graph_attr = self.attr_encoder(self.attr_embed(graph_attr))
+        edge_feats = self.edge_encoder(self.edge_embed(edge_feats))
+        node_feats = self.node_encoder(node_feats)
+        graph_feats = self.attr_encoder(self.attr_embed(graph_feats))
 
         for block in self.blocks:
-            output = block(graph, edge_feat, node_feat, graph_attr)
-            edge_feat, node_feat, graph_attr = output
+            output = block(graph, edge_feats, node_feats, graph_feats)
+            edge_feats, node_feats, graph_feats = output
 
-        node_vec = self.node_s2s(graph, node_feat)
-        edge_vec = self.edge_s2s(graph, edge_feat)
+        node_vec = self.node_s2s(graph, node_feats)
+        edge_vec = self.edge_s2s(graph, edge_feats)
 
-        vec = torch.hstack([node_vec, edge_vec, graph_attr])
+        vec = torch.hstack([node_vec, edge_vec, graph_feats])
 
         if self.dropout:
             vec = self.dropout(vec)  # pylint: disable=E1102
