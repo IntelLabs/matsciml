@@ -66,6 +66,11 @@ class SchNet(AbstractDGLModel):
         super().__init__(
             atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
         )
+        self.model = SchNetGNN(
+            atom_embedding_dim, hidden_feats, num_atom_embedding, cutoff, gap
+        )
+        # copy over the embedding table to remove redundancy
+        self.model.embed = self.atom_embedding
         if isinstance(readout, (str, Type)):
             # if str, assume it's the name of a class
             if isinstance(readout, str):
