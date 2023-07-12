@@ -81,6 +81,8 @@ class BaseLMDBDataset(Dataset):
     reading.
     """
 
+    __devset__ = None
+
     def __init__(
         self,
         lmdb_root_path: Union[str, Path],
