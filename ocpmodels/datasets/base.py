@@ -205,7 +205,6 @@ class BaseLMDBDataset(Dataset):
         # if some callable transforms have been provided, transform
         # the data sequentially
         if self.transforms:
-            # TODO transform interface should act on a dictionary
             for transform in self.transforms:
                 data = transform(data)
         return data
