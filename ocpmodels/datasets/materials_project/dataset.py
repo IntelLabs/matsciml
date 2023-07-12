@@ -407,6 +407,8 @@ if _has_dgl:
             graph = dgl.graph(adj_list, num_nodes=len(data["atomic_numbers"]))
             graph.ndata["pos"] = data["coords"]
             graph.ndata["atomic_numbers"] = data["atomic_numbers"]
+            # make DGL graph bidirectional
+            graph = dgl.to_bidirected(graph, copy_ndata=True)
             data["graph"] = graph
             # delete the keys to reduce data redundancy
             for key in [
