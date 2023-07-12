@@ -47,6 +47,8 @@ def item_from_structure(data: Any, *keys: str) -> Any:
 
 @registry.register_dataset("LiPSDataset")
 class LiPSDataset(BaseLMDBDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("devset")
+
     def index_to_key(self, index: int) -> Tuple[int]:
         return (0, index)
 
