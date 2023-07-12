@@ -1,20 +1,20 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Optional
+from typing import Any, Dict, Optional
 import torch
 import torch.nn as nn
 import dgl
 
 from ocpmodels.models.dgl.dpp import dimenet_utils as du
-from ocpmodels.models.base import AbstractEnergyModel
+from ocpmodels.models.base import AbstractDGLModel
 
 """
 Credit for original code: xnuohz; https://github.com/xnuohz/DimeNet-dgl
 """
 
 
-class DimeNetPP(AbstractEnergyModel):
+class DimeNetPP(AbstractDGLModel):
     """
     DimeNet++ model.
     Parameters
@@ -69,9 +69,16 @@ class DimeNetPP(AbstractEnergyModel):
         num_dense_output: Optional[int] = 3,
         activation: Optional[nn.Module] = nn.SiLU,
         extensive: Optional[bool] = True,
-    ):
-        super(DimeNetPP, self).__init__()
-
+        num_atom_embedding: int = 100,
+        atom_embedding_dim: Optional[int] = None,
+        embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
+    ) -> None:
+        if atom_embedding_dim:
+            raise ValueError(
+                f"'atom_embedding_dim' should not be specified; please pass 'emb_size' instead."
+            )
+        super().__init__(emb_size, num_atom_embedding, embedding_kwargs, encoder_only)
         self.num_blocks = num_blocks
         self.num_radial = num_radial
 
@@ -98,6 +105,8 @@ class DimeNetPP(AbstractEnergyModel):
             envelope_exponent=envelope_exponent,
             activation=activation,
         )
+        # overwrite the redundant embedding table
+        self.emb_block.embedding = self.atom_embedding
 
         # output block
         self.output_blocks = nn.ModuleList(
