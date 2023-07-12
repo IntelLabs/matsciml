@@ -193,8 +193,8 @@ class DimeNetPP(AbstractDGLModel):
         self,
         graph: dgl.DGLGraph,
         node_feats: torch.Tensor,
-        edge_feats: torch.Tensor,
-        pos: Optional[torch.Tensor] = None,
+        pos: torch.Tensor,
+        edge_feats: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
     ) -> torch.Tensor:
@@ -213,10 +213,10 @@ class DimeNetPP(AbstractDGLModel):
             Instance of a DGL graph data structure
         node_feats : torch.Tensor
             Atomic embeddings obtained from nn.Embedding
-        edge_feats : torch.Tensor
-            Tensor containing interatomic distances
-        pos : Optional[torch.Tensor], optional
-            XYZ coordinates of each atom, by default None and unused.
+        pos : torch.Tensor
+            XYZ coordinates of each atom
+        edge_feats : Optional[torch.Tensor], optional
+            Tensor containing interatomic distances, by default None and unused.
         graph_feats : Optional[torch.Tensor], optional
             Graph-based properties, by default None and unused.
 
