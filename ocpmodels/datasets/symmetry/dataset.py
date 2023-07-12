@@ -105,6 +105,8 @@ class OTFPointGroupDataset(IterableDataset):
 
 @registry.register_dataset("SyntheticPointGroupDataset")
 class SyntheticPointGroupDataset(BaseLMDBDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("devset")
+
     def __init__(
         self,
         lmdb_root_path: Union[str, Path],
