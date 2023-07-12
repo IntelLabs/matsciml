@@ -227,7 +227,7 @@ class DimeNetPP(AbstractDGLModel):
         graph = self.edge_distance(graph)
         l_g = self._create_line_graph(graph)
         # add rbf features for each edge in one batch graph, [num_radial,]
-        graph = self.rbf_layer(graph)
+        graph.edata["rbf"] = self.rbf_layer(edge_distances)
         # Embedding block
         graph = self.emb_block(graph, node_feats)
         # Output block

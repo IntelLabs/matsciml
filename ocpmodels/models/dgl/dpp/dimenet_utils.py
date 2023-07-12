@@ -77,11 +77,10 @@ class BesselBasisLayer(nn.Module):
     def reset_params(self):
         torch.arange(1, self.frequencies.numel() + 1, out=self.frequencies).mul_(np.pi)
 
-    def forward(self, g: dgl.DGLGraph) -> dgl.DGLGraph:
-        d_scaled = (g.edata["r"] / self.cutoff).unsqueeze(-1)
+    def forward(self, edge_distances: torch.Tensor) -> torch.Tensor:
+        d_scaled = (edge_distances / self.cutoff).unsqueeze(-1)
         d_cutoff = self.envelope(d_scaled)
-        g.edata["rbf"] = d_cutoff * torch.sin(self.frequencies * d_scaled)
-        return g
+        return d_cutoff * torch.sin(self.frequencies * d_scaled)
 
 
 class SphericalBasisLayer(nn.Module):
