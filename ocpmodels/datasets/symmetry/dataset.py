@@ -180,7 +180,8 @@ if _has_dgl:
             graph.ndata["atomic_numbers"] = sample["source_types"]
             for key in ["coordinates", "source_types", "dest_types", "pc_features"]:
                 del sample[key]
-            sample["graph"] = graph
+            # make DGL graph 'undirected'
+            sample["graph"] = dgl.to_bidirected(graph, copy_ndata=True)
             return sample
 
         @staticmethod
