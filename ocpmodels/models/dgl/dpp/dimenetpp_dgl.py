@@ -237,14 +237,14 @@ class DimeNetPP(AbstractDGLModel):
             # Embedding block
             graph = self.emb_block(graph, node_feats)
             # Output block
-            P = self.output_blocks[0](g)  # [batch_size, num_targets]
+            P = self.output_blocks[0](graph)
             # Prepare sbf feature before the following blocks
-            for k, v in g.edata.items():
+            for k, v in graph.edata.items():
                 l_g.ndata[k] = v
 
             l_g.apply_edges(self.edge_init)
             # Interaction blocks
             for i in range(self.num_blocks):
-                g = self.interaction_blocks[i](g, l_g)
-                P += self.output_blocks[i + 1](g)
+                graph = self.interaction_blocks[i](graph, l_g)
+                P += self.output_blocks[i + 1](graph)
         return P
