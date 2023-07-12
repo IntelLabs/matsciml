@@ -215,8 +215,8 @@ class EmbeddingBlock(nn.Module):
 
         return {"m": m, "rbf_env": rbf_env}
 
-    def forward(self, g):
-        g.ndata["h"] = self.embedding(g.ndata["atomic_numbers"].long())
+    def forward(self, g: dgl.DGLGraph, atom_embeddings: torch.Tensor):
+        g.ndata["h"] = atom_embeddings
         g.apply_edges(self.edge_init)
         return g
 

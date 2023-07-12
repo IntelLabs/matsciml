@@ -188,13 +188,48 @@ class DimeNetPP(AbstractDGLModel):
         graph.edata["o"] = src_pos - dst_pos
         return graph
 
-    def forward(self, g: dgl.DGLGraph):
-        g = self.edge_distance(g)
-        l_g = self._create_line_graph(g)
+    def _forward(
+        self,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        edge_feats: torch.Tensor,
+        pos: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
+    ) -> torch.Tensor:
+        r"""
+        Implement the forward method, which computes the energy of
+        a molecular graph.
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            A single or batch of molecular graphs
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        edge_feats : torch.Tensor
+            Tensor containing interatomic distances
+        pos : Optional[torch.Tensor], optional
+            XYZ coordinates of each atom, by default None and unused.
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
+        Returns
+        -------
+        torch.Tensor
+            Graph embeddings, or output value if not 'encoder_only'
+        """
+        graph = self.edge_distance(graph)
+        l_g = self._create_line_graph(graph)
         # add rbf features for each edge in one batch graph, [num_radial,]
-        g = self.rbf_layer(g)
+        graph = self.rbf_layer(graph)
         # Embedding block
-        g = self.emb_block(g)
+        graph = self.emb_block(graph, node_feats)
         # Output block
         P = self.output_blocks[0](g)  # [batch_size, num_targets]
         # Prepare sbf feature before the following blocks
