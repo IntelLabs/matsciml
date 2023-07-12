@@ -7,15 +7,15 @@ import dgl
 import torch
 import torch.nn as nn
 from dgl.nn.pytorch.glob import AvgPooling, MaxPooling, SumPooling, WeightAndSum
+from ocpmodels.common.types import BatchDict, DataDict
 
-from ocpmodels.models import AbstractEnergyModel
+from ocpmodels.models.base import AbstractDGLModel
 from ocpmodels.models.dgl.egnn.egnn_model import EGNN, MLP
 
 
-class PLEGNNBackbone(AbstractEnergyModel):
+class PLEGNNBackbone(AbstractDGLModel):
     def __init__(
         self,
-        # embed
         embed_in_dim: int,
         embed_hidden_dim: int,
         embed_out_dim: int,
@@ -43,10 +43,14 @@ class PLEGNNBackbone(AbstractEnergyModel):
         prediction_hidden_dim: int,
         prediction_out_dim: int,
         prediction_activation: str,
-        num_atoms_embedding: int = 100,
-        encoder_only: Optional[bool] = False,
+        atom_embedding_dim: Optional[int] = None,
+        num_atom_embedding: int = 100,
+        embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
     ) -> None:
-        super().__init__()
+        super().__init__(
+            embed_hidden_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
         self.embed = EGNN(
             embed_in_dim,
             embed_hidden_dim,
@@ -64,8 +68,9 @@ class PLEGNNBackbone(AbstractEnergyModel):
             k_linears=embed_k_linears,
             use_attention=embed_use_attention,
             attention_norm=self._get_attention_norm(embed_attention_norm),
-            num_atoms_embedding=num_atoms_embedding,
+            num_atoms_embedding=num_atom_embedding,
         )
+        self.embed.atom_embedding = self.atom_embedding
 
         self.encoder_only = encoder_only
         node_projection_dims = self._get_node_projection_dims(
@@ -156,21 +161,61 @@ class PLEGNNBackbone(AbstractEnergyModel):
 
         return prediction_dims
 
-    def forward(
-        self,batch: Optional[Dict[str, Any]]=None, graph: Optional[dgl.DGLGraph]=None, 
-    ) -> torch.Tensor:
-        # cast atomic numbers to make sure they're floats, then pass
-        # them into the embedding lookup
-        # import pdb; pdb.set_trace()
-        if batch is not None:
-            graph = batch["graph"]
-        inputs = graph.ndata["atomic_numbers"].long()
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        data = {}
+        assert (
+            "graph" in batch
+        ), f"PLEGNN expects a DGLGraph in the 'graph' key of a batch."
+        graph = batch.get("graph")
+        atomic_numbers = graph.ndata["atomic_numbers"].long()
         pos = graph.ndata["pos"]
+        data["graph"] = graph
+        data["node_feats"] = atomic_numbers
+        data["pos"] = pos
+        # for now, EGNN assumes no edge features but can be setup
+        data.setdefault("edge_feats", None)
+        data.setdefault("graph_feats", None)
+        return data
 
-        x, _ = self.embed(graph, inputs, pos)
-        x = self.node_projection(x)
-        x = self.readout(graph, x)
-        if not self.encoder_only:
-            x = self.prediction(x)
+    def _forward(
+        self,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        pos: torch.Tensor,
+        edge_feats: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
+    ) -> torch.Tensor:
+        r"""
+        Implement the forward method, which computes the energy of
+        a molecular graph.
 
-        return x
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            A single or batch of molecular graphs
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        pos : torch.Tensor
+            XYZ coordinates of each atom
+        edge_feats : Optional[torch.Tensor], optional
+            Tensor containing interatomic distances, by default None and unused.
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
+        Returns
+        -------
+        torch.Tensor
+            Graph embeddings, or output value if not 'encoder_only'
+        """
+        n_z, _ = self.embed(graph, node_feats, pos)
+        n_z = self.node_projection(n_z)
+        g_z = self.readout(graph, n_z)
+        if self.encoder_only:
+            return g_z
+        return self.prediction(g_z)

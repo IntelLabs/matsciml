@@ -25,7 +25,7 @@ S2EFLitModule(
 )
 
 """
-from typing import Optional, Type, Union, Dict
+from typing import Any, Optional, Type, Union, Dict
 
 from argparse import ArgumentParser
 import numpy as np
@@ -34,7 +34,7 @@ import dgl
 from dgl.nn import pytorch as dgl_nn
 from torch import nn
 
-from ocpmodels.models.base import AbstractEnergyModel
+from ocpmodels.models.base import AbstractDGLModel
 
 
 class GraphConvBlock(nn.Module):
@@ -113,7 +113,7 @@ class GraphConvBlock(nn.Module):
         return nn.Sequential(*layers)
 
 
-class GraphConvModel(AbstractEnergyModel):
+class GraphConvModel(AbstractDGLModel):
     def __init__(
         self,
         atom_embedding_dim: int,
@@ -122,9 +122,11 @@ class GraphConvModel(AbstractEnergyModel):
         num_fc_layers: Optional[int] = 3,
         activation: Optional[Type[nn.Module]] = nn.SiLU,
         readout: Optional[Type[nn.Module]] = dgl_nn.SumPooling,
-        encoder_only: bool = False
-    ):
-        """
+        num_atom_embedding: int = 100,
+        embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
+    ) -> None:
+        r"""
         A simple baseline graph convolution model for use with energy/force
         regression. This model uses learnable atomic embeddings same as
         SchNet, and performs sequential graph convolution transformations
@@ -150,8 +152,9 @@ class GraphConvModel(AbstractEnergyModel):
         readout : Optional[nn.Module], optional
             Class to use for graph readout/pooling, by default dgl_nn.SumPooling
         """
-        super().__init__()
-        self.embedding = nn.Embedding(100, atom_embedding_dim)
+        super().__init__(
+            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
         self.blocks = self._make_blocks(
             atom_embedding_dim + 3,
             out_dim,
@@ -166,14 +169,16 @@ class GraphConvModel(AbstractEnergyModel):
         if not encoder_only:
             self.output = nn.Linear(out_dim, 1)
 
-    def forward(
+    def _forward(
         self,
-        batch: Optional[
-            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ] = None,
-        graph: Optional[dgl.DGLGraph] = None,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        pos: torch.Tensor,
+        edge_feats: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
     ) -> torch.Tensor:
-        """
+        r"""
         Implement the forward method, which computes the energy of
         a molecular graph.
 
@@ -182,25 +187,25 @@ class GraphConvModel(AbstractEnergyModel):
         graph : dgl.DGLGraph
             A single or batch of molecular graphs
 
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        pos : torch.Tensor
+            XYZ coordinates of each atom
+        edge_feats : Optional[torch.Tensor], optional
+            Edge-based properties, by default None and unused.
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
         Returns
         -------
         torch.Tensor
-            Energy tensor [G, 1] for G graphs
+            Graph embeddings, or output value if not 'encoder_only'
         """
-        if batch:
-            graph = batch.get("graph", None)
-        if not batch and not graph:
-            raise ValueError(f"No valid data passed to GraphConv.")
-        if graph.in_degrees().min().item() == 0:
-            graphs = dgl.unbatch(graph)
-            graphs = [dgl.add_self_loop(g) for g in graphs]
-            graph = dgl.batch(graphs)
-        # retrieve atomic embeddings
-        atomic_charges = graph.ndata["atomic_numbers"].long()
-        # this makes sure that the positions are part of the computation graph
-        # for backprop
-        positions = graph.ndata["pos"]
-        n_z = torch.cat((self.embedding(atomic_charges), positions), dim=1)
+        n_z = self.join_position_embeddings(pos, node_feats)
         with graph.local_scope():
             # recursively compress node embeddings, pool, and compute the energy
             for block in self.blocks:
@@ -210,49 +215,6 @@ class GraphConvModel(AbstractEnergyModel):
                 # regress if we're not just an encoder
                 output = self.output(output)
         return output
-
-    @staticmethod
-    def add_model_specific_args(
-        parent_parser: Type[ArgumentParser],
-    ) -> Type[ArgumentParser]:
-        parser = parent_parser.add_argument_group("GraphConvModel")
-        parser.add_argument(
-            "--atom_embedding_dim",
-            type=int,
-            default=128,
-            help="Atomic embeddings dimensionality",
-        )
-        parser.add_argument(
-            "--out_dim",
-            type=int,
-            default=16,
-            help="Output embeddings dimensionality.",
-        )
-        parser.add_argument(
-            "--num_blocks",
-            type=int,
-            default=3,
-            help="Number of graph convolution/interaction blocks.",
-        )
-        parser.add_argument(
-            "--num_fc_layers",
-            type=int,
-            default=3,
-            help="Number of fully-connected layers within convolution blocks.",
-        )
-        parser.add_argument(
-            "--activation",
-            type=str,
-            default="nn.SiLU",
-            help="String corresponding to the activation function class name. Must be in the launch script scope!",
-        )
-        parser.add_argument(
-            "--readout",
-            type=str,
-            default="dgl_nn.SumPooling",
-            help="String corresponds to the readout function class name. Must be in the launch script scope!",
-        )
-        return parent_parser
 
     @staticmethod
     def _make_blocks(

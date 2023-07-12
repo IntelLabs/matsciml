@@ -9,68 +9,57 @@ import dgl
 import torch
 from torch import nn
 from dgl.nn.pytorch import glob
+from ocpmodels.common.types import BatchDict, DataDict
 
-from ocpmodels.models.base import AbstractEnergyModel
+from ocpmodels.models.base import AbstractDGLModel
 
 
-class MPNN(AbstractEnergyModel):
+class MPNN(AbstractDGLModel):
     def __init__(
         self,
-        node_embedding_dim: int = 64,
+        atom_embedding_dim: int,
         edge_in_dim: int = 1,
         node_out_dim: int = 64,
         edge_out_dim: int = 128,
         num_step_message_passing: int = 3,
         num_atom_embedding: int = 100,
+        embedding_kwargs: Dict[str, Any] = {},
         readout: Union[Type[nn.Module], str, nn.Module] = glob.AvgPooling,
         readout_kwargs: Optional[Dict[str, Any]] = None,
-        encoder_only: bool = False,
-    ):
-        """
-        Instantiate a stack of SchNet layers.
-
-        This wrapper also comprises a readout function, and integrates into the
-        matsciml pipeline with `encoder_only`.
+        encoder_only: bool = True,
+    ) -> None:
+        r"""
+        _summary_
 
         Parameters
         ----------
-        node_embedding_dim : int
-            Dimensionality of the node embeddings
-        edge_in_dim : int
-            Dimensionality of the edge features; default one for pairwise distance
-        node_out_dim : int
-            Dimensionality of the node embeddings after message passing
-        edge_out_dim : int
-            Dimensionality of the hidden edge features
-        num_step_message_passing : int
-            Number of message passing steps
-        num_atom_embedding : int
-            Number of unique atom types
-        cutoff : float
-            Largest center in RBF expansion. Default to 30.
-        gap : float
-            Difference between two adjacent centers in RBF expansion. Default to 0.1.
-        readout : Union[Type[nn.Module], str, nn.Module]
-            Pooling function that aggregates node features after SchNet. You can
-            specify either a reference to the pooling class directly, or an instance
-            of a pooling operation. If a string is passed, we assume it refers to
-            one of the glob functions implemented in DGL.
-        readout_kwargs : Optional[Dict[str, Any]]
-            Kwargs to pass into the construction of the readout function, if an
-            instance was not passed
-        encoder_only : bool
-            Whether to return the graph embeddings only, and not return an
-            energy value.
-
-        Raises
-        ------
-        ImportError:
-            [TODO:description]
+        atom_embedding_dim : int
+            Dimensionality of atom vector embeddings
+        edge_in_dim : int, optional
+            Dimensionality of edge features, by default 1, corresponding
+            with interatomic distances
+        node_out_dim : int, optional
+            Output dimensionality of node features, by default 64
+        edge_out_dim : int, optional
+            Output dimensionality of edge features, by default 128
+        num_step_message_passing : int, optional
+            Number of message passing steps, by default 3
+        num_atom_embedding : int, optional
+            Number of elements in the embedding table, by default 100
+        embedding_kwargs : Dict[str, Any], optional
+            Kwargs to be passed into the embedding table, by default ...
+        readout : Union[Type[nn.Module], str, nn.Module], optional
+            Aggregation function for node to graph embedding, by default glob.AvgPooling
+        readout_kwargs : Optional[Dict[str, Any]], optional
+            Kwargs to be passed into readout object instantiation, by default None
+        encoder_only : bool, optional
+            If True, bypasses the output projection layer, by default True
         """
-        super().__init__()
-        self.embedding = nn.Embedding(num_atom_embedding, node_embedding_dim)
+        super().__init__(
+            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
         self.model = MPNNGNN(
-            node_embedding_dim,
+            atom_embedding_dim + 3,
             edge_in_dim,
             node_out_dim,
             edge_out_dim,
@@ -94,28 +83,66 @@ class MPNN(AbstractEnergyModel):
         self.encoder_only = encoder_only
         self.output = nn.Linear(node_out_dim, 1)
 
-    def forward(
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        r"""
+        Adds an expectation for interatomic distances in the graph edge data,
+        needed by the MPNN model.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data to be processed
+
+        Returns
+        -------
+        DataDict
+            Input data to be passed into MPNN
+        """
+        data = super().read_batch(batch)
+        graph = data["graph"]
+        assert (
+            "r" in graph.edata
+        ), "Expected 'r' key in graph edge data. Please include 'DistancesTransform' in data definition."
+        data["edge_feats"] = graph.edata["r"]
+        return data
+
+    def _forward(
         self,
-        batch: Optional[
-            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ] = None,
-        graph: Optional[dgl.DGLGraph] = None,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        pos: torch.Tensor,
+        edge_feats: torch.Tensor,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
     ) -> torch.Tensor:
-        if batch is not None:
-            graph = batch.get("graph", None)
-        if not graph and not batch:
-            raise ValueError(
-                f"No graph passed, and `graph` key does not exist in batch."
-            )
-        # grab atom numbers and expand into learned embedding
-        node_feats = graph.ndata.get("atomic_numbers").long()
-        node_feats = self.embedding(node_feats)
-        edge_feats = graph.edata.get("r", None)
-        if edge_feats is None:
-            raise ValueError(
-                "`r` key is missing from graph edge data. Please use the `DistancesTransform`."
-            )
-        # run through the model
+        r"""
+        Implement the forward method, which computes the energy of
+        a molecular graph.
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            A single or batch of molecular graphs
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        pos : torch.Tensor
+            XYZ coordinates of each atom
+        edge_feats : torch.Tensor
+            Tensor containing interatomic distances
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
+        Returns
+        -------
+        torch.Tensor
+            Graph embeddings, or output value if not 'encoder_only'
+        """
+        node_feats = self.join_position_embeddings(pos, node_feats)
         n_z = self.model(graph, node_feats, edge_feats)
         g_z = self.readout(graph, n_z)
         if self.encoder_only:
