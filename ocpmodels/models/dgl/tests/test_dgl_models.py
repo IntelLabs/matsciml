@@ -140,7 +140,7 @@ if package_registry["dgl"]:
         model = DimeNetPP()
         with torch.no_grad():
             g_z = model(graph)
-        # should match 128 + 128 + 64
+        # should match the 'out_emb_size' argument
         assert g_z.shape == (1, 256)
 
         # test with grads
