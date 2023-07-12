@@ -276,10 +276,10 @@ class DGLDataModule(S2EFDGLDataModule):
         warn(f"DGLDataModule is being retired - please switch to S2EFDGLDataModule.")
 
 
-class BaseLightningDataModule(pl.LightningDataModule):
+class MatSciMLDataModule(pl.LightningDataModule):
     def __init__(
         self,
-        dataset: Optional[Union[Type[TorchDataset], TorchDataset]] = None,
+        dataset: Optional[Union[str, Type[TorchDataset], TorchDataset]] = None,
         train_path: Optional[Union[str, Path]] = None,
         batch_size: int = 32,
         num_workers: int = 0,
