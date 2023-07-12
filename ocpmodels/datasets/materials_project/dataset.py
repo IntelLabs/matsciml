@@ -56,6 +56,8 @@ def item_from_structure(data: Any, *keys: str) -> Any:
 
 @registry.register_dataset("MaterialsProjectDataset")
 class MaterialsProjectDataset(BaseLMDBDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("devset")
+
     def index_to_key(self, index: int) -> Tuple[int]:
         """
         Method that maps a global index value to a pair of indices.
