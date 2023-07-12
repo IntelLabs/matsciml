@@ -129,7 +129,8 @@ if _has_dgl:
             graph = dgl.graph(adj_list, num_nodes=len(data["atomic_numbers"]))
             for key in ["pos", "atomic_numbers"]:
                 graph.ndata[key] = data.get(key)
-            data["graph"] = graph
+            # make DGL graph symmetric
+            data["graph"] = dgl.to_bidirected(graph, copy_ndata=True)
             return data
 
         @staticmethod
