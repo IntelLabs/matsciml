@@ -226,22 +226,23 @@ class DimeNetPP(AbstractDGLModel):
             Graph embeddings, or output value if not 'encoder_only'
         """
         dist_dict = self.edge_distance(graph, pos)
-        for key in ["r", "o"]:
-            graph.edata[key] = dist_dict[key]
-        l_g = self._create_line_graph(graph)
-        # add rbf features for each edge in one batch graph, [num_radial,]
-        graph.edata["rbf"] = self.rbf_layer(dist_dict["r"])
-        # Embedding block
-        graph = self.emb_block(graph, node_feats)
-        # Output block
-        P = self.output_blocks[0](g)  # [batch_size, num_targets]
-        # Prepare sbf feature before the following blocks
-        for k, v in g.edata.items():
-            l_g.ndata[k] = v
+        with graph.local_scope():
+            for key in ["r", "o"]:
+                graph.edata[key] = dist_dict[key]
+            l_g = self._create_line_graph(graph)
+            # add rbf features for each edge in one batch graph, [num_radial,]
+            graph.edata["rbf"] = self.rbf_layer(dist_dict["r"])
+            # Embedding block
+            graph = self.emb_block(graph, node_feats)
+            # Output block
+            P = self.output_blocks[0](g)  # [batch_size, num_targets]
+            # Prepare sbf feature before the following blocks
+            for k, v in g.edata.items():
+                l_g.ndata[k] = v
 
-        l_g.apply_edges(self.edge_init)
-        # Interaction blocks
-        for i in range(self.num_blocks):
-            g = self.interaction_blocks[i](g, l_g)
-            P += self.output_blocks[i + 1](g)
+            l_g.apply_edges(self.edge_init)
+            # Interaction blocks
+            for i in range(self.num_blocks):
+                g = self.interaction_blocks[i](g, l_g)
+                P += self.output_blocks[i + 1](g)
         return P
