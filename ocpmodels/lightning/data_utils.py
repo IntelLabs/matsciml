@@ -443,9 +443,58 @@ class MatSciMLDataModule(pl.LightningDataModule):
             collate_fn=self.dataset.collate_fn,
         )
 
-    @abstractclassmethod
-    def from_devset(cls, *args, **kwargs):
-        ...
+    @classmethod
+    def from_devset(
+        cls,
+        dataset: str,
+        dset_kwargs: Dict[str, Any] = {},
+        **kwargs,
+    ):
+        r"""
+        Instantiate a data module from a dataset's devset.
+
+        This is intended mostly for testing and debugging purposes, with the
+        bare number of args/kwargs required to get up and running. The behavior
+        of this method will replicate the devset for train, validation, and test
+        to allow each part of the pipeline to be tested.
+
+        Parameters
+        ----------
+        dataset : str
+            Class name for dataset to use
+        dset_kwargs : Dict[str, Any], optional
+            Dictionary of keyword arguments to be passed into
+            the dataset creation, for example 'transforms', by default {}
+
+        Returns
+        -------
+        MatSciMLDataModule
+            Instance of `MatSciMLDataModule` from devset
+
+        Raises
+        ------
+        NotImplementedError
+            If the dataset specified does not contain a devset path, this
+            method will raise 'NotImplementedError'.
+        """
+        kwargs.setdefault("batch_size", 8)
+        kwargs.setdefault("num_workers", 0)
+        dset_kwargs.setdefault("transforms", None)
+        dset = registry.get_dataset_class(dataset)
+        devset_path = getattr(dset, "__devset__", None)
+        if not devset_path:
+            raise NotImplementedError(
+                f"Dataset {dset.__name__} does not contain a '__devset__' attribute, cannot instantiate from devset."
+            )
+        datamodule = cls(
+            dset,
+            train_path=devset_path,
+            val_split=devset_path,
+            test_split=devset_path,
+            dset_kwargs=dset_kwargs,
+            **kwargs,
+        )
+        return datamodule
 
     @property
     def target_keys(self) -> Dict[str, List[str]]:
