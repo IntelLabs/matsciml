@@ -72,6 +72,7 @@ class DimeNetPP(AbstractDGLModel):
         num_atom_embedding: int = 100,
         atom_embedding_dim: Optional[int] = None,
         embedding_kwargs: Dict[str, Any] = {},
+        num_targets: Optional[int] = None,
         encoder_only: bool = True,
     ) -> None:
         if atom_embedding_dim:
@@ -116,9 +117,10 @@ class DimeNetPP(AbstractDGLModel):
                     out_emb_size=out_emb_size,
                     num_radial=num_radial,
                     num_dense=num_dense_output,
-                    num_targets=1,
+                    num_targets=num_targets,
                     activation=activation,
                     extensive=extensive,
+                    encoder_only=encoder_only,
                 )
                 for _ in range(num_blocks + 1)
             }

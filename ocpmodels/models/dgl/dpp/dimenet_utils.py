@@ -332,10 +332,13 @@ class OutputPPBlock(nn.Module):
         out_emb_size: int,
         num_radial: int,
         num_dense: int,
-        num_targets: int,
+        num_targets: Optional[int] = None,
         activation: Optional[nn.Module] = None,
         extensive: Optional[bool] = True,
+        encoder_only: bool = True,
     ):
+        if num_targets and encoder_only:
+            raise ValueError(f"")
         super(OutputPPBlock, self).__init__()
 
         if activation is not None and not isinstance(activation, nn.Module):
@@ -347,7 +350,9 @@ class OutputPPBlock(nn.Module):
         self.dense_layers = nn.ModuleList(
             [nn.Linear(out_emb_size, out_emb_size) for _ in range(num_dense)]
         )
-        self.dense_final = nn.Linear(out_emb_size, num_targets, bias=False)
+        if not encoder_only:
+            self.dense_final = nn.Linear(out_emb_size, num_targets, bias=False)
+        self.encoder_only = encoder_only
         self.reset_params()
 
     def reset_params(self):
