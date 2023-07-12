@@ -369,5 +369,6 @@ class OutputPPBlock(nn.Module):
                 g.ndata["t"] = layer(g.ndata["t"])
                 if self.activation is not None:
                     g.ndata["t"] = self.activation(g.ndata["t"])
-            g.ndata["t"] = self.dense_final(g.ndata["t"])
+            if not self.encoder_only:
+                g.ndata["t"] = self.dense_final(g.ndata["t"])
             return dgl.readout_nodes(g, "t", op="sum" if self.extensive else "mean")
