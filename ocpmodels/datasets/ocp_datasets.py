@@ -40,6 +40,8 @@ class OpenCatalystDataset(BaseLMDBDataset):
 
 @registry.register_dataset("S2EFDataset")
 class S2EFDataset(OpenCatalystDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("devset-s2ef-dgl")
+
     def data_from_key(
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
@@ -105,6 +107,8 @@ class S2EFDataset(OpenCatalystDataset):
 
 @registry.register_dataset("IS2REDataset")
 class IS2REDataset(OpenCatalystDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("devset-is2re-dgl")
+
     """
     Currently, this class doesn't have anything special implemented,
     but carries on the abstraction so that if there are modifications
