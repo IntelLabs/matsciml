@@ -15,6 +15,7 @@ Construct graphs from point clouds
 __all__ = ["PointCloudToGraphTransform"]
 
 if package_registry["dgl"]:
+    import dgl
     from dgl import DGLGraph
     from dgl import graph as dgl_graph
 
@@ -200,4 +201,8 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 del data[key]
             except KeyError:
                 pass
+        if self.backend == "dgl":
+            # DGL graphs are inherently directed, so we need to add non-redundant
+            # reverse edges to avoid issues with message passing
+            data["graph"] = dgl.to_bidirected(data["graph"], copy_ndata=True)
         return super().epilogue(data)
