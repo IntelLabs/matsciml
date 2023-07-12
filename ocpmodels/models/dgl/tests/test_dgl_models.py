@@ -134,3 +134,17 @@ if package_registry["dgl"]:
         assert hasattr(g_z, "grad_fn")
         # make sure every element is finite
         assert torch.isfinite(g_z).all()
+
+    @pytest.mark.dependency()
+    def test_dpp_dgl(graph):
+        model = DimeNetPP()
+        with torch.no_grad():
+            g_z = model(graph)
+        # should match 128 + 128 + 64
+        assert g_z.shape == (1, 256)
+
+        # test with grads
+        g_z = model(graph)
+        assert hasattr(g_z, "grad_fn")
+        # make sure every element is finite
+        assert torch.isfinite(g_z).all()
