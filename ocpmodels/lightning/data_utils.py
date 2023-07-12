@@ -12,6 +12,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset as TorchDataset
 from torch.utils.data import random_split
 
+from ocpmodels.common.registry import registry
 from ocpmodels.datasets import (
     IS2REDataset,
     S2EFDataset,
@@ -330,6 +331,9 @@ class BaseLightningDataModule(pl.LightningDataModule):
         dset_kwargs = getattr(self, "dset_kwargs", None)
         if not dset_kwargs:
             dset_kwargs = {}
+        # try and grab the dataset class from registry
+        if isinstance(dataset, str):
+            dataset = registry.get_dataset_class(str)
         if isinstance(dataset, TorchDataset):
             transforms = getattr(dataset, "transforms", None)
             dset_kwargs["transforms"] = transforms
