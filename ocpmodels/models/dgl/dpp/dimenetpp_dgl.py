@@ -169,7 +169,9 @@ class DimeNetPP(AbstractDGLModel):
             return dgl.batch(l_g)
 
     @staticmethod
-    def edge_distance(graph: dgl.DGLGraph) -> None:
+    def edge_distance(
+        graph: dgl.DGLGraph, pos: torch.Tensor
+    ) -> Dict[str, torch.Tensor]:
         """
         Compute edge distances on the fly; applies a lambda function
         that computes the Euclidean distance between two atoms, and
@@ -182,11 +184,10 @@ class DimeNetPP(AbstractDGLModel):
             stored in the node data "pos"
         """
         src, dst = graph.edges()
-        pos = graph.ndata["pos"]
         src_pos, dst_pos = pos[src], pos[dst]
-        graph.edata["r"] = nn.functional.pairwise_distance(src_pos, dst_pos, p=2.0)
-        graph.edata["o"] = src_pos - dst_pos
-        return graph
+        r = nn.functional.pairwise_distance(src_pos, dst_pos, p=2.0)
+        o = src_pos - dst_pos
+        return {"r": r, "o": o}
 
     def _forward(
         self,
@@ -224,10 +225,12 @@ class DimeNetPP(AbstractDGLModel):
         torch.Tensor
             Graph embeddings, or output value if not 'encoder_only'
         """
-        graph = self.edge_distance(graph)
+        dist_dict = self.edge_distance(graph, pos)
+        for key in ["r", "o"]:
+            graph.edata[key] = dist_dict[key]
         l_g = self._create_line_graph(graph)
         # add rbf features for each edge in one batch graph, [num_radial,]
-        graph.edata["rbf"] = self.rbf_layer(edge_distances)
+        graph.edata["rbf"] = self.rbf_layer(dist_dict["r"])
         # Embedding block
         graph = self.emb_block(graph, node_feats)
         # Output block
