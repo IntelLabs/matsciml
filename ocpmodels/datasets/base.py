@@ -282,6 +282,22 @@ class BaseLMDBDataset(Dataset):
     def pad_keys(self, keys: List[str]) -> None:
         ...
 
+    @classmethod
+    def from_devset(cls, transforms: Optional[List[Callable]] = None, **kwargs):
+        """
+        Instantiate an instance of this dataset conveniently from the builtin
+        devset.
+
+        This method should be usable by child classes, and additional kwargs
+        can be passed to modify its behavior further than providing transforms.
+
+        Parameters
+        ----------
+        transforms : Optional[List[Callable]], optional
+            List of transforms, by default None
+        """
+        return cls(cls.__devset__, transforms, **kwargs)
+
 
 class PointCloudDataset(Dataset):
     """
