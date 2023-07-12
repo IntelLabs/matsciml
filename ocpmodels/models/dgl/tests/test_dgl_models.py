@@ -13,10 +13,11 @@ if package_registry["dgl"]:
 
     @pytest.fixture
     def graph():
-        graph = dgl.rand_graph(15, 20)
-        graph = dgl.add_self_loop(graph)
-        graph.ndata["pos"] = torch.rand(15, 3)
-        graph.ndata["atomic_numbers"] = torch.randint(0, 100, (15,))
+        graph = dgl.graph(
+            [[0, 1], [1, 2], [2, 3], [3, 0], [3, 4], [4, 5], [4, 6], [4, 7]]
+        )
+        graph.ndata["pos"] = torch.rand(graph.num_nodes(), 3)
+        graph.ndata["atomic_numbers"] = torch.randint(0, 100, (graph.num_nodes(),))
         graph.edata["r"] = torch.rand(graph.num_edges(), 1)
         graph.edata["mu"] = torch.rand(
             graph.num_edges(),
