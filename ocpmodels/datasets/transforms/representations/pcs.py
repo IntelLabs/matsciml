@@ -51,7 +51,10 @@ class GraphToPointCloudTransform(RepresentationTransform):
             A dataset object which is a subclass of `BaseLMDBDataset`.
         """
         dataset.representation = "point_cloud"
-        collate_fn = partial(utils.concatenate_keys, pad_keys=["pos", "pc_features"])
+        # we will pack point cloud features, but not positions
+        collate_fn = partial(
+            utils.concatenate_keys, pad_keys=["pc_features"], unpacked_keys=["pos"]
+        )
         dataset.collate_fn = staticmethod(collate_fn).__func__
         return super().setup_transform(dataset)
 
