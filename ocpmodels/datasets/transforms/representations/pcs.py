@@ -75,14 +75,24 @@ class GraphToPointCloudTransform(RepresentationTransform):
                 g, dgl.DGLGraph
             ), f"Expected DGL graph as input, but got {g} which is type {type(g)}"
             features = g.ndata["atomic_numbers"].long()
+            system_size = len(features)
+            src_indices = torch.arange(system_size)
+            if not self.full_pairwise:
+                num_neighbors = torch.randint(1, system_size, (1,)).item()
+                # extract out a random number of neighbors and sort the indices
+                dst_indices = torch.randperm(system_size)[:num_neighbors].sort().values
+            else:
+                dst_indices = src_indices
             pos = g.ndata["pos"]
-            # compute features corresponding to full-pairwise, i.e. every particle
-            # against every particle
-            if self.full_pairwise:
-                features = utils.point_cloud_featurization(features, features, 100)
+            # extract out point cloud features
+            features = utils.point_cloud_featurization(
+                features[src_indices], features[dst_indices], 100
+            )
             data["pos"] = pos  # left as N, 3
             data["pc_features"] = features
-            data["sizes"] = len(pos)
+            data["sizes"] = system_size
+            data["src_nodes"] = src_indices
+            data["dst_nodes"] = dst_indices
 
     if package_registry["pyg"]:
 
