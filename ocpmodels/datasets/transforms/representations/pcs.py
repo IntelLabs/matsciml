@@ -25,7 +25,7 @@ __all__ = ["GraphToPointCloudTransform", "OCPGraphToPointCloudTransform"]
 
 
 class GraphToPointCloudTransform(RepresentationTransform):
-    def __init__(self, backend: str, atom_centered: bool = True) -> None:
+    def __init__(self, backend: str, full_pairwise: bool = True) -> None:
         """
         _summary_
 
@@ -34,11 +34,11 @@ class GraphToPointCloudTransform(RepresentationTransform):
         backend : str
             Either 'dgl' or 'pyg'; specifies that graph framework to
             represent structures
-        atom_centered : bool, optional
+        full_pairwise : bool, optional
             If True, creates atom-centered point clouds; by default True
         """
         super().__init__(backend=backend)
-        self.atom_centered = atom_centered
+        self.full_pairwise = full_pairwise
 
     def setup_transform(self, dataset: BaseLMDBDataset) -> None:
         """
@@ -74,7 +74,7 @@ class GraphToPointCloudTransform(RepresentationTransform):
             features = g.ndata["atomic_numbers"].long()
             pos = g.ndata["pos"]
             # compute atom-centered point clouds
-            if self.atom_centered:
+            if self.full_pairwise:
                 features = utils.point_cloud_featurization(features, features, 100)
                 pos = pos[None, :] - pos[:, None]
             data["pos"] = pos
@@ -103,9 +103,9 @@ class GraphToPointCloudTransform(RepresentationTransform):
 
 class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
     def __init__(
-        self, backend: str, sample_size: int = 5, atom_centered: bool = True
+        self, backend: str, sample_size: int = 5, full_pairwise: bool = True
     ) -> None:
-        super().__init__(backend, atom_centered)
+        super().__init__(backend, full_pairwise)
         self.sample_size = sample_size
 
     @staticmethod
@@ -200,7 +200,7 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
                 src_features, dst_features, max_types=100
             )
             node_pos = g.ndata["pos"]
-            if self.atom_centered:
+            if self.full_pairwise:
                 node_pos = node_pos[dst_nodes][None, :] - node_pos[src_nodes][:, None]
             # copy data over to dictionary
             data["pc_features"] = pc_features
