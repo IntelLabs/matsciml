@@ -16,6 +16,82 @@ from ocpmodels.datasets import MultiDataset
 
 @registry.register_datamodule("MatSciMLDataModule")
 class MatSciMLDataModule(pl.LightningDataModule):
+    r"""
+    Initializes a `MatSciMLDataModule`, which is the primary Lightning Datamodule for
+    interacting with single types of datasets.
+
+    Parameters
+    ----------
+    dataset : Optional[Union[str, Type[TorchDataset], TorchDataset]], optional
+        Reference to a dataset class or object instance. The former can be specified
+        by providing the name of the dataset, providing it is contained in the registry,
+        or by providing a reference to the class; in either case, it is subsequently
+        used with paths provided to instantiate the class. Alternatively, an instance
+        of the dataset can be passed directly.
+    train_path : Optional[Union[str, Path]], optional
+        Path to a training dataset, by default None
+    batch_size : int, optional
+        Number of data samples per batch, by default 32
+    num_workers : int, optional
+        Number of data loader workers, by default 0, which equates to
+        only using the main process for data loading.
+    val_split : Optional[Union[str, Path, float]], optional
+        Split parameter used for validation, which can be a float between 0/1
+         or a string/path, by default 0.0 which skips validation.
+    test_split : Optional[Union[str, Path, float]], optional
+        Split parameter used for test, which can be a float between 0/1
+         or a string/path, by default 0.0 which skips validation.
+    seed : Optional[int], optional
+        Random seed value used to create splits if fractional values are
+        passed into ``val_split``/``test_split``, by default None, which
+        will first try to read the environment variable followed by using
+        a hardcoded value.
+    dset_kwargs : Optional[Dict[str, Any]], optional
+        Kwargs passed into the construction of the dataset object, by default None
+
+    Examples
+    ----------
+    There are three approaches to instantiate this class:
+
+    1. Passing a string name or dataset type into the ``dataset`` argument:
+
+    >>> datamodule = MatSciMLDataModule(dataset="MaterialsProjectDataset", train_path="/path/to/data/)
+    >>> datamodule = MatSciMLDataModule(dataset=ocpmodels.datasets.MaterialsProjectDataset, ...)
+
+    2. Using the ``from_devset`` class method:
+
+    >>> datamodule = MatSciMLDataModule.from_devset(dataset="MaterialsProjectDataset")
+
+    3. Passing a dataset directly into the ``dataset`` argument:
+
+    >>> datamodule = MatSciMLDataModule(dataset=MaterialsProjectDataset("/path/to/train_data"))
+
+    To specify val/test splits, you can pass a float or path/string: the former relies on passing
+    ``train_path``, and extract out a fraction of it to use for that particular split. The latter
+    will use dedicated data holdouts for splits:
+
+    >>> datamodule = MatSciMLDataModule.from_devset(
+            dataset="MaterialsProjectDataset",
+            train_path="/path/to/train_data",
+            val_split=0.2           # this uses 20% of the full data contained in ``train_path``
+        )
+    >>> datamodule = MatSciMLDataModule.from_devset(
+            dataset="MaterialsProjectDataset",
+            train_path="/path/to/train_data",
+            val_split="/path/to/val_data"    # this uses a pre-determined split
+        )
+
+    To convert between formats (i.e. graphs vs. point clouds), include it as a transform by
+    passing it into ``dset_kwargs``:
+
+    >>> datamodule = MatSciMLDataModule.from_devset(
+            dataset="MaterialsProjectDataset",
+            dset_kwargs={
+                "transforms": [PointCloudToGraphTransform(backend="dgl", cutoff=10.0)]
+            },
+        )
+    """
+
     def __init__(
         self,
         dataset: Optional[Union[str, Type[TorchDataset], TorchDataset]] = None,
