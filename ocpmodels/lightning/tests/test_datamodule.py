@@ -22,4 +22,26 @@ def test_datamodule_devset(dset_classname: str):
     assert next(iter(datamodule.train_dataloader()))
     assert next(iter(datamodule.val_dataloader()))
     assert next(iter(datamodule.test_dataloader()))
+
+
+@pytest.mark.parametrize("dset_classname", dset_names)
+def test_datamodule_manual_trainonly(dset_classname):
+    dset = registry.get_dataset_class(dset_classname)
+    datamodule = MatSciMLDataModule(
+        dataset=dset_classname,
+        train_path=dset.__devset__,
+        batch_size=8,
+    )
+    datamodule.setup()
     assert next(iter(datamodule.train_dataloader()))
+
+
+@pytest.mark.parametrize("dset_classname", dset_names)
+def test_datamodule_manual_splits(dset_classname):
+    dset = registry.get_dataset_class(dset_classname)
+    datamodule = MatSciMLDataModule(
+        dataset=dset_classname, train_path=dset.__devset__, batch_size=8, val_split=0.2
+    )
+    datamodule.setup()
+    assert next(iter(datamodule.train_dataloader()))
+    assert next(iter(datamodule.val_dataloader()))
