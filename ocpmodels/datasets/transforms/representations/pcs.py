@@ -74,7 +74,9 @@ class GraphToPointCloudTransform(RepresentationTransform):
         dataset.representation = "point_cloud"
         # we will pack point cloud features, but not positions
         collate_fn = partial(
-            utils.concatenate_keys, pad_keys=["pc_features"], unpacked_keys=["pos"]
+            utils.concatenate_keys,
+            pad_keys=["pc_features"],
+            unpacked_keys=["pos", "force"],
         )
         dataset.collate_fn = staticmethod(collate_fn).__func__
         return super().setup_transform(dataset)
