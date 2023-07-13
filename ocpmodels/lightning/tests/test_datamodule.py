@@ -64,14 +64,21 @@ def test_datamodule_manual_splits(dset_classname):
 )
 def test_datamodule_graph_transforms(dset_classname, backend):
     if package_registry[backend]:
-        t = PointCloudToGraphTransform("dgl")
+        t = PointCloudToGraphTransform(backend)
         datamodule = MatSciMLDataModule.from_devset(
             dset_classname, dset_kwargs={"transforms": [t]}
         )
         datamodule.setup()
-        assert next(iter(datamodule.train_dataloader()))
-        assert next(iter(datamodule.val_dataloader()))
-        assert next(iter(datamodule.test_dataloader()))
+        check_keys = ["pos", "atomic_numbers"]
+        for split in ["train", "val", "test"]:
+            loader = getattr(datamodule, f"{split}_dataloader")()
+            batch = next(iter(loader))
+            assert "graph" in batch
+            if backend == "dgl":
+                target = batch["graph"].ndata
+            else:
+                target = batch["graph"]
+            assert all([key in target for key in check_keys])
 
 
 def test_bad_dataset():
