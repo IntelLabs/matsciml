@@ -339,7 +339,12 @@ class AbstractPointCloudModel(AbstractTask):
 
     @abstractmethod
     def _forward(
-        self, pos: torch.Tensor, pc_features: torch.Tensor, **kwargs
+        self,
+        pos: torch.Tensor,
+        pc_features: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
+        sizes: Optional[List[int]] = None,
+        **kwargs,
     ) -> torch.Tensor:
         """
         Sets expected patterns for args for point cloud based modeling, whereby
@@ -349,9 +354,21 @@ class AbstractPointCloudModel(AbstractTask):
         Parameters
         ----------
         pos : torch.Tensor
-            N-D tensor containing node positions
+            Padded point cloud neighborhood tensor, with shape ``[B, N, M, 3]``
+            for ``B`` batch size and ``N`` padded size. For full pairwise point
+            clouds, ``N == M``.
         pc_features : torch.Tensor
-            N-D tensor containing node features
+            Padded point cloud feature tensor, with shape ``[B, N, M, D_in]``
+            for ``B`` batch size and ``N`` padded size. For full pairwise point
+            clouds, ``N == M``.
+        mask : Optional[torch.Tensor], optional
+            Boolean tensor with shape ``[B, N, M]``, by default None. If supplied
+            in conjuction with ``sizes``, will mask out contributions from padding
+            nodes.
+        sizes : Optional[List[int]], optional
+            List of integers denoting the size of the first non-batch point cloud
+            dimension, by default None. If supplied in conjuction with ``mask``,
+            will mask out contributions from padding nodes.
 
         Returns
         -------
