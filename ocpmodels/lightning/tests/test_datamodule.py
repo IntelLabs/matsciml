@@ -1,13 +1,24 @@
 import pytest
+from itertools import product
 
 from ocpmodels.lightning.data_utils import MatSciMLDataModule
 from ocpmodels.common.registry import registry
+from ocpmodels.common import package_registry
 from ocpmodels.datasets import __all__
+from ocpmodels.datasets.transforms import PointCloudToGraphTransform
 
 
 dset_names = list(
-    sorted(filter(lambda x: "Dataset" in x and "Multi" not in x, __all__))
+    sorted(
+        filter(
+            lambda x: "Dataset" in x and "Multi" not in x and "Synthetic" not in x,
+            __all__,
+        )
+    )
 )
+
+not_ocp = list(filter(lambda x: "IS2RE" not in x and "S2EF" not in x, dset_names))
+just_ocp = list(filter(lambda x: "IS2RE" in x or "S2EF" in x, dset_names))
 
 
 @pytest.mark.dependency()
@@ -49,6 +60,21 @@ def test_datamodule_manual_splits(dset_classname):
     datamodule.setup()
     assert next(iter(datamodule.train_dataloader()))
     assert next(iter(datamodule.val_dataloader()))
+
+
+@pytest.mark.parametrize(
+    "dset_classname, backend", list(product(not_ocp, ["dgl", "pyg"]))
+)
+def test_datamodule_graph_transforms(dset_classname, backend):
+    if package_registry[backend]:
+        t = PointCloudToGraphTransform("dgl")
+        datamodule = MatSciMLDataModule.from_devset(
+            dset_classname, dset_kwargs={"transforms": [t]}
+        )
+        datamodule.setup()
+        assert next(iter(datamodule.train_dataloader()))
+        assert next(iter(datamodule.val_dataloader()))
+        assert next(iter(datamodule.test_dataloader()))
 
 
 def test_bad_dataset():
