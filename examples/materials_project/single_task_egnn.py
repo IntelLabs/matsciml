@@ -9,7 +9,7 @@ from ocpmodels.models.base import ScalarRegressionTask, BinaryClassificationTask
 pl.seed_everything(21616)
 
 model_args = {
-    "embed_in_dim": 1,
+    "embed_in_dim": 128,
     "embed_hidden_dim": 32,
     "embed_out_dim": 128,
     "embed_depth": 5,
