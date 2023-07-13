@@ -1,10 +1,8 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from abc import abstractclassmethod
-from typing import Any, Union, Optional, Type, List, Callable, Dict
+from typing import Any, Union, Optional, Type, List, Dict
 from pathlib import Path
-from warnings import warn
 from os import getenv
 
 import pytorch_lightning as pl
