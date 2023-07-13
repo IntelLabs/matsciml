@@ -1,5 +1,6 @@
 from typing import List, Union, Optional
 from logging import getLogger
+from warnings import warn
 
 import torch
 import numpy as np
@@ -84,7 +85,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 try:
                     graph.ndata[key] = data[key]
                 except KeyError:
-                    log.warning(
+                    warn(
                         f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}"
                     )
             graph.ndata["pos"] = graph.ndata["coords"]
@@ -97,7 +98,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                     try:
                         graph.edata[key] = data[key]
                     except KeyError:
-                        log.warning(
+                        warn(
                             f"Expected edge data {key} but was not found in data sample: {list(data.keys())}"
                         )
 
@@ -122,7 +123,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 try:
                     setattr(graph, key, data[key])
                 except KeyError:
-                    log.warning(
+                    warn(
                         f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}"
                     )
 
@@ -133,7 +134,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                     try:
                         setattr(graph, key, data[key])
                     except KeyError:
-                        log.warning(
+                        warn(
                             f"Expected edge data '{key}' but was not found in data sample: {list(data.keys())}"
                         )
 
