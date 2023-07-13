@@ -179,6 +179,9 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
         ].tolist()
         src_nodes = torch.LongTensor(molecule_nodes)
         dst_nodes = torch.LongTensor(molecule_nodes + surface_nodes + neighbor_idx)
+        # in the full pairwise, make the point cloud neighbors symmetric
+        if self.full_pairwise:
+            src_nodes = dst_nodes
         return src_nodes, dst_nodes
 
     if package_registry["dgl"]:
