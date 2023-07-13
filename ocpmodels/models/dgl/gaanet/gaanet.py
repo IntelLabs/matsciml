@@ -6,7 +6,7 @@ from typing import Callable, Optional, Dict, Any, Union
 import torch, math
 import torch.nn as nn
 import numpy as np
-from ocpmodels.models.base import AbstractEnergyModel
+from ocpmodels.models.base import AbstractPointCloudModel
 from dgl.nn.pytorch.factory import KNNGraph
 import dgl
 
@@ -14,7 +14,7 @@ from .gaanet_model import MLP, MomentumNorm, LayerNorm, TiedMultivectorAttention
 import geometric_algebra_attention.pytorch as gala
 
 
-class GalaPotential(AbstractEnergyModel):
+class GalaPotential(AbstractPointCloudModel):
     """Calculate a potential using geometric algebra attention
 
     Stacks permutation-covariant attention blocks, then adds a permutation-invariant reduction layer.
