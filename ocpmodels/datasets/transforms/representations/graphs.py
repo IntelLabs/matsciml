@@ -31,7 +31,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
         self,
         backend: str,
         cutoff_dist: float = 7.0,
-        node_keys: List[str] = ["coords", "atomic_numbers", "force"],
+        node_keys: List[str] = ["atomic_numbers", "force"],
         edge_keys: Optional[List[str]] = None,
     ) -> None:
         super().__init__(backend=backend)
@@ -46,7 +46,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
     @node_keys.setter
     def node_keys(self, values: List[str]) -> None:
         values = set(values)
-        for key in ["coords", "atomic_numbers"]:
+        for key in ["pos", "atomic_numbers"]:
             values.add(key)
         self._node_keys = list(values)
 
@@ -55,7 +55,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
             data, GraphTypes
         ), "Data structure already contains a graph: transform shouldn't be required."
         # check for keys needed to construct the graph
-        for key in ["coords", "atomic_numbers"]:
+        for key in ["pos", "atomic_numbers"]:
             assert key in data, f"Expected {key} in sample. Found: {list(data.keys())}"
         return super().prologue(data)
 
@@ -88,7 +88,6 @@ class PointCloudToGraphTransform(RepresentationTransform):
                     warn(
                         f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}"
                     )
-            graph.ndata["pos"] = graph.ndata["coords"]
 
         def _copy_edge_keys_dgl(self, data: DataDict, graph: DGLGraph) -> None:
             # DGL variant of edge data copying
@@ -104,7 +103,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
 
         def _convert_dgl(self, data: DataDict) -> None:
             atom_numbers = data["atomic_numbers"]
-            coords = data["coords"]
+            coords = data["pos"]
             num_nodes = len(atom_numbers)
             # skip edge calculation if the distance matrix
             # exists already
@@ -150,7 +149,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 Data structure read from base class
             """
             atom_numbers = data["atomic_numbers"]
-            coords = data["coords"]
+            coords = data["pos"]
             if "distance_matrix" not in data:
                 dist_mat = self.node_distances(coords)
             else:
@@ -191,11 +190,13 @@ class PointCloudToGraphTransform(RepresentationTransform):
         self.copy_edge_keys(data, g)
         # remove unused/redundant keys in DataDict
         for key in [
-            "coords",
             "pos",
             "pc_features",
             "distance_matrix",
             "atomic_numbers",
+            "src_nodes",
+            "dst_nodes",
+            "sizes",
         ]:
             try:
                 del data[key]
