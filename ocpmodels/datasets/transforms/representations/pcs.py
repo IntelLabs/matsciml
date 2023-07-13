@@ -207,6 +207,8 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
             molecule_nodes, surface_nodes, substrate_nodes = self._extract_indices(
                 tags, nodes
             )
+            # the pairwise logic is located inside `_pick_src_dst`; in the affirmative
+            # case, src_nodes == dst_nodes
             src_nodes, dst_nodes = self._pick_src_dst(
                 molecule_nodes, surface_nodes, substrate_nodes
             )
@@ -216,12 +218,11 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
             pc_features = utils.point_cloud_featurization(
                 src_features, dst_features, max_types=100
             )
+            # node positions still kept as N, 3
             node_pos = g.ndata["pos"]
-            if self.full_pairwise:
-                node_pos = node_pos[dst_nodes][None, :] - node_pos[src_nodes][:, None]
             # copy data over to dictionary
             data["pc_features"] = pc_features
             data["pos"] = node_pos
-            data["num_centers"] = len(src_nodes)
-            data["num_neighbors"] = len(dst_nodes)
+            data["src_nodes"] = src_nodes
+            data["dst_nodes"] = dst_nodes
             data["force"] = g.ndata["force"][dst_nodes].squeeze()
