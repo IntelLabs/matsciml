@@ -1072,7 +1072,14 @@ class ForceRegressionTask(BaseTaskModule):
                 raise ValueError(
                     f"No atomic positions were found in batch - neither as standalone tensor nor graph."
                 )
-            pos.requires_grad_(True)
+            if isinstance(pos, torch.Tensor):
+                pos.requires_grad_(True)
+            elif isinstance(pos, list):
+                [p.requires_grad_(True) for p in pos]
+            else:
+                raise ValueError(
+                    f"'pos' data is required for force calculation, but isn't a tensor or a list of tensors: {type(pos)}."
+                )
             if "embeddings" in batch:
                 embeddings = batch.get("embeddings")
             else:
