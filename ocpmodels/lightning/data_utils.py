@@ -333,7 +333,13 @@ class MatSciMLDataModule(pl.LightningDataModule):
             dset_kwargs = {}
         # try and grab the dataset class from registry
         if isinstance(dataset, str):
+            dset_string = dataset
             dataset = registry.get_dataset_class(dataset)
+            if not dataset:
+                valid_keys = registry.__entries__["datasets"].keys()
+                raise KeyError(
+                    f"Incorrect dataset specification from string: passed {dset_string}, but not found in registry: {valid_keys}."
+                )
         if isinstance(dataset, TorchDataset):
             transforms = getattr(dataset, "transforms", None)
             dset_kwargs["transforms"] = transforms
