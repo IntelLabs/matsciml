@@ -18,4 +18,8 @@ def test_datamodule_devset(dset_classname: str):
     """
     datamodule = MatSciMLDataModule.from_devset(dset_classname)
     datamodule.setup()
+    # test the data loaders
+    assert next(iter(datamodule.train_dataloader()))
+    assert next(iter(datamodule.val_dataloader()))
+    assert next(iter(datamodule.test_dataloader()))
     assert next(iter(datamodule.train_dataloader()))
