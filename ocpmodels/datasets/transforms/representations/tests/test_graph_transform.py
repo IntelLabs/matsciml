@@ -19,9 +19,12 @@ if package_registry["dgl"]:
 
     @pytest.fixture()
     def demo_dgl_graph():
-        g = dgl.rand_graph(10, 15)
-        g.ndata["pos"] = torch.rand(10, 3)
-        g.ndata["atomic_numbers"] = torch.randint(1, 100, (10,))
+        g = dgl.graph(
+            [[0, 1], [1, 2], [2, 3], [2, 4], [2, 5], [3, 6], [6, 7], [6, 8], [6, 9]]
+        )
+        g.ndata["pos"] = torch.rand(g.num_nodes(), 3)
+        g.ndata["atomic_numbers"] = torch.randint(1, 100, (g.num_nodes(),))
+        g = dgl.to_bidirected(g, copy_ndata=True)
         data = {
             "graph": g,
             "node_feats": torch.rand(10, 5),
