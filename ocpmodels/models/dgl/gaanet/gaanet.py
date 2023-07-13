@@ -267,6 +267,9 @@ class GalaPotential(AbstractPointCloudModel):
         per-point cloud. If ``encoder_only` is ``True``, then this function emits
         per-point cloud embeddings with shape [B, D].
 
+        TODO mask out attention and renormalize to remove contributions from padded
+        destination nodes.
+
         Parameters
         ----------
         pos : torch.Tensor
