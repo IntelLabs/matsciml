@@ -311,3 +311,4 @@ class PointCloudDataset(BaseLMDBDataset):
     ) -> None:
         super().__init__(lmdb_root_path, transforms)
         self.full_pairwise = full_pairwise
+        self.representation = "point_cloud"
