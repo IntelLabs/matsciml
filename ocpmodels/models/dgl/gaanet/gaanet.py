@@ -243,26 +243,23 @@ class GalaPotential(AbstractPointCloudModel):
         )
         return torch.nn.Sequential(*layers)
 
-    def forward(
+    def _forward(
         self,
-        batch: Optional[Dict[str, Any]] = None,
+        pos: torch.Tensor,
+        pc_features: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
+        sizes: Optional[List[int]] = None,
+        **kwargs,
     ) -> torch.Tensor:
-        inputs = batch["pc_features"]
-        positions = batch["pos"]
-
-        _out = self._forward(inputs, positions)
-
-        out_tens = torch.mean(_out, axis=1)
-
-        return out_tens
-
-    def _forward(self, inputs: torch.Tensor, positions: torch.Tensor) -> torch.Tensor:
-
-        positions = torch.div(positions, 1)
+        positions = torch.div(pos, 1)
 
         last_r_mv = self.vec2mv(positions)
         last_r = last_r_mv
-        last = self.up_project(inputs)
+        expected_size = self.hparams.D_in * 2
+        assert (
+            pc_features.size(-1) == expected_size
+        ), f"Point cloud atom features do not match expected '2 x D_in' shape: expected {expected_size}, actual: {pc_features.size(-1)}"
+        last = self.up_project(pc_features)
 
         for i in range(self.depth + 1):
             residual = last
@@ -285,7 +282,7 @@ class GalaPotential(AbstractPointCloudModel):
             if self.block_norm_layers:
                 last = self.block_norm_layers[i](last)
 
-            # Apply Layer Norm (Momentum) to last_r 
+            # Apply Layer Norm (Momentum) to last_r
             if self.equivariant_attention:
                 if self.residual:
                     last_r = last_r + residual_r
