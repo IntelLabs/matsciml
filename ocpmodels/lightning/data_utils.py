@@ -333,6 +333,60 @@ class MultiDataModule(pl.LightningDataModule):
         test_dataset: Optional[MultiDataset] = None,
         predict_dataset: Optional[MultiDataset] = None,
     ) -> None:
+        r"""
+        Data module specifically for using mutiple different datasets in tandem.
+
+        Parameters
+        ----------
+        batch_size : int, optional
+            Number of **total** data samples contained in a batch, comprising
+            a mix of samples from each dataset, by default 32
+        num_workers : int, optional
+            Number of parallel data loader workers, by default 0
+        train_dataset : Optional[MultiDataset], optional
+            Instance of ``MultiDataset`` to use for training, by default None
+        val_dataset : Optional[MultiDataset], optional
+            Instance of ``MultiDataset`` to use for validation, by default None
+        test_dataset : Optional[MultiDataset], optional
+            Instance of ``MultiDataset`` to use for testing, by default None
+        predict_dataset : Optional[MultiDataset], optional
+            Instance of ``MultiDataset`` to use for inference, by default None
+
+        Examples
+        ------
+        The class can be instantiated with one or more datasets passed into each
+        split. The configuration is slightly inconvenient, owing to the fact that
+        there is a lot to specify:
+
+        Train on IS2RE, S2EF, and Materials Project:
+
+        >>> datamodule = MultiDataModule(
+                train_dataset=MultiDataset(
+                    [
+                        IS2REDataset("/path/to/is2re"),
+                        S2EFDataset("/path/to/s2ef"),
+                        MaterialsProjectDataset("/path/to/mp_data")
+                    ]
+                )
+            )
+
+        Train on IS2RE+S2EF, validate on LiPS+S2EF (for pedagogical reasons):
+
+        >>> datamodule = MultiDataModule(
+                train_dataset=MultiDataset(
+                    [
+                        IS2REDataset("/path/to/is2re"),
+                        S2EFDataset("/path/to/s2ef")
+                    ]
+                ),
+                val_dataset=MultiDataset(
+                    [
+                        S2EFDataset("/path/to/another/s2ef"),
+                        LiPSDataset("/path/to/lips")
+                    ]
+                )
+            )
+        """
         super().__init__()
         if not any([train_dataset, val_dataset, test_dataset, predict_dataset]):
             raise ValueError(
