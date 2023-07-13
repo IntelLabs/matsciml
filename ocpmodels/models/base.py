@@ -315,9 +315,12 @@ class AbstractPointCloudModel(AbstractTask):
         # be a list of tensors
         pos: List[torch.Tensor] = data["pos"]
         pc_pos = []
+        # sizes records the number of centers being used
+        sizes = []
         # loop over each sample within a batch
         for index, sample in enumerate(pos):
-            src_nodes, dst_nodes = data["src_nodes"][index], data["dst_nodes"][index]
+            src_nodes, dst_nodes = batch["src_nodes"][index], batch["dst_nodes"][index]
+            sizes.append(len(src_nodes))
             # carve out neighborhoods as dictated by the dataset/transform definition
             temp_pos = sample[src_nodes][None, :] - sample[dst_nodes][:, None]
             pc_pos.append(temp_pos)
@@ -331,6 +334,7 @@ class AbstractPointCloudModel(AbstractTask):
         ), f"Shape of point cloud neighborhood positions is different from features!"
         data["pos"] = pc_pos
         data["mask"] = mask
+        data["sizes"] = sizes
         return data
 
     @abstractmethod
