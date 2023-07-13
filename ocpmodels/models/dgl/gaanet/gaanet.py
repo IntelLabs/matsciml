@@ -295,9 +295,20 @@ class GalaPotential(AbstractPointCloudModel):
                 # Normalize with momentum here
 
         last = self.final_mlp(last)
-        # Sum over the neighborhood axis needed when doing neighborhood construction
-        # last = torch.sum(last, -2)
         if not self.encoder_only:
             last = self.energy_projection(last)
-
+        if isinstance(mask, torch.Tensor) and sizes:
+            # apply the mask so that fake particles do not contribute to the result
+            center_mask = mask[..., 0]
+            # this extracts a [N, D] tensor with N total particles, D embedding dim
+            unpadded_last = last[center_mask]
+            # this splits up into embeddings per node
+            split_last = unpadded_last.split(sizes)
+            # figure out what reduction to perform over the particles
+            if self.hparams.extensive:
+                reduce = torch.sum
+            else:
+                reduce = torch.mean
+            # should be [B, D] for B systems
+            last = torch.stack([reduce(t, dim=0) for t in split_last])
         return last
