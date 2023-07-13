@@ -76,15 +76,19 @@ class LiPSDataset(PointCloudDataset):
         data = super().data_from_key(lmdb_index, subindex)
 
         coords = data["pos"]
-        data["pos"] = coords[None, :] - coords[:, None]
-        data["coords"] = coords
+        system_size = coords.size(0)
+        node_choices = self.choose_dst_nodes(system_size, self.full_pairwise)
+        src_nodes, dst_nodes = node_choices["src_nodes"], node_choices["dst_nodes"]
         atom_numbers = torch.LongTensor(data["atomic_numbers"])
         # uses one-hot encoding featurization
-        pc_features = point_cloud_featurization(atom_numbers, atom_numbers, 200)
+        pc_features = point_cloud_featurization(
+            atom_numbers[src_nodes], atom_numbers[dst_nodes], 100
+        )
         # keep atomic numbers for graph featurization
         data["atomic_numbers"] = atom_numbers
         data["pc_features"] = pc_features
-        data["num_particles"] = len(atom_numbers)
+        data["sizes"] = system_size
+        data.update(**node_choices)
 
         data["targets"] = {}
         data["target_types"] = {"regression": [], "classification": []}
