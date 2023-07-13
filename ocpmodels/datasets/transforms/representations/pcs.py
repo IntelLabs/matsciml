@@ -26,8 +26,28 @@ __all__ = ["GraphToPointCloudTransform", "OCPGraphToPointCloudTransform"]
 
 class GraphToPointCloudTransform(RepresentationTransform):
     def __init__(self, backend: str, full_pairwise: bool = True) -> None:
-        """
-        _summary_
+        r"""
+        Convert a graph data sample into a point cloud.
+
+        The ``full_pairwise`` argument toggles between a complete node-node pairwise
+        data representation and a randomly sampled "end point" format, which
+        aims to knock down the memory requirements of a point cloud.
+
+        In the case of ``full_pairwise`` being ``True``, then the point cloud
+        will be symmetric (shape [N, N, D] for feature dimension D). If it's
+        ``False``, then the destination (``dim=1``) shape will be M, where M
+        can be any number between 1 and N, the size of the point cloud (shape [N, M, D]).
+
+        In this current implementation, the atom positions are left as is and
+        left up to the neural network model (via the ``read_batch``) method
+        to construct the positions in the right way to enable autograd for forces.
+
+        The keys we return as part of the data sample are:
+
+        - ``pos`` [N, 3]
+        - ``src_nodes``, ``dst_nodes``, N/N(M) as node indices
+        - ``pc_features`` [N, N(M), 200] as node features
+        - ``sizes`` scalar, number of particles in the whole system (N)
 
         Parameters
         ----------
@@ -35,7 +55,8 @@ class GraphToPointCloudTransform(RepresentationTransform):
             Either 'dgl' or 'pyg'; specifies that graph framework to
             represent structures
         full_pairwise : bool, optional
-            If True, creates atom-centered point clouds; by default True
+            If True, every node is compared against every other node; by default True.
+            If False, we randomly sample ``dst`` nodes to construct the point cloud.
         """
         super().__init__(backend=backend)
         self.full_pairwise = full_pairwise
