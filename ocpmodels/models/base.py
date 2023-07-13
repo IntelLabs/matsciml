@@ -289,7 +289,48 @@ class AbstractTask(ABC, pl.LightningModule):
 
 class AbstractPointCloudModel(AbstractTask):
     def read_batch(self, batch: BatchDict) -> DataDict:
+        r"""
+        Extract data needed for point cloud modeling from a batch.
+
+        Notably, to facilitate force calculation, the point cloud
+        "neighborhood" for atom positions is constructed **after**
+        giving the primary task (i.e. ``ForceRegressionTask``) an
+        opportunity to enable gradients for each sample within the point cloud.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of samples to process
+
+        Returns
+        -------
+        DataDict
+            Input data for a point cloud model to process, notably
+            including particle positions and features
+        """
+        from ocpmodels.datasets.utils import pad_point_cloud
+
         data = {key: batch.get(key) for key in ["pc_features", "pos"]}
+        # grab positions, which should be grad enabled if needed, which should
+        # be a list of tensors
+        pos: List[torch.Tensor] = data["pos"]
+        pc_pos = []
+        # loop over each sample within a batch
+        for index, sample in enumerate(pos):
+            src_nodes, dst_nodes = data["src_nodes"][index], data["dst_nodes"][index]
+            # carve out neighborhoods as dictated by the dataset/transform definition
+            temp_pos = sample[src_nodes][None, :] - sample[dst_nodes][:, None]
+            pc_pos.append(temp_pos)
+        # pad the position result
+        pc_pos, mask = pad_point_cloud(pc_pos, max(batch["sizes"]))
+        # get the features and make sure the shapes are consistent for the
+        # batch and neighborhood
+        feat_shape = data.get("pc_features").shape
+        assert (
+            pc_pos.shape[:-1] == feat_shape[:-1]
+        ), f"Shape of point cloud neighborhood positions is different from features!"
+        data["pos"] = pc_pos
+        data["mask"] = mask
         return data
 
     @abstractmethod
