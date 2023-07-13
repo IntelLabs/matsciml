@@ -1,6 +1,7 @@
 import pytest
 
 from ocpmodels.lightning.data_utils import MatSciMLDataModule
+from ocpmodels.common.registry import registry
 from ocpmodels.datasets import __all__
 
 
@@ -45,3 +46,12 @@ def test_datamodule_manual_splits(dset_classname):
     datamodule.setup()
     assert next(iter(datamodule.train_dataloader()))
     assert next(iter(datamodule.val_dataloader()))
+
+
+def test_bad_dataset():
+    # this makes sure that any willy nilly dataset will fail
+    datamodule = MatSciMLDataModule(
+        dataset="BadDataset", train_path="/not/a/path", batch_size=8
+    )
+    with pytest.raises(KeyError):
+        datamodule.setup()
