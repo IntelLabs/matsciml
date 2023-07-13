@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from ocpmodels.common.types import BatchDict, DataDict
 
-from ocpmodels.datasets.base import BaseLMDBDataset
+from ocpmodels.datasets.base import PointCloudDataset
 from ocpmodels.datasets.utils import concatenate_keys, point_cloud_featurization
 from ocpmodels.common.registry import registry
 
@@ -41,7 +41,7 @@ def item_from_structure(data: Any, *keys: str) -> Any:
 
 
 @registry.register_dataset("LiPSDataset")
-class LiPSDataset(BaseLMDBDataset):
+class LiPSDataset(PointCloudDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
 
     def index_to_key(self, index: int) -> Tuple[int]:
