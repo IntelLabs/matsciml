@@ -312,3 +312,33 @@ class PointCloudDataset(BaseLMDBDataset):
         super().__init__(lmdb_root_path, transforms)
         self.full_pairwise = full_pairwise
         self.representation = "point_cloud"
+
+    @staticmethod
+    def choose_dst_nodes(size: int, full_pairwise: bool) -> Dict[str, torch.Tensor]:
+        r"""
+        Generate indices for nodes to construct a point cloud with. If ``full_pairwise``
+        is ``True``, the point cloud will be symmetric with shape ``[max_size, max_size]``,
+        otherwise a random number of neighbors (ranging from 1 to ``max_size``) will be
+        used to select ``dst_nodes``, with the resulting shape being ``[max_size, num_neighbors]``.
+
+        Parameters
+        ----------
+        size : int
+            Number of particles in the full system
+        full_pairwise : bool
+            Toggles whether to pair all nodes with all other nodes. Setting to ``False``
+            will help improve memory footprint.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Key/value pair of source and destination node indices. If ``full_pairwise``,
+            then the two tensors are identical.
+        """
+        src_indices = torch.arange(size)
+        if not full_pairwise:
+            num_neighbors = torch.randint(1, size, (1,)).item()
+            dst_indices = torch.randperm(size)[:num_neighbors].sort().values
+        else:
+            dst_indices = src_indices
+        return {"src_nodes": src_indices, "dst_nodes": dst_indices}
