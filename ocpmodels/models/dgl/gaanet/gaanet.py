@@ -251,6 +251,49 @@ class GalaPotential(AbstractPointCloudModel):
         sizes: Optional[List[int]] = None,
         **kwargs,
     ) -> torch.Tensor:
+        r"""
+        Map input data onto the Gala architecture.
+
+        Notably, the final steps of the architecture produces per-center embeddings,
+        i.e. [B, N, N, D] with batch size B, padded tensor size N, and ``hidden_dim`` D.
+        If ``mask`` and ``sizes`` are provided, prior to returning the result, we
+        apply this information to remove contributions from the padded particles,
+        then applying the corresponding reduction (the ``extensive`` model hyperparameter)
+        on each individual point cloud system.
+
+        If ``encoder_only`` is ``False``, i.e. we are using the model directly
+        for energy prediction, the same masking pipeline is applied prior to
+        the reduction, and so should provide the desired behavior of [B, 1] as an energy
+        per-point cloud. If ``encoder_only` is ``True``, then this function emits
+        per-point cloud embeddings with shape [B, D].
+
+        Parameters
+        ----------
+        pos : torch.Tensor
+            Padded point cloud neighborhood tensor, with shape ``[B, N, M, 3]``
+            for ``B`` batch size and ``N`` padded size. For full pairwise point
+            clouds, ``N == M``.
+        pc_features : torch.Tensor
+            Padded point cloud feature tensor, with shape ``[B, N, M, D_in]``
+            for ``B`` batch size and ``N`` padded size. For full pairwise point
+            clouds, ``N == M``.
+        mask : Optional[torch.Tensor], optional
+            Boolean tensor with shape ``[B, N, M]``, by default None. If supplied
+            in conjuction with ``sizes``, will mask out contributions from padding
+            nodes.
+        sizes : Optional[List[int]], optional
+            List of integers denoting the size of the first non-batch point cloud
+            dimension, by default None. If supplied
+            in conjuction with ``mask``, will mask out contributions from padding
+            nodes.
+
+        Returns
+        -------
+        torch.Tensor
+            If ``encoder_only``, emits a 2D tensor of shape ``[B, hidden_dim]``.
+            Otherwise, emits a 2D tensor of shape ``[B, 1]`` corresponding to
+            the system energy of each point cloud.
+        """
         positions = torch.div(pos, 1)
 
         last_r_mv = self.vec2mv(positions)
