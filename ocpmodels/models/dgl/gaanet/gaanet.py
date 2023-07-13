@@ -1,7 +1,7 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Callable, Optional, Dict, Any, Union
+from typing import Callable, List, Optional, Dict, Any, Union
 
 import torch, math
 import torch.nn as nn
@@ -42,9 +42,13 @@ class GalaPotential(AbstractPointCloudModel):
         block_normalization: Optional[str] = None,
         equivariant_attention: bool = True,
         tied_attention: bool = False,
-        encoder_only: Optional[bool] = False,
+        encoder_only: Optional[bool] = True,
+        extensive: bool = True,
     ) -> None:
-        super().__init__()
+        # pass superficial values into the base class
+        super().__init__(1, 1, {}, encoder_only)
+        # current unused embedding table
+        del self.atom_embedding
         self.tied_attention = tied_attention
         self.equivariant_attention = equivariant_attention
         self.D_in = D_in
@@ -73,6 +77,7 @@ class GalaPotential(AbstractPointCloudModel):
         self.encoder_only = encoder_only
 
         self.vec2mv = gala.Vector2Multivector()
+        # up project expects concatenated features
         self.up_project = torch.nn.Linear(2 * D_in, self.hidden_dim)
         self.final_mlp = self.make_value_net(self.hidden_dim)
         self.energy_projection = torch.nn.Linear(self.hidden_dim, 1, bias=False)
@@ -106,6 +111,7 @@ class GalaPotential(AbstractPointCloudModel):
                         self.eqvar_value_normalization, self.hidden_dim
                     )
                 )
+        self.save_hyperparameters()
 
     def make_attention_nets(self) -> None:
         D_in = lambda i: 1 if (i == self.depth and self.rank == 1) else 2
