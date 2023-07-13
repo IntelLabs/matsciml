@@ -14,6 +14,7 @@ from ocpmodels.common.registry import registry
 from ocpmodels.datasets import MultiDataset
 
 
+@registry.register_datamodule("MatSciMLDataModule")
 class MatSciMLDataModule(pl.LightningDataModule):
     def __init__(
         self,
@@ -245,6 +246,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         return self.dataset.target_keys
 
 
+@registry.register_datamodule("MultiDataModule")
 class MultiDataModule(pl.LightningDataModule):
     def __init__(
         self,
