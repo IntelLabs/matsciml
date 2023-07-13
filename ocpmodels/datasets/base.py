@@ -265,12 +265,16 @@ class BaseLMDBDataset(Dataset):
 
     @property
     def representation(self) -> str:
-        ...
+        return self._representation
 
     @representation.setter
-    @abstractmethod
-    def representation(self) -> None:
-        ...
+    def representation(self, value: str) -> None:
+        value = value.lower()
+        assert value in [
+            "graph",
+            "point_cloud",
+        ], "Supported representations are 'graph' and 'point_cloud'."
+        self._representation = value
 
     @property
     def pad_keys(self) -> List[str]:
