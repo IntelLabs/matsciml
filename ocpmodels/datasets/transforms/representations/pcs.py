@@ -246,4 +246,5 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
             data["pos"] = node_pos
             data["src_nodes"] = src_nodes
             data["dst_nodes"] = dst_nodes
+            data["sizes"] = max(len(src_nodes), len(dst_nodes))
             data["force"] = g.ndata["force"][dst_nodes].squeeze()
