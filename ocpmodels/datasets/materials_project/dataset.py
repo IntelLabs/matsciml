@@ -10,7 +10,7 @@ from pymatgen.core import Structure
 from emmet.core.symmetry import SymmetryData
 from ocpmodels.common.types import BatchDict, DataDict
 
-from ocpmodels.datasets.base import BaseLMDBDataset
+from ocpmodels.datasets.base import PointCloudDataset
 from ocpmodels.datasets.utils import (
     concatenate_keys,
     point_cloud_featurization,
@@ -50,7 +50,7 @@ def item_from_structure(data: Any, *keys: str) -> Any:
 
 
 @registry.register_dataset("MaterialsProjectDataset")
-class MaterialsProjectDataset(BaseLMDBDataset):
+class MaterialsProjectDataset(PointCloudDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
 
     def index_to_key(self, index: int) -> Tuple[int]:
