@@ -149,7 +149,7 @@ class GalaPotential(AbstractPointCloudModel):
                             self.scale_nets[-1],
                             reduce=False,
                             rank=rank,
-                            **self.GAANet_kwargs
+                            **self.GAANet_kwargs,
                         )
                     )
 
@@ -173,7 +173,7 @@ class GalaPotential(AbstractPointCloudModel):
                         self.scale_nets[-1],
                         reduce=reduce,
                         rank=rank,
-                        **self.GAANet_kwargs
+                        **self.GAANet_kwargs,
                     )
                 )
             else:
@@ -184,7 +184,7 @@ class GalaPotential(AbstractPointCloudModel):
                         self.value_nets[-1],
                         reduce=reduce,
                         rank=rank,
-                        **self.GAANet_kwargs
+                        **self.GAANet_kwargs,
                     )
                 )
 
