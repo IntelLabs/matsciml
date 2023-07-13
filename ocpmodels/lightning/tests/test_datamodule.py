@@ -21,7 +21,6 @@ not_ocp = list(filter(lambda x: "IS2RE" not in x and "S2EF" not in x, dset_names
 just_ocp = list(filter(lambda x: "IS2RE" in x or "S2EF" in x, dset_names))
 
 
-@pytest.mark.dependency()
 @pytest.mark.parametrize("dset_classname", dset_names)
 def test_datamodule_devset(dset_classname: str):
     """
@@ -37,7 +36,6 @@ def test_datamodule_devset(dset_classname: str):
     assert next(iter(datamodule.test_dataloader()))
 
 
-@pytest.mark.dependency(depends=["test_datamodule_devset"])
 @pytest.mark.parametrize("dset_classname", dset_names)
 def test_datamodule_manual_trainonly(dset_classname):
     dset = registry.get_dataset_class(dset_classname)
@@ -50,7 +48,6 @@ def test_datamodule_manual_trainonly(dset_classname):
     assert next(iter(datamodule.train_dataloader()))
 
 
-@pytest.mark.dependency(depends=["test_datamodule_devset"])
 @pytest.mark.parametrize("dset_classname", dset_names)
 def test_datamodule_manual_splits(dset_classname):
     dset = registry.get_dataset_class(dset_classname)
