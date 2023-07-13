@@ -140,6 +140,36 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
     def __init__(
         self, backend: str, sample_size: int = 5, full_pairwise: bool = True
     ) -> None:
+        r"""
+        Convert a graph data sample into a point cloud, with additional semantics
+        for dealing with the Open Catalyst dataset which has labelled nodes.
+
+        The ``full_pairwise`` behaves slightly differently from the base class:
+        we use the full node set (molecule + substrate + surface nodes) as N,
+        and the molecule node set as M. If ``full_pairwise`` is ``True``, the
+        shape is [N, N, :], otherwise [M, N, :]. In contrast to the base class,
+        N >= M, which allows for a more compact representation if not pairwise.
+
+        In this current implementation, the atom positions are left as is and
+        left up to the neural network model (via the ``read_batch``) method
+        to construct the positions in the right way to enable autograd for forces.
+
+        The keys we return as part of the data sample are:
+
+        - ``pos`` [N, 3]
+        - ``src_nodes``, ``dst_nodes``, N(M)/N as node indices
+        - ``pc_features`` [N(M), N, 200] as node features
+        - ``sizes`` scalar, the larger number of particles in the whole system (N)
+
+        Parameters
+        ----------
+        backend : str
+            Either 'dgl' or 'pyg'; specifies that graph framework to
+            represent structures
+        full_pairwise : bool, optional
+            If True, every node is compared against every other node; by default True.
+            If False, we randomly sample ``dst`` nodes to construct the point cloud.
+        """
         super().__init__(backend, full_pairwise)
         self.sample_size = sample_size
 
