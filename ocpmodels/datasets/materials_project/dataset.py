@@ -314,4 +314,8 @@ class MaterialsProjectDataset(PointCloudDataset):
     def collate_fn(batch: List[DataDict]) -> BatchDict:
         # since this class returns point clouds by default, we have to pad
         # the atom-centered point cloud data
-        return concatenate_keys(batch, pad_keys=["pc_features", "pos"])
+        return concatenate_keys(
+            batch,
+            pad_keys=["pc_features", "src_nodes", "dst_nodes"],
+            unpacked_keys=["pos"],
+        )
