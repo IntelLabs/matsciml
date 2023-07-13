@@ -5,7 +5,10 @@ from ocpmodels.lightning.data_utils import MatSciMLDataModule
 from ocpmodels.common.registry import registry
 from ocpmodels.common import package_registry
 from ocpmodels.datasets import __all__
-from ocpmodels.datasets.transforms import PointCloudToGraphTransform
+from ocpmodels.datasets.transforms import (
+    PointCloudToGraphTransform,
+    GraphToPointCloudTransform,
+)
 
 
 dset_names = list(
@@ -79,6 +82,20 @@ def test_datamodule_graph_transforms(dset_classname, backend):
             else:
                 target = batch["graph"]
             assert all([key in target for key in check_keys])
+
+
+@pytest.mark.parametrize("dset_classname", just_ocp)
+def test_ocp_pc_transforms(dset_classname):
+    t = GraphToPointCloudTransform("dgl")
+    datamodule = MatSciMLDataModule.from_devset(
+        dset_classname, dset_kwargs={"transforms": [t]}
+    )
+    datamodule.setup()
+    for split in ["train", "val", "test"]:
+        loader = getattr(datamodule, f"{split}_dataloader")()
+        batch = next(iter(loader))
+        assert "graph" not in batch
+        assert "pc_features" in batch
 
 
 def test_bad_dataset():
