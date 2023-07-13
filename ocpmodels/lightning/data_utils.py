@@ -348,7 +348,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         # set up the training split, if provided
         if getattr(self.hparams, "train_path", None) is not None:
             assert isinstance(
-                self.dataset, Type
+                self.dataset, (Type, str)
             ), f"Train path provided but no valid dataset class."
             train_dset = self._make_dataset(self.hparams.train_path, self.dataset)
             # set the main dataset to the train split, since it's used for other splits
