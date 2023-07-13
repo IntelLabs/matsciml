@@ -377,6 +377,53 @@ class AbstractPointCloudModel(AbstractTask):
         """
         ...
 
+    @staticmethod
+    def mask_model_output(
+        result: torch.Tensor, mask: torch.Tensor, sizes: List[int], extensive: bool
+    ) -> torch.Tensor:
+        r"""
+        Perform a masked reduction over a point cloud model output.
+
+        This effectively removes the contributions from node centers or source
+        particles, i.e. the first non-batch dimension, that correspond to padding nodes.
+        The resulting shape should be ``[B, D]`` with ``B`` batch size and ``D``
+        desired output dimension.
+
+        Parameters
+        ----------
+        result : torch.Tensor
+            Result of a point cloud model, with shape ``[B, N, M, D]``
+            for ``B`` batch size, ``N`` padded source nodes, ``M``
+            padded destination nodes, and output dimension ``D``.
+        mask : torch.Tensor
+            A 3D boolean tensor of shape ``[B, N, M]``
+        sizes : List[int]
+            A list comprising the number of atom centers that are not padding
+            nodes.
+        extensive : bool
+            If ``True``, sums over nodes, otherwise performs a mean reduction.
+
+        Returns
+        -------
+        torch.Tensor
+            Per-point cloud results, with shape ``[B, D]``
+        """
+        # extract out a mask over [B, N] for N atom centers, removing
+        # padded center node contributions to the system output
+        center_mask = mask[..., 0]
+        # this extracts a [N, D] tensor with N total particles, D embedding dim
+        unpadded_result = result[center_mask]
+        # this splits up into embeddings per node
+        split_results = unpadded_result.split(sizes)
+        # figure out what reduction to perform over the particles
+        if extensive:
+            reduce = torch.sum
+        else:
+            reduce = torch.mean
+        # should be [B, D] for B systems
+        output = torch.stack([reduce(t, dim=0) for t in split_results])
+        return output
+
 
 class AbstractGraphModel(AbstractTask):
     def __init__(
