@@ -50,7 +50,9 @@ class LiPSDataset(PointCloudDataset):
     @staticmethod
     def collate_fn(batch: List[DataDict]) -> BatchDict:
         return concatenate_keys(
-            batch, pad_keys=["pc_features"], unpacked_keys=["pos", "force"]
+            batch,
+            pad_keys=["pc_features", "src_nodes", "dst_nodes"],
+            unpacked_keys=["pos", "force"],
         )
 
     def data_from_key(
