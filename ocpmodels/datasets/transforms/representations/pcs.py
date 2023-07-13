@@ -76,12 +76,13 @@ class GraphToPointCloudTransform(RepresentationTransform):
             ), f"Expected DGL graph as input, but got {g} which is type {type(g)}"
             features = g.ndata["atomic_numbers"].long()
             pos = g.ndata["pos"]
-            # compute atom-centered point clouds
+            # compute features corresponding to full-pairwise, i.e. every particle
+            # against every particle
             if self.full_pairwise:
                 features = utils.point_cloud_featurization(features, features, 100)
-                pos = pos[None, :] - pos[:, None]
-            data["pos"] = pos
+            data["pos"] = pos  # left as N, 3
             data["pc_features"] = features
+            data["sizes"] = len(pos)
 
     if package_registry["pyg"]:
 
