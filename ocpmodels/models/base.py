@@ -310,6 +310,7 @@ class AbstractPointCloudModel(AbstractTask):
         """
         from ocpmodels.datasets.utils import pad_point_cloud
 
+        # TODO make the stacking part of the data loading again
         # stack up the positions, which should be part of the computational graph
         batch["pos"] = torch.vstack(batch["pos"])
         data = {key: batch.get(key) for key in ["pc_features", "pos"]}
