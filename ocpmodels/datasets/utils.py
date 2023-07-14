@@ -52,32 +52,45 @@ def concatenate_keys(
                 # provides an escape hatch; sometimes we don't want to stack
                 # tensors together and instead just leave them as a list
                 if key not in unpacked_keys:
-                    if isinstance(value, torch.Tensor):
-                        # for tensors that need to be padded
-                        if key in pad_keys:
-                            # for 1D tensors like atomic numbers, we need to know the
-                            # maximum number of nodes
-                            if value.ndim == 1:
-                                max_size = max([len(t) for t in elements])
+                    try:
+                        if isinstance(value, torch.Tensor):
+                            # for tensors that need to be padded
+                            if key in pad_keys:
+                                # for 1D tensors like atomic numbers, we need to know the
+                                # maximum number of nodes
+                                if value.ndim == 1:
+                                    max_size = max([len(t) for t in elements])
+                                else:
+                                    # for other tensors, pad
+                                    max_size = max(
+                                        [max(t.shape[:-1]) for t in elements]
+                                    )
+                                result, mask = pad_point_cloud(
+                                    elements, max_size=max_size
+                                )
+                                batched_data["mask"] = mask
                             else:
-                                # for other tensors, pad
-                                max_size = max([max(t.shape[:-1]) for t in elements])
-                            result, mask = pad_point_cloud(elements, max_size=max_size)
-                            batched_data["mask"] = mask
-                        else:
-                            result = torch.vstack(elements)
-                    # for scalar values (typically labels) pack them, add a dimension
-                    # to match model predictions, and type cast to float
-                    elif isinstance(value, (float, int)):
-                        result = torch.tensor(elements).unsqueeze(-1).float()
-                    # for graph types, descend into framework specific method
-                    elif isinstance(value, GraphTypes):
-                        if package_registry["dgl"] and isinstance(value, dgl.DGLGraph):
-                            result = dgl.batch(elements)
-                        elif package_registry["pyg"] and isinstance(value, PyGGraph):
-                            result = PyGBatch.from_data_list(elements)
-                        else:
-                            raise ValueError(f"Graph type unsupported: {type(value)}")
+                                result = torch.vstack(elements)
+                        # for scalar values (typically labels) pack them, add a dimension
+                        # to match model predictions, and type cast to float
+                        elif isinstance(value, (float, int)):
+                            result = torch.tensor(elements).unsqueeze(-1).float()
+                        # for graph types, descend into framework specific method
+                        elif isinstance(value, GraphTypes):
+                            if package_registry["dgl"] and isinstance(
+                                value, dgl.DGLGraph
+                            ):
+                                result = dgl.batch(elements)
+                            elif package_registry["pyg"] and isinstance(
+                                value, PyGGraph
+                            ):
+                                result = PyGBatch.from_data_list(elements)
+                            else:
+                                raise ValueError(
+                                    f"Graph type unsupported: {type(value)}"
+                                )
+                    except RuntimeError:
+                        result = elements
                 # for everything else, just return a list
                 else:
                     result = elements
