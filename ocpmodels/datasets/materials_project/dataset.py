@@ -317,5 +317,5 @@ class MaterialsProjectDataset(PointCloudDataset):
         return concatenate_keys(
             batch,
             pad_keys=["pc_features", "src_nodes", "dst_nodes"],
-            unpacked_keys=["pos"],
+            unpacked_keys=["pos", "atomic_numbers", "distance_matrix", "sizes"],
         )
