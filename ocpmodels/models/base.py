@@ -339,7 +339,7 @@ class AbstractPointCloudModel(AbstractTask):
     @abstractmethod
     def _forward(
         self,
-        pos: torch.Tensor,
+        pc_pos: torch.Tensor,
         pc_features: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
         sizes: Optional[List[int]] = None,
@@ -352,7 +352,7 @@ class AbstractPointCloudModel(AbstractTask):
 
         Parameters
         ----------
-        pos : torch.Tensor
+        pc_pos : torch.Tensor
             Padded point cloud neighborhood tensor, with shape ``[B, N, M, 3]``
             for ``B`` batch size and ``N`` padded size. For full pairwise point
             clouds, ``N == M``.
