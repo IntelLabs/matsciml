@@ -332,7 +332,7 @@ class AbstractPointCloudModel(AbstractTask):
         assert (
             pc_pos.shape[:-1] == feat_shape[:-1]
         ), f"Shape of point cloud neighborhood positions is different from features!"
-        data["pos"] = pc_pos
+        data["pc_pos"] = pc_pos
         data["mask"] = mask
         data["sizes"] = sizes
         return data

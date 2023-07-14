@@ -245,7 +245,7 @@ class GalaPotential(AbstractPointCloudModel):
 
     def _forward(
         self,
-        pos: torch.Tensor,
+        pc_pos: torch.Tensor,
         pc_features: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
         sizes: Optional[List[int]] = None,
@@ -272,7 +272,7 @@ class GalaPotential(AbstractPointCloudModel):
 
         Parameters
         ----------
-        pos : torch.Tensor
+        pc_pos : torch.Tensor
             Padded point cloud neighborhood tensor, with shape ``[B, N, M, 3]``
             for ``B`` batch size and ``N`` padded size. For full pairwise point
             clouds, ``N == M``.
@@ -297,7 +297,7 @@ class GalaPotential(AbstractPointCloudModel):
             Otherwise, emits a 2D tensor of shape ``[B, 1]`` corresponding to
             the system energy of each point cloud.
         """
-        positions = torch.div(pos, 1)
+        positions = torch.div(pc_pos, 1)
 
         last_r_mv = self.vec2mv(positions)
         last_r = last_r_mv
