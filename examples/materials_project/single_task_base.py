@@ -4,6 +4,7 @@ from torch.nn import LazyBatchNorm1d, SiLU
 from ocpmodels.lightning.data_utils import MatSciMLDataModule
 from ocpmodels.datasets.transforms import PointCloudToGraphTransform
 from ocpmodels.models import GraphConvModel
+from ocpmodels.models.base import ScalarRegressionTask
 
 pl.seed_everything(21616)
 
