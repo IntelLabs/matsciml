@@ -310,20 +310,21 @@ class AbstractPointCloudModel(AbstractTask):
         """
         from ocpmodels.datasets.utils import pad_point_cloud
 
+        # stack up the positions, which should be part of the computational graph
+        batch["pos"] = torch.vstack(batch["pos"])
         data = {key: batch.get(key) for key in ["pc_features", "pos"]}
-        # grab positions, which should be grad enabled if needed, which should
-        # be a list of tensors
-        pos: List[torch.Tensor] = data["pos"]
+        # split the stacked positions into each individual point cloud
+        temp_pos = batch["pos"].split(batch["sizes"])
         pc_pos = []
         # sizes records the number of centers being used
         sizes = []
         # loop over each sample within a batch
-        for index, sample in enumerate(pos):
+        for index, sample in enumerate(temp_pos):
             src_nodes, dst_nodes = batch["src_nodes"][index], batch["dst_nodes"][index]
             sizes.append(len(src_nodes))
             # carve out neighborhoods as dictated by the dataset/transform definition
-            temp_pos = sample[src_nodes][None, :] - sample[dst_nodes][:, None]
-            pc_pos.append(temp_pos)
+            sample_pc_pos = sample[src_nodes][None, :] - sample[dst_nodes][:, None]
+            pc_pos.append(sample_pc_pos)
         # pad the position result
         pc_pos, mask = pad_point_cloud(pc_pos, max(batch["sizes"]))
         # get the features and make sure the shapes are consistent for the
