@@ -11,8 +11,8 @@ task = ScalarRegressionTask(
     encoder_class=MPNN,
     encoder_kwargs={
         "encoder_only": True,
-        "node_embedding_dim": 128,
-        "node_out_dim": 256,
+        "atom_embedding_dim": 8,
+        "node_out_dim": 16,
     },
     task_keys=["energy_relaxed"],
 )
