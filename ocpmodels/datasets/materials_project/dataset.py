@@ -316,6 +316,6 @@ class MaterialsProjectDataset(PointCloudDataset):
         # the atom-centered point cloud data
         return concatenate_keys(
             batch,
-            pad_keys=["pc_features", "src_nodes", "dst_nodes"],
-            unpacked_keys=["pos", "atomic_numbers", "distance_matrix", "sizes"],
+            pad_keys=["pc_features"],
+            unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
         )
