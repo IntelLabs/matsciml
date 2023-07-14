@@ -297,6 +297,13 @@ class AbstractPointCloudModel(AbstractTask):
         giving the primary task (i.e. ``ForceRegressionTask``) an
         opportunity to enable gradients for each sample within the point cloud.
 
+        To clarify usage of ``pos`` and ``pc_pos``, the former represents
+        the packed batch of positions without separating them into their
+        individual point clouds: **this is used for force computation**
+        where we want to end up with a force tensor with the same shape.
+        ``pc_pos`` corresponds to the padded, molecule centered point
+        cloud data that should be used as input to a point cloud model.
+
         Parameters
         ----------
         batch : BatchDict
@@ -310,6 +317,9 @@ class AbstractPointCloudModel(AbstractTask):
         """
         from ocpmodels.datasets.utils import pad_point_cloud
 
+        assert isinstance(
+            batch["pos"], torch.Tensor
+        ), f"Expect 'pos' data to be a packed tensor of shape [N, 3]"
         data = {key: batch.get(key) for key in ["pc_features", "pos"]}
         # split the stacked positions into each individual point cloud
         temp_pos = batch["pos"].split(batch["sizes"])
