@@ -66,9 +66,10 @@ def concatenate_keys(
                             batched_data["mask"] = mask
                         else:
                             result = torch.vstack(elements)
-                    # for scalar values (typically labels) pack them
+                    # for scalar values (typically labels) pack them, add a dimension
+                    # to match model predictions, and type cast to float
                     elif isinstance(value, (float, int)):
-                        result = torch.tensor(elements)
+                        result = torch.tensor(elements).unsqueeze(-1).float()
                     # for graph types, descend into framework specific method
                     elif isinstance(value, GraphTypes):
                         if package_registry["dgl"] and isinstance(value, dgl.DGLGraph):
@@ -77,21 +78,6 @@ def concatenate_keys(
                             result = PyGBatch.from_data_list(elements)
                         else:
                             raise ValueError(f"Graph type unsupported: {type(value)}")
-                    # for everything else, just return a list
-                    else:
-                        result = torch.vstack(elements)
-                # for scalar values (typically labels) pack them, add a dimension
-                # to match model predictions, and type cast to float
-                elif isinstance(value, (float, int)):
-                    result = torch.tensor(elements).unsqueeze(-1).float()
-                # for graph types, descend into framework specific method
-                elif isinstance(value, GraphTypes):
-                    if package_registry["dgl"] and isinstance(value, dgl.DGLGraph):
-                        result = dgl.batch(elements)
-                    elif package_registry["pyg"] and isinstance(value, PyGGraph):
-                        result = PyGBatch.from_data_list(elements)
-                    else:
-                        raise ValueError(f"Graph type unsupported: {type(value)}")
                 # for everything else, just return a list
                 else:
                     result = elements
