@@ -1,6 +1,5 @@
 from functools import cached_property
 from typing import Iterable, Tuple, Any, Dict, Union, Optional, List, Callable
-from importlib.util import find_spec
 from pathlib import Path
 from math import pi
 from copy import deepcopy
@@ -18,10 +17,6 @@ from ocpmodels.datasets.utils import (
     pad_point_cloud,
 )
 from ocpmodels.common.registry import registry
-
-
-_has_dgl = find_spec("dgl") is not None
-_has_pyg = find_spec("torch_geometric") is not None
 
 
 def item_from_structure(data: Any, *keys: str) -> Any:
@@ -56,6 +51,8 @@ def item_from_structure(data: Any, *keys: str) -> Any:
 
 @registry.register_dataset("MaterialsProjectDataset")
 class MaterialsProjectDataset(BaseLMDBDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("devset")
+
     def index_to_key(self, index: int) -> Tuple[int]:
         """
         Method that maps a global index value to a pair of indices.
@@ -313,108 +310,3 @@ class MaterialsProjectDataset(BaseLMDBDataset):
         # since this class returns point clouds by default, we have to pad
         # the atom-centered point cloud data
         return concatenate_keys(batch, pad_keys=["pc_features", "pos"])
-
-
-if _has_dgl:
-    import dgl
-
-    class DGLMaterialsProjectDataset(MaterialsProjectDataset):
-        """
-        Subclass of `MaterialsProjectDataset` that will emit DGL graphs.
-
-        This class should be used until a future refactor to unify data
-        structures, and a transform interface is created for DGL graph creation.
-        )
-        """
-
-        def __init__(
-            self,
-            lmdb_root_path: Union[str, Path],
-            cutoff_dist: float = 5.0,
-            transforms: Optional[List[Callable]] = None,
-        ) -> None:
-            """
-            Instantiate a `DGLMaterialsProjectDataset` object.
-
-            In addition to specifying an optional list of transforms and an
-            LMDB path, the `cutoff_dist` parameter is used to control edge
-            creation: we take a point cloud structure and create edges for
-            all atoms/sites that are within this cut off distance.
-
-            Parameters
-            ----------
-            lmdb_root_path : Union[str, Path]
-                Path to a folder containing LMDB files for Materials Project.
-            cutoff_dist : float
-                Distance to cut off edge creation; interatomic distances greater
-                than this value will not have an edge.
-            transforms : Optional[List[Callable]], by default None
-                List of transforms to apply to the data.
-            """
-            super().__init__(lmdb_root_path, transforms)
-            self.cutoff_dist = cutoff_dist
-
-        @property
-        def cutoff_dist(self) -> float:
-            return self._cutoff_dist
-
-        @cutoff_dist.setter
-        def cutoff_dist(self, value: float) -> None:
-            """
-            Setter method for the cut off distance property.
-
-            For now this doesn't do anything special, but can be modified
-            to include checks for valid value, etc.
-
-            Parameters
-            ----------
-            value : float
-                Value to set the cut off distance
-            """
-            self._cutoff_dist = value
-
-        def data_from_key(
-            self, lmdb_index: int, subindex: int
-        ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]:
-            """
-            Maps a pair of indices to a specific data sample from LMDB.
-
-            This method in particular wraps the parent's method, which emits
-            a point cloud among other data from Materials Project. The additional
-            steps here are to: 1) compute an adjacency list, 2) pack data into a
-            DGLGraph structure, 3) clean up redundant data.
-
-            Parameters
-            ----------
-            lmdb_index : int
-                Index corresponding to which LMDB environment to parse from.
-            subindex : int
-                Index within an LMDB file that maps to a sample.
-
-            Returns
-            -------
-            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-                Single data sample from Materials Project with a "graph" key
-            """
-            data = super().data_from_key(lmdb_index, subindex)
-            dist_mat: np.ndarray = data.get("distance_matrix").numpy()
-            lower_tri = np.tril(dist_mat)
-            # mask out self loops and atoms that are too far away
-            mask = (0.0 < lower_tri) * (lower_tri < self.cutoff_dist)
-            adj_list = np.argwhere(mask).tolist()  # DGLGraph only takes lists
-            # number of nodes has to be passed explicitly since cutoff
-            # radius may result in shorter adj_list
-            graph = dgl.graph(adj_list, num_nodes=len(data["atomic_numbers"]))
-            graph.ndata["pos"] = data["coords"]
-            graph.ndata["atomic_numbers"] = data["atomic_numbers"]
-            data["graph"] = graph
-            # delete the keys to reduce data redundancy
-            for key in [
-                "pos",
-                "coords",
-                "atomic_numbers",
-                "distance_matrix",
-                "pc_features",
-            ]:
-                del data[key]
-            return data

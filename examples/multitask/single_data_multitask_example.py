@@ -1,10 +1,8 @@
 import pytorch_lightning as pl
 from torch.nn import L1Loss
 
-from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-from ocpmodels.datasets.materials_project import (
-    DGLMaterialsProjectDataset,
-)
+from ocpmodels.lightning import MatSciMLDataModule
+from ocpmodels.datasets import MaterialsProjectDataset
 from ocpmodels.models.base import (
     MultiTaskLitModule,
     ScalarRegressionTask,
@@ -14,19 +12,28 @@ from ocpmodels.models import PLEGNNBackbone
 from ocpmodels.datasets.transforms import (
     CoordinateScaling,
     COMShift,
+    PointCloudToGraphTransform,
 )
 
 pl.seed_everything(1616)
 
-# include transforms to the data: shift center of mass and rescale magnitude of coordinates
-dset = DGLMaterialsProjectDataset(
-    "mp_data/base", transforms=[COMShift(), CoordinateScaling(0.1)]
+# configure a materials project data module, include transforms to
+# DGL graphs, shift to center of mass, and rescale coordinate magnitudes
+dm = MatSciMLDataModule(
+    dataset=MaterialsProjectDataset(
+        "../materials_project/mp_data/base",
+        transforms=[
+            PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
+            COMShift(),
+            CoordinateScaling(0.1),
+        ],
+    ),
+    batch_size=32,
 )
-dm = MaterialsProjectDataModule(dataset=dset, batch_size=32)
 
 # configure EGNN
 model_args = {
-    "embed_in_dim": 1,
+    "embed_in_dim": 128,
     "embed_hidden_dim": 32,
     "embed_out_dim": 128,
     "embed_depth": 5,
@@ -73,6 +80,8 @@ mp_norms = {
     "energy_per_atom_mean": 6.2507,
     "energy_per_atom_std": 1.8614,
 }
+# configure regression and classification tasks, reading the
+# target keys from the data module directly
 r = ScalarRegressionTask(
     encoder_class=PLEGNNBackbone,
     encoder_kwargs=model_args,
@@ -80,14 +89,15 @@ r = ScalarRegressionTask(
     loss_func=L1Loss,
     output_kwargs=output_kwargs,
     normalize_kwargs=mp_norms,
-    task_keys=dm.target_keys["regression"]
+    task_keys=dm.target_keys["regression"],
 )
 c = BinaryClassificationTask(
     encoder_class=PLEGNNBackbone,
     encoder_kwargs=model_args,
-    lr=1e-3, output_kwargs=output_kwargs,
-    task_keys=dm.target_keys["classification"]
-    )
+    lr=1e-3,
+    output_kwargs=output_kwargs,
+    task_keys=dm.target_keys["classification"],
+)
 
 # initialize multitask with regression and classification on materials project
 task = MultiTaskLitModule(
@@ -95,8 +105,6 @@ task = MultiTaskLitModule(
     ("MaterialsProjectDataset", c),
 )
 
-# using manual optimization for multitask, so "grad_clip" args do not work for trainer
-trainer = pl.Trainer(
-    max_steps=100
-)
+# do steps without logging and checkpointing
+trainer = pl.Trainer(fast_dev_run=100)
 trainer.fit(task, datamodule=dm)

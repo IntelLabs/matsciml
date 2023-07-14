@@ -61,9 +61,10 @@ def concatenate_keys(batch: List[DataDict], pad_keys: List[str] = []) -> BatchDi
                         batched_data["mask"] = mask
                     else:
                         result = torch.vstack(elements)
-                # for scalar values (typically labels) pack them
+                # for scalar values (typically labels) pack them, add a dimension
+                # to match model predictions, and type cast to float
                 elif isinstance(value, (float, int)):
-                    result = torch.tensor(elements)
+                    result = torch.tensor(elements).unsqueeze(-1).float()
                 # for graph types, descend into framework specific method
                 elif isinstance(value, GraphTypes):
                     if package_registry["dgl"] and isinstance(value, dgl.DGLGraph):
