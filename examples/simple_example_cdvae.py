@@ -9,8 +9,6 @@ from tqdm import tqdm
 
 try:
     from ocpmodels.models.diffusion_pipeline import GenerationTask
-    from ocpmodels.datasets.cdvae_datasets import CrystDataset, TensorCrystDataset
-    from ocpmodels.datasets.cdvae_datamodule import CrystDataModule
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
     from examples.cdvae_configs import (
@@ -24,8 +22,6 @@ except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
     sys.path.append("{}/../".format(dir_path))
     from ocpmodels.models.diffusion_pipeline import GenerationTask
-    from ocpmodels.datasets.cdvae_datasets import CrystDataset, TensorCrystDataset
-    from ocpmodels.datasets.cdvae_datamodule import CrystDataModule
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
     from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
