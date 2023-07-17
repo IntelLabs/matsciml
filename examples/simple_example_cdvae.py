@@ -7,10 +7,6 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 
-# from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-# from ocpmodels.datasets.materials_project import (
-#     DGLMaterialsProjectDataset,
-# )
 try:
     from ocpmodels.models.diffusion_pipeline import GenerationTask
     from ocpmodels.datasets.cdvae_datasets import CrystDataset, TensorCrystDataset
@@ -18,8 +14,7 @@ try:
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
     from examples.cdvae_configs import (
-        enc_config, dec_config, cdvae_config, carbon_config,
-        perov_config, mp20_config, mp_config
+        enc_config, dec_config, cdvae_config, mp_config
     )
     from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
     from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset
@@ -38,14 +33,11 @@ except:
     from ocpmodels.models.diffusion_utils.data_utils import StandardScalerTorch
 
     from examples.cdvae_configs import (
-        enc_config, dec_config, cdvae_config, carbon_config, 
-        perov_config, mp20_config, mp_config
+        enc_config, dec_config, cdvae_config, mp_config
     )   
 
-SCALER_LIMIT = 100
 
 def get_scalers(dataset):
-    #loader = datamodule.train_dataloader()
     print("Building scalers")
     lattice_vals, prop_vals = [], []
     
@@ -62,9 +54,6 @@ def get_scalers(dataset):
         ys = data['y']
         lattice_vals.append(torch.cat([lengths, angles], dim=-1))
         prop_vals.append(ys)
-        # if i > SCALER_LIMIT:
-        #     break
-
 
     lattice_vals = torch.cat(lattice_vals)
     prop_vals = torch.cat(prop_vals)
@@ -76,20 +65,12 @@ def get_scalers(dataset):
     return lattice_scaler, prop_scaler
 
 
-# @hydra.main(version_base='1.1', config_path='../configs', config_name='regression_baseline')
 def main():
     pl.seed_everything(1616)
-
-    # include transforms to the data: shift center of mass and rescale magnitude of coordinates
-    # dset = DGLMaterialsProjectDataset(
-    #     "../materials_project/mp_data/base", transforms=[COMShift(), CoordinateScaling(0.1)]
-    # )
     data_config = mp_config
-    #data_config = mp20_config
-    #data_config = carbon_config
 
     # init dataset-specific params in encoder/decoder
-    enc_config['num_targets'] = cdvae_config['latent_dim'] #data_config['num_targets'] 
+    enc_config['num_targets'] = cdvae_config['latent_dim']
     enc_config['otf_graph'] = data_config['otf_graph']
     enc_config['readout'] = data_config['readout']
 
@@ -97,33 +78,20 @@ def main():
     cdvae_config['teacher_forcing_max_epoch'] = data_config['teacher_forcing_max_epoch']
     cdvae_config['lattice_scale_method'] = data_config['lattice_scale_method']
 
-    # dataset = PyGMaterialsProjectDataset()
     dm = MaterialsProjectDataModule(
-        dataset=CdvaeLMDBDataset, #PyGCdvaeDataset(Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/mp_data/train/")),
-        #val_split=0.1,
         train_path=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/train/"),
         val_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/val/"),
         test_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/test/"),
-        batch_size=512,
+        batch_size=256,
+        num_workers=16,
     )
+    # Load the data at the setup stage
     dm.setup()
+
+    # Compute scalers for regression targets and lattice parameters
     lattice_scaler, prop_scaler = get_scalers(dm.splits['train'])
     dm.dataset.lattice_scaler = lattice_scaler.copy()
     dm.dataset.scaler = prop_scaler.copy()
-
-
-    # dataclass = partial(CrystDataset, **data_config)
-    # splits = [
-    #     dataclass(path=f"{data_config['root_path']}/{split}.csv") for split in ['train', 'val', 'test'] 
-    # ]
-    # dm = CrystDataModule(
-    #     train=splits[0], 
-    #     valid=splits[1],
-    #     test=splits[2],
-    #     num_workers=0,
-    #     batch_size=4
-    # )
-
 
     encoder = DimeNetPlusPlusWrap(**enc_config)
     decoder = GemNetTDecoder(**dec_config)
@@ -132,19 +100,12 @@ def main():
         decoder=decoder,
         **cdvae_config
     )
-    # model.lattice_scaler = dm.lattice_scaler.copy()
-    # model.scaler = dm.scaler.copy()
 
-    #print(f"Passing scaler from datamodule to model <{dm.scaler}>")
     model.lattice_scaler = lattice_scaler.copy()
     model.scaler = prop_scaler.copy()
 
-    # torch.save(dm.lattice_scaler, hydra_dir / 'lattice_scaler.pt')
-    # torch.save(dm.scaler, hydra_dir / 'prop_scaler.pt')
-
-    print('Training')
     trainer = pl.Trainer(accelerator="cpu", #strategy="ddp", 
-                        devices=1, max_epochs=5) #profiler="pytorch")
+                        devices=1, max_epochs=1000, gradient_clip_val=1.0)
 
     trainer.fit(model, datamodule=dm)
 
