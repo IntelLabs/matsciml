@@ -418,44 +418,6 @@ class GenerationTask(BaseTaskModule):
             modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
         return nn.ModuleDict(modules)
 
-    # def on_train_batch_start(
-    #     self, batch: Any, batch_idx: int, unused: int = 0
-    # ) -> Optional[int]:
-    #     """
-    #     PyTorch Lightning hook to check OutputHeads are created.
-
-    #     This will take data from the batch to determine which key to retrieve
-    #     data from and how many heads to create.
-
-    #     Parameters
-    #     ----------
-    #     batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-    #         Batch of data from data loader.
-    #     batch_idx : int
-    #         Batch index.
-    #     unused
-    #         PyTorch Lightning hangover
-
-    #     Returns
-    #     -------
-    #     Optional[int]
-    #         Just returns the parent result.
-    #     """
-    #     status = super().on_train_batch_start(batch, batch_idx, unused)
-    #     # if there are no task keys set, task has not been initialized yet
-    #     if not self.has_initialized:
-    #         keys = batch["target_types"]["classification"]
-    #         self.task_keys = keys
-    #         # now add the parameters to our task's optimizer
-    #         opt = self.optimizers()
-    #         opt.add_param_group({"params": self.output_heads.parameters()})
-    #     return status
-
-    # def on_validation_batch_start(
-    #     self, batch: Any, batch_idx: int, dataloader_idx: int
-    # ):
-    #     self.on_train_batch_start(batch, batch_idx)
-
     def generate_rand_init(self, pred_composition_per_atom, pred_lengths,
                            pred_angles, num_atoms, batch):
         rand_frac_coords = torch.rand(num_atoms.sum(), 3,
@@ -607,15 +569,6 @@ class GenerationTask(BaseTaskModule):
             self.hparams.cost_composition * composition_loss +
             self.hparams.cost_property * property_loss)
 
-        # log_dict = {
-        #     f'{prefix}_loss': loss,
-        #     f'{prefix}_natom_loss': num_atom_loss,
-        #     f'{prefix}_lattice_loss': lattice_loss,
-        #     f'{prefix}_coord_loss': coord_loss,
-        #     f'{prefix}_type_loss': type_loss,
-        #     f'{prefix}_kld_loss': kld_loss,
-        #     f'{prefix}_composition_loss': composition_loss,
-        # }
         log_dict = {
             f'loss': loss,
             f'natom_loss': num_atom_loss,
@@ -626,7 +579,6 @@ class GenerationTask(BaseTaskModule):
             f'composition_loss': composition_loss,
         }
 
-        #if prefix != 'train':
         if not self.training:
             # validation/test loss only has coord and type
             loss = (
@@ -664,15 +616,6 @@ class GenerationTask(BaseTaskModule):
             type_accuracy = scatter(type_accuracy.float(
             ), batch.batch, dim=0, reduce='mean').mean()
 
-            # log_dict.update({
-            #     f'{prefix}_loss': loss,
-            #     f'{prefix}_property_loss': property_loss,
-            #     f'{prefix}_natom_accuracy': num_atom_accuracy,
-            #     f'{prefix}_lengths_mard': lengths_mard,
-            #     f'{prefix}_angles_mae': angles_mae,
-            #     f'{prefix}_volumes_mard': volumes_mard,
-            #     f'{prefix}_type_accuracy': type_accuracy,
-            # })
             log_dict.update({
                 f'loss': loss,
                 f'property_loss': property_loss,
