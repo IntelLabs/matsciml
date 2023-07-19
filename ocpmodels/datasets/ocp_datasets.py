@@ -87,6 +87,8 @@ class S2EFDataset(OpenCatalystDataset):
             # loop over labels
             for key in ["natoms", "y", "sid", "fid", "cell"]:
                 output_data[key] = data.get(key)
+            # make graph bidirectional
+            graph = dgl.to_bidirected(graph, copy_ndata=True)
             output_data["graph"] = graph
         # This is the case for test set data for s2ef with dgl format.
         elif "graph" in data.keys():
@@ -130,6 +132,8 @@ class IS2REDataset(OpenCatalystDataset):
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
         data = super().data_from_key(lmdb_index, subindex)
+        # make graph bidirectional if it isn't already
+        data["graph"] = dgl.to_bidirected(data["graph"], copy_ndata=True)
         # tacking on metadata about the task; energy
         data["targets"] = {}
         data["target_types"] = {"regression": [], "classification": []}
