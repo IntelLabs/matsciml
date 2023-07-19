@@ -289,12 +289,73 @@ class AbstractTask(ABC, pl.LightningModule):
 
 class AbstractPointCloudModel(AbstractTask):
     def read_batch(self, batch: BatchDict) -> DataDict:
+        r"""
+        Extract data needed for point cloud modeling from a batch.
+
+        Notably, to facilitate force calculation, the point cloud
+        "neighborhood" for atom positions is constructed **after**
+        giving the primary task (i.e. ``ForceRegressionTask``) an
+        opportunity to enable gradients for each sample within the point cloud.
+
+        To clarify usage of ``pos`` and ``pc_pos``, the former represents
+        the packed batch of positions without separating them into their
+        individual point clouds: **this is used for force computation**
+        where we want to end up with a force tensor with the same shape.
+        ``pc_pos`` corresponds to the padded, molecule centered point
+        cloud data that should be used as input to a point cloud model.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of samples to process
+
+        Returns
+        -------
+        DataDict
+            Input data for a point cloud model to process, notably
+            including particle positions and features
+        """
+        from ocpmodels.datasets.utils import pad_point_cloud
+
+        assert isinstance(
+            batch["pos"], torch.Tensor
+        ), f"Expect 'pos' data to be a packed tensor of shape [N, 3]"
         data = {key: batch.get(key) for key in ["pc_features", "pos"]}
+        # split the stacked positions into each individual point cloud
+        temp_pos = batch["pos"].split(batch["sizes"])
+        pc_pos = []
+        # sizes records the number of centers being used
+        sizes = []
+        # loop over each sample within a batch
+        for index, sample in enumerate(temp_pos):
+            src_nodes, dst_nodes = batch["src_nodes"][index], batch["dst_nodes"][index]
+            # use dst_nodes to gauge size because you will always have more
+            # dst nodes than src nodes right now
+            sizes.append(len(dst_nodes))
+            # carve out neighborhoods as dictated by the dataset/transform definition
+            sample_pc_pos = sample[src_nodes][None, :] - sample[dst_nodes][:, None]
+            pc_pos.append(sample_pc_pos)
+        # pad the position result
+        pc_pos, mask = pad_point_cloud(pc_pos, max(sizes))
+        # get the features and make sure the shapes are consistent for the
+        # batch and neighborhood
+        feat_shape = data.get("pc_features").shape
+        assert (
+            pc_pos.shape[:-1] == feat_shape[:-1]
+        ), f"Shape of point cloud neighborhood positions is different from features!"
+        data["pc_pos"] = pc_pos
+        data["mask"] = mask
+        data["sizes"] = sizes
         return data
 
     @abstractmethod
     def _forward(
-        self, pos: torch.Tensor, pc_features: torch.Tensor, **kwargs
+        self,
+        pc_pos: torch.Tensor,
+        pc_features: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
+        sizes: Optional[List[int]] = None,
+        **kwargs,
     ) -> torch.Tensor:
         """
         Sets expected patterns for args for point cloud based modeling, whereby
@@ -303,10 +364,22 @@ class AbstractPointCloudModel(AbstractTask):
 
         Parameters
         ----------
-        pos : torch.Tensor
-            N-D tensor containing node positions
+        pc_pos : torch.Tensor
+            Padded point cloud neighborhood tensor, with shape ``[B, N, M, 3]``
+            for ``B`` batch size and ``N`` padded size. For full pairwise point
+            clouds, ``N == M``.
         pc_features : torch.Tensor
-            N-D tensor containing node features
+            Padded point cloud feature tensor, with shape ``[B, N, M, D_in]``
+            for ``B`` batch size and ``N`` padded size. For full pairwise point
+            clouds, ``N == M``.
+        mask : Optional[torch.Tensor], optional
+            Boolean tensor with shape ``[B, N, M]``, by default None. If supplied
+            in conjuction with ``sizes``, will mask out contributions from padding
+            nodes.
+        sizes : Optional[List[int]], optional
+            List of integers denoting the size of the first non-batch point cloud
+            dimension, by default None. If supplied in conjuction with ``mask``,
+            will mask out contributions from padding nodes.
 
         Returns
         -------
@@ -314,6 +387,53 @@ class AbstractPointCloudModel(AbstractTask):
             Output of a point cloud model; system-level embedding or predictions
         """
         ...
+
+    @staticmethod
+    def mask_model_output(
+        result: torch.Tensor, mask: torch.Tensor, sizes: List[int], extensive: bool
+    ) -> torch.Tensor:
+        r"""
+        Perform a masked reduction over a point cloud model output.
+
+        This effectively removes the contributions from node centers or source
+        particles, i.e. the first non-batch dimension, that correspond to padding nodes.
+        The resulting shape should be ``[B, D]`` with ``B`` batch size and ``D``
+        desired output dimension.
+
+        Parameters
+        ----------
+        result : torch.Tensor
+            Result of a point cloud model, with shape ``[B, N, M, D]``
+            for ``B`` batch size, ``N`` padded source nodes, ``M``
+            padded destination nodes, and output dimension ``D``.
+        mask : torch.Tensor
+            A 3D boolean tensor of shape ``[B, N, M]``
+        sizes : List[int]
+            A list comprising the number of atom centers that are not padding
+            nodes.
+        extensive : bool
+            If ``True``, sums over nodes, otherwise performs a mean reduction.
+
+        Returns
+        -------
+        torch.Tensor
+            Per-point cloud results, with shape ``[B, D]``
+        """
+        # extract out a mask over [B, N] for N atom centers, removing
+        # padded center node contributions to the system output
+        center_mask = mask[..., 0]
+        # this extracts a [N, D] tensor with N total particles, D embedding dim
+        unpadded_result = result[center_mask]
+        # this splits up into embeddings per node
+        split_results = unpadded_result.split(sizes)
+        # figure out what reduction to perform over the particles
+        if extensive:
+            reduce = torch.sum
+        else:
+            reduce = torch.mean
+        # should be [B, D] for B systems
+        output = torch.stack([reduce(t, dim=0) for t in split_results])
+        return output
 
 
 class AbstractGraphModel(AbstractTask):
@@ -1072,7 +1192,14 @@ class ForceRegressionTask(BaseTaskModule):
                 raise ValueError(
                     f"No atomic positions were found in batch - neither as standalone tensor nor graph."
                 )
-            pos.requires_grad_(True)
+            if isinstance(pos, torch.Tensor):
+                pos.requires_grad_(True)
+            elif isinstance(pos, list):
+                [p.requires_grad_(True) for p in pos]
+            else:
+                raise ValueError(
+                    f"'pos' data is required for force calculation, but isn't a tensor or a list of tensors: {type(pos)}."
+                )
             if "embeddings" in batch:
                 embeddings = batch.get("embeddings")
             else:
@@ -1603,25 +1730,52 @@ class MultiTaskLitModule(pl.LightningModule):
                     input_keys = need_grad_keys.get(dset_name)
                     for key in input_keys:
                         # set require grad for both point cloud and graph tensors
-                        try:
-                            if "graph" in data:
-                                data["graph"].ndata[key].requires_grad_(True)
-                            if key in data:
-                                data[key].requires_grad_(True)
-                        except KeyError:
-                            pass
+                        if "graph" in data:
+                            g = data.get("g")
+                            if isinstance(g, dgl.DGLGraph):
+                                if key in g.ndata:
+                                    data["graph"].ndata[key].requires_grad_(True)
+                            else:
+                                # assume it's a PyG graph
+                                if key in g:
+                                    getattr(g, key).requires_grad_(True)
+                        if key in data:
+                            target = data.get(key)
+                            # for tensors just set them directly
+                            if isinstance(target, torch.Tensor):
+                                target.requires_grad_(True)
+                            else:
+                                # assume the remaining case are lists of tensors
+                                try:
+                                    [t.requires_grad_(True) for t in target]
+                                except AttributeError:
+                                    pass
             else:
                 # in the single dataset case, we just need to loop over a single
                 # set of tasks
                 input_keys = list(self.input_grad_keys.values()).pop(0)
                 for key in input_keys:
-                    try:
-                        if "graph" in batch:
-                            batch["graph"].ndata[key].requires_grad_(True)
-                        if key in batch:
-                            batch[key].requires_grad_(True)
-                    except KeyError:
-                        pass
+                    # set require grad for both point cloud and graph tensors
+                    if "graph" in data:
+                        g = data.get("g")
+                        if isinstance(g, dgl.DGLGraph):
+                            if key in g.ndata:
+                                data["graph"].ndata[key].requires_grad_(True)
+                        else:
+                            # assume it's a PyG graph
+                            if key in g:
+                                getattr(g, key).requires_grad_(True)
+                    if key in data:
+                        target = data.get(key)
+                        # for tensors just set them directly
+                        if isinstance(target, torch.Tensor):
+                            target.requires_grad_(True)
+                        else:
+                            # assume the remaining case are lists of tensors
+                            try:
+                                [t.requires_grad_(True) for t in target]
+                            except AttributeError:
+                                pass
 
     def forward(
         self,

@@ -10,7 +10,7 @@ from pymatgen.core import Structure
 from emmet.core.symmetry import SymmetryData
 from ocpmodels.common.types import BatchDict, DataDict
 
-from ocpmodels.datasets.base import BaseLMDBDataset
+from ocpmodels.datasets.base import PointCloudDataset
 from ocpmodels.datasets.utils import (
     concatenate_keys,
     point_cloud_featurization,
@@ -50,7 +50,7 @@ def item_from_structure(data: Any, *keys: str) -> Any:
 
 
 @registry.register_dataset("MaterialsProjectDataset")
-class MaterialsProjectDataset(BaseLMDBDataset):
+class MaterialsProjectDataset(PointCloudDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
 
     def index_to_key(self, index: int) -> Tuple[int]:
@@ -101,15 +101,20 @@ class MaterialsProjectDataset(BaseLMDBDataset):
                 "Structure not found in data - workflow needs a structure to use!"
             )
         coords = torch.from_numpy(structure.cart_coords).float()
-        return_dict["pos"] = coords[None, :] - coords[:, None]
-        return_dict["coords"] = coords
+        system_size = len(coords)
+        return_dict["pos"] = coords
+        chosen_nodes = self.choose_dst_nodes(system_size, self.full_pairwise)
+        src_nodes, dst_nodes = chosen_nodes["src_nodes"], chosen_nodes["dst_nodes"]
         atom_numbers = torch.LongTensor(structure.atomic_numbers)
         # uses one-hot encoding featurization
-        pc_features = point_cloud_featurization(atom_numbers, atom_numbers, 200)
+        pc_features = point_cloud_featurization(
+            atom_numbers[src_nodes], atom_numbers[dst_nodes], 100
+        )
         # keep atomic numbers for graph featurization
         return_dict["atomic_numbers"] = atom_numbers
         return_dict["pc_features"] = pc_features
-        return_dict["num_particles"] = len(atom_numbers)
+        return_dict["sizes"] = system_size
+        return_dict.update(**chosen_nodes)
         return_dict["distance_matrix"] = torch.from_numpy(
             structure.distance_matrix
         ).float()
@@ -309,4 +314,8 @@ class MaterialsProjectDataset(BaseLMDBDataset):
     def collate_fn(batch: List[DataDict]) -> BatchDict:
         # since this class returns point clouds by default, we have to pad
         # the atom-centered point cloud data
-        return concatenate_keys(batch, pad_keys=["pc_features", "pos"])
+        return concatenate_keys(
+            batch,
+            pad_keys=["pc_features"],
+            unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
+        )
