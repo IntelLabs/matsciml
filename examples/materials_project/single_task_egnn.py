@@ -1,15 +1,15 @@
 import pytorch_lightning as pl
 from torch.nn import LazyBatchNorm1d, SiLU
 
-from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset
+from ocpmodels.lightning.data_utils import MatSciMLDataModule
+from ocpmodels.datasets.transforms import PointCloudToGraphTransform
 from ocpmodels.models import PLEGNNBackbone
 from ocpmodels.models.base import ScalarRegressionTask, BinaryClassificationTask
 
 pl.seed_everything(21616)
 
 model_args = {
-    "embed_in_dim": 1,
+    "embed_in_dim": 128,
     "embed_hidden_dim": 32,
     "embed_out_dim": 128,
     "embed_depth": 5,
@@ -44,18 +44,25 @@ task = ScalarRegressionTask(
     task_keys=["efermi"],
 )
 
-dm = MaterialsProjectDataModule(
-    dataset=DGLMaterialsProjectDataset("mp_data/base", cutoff_dist=10.0),
+dm = MatSciMLDataModule(
+    dataset="MaterialsProjectDataset",
+    train_path="mp_data/base",
+    dset_kwargs={
+        "transforms": [
+            PointCloudToGraphTransform(
+                "dgl", cutoff_dist=20.0, node_keys=["pos", "atomic_numbers"]
+            )
+        ]
+    },
     val_split=0.2,
-    batch_size=128,
-    num_workers=16,
+    batch_size=16,
+    num_workers=2,
 )
 
 trainer = pl.Trainer(
-    max_epochs=100,
-    accelerator="gpu",
-    devices=8,
-    strategy="ddp",
+    fast_dev_run=100,
+    accelerator="cpu",
+    devices=1,
 )
 
 trainer.fit(task, datamodule=dm)

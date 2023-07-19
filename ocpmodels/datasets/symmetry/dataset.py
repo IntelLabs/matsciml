@@ -1,15 +1,12 @@
 from typing import Any, List, Tuple, Union, Dict, Optional, Callable
 from pathlib import Path
-from importlib.util import find_spec
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import IterableDataset, DataLoader
+from torch.utils.data import IterableDataset
 
 from ocpmodels.datasets.base import BaseLMDBDataset
 from ocpmodels.common.registry import registry
-
-_has_dgl = find_spec("dgl") is not None
 
 
 def concatenate_keys(
@@ -105,6 +102,8 @@ class OTFPointGroupDataset(IterableDataset):
 
 @registry.register_dataset("SyntheticPointGroupDataset")
 class SyntheticPointGroupDataset(BaseLMDBDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("devset")
+
     def __init__(
         self,
         lmdb_root_path: Union[str, Path],
@@ -147,49 +146,3 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         pad_keys = ["pos", "atomic_numbers"]
         batched_data = concatenate_keys(batch, pad_keys)
         return batched_data
-
-
-if _has_dgl:
-    import dgl
-
-    class DGLSyntheticPointGroupDataset(SyntheticPointGroupDataset):
-        def __init__(
-            self,
-            lmdb_root_path: Union[str, Path],
-            transforms: Optional[List[Callable]] = None,
-            max_types: int = 200,
-            cutoff_dist: float = 5.0,
-        ) -> None:
-            super().__init__(lmdb_root_path, transforms, max_types)
-            self.cutoff_dist = cutoff_dist
-
-        def data_from_key(
-            self, lmdb_index: int, subindex: int
-        ) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
-            sample = super().data_from_key(lmdb_index, subindex)
-            pos = sample["coordinates"]
-            dist_mat = torch.cdist(pos, pos)
-            lower_tri = torch.tril(dist_mat)
-            # mask out self loops and atoms that are too far away
-            mask = (0.0 < lower_tri) * (lower_tri < self.cutoff_dist)
-            adj_list = torch.argwhere(mask).tolist()  # DGLGraph only takes lists
-            # number of nodes has to be passed explicitly since cutoff
-            # radius may result in shorter adj_list
-            graph = dgl.graph(adj_list, num_nodes=len(sample["source_types"]))
-            graph.ndata["pos"] = pos
-            graph.ndata["atomic_numbers"] = sample["source_types"]
-            for key in ["coordinates", "source_types", "dest_types", "pc_features"]:
-                del sample[key]
-            # make DGL graph 'undirected'
-            sample["graph"] = dgl.to_bidirected(graph, copy_ndata=True)
-            return sample
-
-        @staticmethod
-        def collate_fn(
-            batch: List[Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]]
-        ):
-            batch = super(
-                DGLSyntheticPointGroupDataset, DGLSyntheticPointGroupDataset
-            ).collate_fn(batch)
-            batch["graph"] = dgl.batch(batch["graph"])
-            return batch

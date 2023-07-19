@@ -25,20 +25,41 @@ __all__ = ["GraphToPointCloudTransform", "OCPGraphToPointCloudTransform"]
 
 
 class GraphToPointCloudTransform(RepresentationTransform):
-    def __init__(self, backend: str, atom_centered: bool = True) -> None:
-        """
-        _summary_
+    def __init__(self, backend: str, full_pairwise: bool = True) -> None:
+        r"""
+        Convert a graph data sample into a point cloud.
+
+        The ``full_pairwise`` argument toggles between a complete node-node pairwise
+        data representation and a randomly sampled "end point" format, which
+        aims to knock down the memory requirements of a point cloud.
+
+        In the case of ``full_pairwise`` being ``True``, then the point cloud
+        will be symmetric (shape [N, N, D] for feature dimension D). If it's
+        ``False``, then the destination (``dim=1``) shape will be M, where M
+        can be any number between 1 and N, the size of the point cloud (shape [N, M, D]).
+
+        In this current implementation, the atom positions are left as is and
+        left up to the neural network model (via the ``read_batch``) method
+        to construct the positions in the right way to enable autograd for forces.
+
+        The keys we return as part of the data sample are:
+
+        - ``pos`` [N, 3]
+        - ``src_nodes``, ``dst_nodes``, N/N(M) as node indices
+        - ``pc_features`` [N, N(M), 200] as node features
+        - ``sizes`` scalar, number of particles in the whole system (N)
 
         Parameters
         ----------
         backend : str
             Either 'dgl' or 'pyg'; specifies that graph framework to
             represent structures
-        atom_centered : bool, optional
-            If True, creates atom-centered point clouds; by default True
+        full_pairwise : bool, optional
+            If True, every node is compared against every other node; by default True.
+            If False, we randomly sample ``dst`` nodes to construct the point cloud.
         """
         super().__init__(backend=backend)
-        self.atom_centered = atom_centered
+        self.full_pairwise = full_pairwise
 
     def setup_transform(self, dataset: BaseLMDBDataset) -> None:
         """
@@ -51,7 +72,12 @@ class GraphToPointCloudTransform(RepresentationTransform):
             A dataset object which is a subclass of `BaseLMDBDataset`.
         """
         dataset.representation = "point_cloud"
-        collate_fn = partial(utils.concatenate_keys, pad_keys=["pos", "pc_features"])
+        # we will pack point cloud features, but not positions
+        collate_fn = partial(
+            utils.concatenate_keys,
+            pad_keys=["pc_features"],
+            unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
+        )
         dataset.collate_fn = staticmethod(collate_fn).__func__
         return super().setup_transform(dataset)
 
@@ -72,13 +98,24 @@ class GraphToPointCloudTransform(RepresentationTransform):
                 g, dgl.DGLGraph
             ), f"Expected DGL graph as input, but got {g} which is type {type(g)}"
             features = g.ndata["atomic_numbers"].long()
+            system_size = len(features)
+            src_indices = torch.arange(system_size)
+            if not self.full_pairwise:
+                num_neighbors = torch.randint(1, system_size, (1,)).item()
+                # extract out a random number of neighbors and sort the indices
+                dst_indices = torch.randperm(system_size)[:num_neighbors].sort().values
+            else:
+                dst_indices = src_indices
             pos = g.ndata["pos"]
-            # compute atom-centered point clouds
-            if self.atom_centered:
-                features = utils.point_cloud_featurization(features, features, 100)
-                pos = pos[None, :] - pos[:, None]
-            data["pos"] = pos
+            # extract out point cloud features
+            features = utils.point_cloud_featurization(
+                features[src_indices], features[dst_indices], 100
+            )
+            data["pos"] = pos  # left as N, 3
             data["pc_features"] = features
+            data["sizes"] = system_size
+            data["src_nodes"] = src_indices
+            data["dst_nodes"] = dst_indices
 
     if package_registry["pyg"]:
 
@@ -103,9 +140,39 @@ class GraphToPointCloudTransform(RepresentationTransform):
 
 class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
     def __init__(
-        self, backend: str, sample_size: int = 5, atom_centered: bool = True
+        self, backend: str, sample_size: int = 5, full_pairwise: bool = True
     ) -> None:
-        super().__init__(backend, atom_centered)
+        r"""
+        Convert a graph data sample into a point cloud, with additional semantics
+        for dealing with the Open Catalyst dataset which has labelled nodes.
+
+        The ``full_pairwise`` behaves slightly differently from the base class:
+        we use the full node set (molecule + substrate + surface nodes) as N,
+        and the molecule node set as M. If ``full_pairwise`` is ``True``, the
+        shape is [N, N, :], otherwise [M, N, :]. In contrast to the base class,
+        N >= M, which allows for a more compact representation if not pairwise.
+
+        In this current implementation, the atom positions are left as is and
+        left up to the neural network model (via the ``read_batch``) method
+        to construct the positions in the right way to enable autograd for forces.
+
+        The keys we return as part of the data sample are:
+
+        - ``pos`` [N, 3]
+        - ``src_nodes``, ``dst_nodes``, N(M)/N as node indices
+        - ``pc_features`` [N(M), N, 200] as node features
+        - ``sizes`` scalar, the larger number of particles in the whole system (N)
+
+        Parameters
+        ----------
+        backend : str
+            Either 'dgl' or 'pyg'; specifies that graph framework to
+            represent structures
+        full_pairwise : bool, optional
+            If True, every node is compared against every other node; by default True.
+            If False, we randomly sample ``dst`` nodes to construct the point cloud.
+        """
+        super().__init__(backend, full_pairwise)
         self.sample_size = sample_size
 
     @staticmethod
@@ -175,6 +242,9 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
         ].tolist()
         src_nodes = torch.LongTensor(molecule_nodes)
         dst_nodes = torch.LongTensor(molecule_nodes + surface_nodes + neighbor_idx)
+        # in the full pairwise, make the point cloud neighbors symmetric
+        if self.full_pairwise:
+            src_nodes = dst_nodes
         return src_nodes, dst_nodes
 
     if package_registry["dgl"]:
@@ -190,6 +260,8 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
             molecule_nodes, surface_nodes, substrate_nodes = self._extract_indices(
                 tags, nodes
             )
+            # the pairwise logic is located inside `_pick_src_dst`; in the affirmative
+            # case, src_nodes == dst_nodes
             src_nodes, dst_nodes = self._pick_src_dst(
                 molecule_nodes, surface_nodes, substrate_nodes
             )
@@ -199,12 +271,14 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
             pc_features = utils.point_cloud_featurization(
                 src_features, dst_features, max_types=100
             )
+            # node positions still kept as N, 3
             node_pos = g.ndata["pos"]
-            if self.atom_centered:
-                node_pos = node_pos[dst_nodes][None, :] - node_pos[src_nodes][:, None]
             # copy data over to dictionary
             data["pc_features"] = pc_features
             data["pos"] = node_pos
-            data["num_centers"] = len(src_nodes)
-            data["num_neighbors"] = len(dst_nodes)
+            data["src_nodes"] = src_nodes
+            data["dst_nodes"] = dst_nodes
+            # we retain the full set of nodes for indexing, so the size
+            # of the full pos tensor is different from other datasets
+            data["sizes"] = len(node_pos)
             data["force"] = g.ndata["force"][dst_nodes].squeeze()

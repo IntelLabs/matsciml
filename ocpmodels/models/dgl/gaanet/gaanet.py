@@ -1,12 +1,12 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Callable, Optional, Dict, Any, Union
+from typing import Callable, List, Optional, Dict, Any, Union
 
 import torch, math
 import torch.nn as nn
 import numpy as np
-from ocpmodels.models.base import AbstractEnergyModel
+from ocpmodels.models.base import AbstractPointCloudModel
 from dgl.nn.pytorch.factory import KNNGraph
 import dgl
 
@@ -14,7 +14,7 @@ from .gaanet_model import MLP, MomentumNorm, LayerNorm, TiedMultivectorAttention
 import geometric_algebra_attention.pytorch as gala
 
 
-class GalaPotential(AbstractEnergyModel):
+class GalaPotential(AbstractPointCloudModel):
     """Calculate a potential using geometric algebra attention
 
     Stacks permutation-covariant attention blocks, then adds a permutation-invariant reduction layer.
@@ -42,9 +42,13 @@ class GalaPotential(AbstractEnergyModel):
         block_normalization: Optional[str] = None,
         equivariant_attention: bool = True,
         tied_attention: bool = False,
-        encoder_only: Optional[bool] = False,
+        encoder_only: Optional[bool] = True,
+        extensive: bool = True,
     ) -> None:
-        super().__init__()
+        # pass superficial values into the base class
+        super().__init__(1, 1, {}, encoder_only)
+        # current unused embedding table
+        del self.atom_embedding
         self.tied_attention = tied_attention
         self.equivariant_attention = equivariant_attention
         self.D_in = D_in
@@ -73,6 +77,7 @@ class GalaPotential(AbstractEnergyModel):
         self.encoder_only = encoder_only
 
         self.vec2mv = gala.Vector2Multivector()
+        # up project expects concatenated features
         self.up_project = torch.nn.Linear(2 * D_in, self.hidden_dim)
         self.final_mlp = self.make_value_net(self.hidden_dim)
         self.energy_projection = torch.nn.Linear(self.hidden_dim, 1, bias=False)
@@ -106,6 +111,7 @@ class GalaPotential(AbstractEnergyModel):
                         self.eqvar_value_normalization, self.hidden_dim
                     )
                 )
+        self.save_hyperparameters()
 
     def make_attention_nets(self) -> None:
         D_in = lambda i: 1 if (i == self.depth and self.rank == 1) else 2
@@ -143,7 +149,7 @@ class GalaPotential(AbstractEnergyModel):
                             self.scale_nets[-1],
                             reduce=False,
                             rank=rank,
-                            **self.GAANet_kwargs
+                            **self.GAANet_kwargs,
                         )
                     )
 
@@ -167,7 +173,7 @@ class GalaPotential(AbstractEnergyModel):
                         self.scale_nets[-1],
                         reduce=reduce,
                         rank=rank,
-                        **self.GAANet_kwargs
+                        **self.GAANet_kwargs,
                     )
                 )
             else:
@@ -178,7 +184,7 @@ class GalaPotential(AbstractEnergyModel):
                         self.value_nets[-1],
                         reduce=reduce,
                         rank=rank,
-                        **self.GAANet_kwargs
+                        **self.GAANet_kwargs,
                     )
                 )
 
@@ -237,26 +243,69 @@ class GalaPotential(AbstractEnergyModel):
         )
         return torch.nn.Sequential(*layers)
 
-    def forward(
+    def _forward(
         self,
-        batch: Optional[Dict[str, Any]] = None,
+        pc_pos: torch.Tensor,
+        pc_features: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
+        sizes: Optional[List[int]] = None,
+        **kwargs,
     ) -> torch.Tensor:
-        inputs = batch["pc_features"]
-        positions = batch["pos"]
+        r"""
+        Map input data onto the Gala architecture.
 
-        _out = self._forward(inputs, positions)
+        Notably, the final steps of the architecture produces per-center embeddings,
+        i.e. [B, N, N, D] with batch size B, padded tensor size N, and ``hidden_dim`` D.
+        If ``mask`` and ``sizes`` are provided, prior to returning the result, we
+        apply this information to remove contributions from the padded particles,
+        then applying the corresponding reduction (the ``extensive`` model hyperparameter)
+        on each individual point cloud system.
 
-        out_tens = torch.mean(_out, axis=1)
+        If ``encoder_only`` is ``False``, i.e. we are using the model directly
+        for energy prediction, the same masking pipeline is applied prior to
+        the reduction, and so should provide the desired behavior of [B, 1] as an energy
+        per-point cloud. If ``encoder_only` is ``True``, then this function emits
+        per-point cloud embeddings with shape [B, D].
 
-        return out_tens
+        TODO mask out attention and renormalize to remove contributions from padded
+        destination nodes.
 
-    def _forward(self, inputs: torch.Tensor, positions: torch.Tensor) -> torch.Tensor:
+        Parameters
+        ----------
+        pc_pos : torch.Tensor
+            Padded point cloud neighborhood tensor, with shape ``[B, N, M, 3]``
+            for ``B`` batch size and ``N`` padded size. For full pairwise point
+            clouds, ``N == M``.
+        pc_features : torch.Tensor
+            Padded point cloud feature tensor, with shape ``[B, N, M, D_in]``
+            for ``B`` batch size and ``N`` padded size. For full pairwise point
+            clouds, ``N == M``.
+        mask : Optional[torch.Tensor], optional
+            Boolean tensor with shape ``[B, N, M]``, by default None. If supplied
+            in conjuction with ``sizes``, will mask out contributions from padding
+            nodes.
+        sizes : Optional[List[int]], optional
+            List of integers denoting the size of the first non-batch point cloud
+            dimension, by default None. If supplied
+            in conjuction with ``mask``, will mask out contributions from padding
+            nodes.
 
-        positions = torch.div(positions, 1)
+        Returns
+        -------
+        torch.Tensor
+            If ``encoder_only``, emits a 2D tensor of shape ``[B, hidden_dim]``.
+            Otherwise, emits a 2D tensor of shape ``[B, 1]`` corresponding to
+            the system energy of each point cloud.
+        """
+        positions = torch.div(pc_pos, 1)
 
         last_r_mv = self.vec2mv(positions)
         last_r = last_r_mv
-        last = self.up_project(inputs)
+        expected_size = self.hparams.D_in * 2
+        assert (
+            pc_features.size(-1) == expected_size
+        ), f"Point cloud atom features do not match expected '2 x D_in' shape: expected {expected_size}, actual: {pc_features.size(-1)}"
+        last = self.up_project(pc_features)
 
         for i in range(self.depth + 1):
             residual = last
@@ -279,7 +328,7 @@ class GalaPotential(AbstractEnergyModel):
             if self.block_norm_layers:
                 last = self.block_norm_layers[i](last)
 
-            # Apply Layer Norm (Momentum) to last_r 
+            # Apply Layer Norm (Momentum) to last_r
             if self.equivariant_attention:
                 if self.residual:
                     last_r = last_r + residual_r
@@ -292,9 +341,10 @@ class GalaPotential(AbstractEnergyModel):
                 # Normalize with momentum here
 
         last = self.final_mlp(last)
-        # Sum over the neighborhood axis needed when doing neighborhood construction
-        # last = torch.sum(last, -2)
         if not self.encoder_only:
             last = self.energy_projection(last)
-
+        # if mask and sizes are provided, remove contributions from source nodes that
+        # are actually padding nodes
+        if isinstance(mask, torch.Tensor) and sizes:
+            last = self.mask_model_output(last, mask, sizes, self.hparams.extensive)
         return last
