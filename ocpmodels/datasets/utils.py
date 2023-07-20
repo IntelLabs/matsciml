@@ -322,3 +322,24 @@ def get_data_from_index(
         if not data:
             raise ValueError(f"Data sample at index {data_index} for file {env.path} missing.")
     return data
+
+
+def write_lmdb_data(key: Any, data: Any, target_lmdb: lmdb.Environment) -> None:
+    """
+    Write a dictionary of data to an LMDB output.
+
+    Uses ``pickle`` to dump data using the highest protocol available. Keys
+    are first converted from any data type (i.e. integers) into a string
+    with ``ascii`` encoding.
+
+    Parameters
+    ----------
+    key : Any
+        Key to store data to within `target_lmdb`
+    data : Any
+        Any picklable object to save to `target_lmdb`
+    target_lmdb : lmdb.Environment
+        LMDB environment to save data to
+    """
+    with target_lmdb.begin(write=True) as txn:
+        txn.put(key=f"{key}".encode("ascii"), value=pickle.dumps(data, protocol=-1))
