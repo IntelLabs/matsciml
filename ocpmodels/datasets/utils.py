@@ -258,3 +258,34 @@ def get_lmdb_keys(
     # convert to a sorted list of keys
     keys = sorted(list(filter(_lambda, keys)))
     return keys
+
+
+# this provides a quick way to get only data keys from an LMDB
+get_lmdb_data_keys = partial(
+    get_lmdb_keys, _lambda=lambda x: x.isnumeric(), ignore_keys=None
+)
+
+
+def get_lmdb_data_length(lmdb_path: Union[str, Path]) -> int:
+    """
+    Retrieve the number of data entries within a LMDB file.
+
+    This uses ``get_lmdb_data_keys`` to extract only numeric keys
+    within the LMDB file, i.e. assumes only integer valued keys
+    contain data samples.
+
+    Parameters
+    ----------
+    lmdb_path : Union[str, Path]
+        Path to the LMDB file.
+
+    Returns
+    -------
+    int
+        Number of data samples
+    """
+    env = connect_db_read(lmdb_path)
+    # this gets the number of data keys
+    keys = get_lmdb_data_keys(env)
+    length = len(keys)
+    return length
