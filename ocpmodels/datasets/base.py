@@ -278,7 +278,11 @@ class BaseLMDBDataset(Dataset):
         return cls(cls.__devset__, transforms, **kwargs)
 
     def save_preprocessed_data(
-        self, target_dir: Union[str, Path], num_procs: int, **metadata
+        self,
+        target_dir: Union[str, Path],
+        num_procs: int,
+        data: Optional[List[Any]] = None,
+        **metadata,
     ) -> None:
         """
         Exports a set of LMDB files, with data passed through the gambit
@@ -300,10 +304,15 @@ class BaseLMDBDataset(Dataset):
             it doesn't exist already.
         num_procs : int
             Number of processes to parallelize over
+        data: Optional[List[Any]], optional
+            List of data to save - default behavior is to save all
+            data, but if the user wishes to pass a specific subset
+            manually curated, it can be passed as this argument.
         """
         metadata.setdefault("preprocessed", True)
         # retrieve samples, as it comes through the pipeline
-        data = [self.__getitem__(index) for index in range(len(self))]
+        if not data:
+            data = [self.__getitem__(index) for index in range(len(self))]
         utils.parallel_lmdb_write(target_dir, data, num_procs, metadata)
 
 
