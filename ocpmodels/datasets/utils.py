@@ -289,3 +289,36 @@ def get_lmdb_data_length(lmdb_path: Union[str, Path]) -> int:
     keys = get_lmdb_data_keys(env)
     length = len(keys)
     return length
+
+
+def get_data_from_index(
+    db_index: int, data_index: int, envs: List[lmdb.Environment]
+) -> Dict[str, Any]:
+    """
+    Given a pair of indices, retrieve a data sample.
+
+    The indices are used to first look up which LMDB environment
+    to look into, followed by the index within that file.
+
+    Parameters
+    ----------
+    db_index : int
+        Index for the LMDB environment within `envs`.
+    data_index : int
+        Index for the data sample within an LMDB environment.
+    envs : List[lmdb.Environment]
+        List of `lmdb.Environment` objects
+
+    Returns
+    -------
+    Dict[str, Any]
+        Data sample retrieved from the environments
+    """
+    try:
+        env = envs[db_index]
+    except IndexError(f"Tried to retrieve LMDB file {db_index}, but only {len(envs)} are loaded.")
+    with env.begin() as txn:
+        data = pickle.loads(txn.get(f"{data_index}".encode("ascii")))
+        if not data:
+            raise ValueError(f"Data sample at index {data_index} for file {env.path} missing.")
+    return data
