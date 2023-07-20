@@ -15,7 +15,7 @@ import dgl
 from dgl.nn.pytorch.factory import KNNGraph
 
 from ocpmodels.common.types import DataDict, BatchDict
-from ocpmodels.datasets.utils import concatenate_keys
+from ocpmodels.datasets import utils
 
 
 # this provides some backwards compatiability to Python ~3.7
@@ -223,7 +223,7 @@ class BaseLMDBDataset(Dataset):
 
     @staticmethod
     def collate_fn(batch: List[DataDict]) -> BatchDict:
-        return concatenate_keys(batch)
+        return utils.concatenate_keys(batch)
 
     def sample(self, num_samples: int) -> List[Any]:
         """
