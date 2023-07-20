@@ -1,6 +1,13 @@
-from typing import List, Dict, Any, Union, Tuple
+from typing import List, Dict, Any, Union, Tuple, Optional, Callable, Generator
+from pathlib import Path
+from functools import partial
 import torch
 from torch.nn.utils.rnn import pad_sequence
+import lmdb
+import pickle
+from tqdm import tqdm
+from joblib import Parallel, delayed
+from os import makedirs
 
 from ocpmodels.common.types import DataDict, BatchDict, GraphTypes
 from ocpmodels.common import package_registry
@@ -175,3 +182,334 @@ def point_cloud_featurization(
     plus, minus = src_onehot + dst_onehot, src_onehot - dst_onehot
     feat_tensor = torch.concat([plus, minus], axis=-1)
     return feat_tensor
+
+
+def connect_db_read(lmdb_path: Union[str, Path], **kwargs) -> lmdb.Environment:
+    """
+    Open an LMDB file for reading.
+
+    Additional ``kwargs`` can be passed to modify the read behavior,
+    however by definition the ``readonly`` kwarg will always be set to
+    ``True``.
+
+    ``kwargs`` are passed into ``lmdb.open``.
+
+    Parameters
+    ----------
+    lmdb_path : Union[str, Path]
+        Path to an LMDB folder structure
+
+    Returns
+    -------
+    lmdb.Environment
+        LMDB object
+    """
+    kwargs.setdefault("subdir", False)
+    kwargs.setdefault("lock", False)
+    kwargs.setdefault("readahead", False)
+    kwargs.setdefault("meminit", False)
+    kwargs.setdefault("max_readers", 1)
+    # force ignore readonly overriding
+    if "readonly" in kwargs:
+        del kwargs["readonly"]
+    if isinstance(lmdb_path, Path):
+        lmdb_path = str(lmdb_path)
+    env = lmdb.open(lmdb_path, readonly=True, **kwargs)
+    return env
+
+
+def connect_lmdb_write(
+    lmdb_target_file: Union[str, Path], **kwargs
+) -> lmdb.Environment:
+    """
+    Open an LMDB environment for writing.
+
+    This function will enforce the ``.lmdb`` file extension if it
+    is not already present in the filepath. Kwargs are passed
+    into ``lmdb.open``
+
+    Parameters
+    ----------
+    lmdb_target_file : Union[str, Path]
+        Target path to open an LMDB file
+
+    Returns
+    -------
+    lmdb.Environment
+        Open LMDB environment for writing
+    """
+    kwargs.setdefault("map_size", 1099511627776 * 2)
+    kwargs.setdefault("meminit", False)
+    kwargs.setdefault("subdir", False)
+    kwargs.setdefault("map_async", True)
+    if isinstance(lmdb_target_file, str):
+        lmdb_target_file = Path(lmdb_target_file)
+    # make sure we append the file extension
+    lmdb_target_file = lmdb_target_file.with_suffix(".lmdb")
+    # convert to string to be passed into lmdb.open
+    lmdb_target_file = str(lmdb_target_file)
+    output_env = lmdb.open(lmdb_target_file, **kwargs)
+    return output_env
+
+
+def get_lmdb_keys(
+    env: lmdb.Environment,
+    ignore_keys: Optional[List[str]] = None,
+    _lambda: Optional[Callable] = None,
+) -> List[str]:
+    """
+    Utility function to get keys from an LMDB file.
+
+    Provides the ability to filter out certain keys, and will
+    return a sorted list. The two modes of operation for this
+    filtering action is to either provide a list of keys to ignore,
+    or a ``lambda`` function that will be applied to each key.
+
+    Parameters
+    ----------
+    env : lmdb.Environment
+        Instance of an ``lmdb.Environment`` object.
+    ignore_keys : Optional[List[str]], optional
+        Optional list of keys to ignore, by default None which
+        will return all keys.
+    _lambda : Optional[Callback], optional
+        Function used to filter the list of keys, by default None
+
+    Returns
+    -------
+    List[str]
+        Sorted list of filtered keys contained in the LMDB file
+    """
+    with env.begin() as txn:
+        keys = [key.decode("utf-8") for key in txn.cursor().iternext(values=False)]
+    if ignore_keys and _lambda:
+        raise ValueError(
+            f"Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive."
+        )
+    if ignore_keys:
+        _lambda = lambda x: x not in ignore_keys
+    else:
+        if not _lambda:
+            # escape case where we basically don't filter
+            _lambda = lambda x: x
+    # convert to a sorted list of keys
+    keys = sorted(list(filter(_lambda, keys)))
+    return keys
+
+
+# this provides a quick way to get only data keys from an LMDB
+get_lmdb_data_keys = partial(
+    get_lmdb_keys, _lambda=lambda x: x.isnumeric(), ignore_keys=None
+)
+
+
+def get_lmdb_data_length(lmdb_path: Union[str, Path]) -> int:
+    """
+    Retrieve the number of data entries within a LMDB file.
+
+    This uses ``get_lmdb_data_keys`` to extract only numeric keys
+    within the LMDB file, i.e. assumes only integer valued keys
+    contain data samples.
+
+    Parameters
+    ----------
+    lmdb_path : Union[str, Path]
+        Path to the LMDB file.
+
+    Returns
+    -------
+    int
+        Number of data samples
+    """
+    env = connect_db_read(lmdb_path)
+    # this gets the number of data keys
+    keys = get_lmdb_data_keys(env)
+    length = len(keys)
+    return length
+
+
+def get_data_from_index(
+    db_index: int, data_index: int, envs: List[lmdb.Environment]
+) -> Dict[str, Any]:
+    """
+    Given a pair of indices, retrieve a data sample.
+
+    The indices are used to first look up which LMDB environment
+    to look into, followed by the index within that file.
+
+    Parameters
+    ----------
+    db_index : int
+        Index for the LMDB environment within `envs`.
+    data_index : int
+        Index for the data sample within an LMDB environment.
+    envs : List[lmdb.Environment]
+        List of `lmdb.Environment` objects
+
+    Returns
+    -------
+    Dict[str, Any]
+        Data sample retrieved from the environments
+    """
+    try:
+        env = envs[db_index]
+    except IndexError as error:
+        error(
+            f"Tried to retrieve LMDB file {db_index}, but only {len(envs)} are loaded."
+        )
+    with env.begin() as txn:
+        data = pickle.loads(txn.get(f"{data_index}".encode("ascii")))
+        if not data:
+            raise ValueError(
+                f"Data sample at index {data_index} for file {env.path()} missing."
+            )
+    return data
+
+
+def get_lmdb_metadata(target_lmdb: lmdb.Environment) -> Union[Dict[str, Any], None]:
+    """
+    Load in metadata associated with a specific LMDB file.
+
+    Returns the dictionary if it's present, otherwise returns ``None``.
+
+    Parameters
+    ----------
+    target_lmdb : lmdb.Environment
+        Target LMDB file to inspect
+
+    Returns
+    -------
+    Union[Dict[str, Any], None]
+        None if no metadata present, otherwise the metadata dictionary.
+    """
+    with target_lmdb.begin() as txn:
+        metadata = txn.get("metadata".encode("ascii"))
+    if metadata:
+        return pickle.loads(metadata)
+    else:
+        return None
+
+
+def write_lmdb_data(key: Any, data: Any, target_lmdb: lmdb.Environment) -> None:
+    """
+    Write a dictionary of data to an LMDB output.
+
+    Uses ``pickle`` to dump data using the highest protocol available. Keys
+    are first converted from any data type (i.e. integers) into a string
+    with ``ascii`` encoding.
+
+    Parameters
+    ----------
+    key : Any
+        Key to store data to within `target_lmdb`
+    data : Any
+        Any picklable object to save to `target_lmdb`
+    target_lmdb : lmdb.Environment
+        LMDB environment to save data to
+    """
+    with target_lmdb.begin(write=True) as txn:
+        txn.put(key=f"{key}".encode("ascii"), value=pickle.dumps(data, protocol=-1))
+
+
+def parallel_lmdb_write(
+    target_dir: Union[str, Path],
+    data: List[Any],
+    num_procs: int,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> None:
+    r"""
+    Writes a set of data out to LMDB file, parallelized over ``num_procs`` workers.
+
+    The user specifies a folder that will comprise all of the individual LMDB
+    files, where each file consists of ``data`` split up into ``num_procs`` number
+    of data chunks.
+
+    Parameters
+    ----------
+    target_dir : Union[str, Path]
+        Directory containing LMDB files to target. If this doesn't exist
+        it will be created.
+    data : List[Any]
+        Data to save to LMDB file(s).
+    num_procs : int
+        Number of processes to split the writing task to
+    metadata : Optional[Dict[str, Any]], optional
+        Metadata to write to disk. Corresponds to a dictionary with
+        key/value pairs that denote extra information the user wishes
+        to save with the dataset.
+    """
+    if isinstance(target_dir, str):
+        target_dir = Path(target_dir)
+    # make the LMDB directory
+    makedirs(target_dir, exist_ok=True)
+    assert target_dir.is_dir(), f"Target to write LMDB data to is not a directory."
+
+    def write_chunk(
+        chunk: List[Any],
+        target_dir: Path,
+        index: int,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        r"""
+        Write a chunk of data to a correspond LMDB environment.
+
+        Parameters
+        ----------
+        chunk : List[Any]
+            List of data to write
+        target_dir : Path
+            Directory containing LMDB files to target
+        index : int
+            Index of this processor, used to append to the LMDB filename
+        preprocessed : bool, optional
+            Indicates if this data is preprocessed, by default False
+        """
+        formatted_index = str(index).zfill(4)
+        lmdb_target = target_dir.joinpath(f"data.{formatted_index}.lmdb")
+        lmdb_env = connect_lmdb_write(lmdb_target)
+        for subindex, _data in enumerate(
+            tqdm(
+                chunk,
+                position=index,
+                total=len(chunk),
+                desc=f"Writing LMDB data to file {lmdb_env.path()}",
+            )
+        ):
+            write_lmdb_data(subindex, _data, lmdb_env)
+        if metadata:
+            write_lmdb_data("metadata", metadata, lmdb_env)
+
+    def divide_data_chunks(
+        all_data: List[Any], num_chunks: int
+    ) -> Generator[List[Any], None, None]:
+        r"""
+        Split data into a specified number of chunks.
+
+        The number of samples per chunk should be roughly equal
+        to the extent it is possible.
+
+        Parameters
+        ----------
+        all_data : List[Any]
+            List of data to divvy up into chunks
+        num_chunks : int
+            Number of chunks to split the data into
+
+        Yields
+        ------
+        Generator[List[Any]]
+            Generator that will iteratively emit chunks of data
+        """
+        for i in range(num_chunks):
+            yield all_data[i::num_chunks]
+
+    chunks = list(divide_data_chunks(data, num_procs))
+    lengths = [len(chunk) for chunk in chunks]
+    lmdb_indices = list(range(num_procs))
+    assert all(
+        [length != 0 for length in lengths]
+    ), f"Too many processes specified and not enough data to split over multiple LMDB files. Decrease `num_procs!`"
+    p = Parallel(num_procs)(
+        delayed(write_chunk)(chunk, target_dir, index, metadata)
+        for chunk, index in zip(chunks, lmdb_indices)
+    )

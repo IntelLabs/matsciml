@@ -6,16 +6,12 @@ from pathlib import Path
 from abc import abstractmethod
 from random import sample
 import functools
-import pickle
 
-import lmdb
 import torch
 from torch.utils.data import Dataset, DataLoader
-import dgl
-from dgl.nn.pytorch.factory import KNNGraph
 
 from ocpmodels.common.types import DataDict, BatchDict
-from ocpmodels.datasets.utils import concatenate_keys
+from ocpmodels.datasets import utils
 
 
 # this provides some backwards compatiability to Python ~3.7
@@ -25,54 +21,6 @@ else:
     from functools import lru_cache
 
     cache = lru_cache(maxsize=None)
-
-
-def open_lmdb_file(path: Union[str, Path], **kwargs) -> lmdb.Environment:
-    """
-    Minimally opinionated way of opening LMDB files; by default will
-    just be in readonly to prevent accidental writes, as well as
-    assume that the path _contains_ LMDB files, and is not an LMDB
-    file itself.
-
-    Parameters
-    ----------
-    path : Union[str, Path]
-        Path to the folder containing LMDB files
-
-    Returns
-    -------
-    lmdb.Environment
-        `Environment` object for accessing the data
-    """
-    kwargs.setdefault("readonly", True)
-    kwargs.setdefault("subdir", False)
-    if isinstance(path, Path):
-        path = str(path)
-    return lmdb.open(path, **kwargs)
-
-
-def read_lmdb_file(path: Union[str, Path], **kwargs) -> lmdb.Environment:
-    """
-    Sets up opinionated defaults for _reading_ LMDB files, particularly
-    used for the Dataset loading.
-
-    Parameters
-    ----------
-    path : Union[str, Path]
-        Path to a single `.lmdb` file.
-
-    Returns
-    -------
-    lmdb.Environment
-        `Environment` object for accessing the data
-    """
-    kwargs.setdefault("readonly", True)
-    kwargs.setdefault("lock", False)
-    kwargs.setdefault("subdir", False)
-    kwargs.setdefault("readahead", False)
-    kwargs.setdefault("max_readers", 1)
-    kwargs.setdefault("meminit", False)
-    return open_lmdb_file(path, **kwargs)
 
 
 class BaseLMDBDataset(Dataset):
@@ -98,7 +46,7 @@ class BaseLMDBDataset(Dataset):
         # check LMDB files exist within the subdirectory
         db_paths = sorted(lmdb_root_path.glob("*.lmdb"))
         assert len(db_paths) > 0, f"No LMDBs found in '{lmdb_root_path}'"
-        self._envs = [read_lmdb_file(path) for path in db_paths]
+        self._envs = [utils.connect_db_read(path) for path in db_paths]
         self.transforms = transforms
 
     @property
@@ -137,16 +85,37 @@ class BaseLMDBDataset(Dataset):
         """
         indices = []
         for lmdb_index, env in enumerate(self._envs):
-            with env.begin() as txn:
-                # this gets all the keys within the LMDB file, including metadata
-                lmdb_keys = [
-                    value.decode("utf-8")
-                    for value in txn.cursor().iternext(values=False)
-                ]
-                # filter out non-numeric keys
-                subindices = filter(lambda x: x.isnumeric(), lmdb_keys)
-                indices.extend([(lmdb_index, int(subindex)) for subindex in subindices])
+            # get only numeric keys from the LMDB file
+            subindices = utils.get_lmdb_data_keys(env)
+            indices.extend([(lmdb_index, (int(subindex))) for subindex in subindices])
         return indices
+
+    @property
+    @cache
+    def is_preprocessed(self) -> bool:
+        """
+        Property of the dataset that indicates it was preprocessed.
+
+        The function looks into each open LMDB file, and looks for a
+        ``metadata`` key. For legacy support, the dataset is not
+        preprocessed if this key is not present. If it does, we look
+        further for a ``preprocessed`` flag within the metadata, and
+        return whether all elements are True.
+
+        Returns
+        -------
+        bool
+            True if every LMDB environment contains a "preprocessed"
+            flag written out by ``save_preprocessed_data``, otherwise
+            False.
+        """
+        metadata = [utils.get_lmdb_metadata(env) for env in self._envs]
+        if not all(metadata):
+            # the dataset is not preprocessed if the metadata key doesn't
+            # even exist
+            return False
+        preprocessed_flags = [m.get("preprocessed", None) for m in metadata]
+        return all(preprocessed_flags)
 
     def index_to_key(self, index: int) -> Tuple[int]:
         """For trajectory dataset, just grab the 2-tuple of LMDB index and subindex"""
@@ -169,9 +138,8 @@ class BaseLMDBDataset(Dataset):
         Any
             Unpickled representation of the data
         """
-        env = self._envs[lmdb_index]
-        with env.begin() as txn:
-            return pickle.loads(txn.get(f"{subindex}".encode("ascii")))
+        data = utils.get_data_from_index(lmdb_index, subindex, self._envs)
+        return data
 
     @property
     @cache
@@ -200,13 +168,21 @@ class BaseLMDBDataset(Dataset):
             Returns un-pickled data from the LMDB file.
         """
         keys = self.index_to_key(index)
-        data = self.data_from_key(*keys)
-        data["dataset"] = self.__class__.__name__
-        # if some callable transforms have been provided, transform
-        # the data sequentially
-        if self.transforms:
-            for transform in self.transforms:
-                data = transform(data)
+        if not self.is_preprocessed:
+            # for non-preprocessed data, we rely on any logic
+            # contained in `data_from_key`
+            data = self.data_from_key(*keys)
+            data["dataset"] = self.__class__.__name__
+            # if some callable transforms have been provided, transform
+            # the data sequentially
+            if self.transforms:
+                for transform in self.transforms:
+                    data = transform(data)
+        else:
+            # if preprocessed, we bypass all transformation steps
+            data = utils.get_data_from_index(*keys, self._envs)
+            # we don't write the dataset name, because it should already
+            # be saved
         return data
 
     def __len__(self) -> int:
@@ -223,7 +199,7 @@ class BaseLMDBDataset(Dataset):
 
     @staticmethod
     def collate_fn(batch: List[DataDict]) -> BatchDict:
-        return concatenate_keys(batch)
+        return utils.concatenate_keys(batch)
 
     def sample(self, num_samples: int) -> List[Any]:
         """
@@ -300,6 +276,44 @@ class BaseLMDBDataset(Dataset):
             List of transforms, by default None
         """
         return cls(cls.__devset__, transforms, **kwargs)
+
+    def save_preprocessed_data(
+        self,
+        target_dir: Union[str, Path],
+        num_procs: int,
+        data: Optional[List[Any]] = None,
+        **metadata,
+    ) -> None:
+        """
+        Exports a set of LMDB files, with data passed through the gambit
+        of pipeline steps as we were computing on the fly.
+
+        This is primarily to facilitate complex data transformations
+        that might be computationally expensive at run time, and the
+        we wishe to precompute these transformations to be loaded later.
+
+        Additional key/value pairs can be passed as ``metadata``, which
+        will be duplicated and saved on all LMDB outputs under the
+        "metadata" key.
+
+        Parameters
+        ----------
+        target_dir : Union[str, Path]
+            Target directory to save LMDB files to. This will contain
+            ``num_procs`` number of LMDB files; will be created if
+            it doesn't exist already.
+        num_procs : int
+            Number of processes to parallelize over
+        data: Optional[List[Any]], optional
+            List of data to save - default behavior is to save all
+            data, but if the user wishes to pass a specific subset
+            manually curated, it can be passed as this argument.
+        """
+        metadata.setdefault("preprocessed", True)
+        # retrieve samples, as it comes through the pipeline
+        if not data:
+            data = [self.__getitem__(index) for index in range(len(self))]
+        utils.parallel_lmdb_write(target_dir, data, num_procs, metadata)
 
 
 class PointCloudDataset(BaseLMDBDataset):

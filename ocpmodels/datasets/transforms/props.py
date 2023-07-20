@@ -3,7 +3,7 @@ from typing import Dict, List, Union, Optional, Any
 
 import torch
 
-from ocpmodels.common import package_registry
+from ocpmodels.common import DataDict, package_registry
 from ocpmodels.common.types import DataDict
 from ocpmodels.datasets.transforms.base import AbstractDataTransform
 
@@ -23,6 +23,7 @@ __all__ = [
     "CoordinateScaling",
     "COMShift",
     "ScaleRegressionTargets",
+    "DummyTransform",
 ]
 
 
@@ -403,4 +404,20 @@ class ScaleRegressionTargets(AbstractDataTransform):
             if not scaling:
                 scaling = self.value
             data["targets"][key] *= scaling
+        return data
+
+
+class DummyTransform(AbstractDataTransform):
+    """
+    Implements a dummy transform class for testing the behavior
+    of transform pipelines.
+
+    All this class does is leave a ``touched`` key with ``True``
+    in an incoming data sample. This value can be checked to
+    ensure transforms are working as intended, and to check
+    whether preprocessed data has been serialized correctly.
+    """
+
+    def __call__(self, data: DataDict) -> DataDict:
+        data["touched"] = True
         return data

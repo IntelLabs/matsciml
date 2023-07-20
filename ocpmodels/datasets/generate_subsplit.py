@@ -1,65 +1,20 @@
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
 import os
 from argparse import ArgumentParser, Namespace
-from typing import List, Any
+from typing import List
 from pathlib import Path
-import pickle
 
 import numpy as np
 import lmdb
 from tqdm import tqdm
+from ocpmodels.datasets import utils
 
 """
 Script for generating subsplits from the original OCP datasets.
 See the bottom of this script for usage and documentation.
 """
-
-
-def connect_db_read(lmdb_path: str) -> lmdb.Environment:
-    """
-    Open an LMDB _file_ (not folder) for reading.
-    """
-    env = lmdb.open(
-        str(lmdb_path),
-        subdir=False,
-        readonly=True,
-        lock=False,
-        readahead=False,
-        meminit=False,
-        max_readers=1,
-    )
-    return env
-
-
-def get_lmdb_length(lmdb_path: str) -> int:
-    """
-    Quick function to grab the number of entries in a single LMDB file.
-    """
-    env = connect_db_read(lmdb_path)
-    with env.begin() as txn:
-        key = txn.get("length".encode("ascii"))
-        if key:
-            length = pickle.loads(key)
-        # if we're not able to read the length because the key is missing
-        else:
-            length = len([key for key in txn.cursor().iternext(values=False)])
-    env.close()
-    return length
-
-
-def get_data_from_index(
-    db_index: int, data_index: int, envs: List[lmdb.Environment]
-) -> Any:
-    """
-    Load a single item from the 2-tuple index. `envs` holds a list
-    of `lmdb.Environment` objects.
-    """
-    env = envs[db_index]
-    with env.begin() as txn:
-        data = pickle.loads(txn.get(f"{data_index}".encode("ascii")))
-    return data
 
 
 def generate_split_indices(
@@ -73,12 +28,6 @@ def generate_split_indices(
     splits = np.split(all_indices, cum_splits)
     # only return what we asked for
     return splits[: len(splits_lengths)]
-
-
-def write_data(key: Any, data: Any, target_lmdb: lmdb.Environment) -> None:
-    """Function to write any type of pickle-able data to a target LMDB file."""
-    with target_lmdb.begin(write=True) as txn:
-        txn.put(key=f"{key}".encode("ascii"), value=pickle.dumps(data, protocol=-1))
 
 
 def main(args: Namespace):
@@ -98,7 +47,7 @@ def main(args: Namespace):
         os.makedirs(folder, exist_ok=True)
     indices = []
     for index, path in enumerate(db_paths):
-        length = get_lmdb_length(path)
+        length = utils.get_lmdb_data_length(path)
         # generate array of indices for lookup later
         indices.extend([(index, value) for value in range(length)])
     indices = np.array(indices)
@@ -106,7 +55,7 @@ def main(args: Namespace):
     # get our splits
     split_indices = generate_split_indices(indices, args.lengths)
     # initialize the lmdb environments for reading
-    origin_envs = [connect_db_read(path) for path in db_paths]
+    origin_envs = [utils.connect_db_read(path) for path in db_paths]
     # TODO open target LMDB files ready for writing
     for path, split in zip(output_folders, split_indices):
         output_env = lmdb.open(
@@ -118,13 +67,15 @@ def main(args: Namespace):
         )
         # write out some metadata; how many graphs, and which split/file
         # and index it came from
-        write_data("length", len(split), output_env)
-        write_data("origin_file", input_path, output_env)
-        write_data("origin_indices", split, output_env)
+        utils.write_data("length", len(split), output_env)
+        utils.write_data("origin_file", input_path, output_env)
+        utils.write_data("origin_indices", split, output_env)
         # copy each item into the new LMDB file
         for target_index, origin_index in enumerate(tqdm(split)):
-            data = get_data_from_index(origin_index[0], origin_index[1], origin_envs)
-            write_data(target_index, data, output_env)
+            data = utils.get_data_from_index(
+                origin_index[0], origin_index[1], origin_envs
+            )
+            utils.write_data(target_index, data, output_env)
 
 
 if __name__ == "__main__":
