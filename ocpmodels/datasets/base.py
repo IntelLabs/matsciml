@@ -242,6 +242,35 @@ class BaseLMDBDataset(Dataset):
         """
         return cls(cls.__devset__, transforms, **kwargs)
 
+    def save_preprocessed_data(
+        self, target_dir: Union[str, Path], num_procs: int, **metadata
+    ) -> None:
+        """
+        Exports a set of LMDB files, with data passed through the gambit
+        of pipeline steps as we were computing on the fly.
+
+        This is primarily to facilitate complex data transformations
+        that might be computationally expensive at run time, and the
+        we wishe to precompute these transformations to be loaded later.
+
+        Additional key/value pairs can be passed as ``metadata``, which
+        will be duplicated and saved on all LMDB outputs under the
+        "metadata" key.
+
+        Parameters
+        ----------
+        target_dir : Union[str, Path]
+            Target directory to save LMDB files to. This will contain
+            ``num_procs`` number of LMDB files; will be created if
+            it doesn't exist already.
+        num_procs : int
+            Number of processes to parallelize over
+        """
+        metadata.setdefault("preprocessed", True)
+        # retrieve samples, as it comes through the pipeline
+        data = [self.__getitem__(index) for index in range(len(self))]
+        utils.parallel_lmdb_write(target_dir, data, num_procs, metadata)
+
 
 class PointCloudDataset(BaseLMDBDataset):
     def __init__(
