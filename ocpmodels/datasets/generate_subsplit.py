@@ -18,28 +18,6 @@ See the bottom of this script for usage and documentation.
 """
 
 
-def get_lmdb_length(lmdb_path: str) -> int:
-    """
-    Quick function to grab the number of entries in a single LMDB file.
-    """
-    env = utils.connect_db_read(lmdb_path)
-    with env.begin() as txn:
-        key = txn.get("length".encode("ascii"))
-        if key:
-            length = pickle.loads(key)
-        # if we're not able to read the length because the key is missing
-        else:
-            keys = [key for key in txn.cursor().iternext(values=False)]
-            ignore_keys = [
-                "metadata",
-            ]
-            # this allows certain keys to be skipped from the length
-            filtered_keys = list(filter(lambda x: x not in ignore_keys, keys))
-            length = len(filtered_keys)
-    env.close()
-    return length
-
-
 def get_data_from_index(
     db_index: int, data_index: int, envs: List[lmdb.Environment]
 ) -> Any:
@@ -89,7 +67,7 @@ def main(args: Namespace):
         os.makedirs(folder, exist_ok=True)
     indices = []
     for index, path in enumerate(db_paths):
-        length = get_lmdb_length(path)
+        length = utils.get_lmdb_data_length(path)
         # generate array of indices for lookup later
         indices.extend([(index, value) for value in range(length)])
     indices = np.array(indices)
