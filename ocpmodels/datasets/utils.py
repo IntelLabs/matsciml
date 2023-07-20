@@ -244,7 +244,7 @@ def get_lmdb_keys(
         Sorted list of filtered keys contained in the LMDB file
     """
     with env.begin() as txn:
-        keys = [key for key in txn.cursor().iternext(values=False)]
+        keys = [key.decode("utf-8") for key in txn.cursor().iternext(values=False)]
     if ignore_keys and _lambda:
         raise ValueError(
             f"Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive."

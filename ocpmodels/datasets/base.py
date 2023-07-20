@@ -98,7 +98,7 @@ class BaseLMDBDataset(Dataset):
         # check LMDB files exist within the subdirectory
         db_paths = sorted(lmdb_root_path.glob("*.lmdb"))
         assert len(db_paths) > 0, f"No LMDBs found in '{lmdb_root_path}'"
-        self._envs = [read_lmdb_file(path) for path in db_paths]
+        self._envs = [utils.connect_db_read(path) for path in db_paths]
         self.transforms = transforms
 
     @property
@@ -137,15 +137,9 @@ class BaseLMDBDataset(Dataset):
         """
         indices = []
         for lmdb_index, env in enumerate(self._envs):
-            with env.begin() as txn:
-                # this gets all the keys within the LMDB file, including metadata
-                lmdb_keys = [
-                    value.decode("utf-8")
-                    for value in txn.cursor().iternext(values=False)
-                ]
-                # filter out non-numeric keys
-                subindices = filter(lambda x: x.isnumeric(), lmdb_keys)
-                indices.extend([(lmdb_index, int(subindex)) for subindex in subindices])
+            # get only numeric keys from the LMDB file
+            subindices = utils.get_lmdb_data_keys(env)
+            indices.extend([(lmdb_index, (int(subindex))) for subindex in subindices])
         return indices
 
     def index_to_key(self, index: int) -> Tuple[int]:
