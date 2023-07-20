@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Union, Tuple, Optional, Callable
 from pathlib import Path
+from functools import partial
 import torch
 from torch.nn.utils.rnn import pad_sequence
 import lmdb
