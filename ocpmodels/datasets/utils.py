@@ -366,6 +366,30 @@ def get_data_from_index(
     return data
 
 
+def get_lmdb_metadata(target_lmdb: lmdb.Environment) -> Union[Dict[str, Any], None]:
+    """
+    Load in metadata associated with a specific LMDB file.
+
+    Returns the dictionary if it's present, otherwise returns ``None``.
+
+    Parameters
+    ----------
+    target_lmdb : lmdb.Environment
+        Target LMDB file to inspect
+
+    Returns
+    -------
+    Union[Dict[str, Any], None]
+        None if no metadata present, otherwise the metadata dictionary.
+    """
+    with target_lmdb.begin() as txn:
+        metadata = txn.get("metadata".encode("ascii"))
+    if metadata:
+        return pickle.loads(metadata)
+    else:
+        return None
+
+
 def write_lmdb_data(key: Any, data: Any, target_lmdb: lmdb.Environment) -> None:
     """
     Write a dictionary of data to an LMDB output.
