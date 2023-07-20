@@ -1,11 +1,10 @@
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
 import os
 from argparse import ArgumentParser, Namespace
-from typing import List, Any
+from typing import List
 from pathlib import Path
-import pickle
 
 import numpy as np
 import lmdb
@@ -29,12 +28,6 @@ def generate_split_indices(
     splits = np.split(all_indices, cum_splits)
     # only return what we asked for
     return splits[: len(splits_lengths)]
-
-
-def write_data(key: Any, data: Any, target_lmdb: lmdb.Environment) -> None:
-    """Function to write any type of pickle-able data to a target LMDB file."""
-    with target_lmdb.begin(write=True) as txn:
-        txn.put(key=f"{key}".encode("ascii"), value=pickle.dumps(data, protocol=-1))
 
 
 def main(args: Namespace):
@@ -74,15 +67,15 @@ def main(args: Namespace):
         )
         # write out some metadata; how many graphs, and which split/file
         # and index it came from
-        write_data("length", len(split), output_env)
-        write_data("origin_file", input_path, output_env)
-        write_data("origin_indices", split, output_env)
+        utils.write_data("length", len(split), output_env)
+        utils.write_data("origin_file", input_path, output_env)
+        utils.write_data("origin_indices", split, output_env)
         # copy each item into the new LMDB file
         for target_index, origin_index in enumerate(tqdm(split)):
             data = utils.get_data_from_index(
                 origin_index[0], origin_index[1], origin_envs
             )
-            write_data(target_index, data, output_env)
+            utils.write_data(target_index, data, output_env)
 
 
 if __name__ == "__main__":
