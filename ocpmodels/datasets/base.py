@@ -168,13 +168,21 @@ class BaseLMDBDataset(Dataset):
             Returns un-pickled data from the LMDB file.
         """
         keys = self.index_to_key(index)
-        data = self.data_from_key(*keys)
-        data["dataset"] = self.__class__.__name__
-        # if some callable transforms have been provided, transform
-        # the data sequentially
-        if self.transforms:
-            for transform in self.transforms:
-                data = transform(data)
+        if not self.is_preprocessed:
+            # for non-preprocessed data, we rely on any logic
+            # contained in `data_from_key`
+            data = self.data_from_key(*keys)
+            data["dataset"] = self.__class__.__name__
+            # if some callable transforms have been provided, transform
+            # the data sequentially
+            if self.transforms:
+                for transform in self.transforms:
+                    data = transform(data)
+        else:
+            # if preprocessed, we bypass all transformation steps
+            data = utils.get_data_from_index(*keys, self._envs)
+            # we don't write the dataset name, because it should already
+            # be saved
         return data
 
     def __len__(self) -> int:
