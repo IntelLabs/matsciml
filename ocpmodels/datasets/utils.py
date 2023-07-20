@@ -216,6 +216,40 @@ def connect_db_read(lmdb_path: Union[str, Path], **kwargs) -> lmdb.Environment:
     return env
 
 
+def connect_lmdb_write(
+    lmdb_target_file: Union[str, Path], **kwargs
+) -> lmdb.Environment:
+    """
+    Open an LMDB environment for writing.
+
+    This function will enforce the ``.lmdb`` file extension if it
+    is not already present in the filepath. Kwargs are passed
+    into ``lmdb.open``
+
+    Parameters
+    ----------
+    lmdb_target_file : Union[str, Path]
+        Target path to open an LMDB file
+
+    Returns
+    -------
+    lmdb.Environment
+        Open LMDB environment for writing
+    """
+    kwargs.setdefault("map_size", 1099511627776 * 2)
+    kwargs.setdefault("meminit", False)
+    kwargs.setdefault("subdir", False)
+    kwargs.setdefault("map_async", True)
+    if isinstance(lmdb_target_file, str):
+        lmdb_target_file = Path(lmdb_target_file)
+    # make sure we append the file extension
+    lmdb_target_file = lmdb_target_file.with_suffix(".lmdb")
+    # convert to string to be passed into lmdb.open
+    lmdb_target_file = str(lmdb_target_file)
+    output_env = lmdb.open(lmdb_target_file, **kwargs)
+    return output_env
+
+
 def get_lmdb_keys(
     env: lmdb.Environment,
     ignore_keys: Optional[List[str]] = None,
