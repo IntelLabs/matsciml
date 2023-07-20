@@ -316,11 +316,16 @@ def get_data_from_index(
     """
     try:
         env = envs[db_index]
-    except IndexError(f"Tried to retrieve LMDB file {db_index}, but only {len(envs)} are loaded.")
+    except IndexError as error:
+        error(
+            f"Tried to retrieve LMDB file {db_index}, but only {len(envs)} are loaded."
+        )
     with env.begin() as txn:
         data = pickle.loads(txn.get(f"{data_index}".encode("ascii")))
         if not data:
-            raise ValueError(f"Data sample at index {data_index} for file {env.path} missing.")
+            raise ValueError(
+                f"Data sample at index {data_index} for file {env.path} missing."
+            )
     return data
 
 
