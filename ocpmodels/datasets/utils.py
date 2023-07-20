@@ -1,8 +1,9 @@
-from typing import List, Dict, Any, Union, Tuple
+from typing import List, Dict, Any, Union, Tuple, Optional
 from pathlib import Path
 import torch
 from torch.nn.utils.rnn import pad_sequence
 import lmdb
+import pickle
 from tqdm import tqdm
 
 from ocpmodels.common.types import DataDict, BatchDict, GraphTypes
@@ -212,3 +213,34 @@ def connect_db_read(lmdb_path: Union[str, Path], **kwargs) -> lmdb.Environment:
         lmdb_path = str(lmdb_path)
     env = lmdb.open(lmdb_path, readonly=True, **kwargs)
     return env
+
+
+def get_lmdb_keys(
+    env: lmdb.Environment, ignore_keys: Optional[List[str]] = None
+) -> List[str]:
+    """
+    Utility function to get keys from an LMDB file.
+
+    Provides the ability to filter out certain keys, and will
+    return a sorted list.
+
+    Parameters
+    ----------
+    env : lmdb.Environment
+        Instance of an ``lmdb.Environment`` object.
+    ignore_keys : Optional[List[str]], optional
+        Optional list of keys to ignore, by default None which
+        will return all keys.
+
+    Returns
+    -------
+    List[str]
+        Sorted list of filtered keys contained in the LMDB file
+    """
+    with env.begin() as txn:
+        keys = [key for key in txn.cursor().iternext(values=False)]
+    if ignore_keys:
+        keys = list(filter(lambda x: x not in ignore_keys, keys))
+    # sort the keys
+    keys = sorted(keys)
+    return keys
