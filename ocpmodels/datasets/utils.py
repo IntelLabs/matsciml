@@ -457,7 +457,7 @@ def parallel_lmdb_write(
 
     def divide_data_chunks(
         all_data: List[Any], num_chunks: int
-    ) -> Generator[List[Any]]:
+    ) -> Generator[List[Any], None, None]:
         r"""
         Split data into a specified number of chunks.
 
