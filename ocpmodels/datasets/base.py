@@ -27,54 +27,6 @@ else:
     cache = lru_cache(maxsize=None)
 
 
-def open_lmdb_file(path: Union[str, Path], **kwargs) -> lmdb.Environment:
-    """
-    Minimally opinionated way of opening LMDB files; by default will
-    just be in readonly to prevent accidental writes, as well as
-    assume that the path _contains_ LMDB files, and is not an LMDB
-    file itself.
-
-    Parameters
-    ----------
-    path : Union[str, Path]
-        Path to the folder containing LMDB files
-
-    Returns
-    -------
-    lmdb.Environment
-        `Environment` object for accessing the data
-    """
-    kwargs.setdefault("readonly", True)
-    kwargs.setdefault("subdir", False)
-    if isinstance(path, Path):
-        path = str(path)
-    return lmdb.open(path, **kwargs)
-
-
-def read_lmdb_file(path: Union[str, Path], **kwargs) -> lmdb.Environment:
-    """
-    Sets up opinionated defaults for _reading_ LMDB files, particularly
-    used for the Dataset loading.
-
-    Parameters
-    ----------
-    path : Union[str, Path]
-        Path to a single `.lmdb` file.
-
-    Returns
-    -------
-    lmdb.Environment
-        `Environment` object for accessing the data
-    """
-    kwargs.setdefault("readonly", True)
-    kwargs.setdefault("lock", False)
-    kwargs.setdefault("subdir", False)
-    kwargs.setdefault("readahead", False)
-    kwargs.setdefault("max_readers", 1)
-    kwargs.setdefault("meminit", False)
-    return open_lmdb_file(path, **kwargs)
-
-
 class BaseLMDBDataset(Dataset):
     """
     Main purpose of this class is to inherit LMDB file
