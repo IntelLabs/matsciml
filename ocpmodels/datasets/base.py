@@ -169,9 +169,8 @@ class BaseLMDBDataset(Dataset):
         Any
             Unpickled representation of the data
         """
-        env = self._envs[lmdb_index]
-        with env.begin() as txn:
-            return pickle.loads(txn.get(f"{subindex}".encode("ascii")))
+        data = utils.get_data_from_index(lmdb_index, subindex, self._envs)
+        return data
 
     @property
     @cache
