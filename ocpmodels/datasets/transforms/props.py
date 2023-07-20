@@ -3,7 +3,7 @@ from typing import Dict, List, Union, Optional, Any
 
 import torch
 
-from ocpmodels.common import package_registry
+from ocpmodels.common import DataDict, package_registry
 from ocpmodels.common.types import DataDict
 from ocpmodels.datasets.transforms.base import AbstractDataTransform
 
