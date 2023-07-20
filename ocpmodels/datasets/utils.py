@@ -361,7 +361,7 @@ def get_data_from_index(
         data = pickle.loads(txn.get(f"{data_index}".encode("ascii")))
         if not data:
             raise ValueError(
-                f"Data sample at index {data_index} for file {env.path} missing."
+                f"Data sample at index {data_index} for file {env.path()} missing."
             )
     return data
 
