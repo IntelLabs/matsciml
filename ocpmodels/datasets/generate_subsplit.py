@@ -10,6 +10,7 @@ import pickle
 import numpy as np
 import lmdb
 from tqdm import tqdm
+from ocpmodels.datasets import utils
 
 """
 Script for generating subsplits from the original OCP datasets.
@@ -37,7 +38,7 @@ def get_lmdb_length(lmdb_path: str) -> int:
     """
     Quick function to grab the number of entries in a single LMDB file.
     """
-    env = connect_db_read(lmdb_path)
+    env = utils.connect_db_read(lmdb_path)
     with env.begin() as txn:
         key = txn.get("length".encode("ascii"))
         if key:
@@ -106,7 +107,7 @@ def main(args: Namespace):
     # get our splits
     split_indices = generate_split_indices(indices, args.lengths)
     # initialize the lmdb environments for reading
-    origin_envs = [connect_db_read(path) for path in db_paths]
+    origin_envs = [utils.connect_db_read(path) for path in db_paths]
     # TODO open target LMDB files ready for writing
     for path, split in zip(output_folders, split_indices):
         output_env = lmdb.open(
