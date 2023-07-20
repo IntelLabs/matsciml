@@ -178,3 +178,37 @@ def point_cloud_featurization(
     plus, minus = src_onehot + dst_onehot, src_onehot - dst_onehot
     feat_tensor = torch.concat([plus, minus], axis=-1)
     return feat_tensor
+
+
+def connect_db_read(lmdb_path: Union[str, Path], **kwargs) -> lmdb.Environment:
+    """
+    Open an LMDB file for reading.
+
+    Additional ``kwargs`` can be passed to modify the read behavior,
+    however by definition the ``readonly`` kwarg will always be set to
+    ``True``.
+
+    ``kwargs`` are passed into ``lmdb.open``.
+
+    Parameters
+    ----------
+    lmdb_path : Union[str, Path]
+        Path to an LMDB folder structure
+
+    Returns
+    -------
+    lmdb.Environment
+        LMDB object
+    """
+    kwargs.setdefault("subdir", False)
+    kwargs.setdefault("lock", False)
+    kwargs.setdefault("readahead", False)
+    kwargs.setdefault("meminit", False)
+    kwargs.setdefault("max_readers", 1)
+    # force ignore readonly overriding
+    if "readonly" in kwargs:
+        del kwargs["readonly"]
+    if isinstance(lmdb_path, Path):
+        lmdb_path = str(lmdb_path)
+    env = lmdb.open(lmdb_path, readonly=True, **kwargs)
+    return env
