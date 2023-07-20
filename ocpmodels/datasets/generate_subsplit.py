@@ -29,7 +29,13 @@ def get_lmdb_length(lmdb_path: str) -> int:
             length = pickle.loads(key)
         # if we're not able to read the length because the key is missing
         else:
-            length = len([key for key in txn.cursor().iternext(values=False)])
+            keys = [key for key in txn.cursor().iternext(values=False)]
+            ignore_keys = [
+                "metadata",
+            ]
+            # this allows certain keys to be skipped from the length
+            filtered_keys = list(filter(lambda x: x not in ignore_keys, keys))
+            length = len(filtered_keys)
     env.close()
     return length
 
