@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Union, Tuple, Optional, Callable
+from typing import List, Dict, Any, Union, Tuple, Optional, Callable, Generator
 from pathlib import Path
 from functools import partial
 import torch
@@ -6,6 +6,8 @@ from torch.nn.utils.rnn import pad_sequence
 import lmdb
 import pickle
 from tqdm import tqdm
+from joblib import Parallel, delayed
+from os import makedirs
 
 from ocpmodels.common.types import DataDict, BatchDict, GraphTypes
 from ocpmodels.common import package_registry
@@ -383,3 +385,107 @@ def write_lmdb_data(key: Any, data: Any, target_lmdb: lmdb.Environment) -> None:
     """
     with target_lmdb.begin(write=True) as txn:
         txn.put(key=f"{key}".encode("ascii"), value=pickle.dumps(data, protocol=-1))
+
+
+def parallel_lmdb_write(
+    target_dir: Union[str, Path],
+    data: List[Any],
+    num_procs: int,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> None:
+    r"""
+    Writes a set of data out to LMDB file, parallelized over ``num_procs`` workers.
+
+    The user specifies a folder that will comprise all of the individual LMDB
+    files, where each file consists of ``data`` split up into ``num_procs`` number
+    of data chunks.
+
+    Parameters
+    ----------
+    target_dir : Union[str, Path]
+        Directory containing LMDB files to target. If this doesn't exist
+        it will be created.
+    data : List[Any]
+        Data to save to LMDB file(s).
+    num_procs : int
+        Number of processes to split the writing task to
+    metadata : Optional[Dict[str, Any]], optional
+        Metadata to write to disk. Corresponds to a dictionary with
+        key/value pairs that denote extra information the user wishes
+        to save with the dataset.
+    """
+    if isinstance(target_dir, str):
+        target_dir = Path(target_dir)
+    # make the LMDB directory
+    makedirs(target_dir, exist_ok=True)
+    assert target_dir.is_dir(), f"Target to write LMDB data to is not a directory."
+
+    def write_chunk(
+        chunk: List[Any],
+        target_dir: Path,
+        index: int,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        r"""
+        Write a chunk of data to a correspond LMDB environment.
+
+        Parameters
+        ----------
+        chunk : List[Any]
+            List of data to write
+        target_dir : Path
+            Directory containing LMDB files to target
+        index : int
+            Index of this processor, used to append to the LMDB filename
+        preprocessed : bool, optional
+            Indicates if this data is preprocessed, by default False
+        """
+        formatted_index = str(index).zfill(4)
+        lmdb_target = target_dir.joinpath(f"data.{formatted_index}.lmdb")
+        lmdb_env = connect_lmdb_write(lmdb_target)
+        for subindex, _data in enumerate(
+            tqdm(
+                chunk,
+                position=index,
+                total=len(chunk),
+                desc=f"Writing LMDB data to file {lmdb_env.path()}",
+            )
+        ):
+            write_lmdb_data(subindex, _data, lmdb_env)
+        if metadata:
+            write_lmdb_data("metadata", metadata, lmdb_env)
+
+    def divide_data_chunks(
+        all_data: List[Any], num_chunks: int
+    ) -> Generator[List[Any]]:
+        r"""
+        Split data into a specified number of chunks.
+
+        The number of samples per chunk should be roughly equal
+        to the extent it is possible.
+
+        Parameters
+        ----------
+        all_data : List[Any]
+            List of data to divvy up into chunks
+        num_chunks : int
+            Number of chunks to split the data into
+
+        Yields
+        ------
+        Generator[List[Any]]
+            Generator that will iteratively emit chunks of data
+        """
+        for i in range(num_chunks):
+            yield all_data[i::num_chunks]
+
+    chunks = list(divide_data_chunks(data, num_procs))
+    lengths = [len(chunk) for chunk in chunks]
+    lmdb_indices = list(range(num_procs))
+    assert all(
+        [length != 0 for length in lengths]
+    ), f"Too many processes specified and not enough data to split over multiple LMDB files. Decrease `num_procs!`"
+    p = Parallel(num_procs)(
+        delayed(write_chunk)(chunk, target_dir, index, metadata)
+        for chunk, index in zip(chunks, lmdb_indices)
+    )
