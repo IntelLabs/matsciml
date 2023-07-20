@@ -90,6 +90,33 @@ class BaseLMDBDataset(Dataset):
             indices.extend([(lmdb_index, (int(subindex))) for subindex in subindices])
         return indices
 
+    @property
+    @cache
+    def is_preprocessed(self) -> bool:
+        """
+        Property of the dataset that indicates it was preprocessed.
+
+        The function looks into each open LMDB file, and looks for a
+        ``metadata`` key. For legacy support, the dataset is not
+        preprocessed if this key is not present. If it does, we look
+        further for a ``preprocessed`` flag within the metadata, and
+        return whether all elements are True.
+
+        Returns
+        -------
+        bool
+            True if every LMDB environment contains a "preprocessed"
+            flag written out by ``save_preprocessed_data``, otherwise
+            False.
+        """
+        metadata = [utils.get_lmdb_metadata(env) for env in self._envs]
+        if not all(metadata):
+            # the dataset is not preprocessed if the metadata key doesn't
+            # even exist
+            return False
+        preprocessed_flags = [m.get("preprocessed", None) for m in metadata]
+        return all(preprocessed_flags)
+
     def index_to_key(self, index: int) -> Tuple[int]:
         """For trajectory dataset, just grab the 2-tuple of LMDB index and subindex"""
         return self.keys[index]
