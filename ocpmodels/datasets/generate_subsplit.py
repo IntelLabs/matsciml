@@ -18,19 +18,6 @@ See the bottom of this script for usage and documentation.
 """
 
 
-def get_data_from_index(
-    db_index: int, data_index: int, envs: List[lmdb.Environment]
-) -> Any:
-    """
-    Load a single item from the 2-tuple index. `envs` holds a list
-    of `lmdb.Environment` objects.
-    """
-    env = envs[db_index]
-    with env.begin() as txn:
-        data = pickle.loads(txn.get(f"{data_index}".encode("ascii")))
-    return data
-
-
 def generate_split_indices(
     all_indices: np.ndarray, splits_lengths: List[int]
 ) -> List[np.ndarray]:
@@ -92,7 +79,9 @@ def main(args: Namespace):
         write_data("origin_indices", split, output_env)
         # copy each item into the new LMDB file
         for target_index, origin_index in enumerate(tqdm(split)):
-            data = get_data_from_index(origin_index[0], origin_index[1], origin_envs)
+            data = utils.get_data_from_index(
+                origin_index[0], origin_index[1], origin_envs
+            )
             write_data(target_index, data, output_env)
 
 
