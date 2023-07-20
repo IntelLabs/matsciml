@@ -18,22 +18,6 @@ See the bottom of this script for usage and documentation.
 """
 
 
-def connect_db_read(lmdb_path: str) -> lmdb.Environment:
-    """
-    Open an LMDB _file_ (not folder) for reading.
-    """
-    env = lmdb.open(
-        str(lmdb_path),
-        subdir=False,
-        readonly=True,
-        lock=False,
-        readahead=False,
-        meminit=False,
-        max_readers=1,
-    )
-    return env
-
-
 def get_lmdb_length(lmdb_path: str) -> int:
     """
     Quick function to grab the number of entries in a single LMDB file.
