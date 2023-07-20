@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Union, Tuple, Optional
+from typing import List, Dict, Any, Union, Tuple, Optional, Callable
 from pathlib import Path
 import torch
 from torch.nn.utils.rnn import pad_sequence
@@ -216,13 +216,17 @@ def connect_db_read(lmdb_path: Union[str, Path], **kwargs) -> lmdb.Environment:
 
 
 def get_lmdb_keys(
-    env: lmdb.Environment, ignore_keys: Optional[List[str]] = None
+    env: lmdb.Environment,
+    ignore_keys: Optional[List[str]] = None,
+    _lambda: Optional[Callable] = None,
 ) -> List[str]:
     """
     Utility function to get keys from an LMDB file.
 
     Provides the ability to filter out certain keys, and will
-    return a sorted list.
+    return a sorted list. The two modes of operation for this
+    filtering action is to either provide a list of keys to ignore,
+    or a ``lambda`` function that will be applied to each key.
 
     Parameters
     ----------
@@ -231,6 +235,8 @@ def get_lmdb_keys(
     ignore_keys : Optional[List[str]], optional
         Optional list of keys to ignore, by default None which
         will return all keys.
+    _lambda : Optional[Callback], optional
+        Function used to filter the list of keys, by default None
 
     Returns
     -------
@@ -239,8 +245,16 @@ def get_lmdb_keys(
     """
     with env.begin() as txn:
         keys = [key for key in txn.cursor().iternext(values=False)]
+    if ignore_keys and _lambda:
+        raise ValueError(
+            f"Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive."
+        )
     if ignore_keys:
-        keys = list(filter(lambda x: x not in ignore_keys, keys))
-    # sort the keys
-    keys = sorted(keys)
+        _lambda = lambda x: x not in ignore_keys
+    else:
+        if not _lambda:
+            # escape case where we basically don't filter
+            _lambda = lambda x: x
+    # convert to a sorted list of keys
+    keys = sorted(list(filter(_lambda, keys)))
     return keys
