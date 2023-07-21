@@ -20,10 +20,3 @@ def test_process_data():
     data = cmd.process_data()
     assert all(entry is not None for entry in data)
 
-
-# def test_devset():
-#     cmd = CMDRequest().devset()
-#     cmd.download_data()
-#     devset = cmd.process_data()
-#     assert len(devset)==100
-
