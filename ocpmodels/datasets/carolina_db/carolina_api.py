@@ -92,7 +92,7 @@ class CMDRequest:
         """
 
         def request_warning(requested_data):
-            warning_message = f"Sample {n} from {self.data_dir} failed to download with: {requested_data.raise_for_status()}\n"
+            warning_message = f"Sample {n} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
             warnings.warn("warning_message")
             with open(os.path.join(self.data_dir, f"failed.txt"), "a") as f:
                 f.write(warning_message)
@@ -111,12 +111,18 @@ class CMDRequest:
         for n in tqdm(
             self.material_ids, desc="Total Processed: ", total=len(self.material_ids)
         ):
-            time.sleep(0.001)
+            time.sleep(0.0001)
             data = requests.get(url=cif_url.format(n))
             energy_data = requests.get(url=energy_url.format(n + 1))
 
             if data.status_code != 200:
                 request_status[n] = request_warning(data)
+
+            retry = 0
+            while energy_data.status_code != 200 and retry < 5:
+                energy_data = requests.get(url=energy_url.format(n + 1))
+                time.sleep(1)
+                retry += 1
 
             if energy_data.status_code != 200:
                 request_status[n] = request_warning(energy_data)

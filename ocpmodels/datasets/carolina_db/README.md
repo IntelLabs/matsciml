@@ -1,0 +1,36 @@
+# Carolina Materials Database
+
+The [Carolina Materials Database](http://www.carolinamatdb.org/) from University of South Carolina is a freely, globally accessible database of 214,436 inorganic material compounds with over 250,000 calculated properties. To use the dataset with Open MatSciML Toolkit the database needs to be downloaded, processed and stored.
+
+To download the full dataset, the `CMDRequest` module from `ocpmodels/datasets/carolina_db/carolina_api.py` may be used as follows:
+
+```python 
+from ocpmodels.datasets.carolina_db import CMDRequest
+
+cmd = CMDRequest(base_data_dir="./ocpmodels/datasets/carolina_db/base")
+cmd.download_data()
+cmd.process_data()
+
+```
+
+By default, all available data will be downloaded in `.cif` format. Note that two endpoints are used to download the data - one for a main file at: "http://www.carolinamatdb.org/static/export/cifs/{}.cif" which is the main `.cif` file, as well as "http://www.carolinamatdb.org/entry/{}/" which is used to scrape the Formation Energy property from it's entries webpage, which is not included in the main `.cif`. The energy is appended to the main file, and saved in a `raw_data` directory. Once all files have been downloaded, the data is processed with relevant properties extracted and saved into a python dictionary, which is then serialized into `lmdb`format. Some entries may fail to download due to overloading the remote server with requests. If this happens, failed sample ID's will be collected in `./{base_data_dir}/raw_data/failed.txt`.
+
+Samples to download may also be specified by a list of material id's, or from a split file. Split files are yaml files named for the split the represent, and with newline separated material id's inside. Predefined split files for train, test, and validation are provided.
+
+```python 
+from ocpmodels.datasets.carolina_db import CMDRequest
+
+# Specify material ID's
+cmd = CMDRequest(
+    base_data_dir="./ocpmodels/datasets/carolina_db/base", material_ids=[0, 1, 2]
+)
+# OR specify split files
+cmd = CMDRequest(
+    base_data_dir="./ocpmodels/datasets/carolina_db/base",
+    split_files=["train.yml", "test.yml", "val.yml"],
+)
+cmd.download_data()
+cmd.process_data()
+
+```
+
