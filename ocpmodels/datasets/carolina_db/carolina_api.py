@@ -1,7 +1,9 @@
+import multiprocessing
 import os
 import re
 import time
 import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
 from functools import cached_property
 from typing import Dict, List, Optional, Union
@@ -83,14 +85,7 @@ class CMDRequest:
             self.data_dir = os.path.join(os.path.splitext(split)[0], "raw_data")
             self.cmd_request()
 
-    def cmd_request(self) -> None:
-        """ "Queries the Carolina Materials Database through a specific endpoint.
-        Becasue the database is hosted on a machine with 1 CPU and limited memory, some
-        queries may fail. A pause between requests was suggested by the CMD creator.
-        If queries fail, a text file with samples that failed will be saved so they can
-        be requested again if desired.
-        """
-
+    def fetch_data(self, n):
         def request_warning(requested_data):
             warning_message = f"Sample {n} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
             warnings.warn("warning_message")
@@ -103,41 +98,61 @@ class CMDRequest:
         energy_pattern = (
             r'<h5>Formation Energy / Atom<\/h5>\s*<span class="value">(.*?)<\/span>'
         )
+        request_status = []
+        time.sleep(0.0001)
+        data = requests.get(url=cif_url.format(n))
+        energy_data = requests.get(url=energy_url.format(n + 1))
+
+        if data.status_code != 200:
+            request_status.append(request_warning(data))
+
+        retry = 0
+        while energy_data.status_code != 200 and retry < 5:
+            energy_data = requests.get(url=energy_url.format(n + 1))
+            time.sleep(1)
+            retry += 1
+
+        if energy_data.status_code != 200:
+            request_status.append(request_warning(energy_data))
+
+        if data.status_code == 200 and energy_data.status_code == 200:
+            data = data.text
+            match = re.search(energy_pattern, energy_data.text)
+            if match:
+                energy = match.group(1).strip()
+            else:
+                energy = None
+            with open(os.path.join(self.data_dir, f"{n}.cif"), "w") as f:
+                f.write(data)
+                f.write(f"energy {energy}")
+        return n, all(request_status)
+
+    def cmd_request(self) -> None:
+        """ "Queries the Carolina Materials Database through a specific endpoint.
+        Becasue the database is hosted on a machine with 1 CPU and limited memory, some
+        queries may fail. A pause between requests was suggested by the CMD creator.
+        If queries fail, a text file with samples that failed will be saved so they can
+        be requested again if desired.
+        """
+
         request_status = {}
 
         with suppress(OSError):
             os.remove(os.path.join(self.data_dir, f"failed.txt"))
 
-        for n in tqdm(
-            self.material_ids, desc="Total Processed: ", total=len(self.material_ids)
-        ):
-            time.sleep(0.0001)
-            data = requests.get(url=cif_url.format(n))
-            energy_data = requests.get(url=energy_url.format(n + 1))
+        with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+            # List to store the future objects
+            futures = [executor.submit(self.fetch_data, n) for n in self.material_ids]
 
-            if data.status_code != 200:
-                request_status[n] = request_warning(data)
-
-            retry = 0
-            while energy_data.status_code != 200 and retry < 5:
-                energy_data = requests.get(url=energy_url.format(n + 1))
-                time.sleep(1)
-                retry += 1
-
-            if energy_data.status_code != 200:
-                request_status[n] = request_warning(energy_data)
-
-            if data.status_code == 200 and energy_data.status_code == 200:
-                data = data.text
-                match = re.search(energy_pattern, energy_data.text)
-                if match:
-                    energy = match.group(1).strip()
-                else:
-                    energy = None
-                with open(os.path.join(self.data_dir, f"{n}.cif"), "w") as f:
-                    f.write(data)
-                    f.write(f"energy {energy}")
-                request_status[n] = True
+            # Iterate over completed futures to access the responses
+            for future in tqdm(
+                as_completed(futures), total=len(self.material_ids), desc="Downloading"
+            ):
+                try:
+                    n, status = future.result()
+                    request_status[n] = status
+                except Exception as e:
+                    print(f"Error occurred: {e}")
         return request_status
 
     @cached_property
