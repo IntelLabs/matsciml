@@ -53,6 +53,7 @@ class CMDataset(PointCloudDataset):
         return_dict.update(**node_choices)
         # there is more symmetry data, not sure what to keep or discard.
         return_dict["space_group"] = int(data["_symmetry_Int_Tables_number"])
+        return_dict["space_group_name"] = data["_symmetry_space_group_name_H-M"]
         return_dict["energy"] = data["energy"]
 
         return_dict = {
