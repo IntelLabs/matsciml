@@ -6,7 +6,7 @@ import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
 from functools import cached_property
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 import lmdb
 import pandas as pd
@@ -92,7 +92,16 @@ class CMDRequest:
             print(f"Downloading data to : {self.data_dir}")
             self.cmd_request()
 
-    def fetch_data(self, n):
+    def fetch_data(self, n) -> Tuple[int, bool]:
+        """Downloads one sample from the CMD database and saves it.
+
+        Args:
+            n (_type_): Index of sample to download
+
+        Returns:
+            Tuple[int, Dict]: index downloaded, status boolean
+        """
+
         def request_warning(requested_data):
             warning_message = f"Sample {n} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
             warnings.warn(warning_message)
@@ -138,10 +147,10 @@ class CMDRequest:
 
     def cmd_request(self) -> None:
         """ "Queries the Carolina Materials Database through a specific endpoint.
-        Becasue the database is hosted on a machine with 1 CPU and limited memory, some
+        Because the database is hosted on a machine with 1 CPU and limited memory, some
         queries may fail. A pause between requests was suggested by the CMD creator.
         If queries fail, a text file with samples that failed will be saved so they can
-        be requested again if desired.
+        be requested again if desired. Uses multiprocessing to speed up downloads.
         """
 
         request_status = {}
@@ -193,66 +202,97 @@ class CMDRequest:
         # fmt: on
         return an_map
 
+    @cached_property
+    def files_available(self) -> List[str]:
+        files = os.listdir(self.data_dir)
+        return files
+
+    def parse_data(self, idx: int) -> Tuple[int, Dict]:
+        """Parse data from .cif file.
+
+        Args:
+            idx (int): Index in file list to process
+
+        Returns:
+            Tuple[int, Dict]: Index processes, data dictionary
+        """
+        data = open(os.path.join(self.data_dir, self.files_available[idx]), "r").read()
+        data_dict = {}
+        # files sometimes come with training blank line
+        lines = data.split("\n")
+        if lines[-1] == "":
+            lines = lines[:-1]
+        # remove the header lines:
+        lines = lines[2:]
+        lines = [line.strip() for line in lines]
+        # split lines into property lines, and remainder. note that properties are
+        # a mix of string, float and int values, but will all be stored as strings.
+        # converting to proper type is done in dataset (not sure if this is best)
+        property_lines, lines = (
+            lines[: lines.index("loop_")],
+            lines[lines.index("loop_") + 1 :],
+        )
+        props = [property.split(maxsplit=1) for property in property_lines]
+        # make a property dictionary and update data_dict
+        prop_dict = dict(pd.DataFrame(props).values)
+        data_dict.update(prop_dict)
+        # split next set of lines to get the symmetry info
+        symmetry_lines, lines = (
+            lines[lines.index("_symmetry_equiv_pos_as_xyz") + 1 : lines.index("loop_")],
+            lines[lines.index("loop_") + 1 :],
+        )
+        symmetries = pd.DataFrame(
+            [symmetry.split(maxsplit=1) for symmetry in symmetry_lines]
+        )
+        symmetries[0] = pd.to_numeric(symmetries[0])
+        symmetry_dict = dict(symmetries.values)
+        data_dict["symmetry_dict"] = symmetry_dict
+        # split lines to get the cartesian coordinates and atomic numbers
+        cart_coords_lines = lines[lines.index("_atom_site_occupancy") + 1 : -1]
+        cart_coords_df = pd.DataFrame([p.split() for p in cart_coords_lines])
+        cart_coords = cart_coords_df[[3, 4, 5]].to_numpy(dtype=float)
+        atomic_numbers = [
+            self.atomic_number_map[symbol] for symbol in cart_coords_df[0].values
+        ]
+        data_dict["atomic_numbers"] = atomic_numbers
+        data_dict["cart_coords"] = cart_coords
+        data_dict["energy"] = float(lines[-1].split(maxsplit=1)[-1])
+        data_dict["formula_pretty"] = data_dict["_chemical_formula_sum"].replace(
+            " ", ""
+        )
+        data_dict["origin_file"] = self.files_available[idx]
+        return idx, data_dict
+        # self.data[idx] = data_dict
+
     def process_data(self) -> Dict:
         """Processes the raw .cif data. Grabbing any properties or attributes that are
-        provides, as well as the position data. Gathers everything into a dictionary,
-        and then saves to LMDB at the end.
+        provided, as well as the position data. Gathers everything into a dictionary,
+        and then saves to LMDB at the end. Uses multiprocessing to speed up processing.
 
         Returns:
             Dict: _description_
         """
-        files = os.listdir(self.data_dir)
-        self.data = [None] * len(files)
-        for idx, file in tqdm(
-            enumerate(files), total=len(files), desc="Processing files"
-        ):
-            data = open(os.path.join(self.data_dir, file), "r").read()
-            data_dict = {}
-            # files sometimes come with training blank line
-            lines = data.split("\n")
-            if lines[-1] == "":
-                lines = lines[:-1]
-            # remove the header lines:
-            lines = lines[2:]
-            lines = [line.strip() for line in lines]
-            # split lines into property lines, and remainder. note that properties are
-            # a mix of string, float and int values, but will all be stored as strings.
-            # converting to proper type is done in dataset (not sure if this is best)
-            property_lines, lines = (
-                lines[: lines.index("loop_")],
-                lines[lines.index("loop_") + 1 :],
-            )
-            props = [property.split(maxsplit=1) for property in property_lines]
-            # make a property dictionay and update data_dict
-            prop_dict = dict(pd.DataFrame(props).values)
-            data_dict.update(prop_dict)
-            # split next set of lines to get the symmetry info
-            symmetry_lines, lines = (
-                lines[
-                    lines.index("_symmetry_equiv_pos_as_xyz") + 1 : lines.index("loop_")
-                ],
-                lines[lines.index("loop_") + 1 :],
-            )
-            symmetries = pd.DataFrame(
-                [symmetry.split(maxsplit=1) for symmetry in symmetry_lines]
-            )
-            symmetries[0] = pd.to_numeric(symmetries[0])
-            symmetry_dict = dict(symmetries.values)
-            data_dict["symmetry_dict"] = symmetry_dict
-            # split lines to get the cartesian coordinates and atomic numbers
-            cart_coords_lines = lines[lines.index("_atom_site_occupancy") + 1 : -1]
-            cart_coords_df = pd.DataFrame([p.split() for p in cart_coords_lines])
-            cart_coords = cart_coords_df[[3, 4, 5]].to_numpy(dtype=float)
-            atomic_numbers = [
-                self.atomic_number_map[symbol] for symbol in cart_coords_df[0].values
+        self.data = [None] * len(self.files_available)
+        # for idx, file in tqdm(
+        #     enumerate(files), total=len(files), desc="Processing files"
+        # ):
+
+        with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+            # List to store the future objects
+            futures = [
+                executor.submit(self.parse_data, n) for n in range(len(self.data))
             ]
-            data_dict["atomic_numbers"] = atomic_numbers
-            data_dict["cart_coords"] = cart_coords
-            data_dict["energy"] = float(lines[-1].split(maxsplit=1)[-1])
-            data_dict["formula_pretty"] = data_dict["_chemical_formula_sum"].replace(
-                " ", ""
-            )
-            self.data[idx] = data_dict
+
+            # Iterate over completed futures to access the responses
+            for future in tqdm(
+                as_completed(futures), total=len(self.data), desc="Parsing Raw Data"
+            ):
+                try:
+                    idx, parsed_data = future.result()
+                    self.data[idx] = parsed_data
+                except Exception as e:
+                    print(f"Error occurred: {e}")
+                    
 
         self.to_lmdb(os.path.dirname(self.data_dir))
         return self.data
@@ -297,10 +337,10 @@ class CMDRequest:
     @classmethod
     def make_devset(cls):
         kwargs = {
-            "base_data_dir": "./devset",
+            "base_data_dir": "./ocpmodels/datasets/carolina_db/",
             "material_ids": list(range(0, 100)),
         }
         cmd = cls(**kwargs)
-        cmd.data_dir = kwargs["base_data_dir"]
+        cmd.data_dir = "devset"
         cmd.cmd_request()
         cmd.process_data()

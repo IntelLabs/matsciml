@@ -25,7 +25,7 @@ cmd = CMDRequest(
     base_data_dir="./ocpmodels/datasets/carolina_db/base",
     split_dir="all",
     material_ids=[
-        222222,
+        123123,
     ],
 )
 cmd.download_data()

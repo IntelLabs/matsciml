@@ -12,8 +12,11 @@ from pymatgen.core import Structure
 from ocpmodels.common.registry import registry
 from ocpmodels.common.types import BatchDict, DataDict
 from ocpmodels.datasets.base import PointCloudDataset
-from ocpmodels.datasets.utils import (concatenate_keys, pad_point_cloud,
-                                      point_cloud_featurization)
+from ocpmodels.datasets.utils import (
+    concatenate_keys,
+    pad_point_cloud,
+    point_cloud_featurization,
+)
 
 
 @registry.register_dataset("CMDataset")
@@ -30,6 +33,9 @@ class CMDataset(PointCloudDataset):
             pad_keys=["pc_features"],
             unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
         )
+
+    def raw_sample(self, idx):
+        return super().data_from_key(0, idx)
 
     def data_from_key(
         self, lmdb_index: int, subindex: int
