@@ -143,6 +143,7 @@ class CMDRequest:
             with open(os.path.join(self.data_dir, f"{n}.cif"), "w") as f:
                 f.write(data)
                 f.write(f"energy {energy}")
+                f.write(f"origin_file {n}.cif")
         return n, all(request_status)
 
     def cmd_request(self) -> None:
@@ -256,13 +257,12 @@ class CMDRequest:
         ]
         data_dict["atomic_numbers"] = atomic_numbers
         data_dict["cart_coords"] = cart_coords
-        data_dict["energy"] = float(lines[-1].split(maxsplit=1)[-1])
+        data_dict["energy"] = float(lines[-2].split(maxsplit=1)[-1])
         data_dict["formula_pretty"] = data_dict["_chemical_formula_sum"].replace(
             " ", ""
         )
-        data_dict["origin_file"] = self.files_available[idx]
+        data_dict["origin_file"] = lines[-1].split(maxsplit=1)[-1]
         return idx, data_dict
-        # self.data[idx] = data_dict
 
     def process_data(self) -> Dict:
         """Processes the raw .cif data. Grabbing any properties or attributes that are
@@ -270,12 +270,9 @@ class CMDRequest:
         and then saves to LMDB at the end. Uses multiprocessing to speed up processing.
 
         Returns:
-            Dict: _description_
+            Dict: the processed data
         """
         self.data = [None] * len(self.files_available)
-        # for idx, file in tqdm(
-        #     enumerate(files), total=len(files), desc="Processing files"
-        # ):
 
         with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
             # List to store the future objects
