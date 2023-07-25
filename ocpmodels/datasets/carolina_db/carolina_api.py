@@ -23,7 +23,9 @@ class CMDRequest:
         base_data_dir: str = "./",
         split_files: Optional[List[str]] = None,
         material_ids: Optional[List[int]] = None,
+        split_dir: Optional[str] = None,
     ):
+        self.split_dir = split_dir
         self.base_data_dir = base_data_dir
         os.makedirs(base_data_dir, exist_ok=True)
         self.material_ids = material_ids
@@ -31,7 +33,9 @@ class CMDRequest:
         # Can specify material ids' or split_files, but not both. If neither are
         # supplied, the full dataset is downloaded.
         if material_ids and split_files:
-            raise Exception(f"Only one of material_ids or split_files may be supplied")
+            raise Exception(f"Only one of material_ids and split_files may be supplied")
+        if split_dir and split_files:
+            raise Exception(f"Only one of split_dir and split_files may be supplied")
         elif material_ids is None and split_files is None:
             self.material_ids = list(range(0, 214435))
 
@@ -71,6 +75,8 @@ class CMDRequest:
         if self.split_files is not None:
             for split_file in self.split_files:
                 ids[split_file] = yaml.safe_load(open(split_file, "r"))
+        if self.split_dir is not None:
+            ids[self.split_dir] = self.material_ids
         else:
             ids["all"] = self.material_ids
         return ids
@@ -83,13 +89,16 @@ class CMDRequest:
         for split, ids in id_dict.items():
             self.material_ids = ids
             self.data_dir = os.path.join(os.path.splitext(split)[0], "raw_data")
+            print(f"Downloading data to : {self.data_dir}")
             self.cmd_request()
 
     def fetch_data(self, n):
         def request_warning(requested_data):
             warning_message = f"Sample {n} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
-            warnings.warn("warning_message")
-            with open(os.path.join(self.data_dir, f"failed.txt"), "a") as f:
+            warnings.warn(warning_message)
+            with open(
+                os.path.join(os.path.dirname(self.data_dir), f"failed.txt"), "a"
+            ) as f:
                 f.write(warning_message)
             return False
 
@@ -194,7 +203,9 @@ class CMDRequest:
         """
         files = os.listdir(self.data_dir)
         self.data = [None] * len(files)
-        for idx, file in enumerate(files):
+        for idx, file in tqdm(
+            enumerate(files), total=len(files), desc="Processing files"
+        ):
             data = open(os.path.join(self.data_dir, file), "r").read()
             data_dict = {}
             # files sometimes come with training blank line
