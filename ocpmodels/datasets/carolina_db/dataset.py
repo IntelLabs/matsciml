@@ -57,30 +57,39 @@ class CMDataset(PointCloudDataset):
         return_dict["pc_features"] = pc_features
         return_dict["sizes"] = system_size
         return_dict.update(**node_choices)
-        # there is more symmetry data, not sure what to keep or discard.
-        return_dict["space_group"] = int(data["_symmetry_Int_Tables_number"])
-        return_dict["space_group_name"] = data["_symmetry_space_group_name_H-M"]
         return_dict["energy"] = data["energy"]
-
+        target_keys = ["energy"]
+        targets = {key: self._standardize_values(data[key]) for key in target_keys}
         return_dict = {
             key: self._standardize_values(return_dict[key]) for key in return_dict
         }
+        return_dict["targets"] = targets
+        # there is more symmetry data, not sure what to keep or discard.
+        return_dict["symmetry"] = {
+            "number": int(data["_symmetry_Int_Tables_number"]),
+            "name": data["_symmetry_space_group_name_H-M"],
+        }
+        target_types = {"regression": [], "classification": []}
+        for key in target_keys:
+            item = targets.get(key)
+            if isinstance(item, Iterable):
+                # check if the data is numeric first
+                if isinstance(item[0], (float, int)):
+                    target_types["regression"].append(key)
+            else:
+                if isinstance(item, (float, int)):
+                    target_type = (
+                        "classification" if isinstance(item, int) else "regression"
+                    )
+                    target_types[target_type].append(key)
 
-        return_dict["targets"] = {}
-        return_dict["target_types"] = {"regression": [], "classification": []}
-        for key in ["energy"]:
-            return_dict["targets"][key] = data.get(key)
-            return_dict["target_types"]["regression"].append(key)
-
-        for key in ["space_group"]:
-            return_dict["targets"][key] = data.get(key)
-            return_dict["target_types"]["classification"].append(key)
+        return_dict["target_types"] = target_types
 
         return return_dict
 
     @property
     def target_keys(self) -> Dict[str, List[str]]:
-        return {"regression": ["energy"], "classification": ["space_group"]}
+        return {"regression": ["energy"]}
 
     @staticmethod
     def _standardize_values(
