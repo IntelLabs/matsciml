@@ -53,3 +53,5 @@ cmd.download_data()
 cmd.process_data()
 
 ```
+
+If you use Carolina Material Database, please refer to [this link](http://www.carolinamatdb.org/docs/) for how to cite their work
