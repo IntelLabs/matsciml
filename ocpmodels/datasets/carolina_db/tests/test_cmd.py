@@ -2,7 +2,7 @@ import shutil
 
 import pytest
 
-from ocpmodels.datasets.carolina_db import CMDRequest, carolinadb_devset
+from ocpmodels.datasets.carolina_db import CMDRequest
 from ocpmodels.datasets.carolina_db.dataset import CMDataset
 
 TEST_IDS = [0, 1, 2]
@@ -81,14 +81,11 @@ def test_dataset_collate(devset_dir):
 def test_dataset_target_keys(devset_dir):
     # this tests target key property without manually grabbing a batch
     dset = CMDataset(devset_dir)
-    assert dset.target_keys == {
-        "regression": ["energy"],
-        "classification": ["space_group"],
-    }
+    assert dset.target_keys == {"regression": ["energy"]}
 
 
 def test_saved_devset():
-    dset = CMDataset(carolinadb_devset)
+    dset = CMDataset(str(CMDataset.__devset__))
     samples = [dset.__getitem__(i) for i in range(16)]
     batch = dset.collate_fn(samples)
     assert all([key in batch for key in ["pos", "pc_features", "mask", "targets"]])

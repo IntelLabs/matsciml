@@ -142,7 +142,7 @@ class CMDRequest:
                 energy = None
             with open(os.path.join(self.data_dir, f"{n}.cif"), "w") as f:
                 f.write(data)
-                f.write(f"energy {energy}")
+                f.write(f"energy {energy}\n")
                 f.write(f"origin_file {n}.cif")
         return n, all(request_status)
 
@@ -249,7 +249,7 @@ class CMDRequest:
         symmetry_dict = dict(symmetries.values)
         data_dict["symmetry_dict"] = symmetry_dict
         # split lines to get the cartesian coordinates and atomic numbers
-        cart_coords_lines = lines[lines.index("_atom_site_occupancy") + 1 : -1]
+        cart_coords_lines = lines[lines.index("_atom_site_occupancy") + 1 : -2]
         cart_coords_df = pd.DataFrame([p.split() for p in cart_coords_lines])
         cart_coords = cart_coords_df[[3, 4, 5]].to_numpy(dtype=float)
         atomic_numbers = [
