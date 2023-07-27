@@ -1671,7 +1671,7 @@ class MultiTaskLitModule(pl.LightningModule):
             keys[self.dataset_names[0]] = set()
             for task in tasks:
                 keys[self.dataset_names[0]].update(task.__needs_grads__)
-        keys = {dset_name: sorted(keys) for dset_name, keys in keys.items()}
+        keys = {dset_name: sorted(subkeys) for dset_name, subkeys in keys.items()}
         return keys
 
     @property
