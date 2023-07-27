@@ -40,6 +40,34 @@ class CMDataset(PointCloudDataset):
     def data_from_key(
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
+        """Available keys from Carolina Materials Database:
+            _symmetry_space_group_name_H-M
+            _cell_length_a
+            _cell_length_b
+            _cell_length_c
+            _cell_angle_alpha
+            _cell_angle_beta
+            _cell_angle_gamma
+            _symmetry_Int_Tables_number
+            _chemical_formula_structural
+            _chemical_formula_sum
+            _cell_volume
+            _cell_formula_units_Z
+            symmetry_dict
+            atomic_numbers
+            cart_coords
+            energy
+            formula_pretty
+            origin_file
+
+        Args:
+            lmdb_index (int): lmdb file to select from
+            subindex (int): index within lmdb file to select
+
+        Returns:
+            Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]: output data that
+            is used during training
+        """
         data = super().data_from_key(lmdb_index, subindex)
         return_dict = {}
         # coordinates remains the original particle positions
@@ -57,6 +85,23 @@ class CMDataset(PointCloudDataset):
         return_dict["pc_features"] = pc_features
         return_dict["sizes"] = system_size
         return_dict.update(**node_choices)
+
+        lattice_abc = (
+            float(data["_cell_length_a"]),
+            float(data["_cell_length_b"]),
+            float(data["_cell_length_c"]),
+        )
+        lattice_angles = (
+            float(data["_cell_angle_alpha"]),
+            float(data["_cell_angle_beta"]),
+            float(data["_cell_angle_gamma"]),
+        )
+
+        lattice_params = torch.FloatTensor(
+            lattice_abc + tuple(a * (pi / 180.0) for a in lattice_angles)
+        )
+        return_dict["lattice_params"] = lattice_params
+
         return_dict["energy"] = data["energy"]
         target_keys = ["energy"]
         targets = {key: self._standardize_values(data[key]) for key in target_keys}
