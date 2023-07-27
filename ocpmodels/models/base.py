@@ -2275,7 +2275,7 @@ class S2EFInference(OpenCatalystInference):
             # retrieve only forces corresponding to unfixed nodes
             predictions["forces"] = force[fixed_mask]
             natoms = tuple(batch.get("natoms").cpu().numpy().astype(int))
-            chunk_split = torch.split(graph.ndata["fixed"], natoms)
+            chunk_split = torch.split(fixed, natoms)
             chunk_ids = []
             for chunk in chunk_split:
                 ids = (len(chunk) - sum(chunk)).cpu().numpy().astype(int)
