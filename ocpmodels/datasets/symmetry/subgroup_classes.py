@@ -256,7 +256,8 @@ class SubgroupGenerator:
                 name_choice = rng.choice(classes)
                 n = min(self.n_max, self.max_size // orders.get(name_choice, 1))
                 n = rng.integers(1, max(n, 1), endpoint=True)
-                v = rng.integers(0, self.type_max, n)
+                # skip atom number zero to denote padding
+                v = rng.integers(1, self.type_max, n)
                 r = rng.normal(size=(n, 3))
                 symop = self.subgroup_transform_getter(name_choice)
                 r = symop(r)
