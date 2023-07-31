@@ -973,6 +973,24 @@ class BaseTaskModule(pl.LightningModule):
         task_ckpt_path : Union[str, Path]
             Path to an existing task checkpoint file. Typically, this
             would be a PyTorch Lightning checkpoint.
+
+        Examples
+        --------
+        1. Create a new task simply from training another one
+
+        >>> new_task = ScalarRegressionTask.from_pretrained_encoder(
+            "epoch=10-step=100.ckpt"
+            )
+        
+        2. Create a new task, modifying output heads
+
+        >>> new_taks = ForceRegressionTask.from_pretrained_encoder(
+            "epoch=5-step=12516.ckpt",
+            output_kwargs={
+                "num_hidden": 3,
+                "activation": "nn.ReLU"
+            }
+        )
         """
         if isinstance(task_ckpt_path, str):
             task_ckpt_path = Path(task_ckpt_path)
