@@ -290,4 +290,11 @@ class SubgroupGenerator:
                 0, self.type_max, (self.batch_size, self.max_size), dtype=np.int64
             )
 
-            yield self.BatchType(batch_r, batch_source_v, batch_v, batch_y, [num_tiles,], [name_choice,])
+            yield self.BatchType(
+                batch_r,
+                batch_source_v,
+                batch_v,
+                batch_y,
+                num_tiles,
+                name_choice,
+            )
