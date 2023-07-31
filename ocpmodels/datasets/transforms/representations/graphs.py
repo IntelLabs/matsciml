@@ -61,6 +61,45 @@ class PointCloudToGraphTransform(RepresentationTransform):
         return super().prologue(data)
 
     @staticmethod
+    def get_atom_types(data: DataDict) -> torch.Tensor:
+        """
+        Extract out the atom types from a data sample to use as
+        node data.
+
+        If the ``atomic_numbers`` key is present in the data sample,
+        this will be used. If this is absent but ``pc_features`` is
+        available, we will infer the atom types from this instead.
+
+        Parameters
+        ----------
+        data : DataDict
+            Point cloud data sample to convert to a graph
+
+        Returns
+        -------
+        torch.Tensor
+            Source atom types from the point cloud
+
+        Raises
+        ------
+        KeyError
+            If neither ``atomic_numbers`` nor ``pc_features`` are
+            available as keys.
+        """
+        if "atomic_numbers" in data:
+            return data["atomic_numbers"]
+        elif "pc_features" in data:
+            (src_types, dst_types) = retrieve_pointcloud_node_types(data["pc_features"])
+            assert src_types.size(0) == data["pos"].size(
+                0
+            ), f"Number of source nodes != number of atom positions!"
+            return src_types
+        else:
+            raise KeyError(
+                f"No suitable atom types to read from; expect either 'atomic_numbers' or 'pc_features' to read from a data sample."
+            )
+
+    @staticmethod
     def node_distances(coords: torch.Tensor) -> torch.Tensor:
         assert coords.ndim == 2, "Expected atom coordinates to be 2D tensor."
         assert coords.size(-1) == 3, "Expected XYZ coordinates."
@@ -103,7 +142,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                         )
 
         def _convert_dgl(self, data: DataDict) -> None:
-            atom_numbers = data["atomic_numbers"]
+            atom_numbers = self.get_atom_types(data)
             coords = data["pos"]
             num_nodes = len(atom_numbers)
             # skip edge calculation if the distance matrix
@@ -149,7 +188,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
             data : DataDict
                 Data structure read from base class
             """
-            atom_numbers = data["atomic_numbers"]
+            atom_numbers = self.get_atom_types(data)
             coords = data["pos"]
             if "distance_matrix" not in data:
                 dist_mat = self.node_distances(coords)
