@@ -43,6 +43,9 @@ class OutputBlock(nn.Module):
         output_dim: int,
         activation: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
         norm: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
+        input_dim: Optional[int] = None,
+        lazy: bool = True,
+        bias: bool = True,
         dropout: float = 0.0,
         residual: bool = True,
     ) -> None:
@@ -82,7 +85,14 @@ class OutputBlock(nn.Module):
         if isinstance(norm, Type):
             norm = norm()
         self.residual = residual
-        linear = nn.LazyLinear(output_dim)
+        if lazy:
+            linear = nn.LazyLinear(output_dim, bias=bias)
+        else:
+            if not lazy and not input_dim:
+                raise ValueError(
+                    f"Non-lazy model specified for 'OutputBlock', but no 'input_dim' was passed."
+                )
+            linear = nn.Linear(input_dim, output_dim, bias=bias)
         dropout = nn.Dropout(dropout)
         self.layers = nn.Sequential(linear, activation, norm, dropout)
 
@@ -92,6 +102,18 @@ class OutputBlock(nn.Module):
             assert output.shape == data.shape
             output = output + data
         return output
+
+    @property
+    def input_dim(self) -> int:
+        """
+        Return the expected input size of this ``OutputBlock``.
+
+        Returns
+        -------
+        int
+            ``nn.Linear`` weight matrix size
+        """
+        return self.layers[0].weight.size(-1)
 
 
 class OutputHead(nn.Module):
@@ -111,6 +133,9 @@ class OutputHead(nn.Module):
         activation: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
         norm: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
         act_last: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
+        input_dim: Optional[int] = None,
+        lazy: bool = True,
+        bias: bool = True,
         dropout: float = 0.0,
         residual: bool = True,
     ) -> None:
@@ -145,20 +170,52 @@ class OutputHead(nn.Module):
         """
         super().__init__()
         blocks = [
-            OutputBlock(hidden_dim, activation, norm, dropout, residual=False),
+            OutputBlock(
+                hidden_dim,
+                activation,
+                norm,
+                input_dim=input_dim,
+                lazy=lazy,
+                bias=bias,
+                dropout=dropout,
+                residual=False,
+            ),
         ]
         # for everything in between
         blocks.extend(
             [
-                OutputBlock(hidden_dim, activation, norm, dropout, residual)
+                OutputBlock(
+                    hidden_dim,
+                    activation,
+                    norm,
+                    input_dim=hidden_dim,
+                    lazy=lazy,
+                    bias=bias,
+                    dropout=dropout,
+                    residual=residual,
+                )
                 for _ in range(num_hidden)
             ]
         )
         # last layer does not use residual or normalization
-        blocks.append(OutputBlock(output_dim, act_last, norm=None, residual=False))
+        blocks.append(
+            OutputBlock(
+                output_dim,
+                act_last,
+                norm=None,
+                input_dim=hidden_dim,
+                lazy=lazy,
+                bias=bias,
+                residual=False,
+            )
+        )
         self.blocks = nn.Sequential(*blocks)
 
     def forward(self, embedding: torch.Tensor) -> torch.Tensor:
+        expected_shape = self.blocks[0].input_dim
+        assert (
+            embedding.size(-1) == expected_shape
+        ), f"Incoming encoder output dim ({embedding.size(-1)}) does not match the expected 'OutputBlock' dim ({expected_shape})"
         return self.blocks(embedding)
 
 
