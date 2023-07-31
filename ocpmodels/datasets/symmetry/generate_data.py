@@ -49,6 +49,7 @@ train_kwargs = {
 }
 train_large_kwargs = deepcopy(train_kwargs)
 train_large_kwargs["number"] = int(20_000_000)
+train_large_kwargs["lmdb_path"] = "./symmetry/train_large"
 val_kwargs = {
     "lmdb_path": "./symmetry/validation",
     "batch_size": 1,
@@ -137,6 +138,17 @@ parser.add_argument(
     "--val_set",
     action="store_true",
     help="Override settings to generate the validation set.",
+)
+parser.add_argument(
+    "--train_large_set",
+    action="store_true",
+    help="Override settings to generate the large (20M) train set.",
+)
+parser.add_argument(
+    "--num_workers",
+    type=int,
+    default=1,
+    help="Number of parallel workers to use, as well as number of LMDB files to save to.",
 )
 
 
