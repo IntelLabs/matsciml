@@ -10,10 +10,10 @@ import os
 from pathlib import Path
 from copy import deepcopy
 
-import lmdb
 import torch
 import numpy as np
 from tqdm import tqdm
+from joblib import delayed, Parallel
 
 from ocpmodels.datasets.symmetry.subgroup_classes import SubgroupGenerator
 from ocpmodels.datasets.utils import write_lmdb_data, connect_lmdb_write
@@ -208,54 +208,31 @@ def main(
     normalize,
     lengthscale,
     filter_scale,
+    num_workers: int = 1,
+    **kwargs,
 ):
-    dataset = SubgroupGenerator(
-        number,
-        symmetry,
-        max_types,
-        max_size,
-        batch_size,
-        upsample,
-        filter_scale,
-        multilabel=multilabel,
-        normalize=normalize,
-        lengthscale=lengthscale,
-    )
-
-    # now prepare to dump the data
-    if isinstance(lmdb_path, str):
-        lmdb_path = Path(lmdb_path)
-
+    num_per_worker = number // num_workers
+    assert num_per_worker > 0, f"Invalid number of samples per worker: {num_per_worker}"
+    config = {
+        "n_max": num_per_worker,
+        "sym_max": symmetry,
+        "type_max": max_types,
+        "max_size": max_size,
+        "batch_size": batch_size,
+        "upsample": upsample,
+        "encoding_filter": filter_scale,
+        "multilabel": multilabel,
+        "normalize": normalize,
+        "lengthscale": lengthscale,
+        "seed": seed,
+    }
+    dupes = [deepcopy(config) for _ in range(num_workers)]
     os.makedirs(lmdb_path, exist_ok=True)
-    target_env = lmdb.open(
-        str(lmdb_path.joinpath("data.lmdb")),
-        subdir=False,
-        map_size=1099511627776 * 2,
-        meminit=False,
-        map_async=True,
-    )
-    generator = dataset.generate(seed)
-
-    # batches = list(itertools.islice(generator, 0, number))
-    batches = itertools.islice(generator, 0, number)
-    for index, batch in tqdm(
-        enumerate(batches), desc="Entries processed.", total=number
-    ):
-        # convert batch object into dict for pickling
-        batch = batch._asdict()
-        converted_dict = {}
-        # loop over each point cloud property and convert them to tensors from NumPy
-        for key, array in batch.items():
-            # cast to single precision if it's double
-            if isinstance(array, np.ndarray):
-                if array.dtype == np.float64:
-                    array = array.astype(np.float32)
-                # for node types, cast to long
-                if array.dtype == np.int32:
-                    array = array.astype(np.int64)
-                array = torch.from_numpy(array.squeeze())
-            converted_dict[key] = array
-        write_lmdb_data(index, converted_dict, target_env)
+    with Parallel(num_workers) as p_env:
+        _ = p_env(
+            delayed(generate_subgroup_data)(i, lmdb_path, **dupe)
+            for i, dupe in enumerate(dupes)
+        )
 
 
 if __name__ == "__main__":
