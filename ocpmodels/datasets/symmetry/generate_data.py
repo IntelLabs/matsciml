@@ -15,7 +15,7 @@ import numpy as np
 from tqdm import tqdm
 
 from ocpmodels.datasets.symmetry.subgroup_classes import SubgroupGenerator
-from ocpmodels.datasets.generate_subsplit import write_data
+from ocpmodels.datasets.utils import write_lmdb_data
 
 
 devset_kwargs = {
@@ -193,7 +193,7 @@ def main(
                     array = array.astype(np.int64)
                 array = torch.from_numpy(array.squeeze())
             converted_dict[key] = array
-        write_data(index, converted_dict, target_env)
+        write_lmdb_data(index, converted_dict, target_env)
 
 
 if __name__ == "__main__":
