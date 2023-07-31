@@ -1,4 +1,4 @@
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Tuple
 from logging import getLogger
 from warnings import warn
 
@@ -8,6 +8,7 @@ import numpy as np
 from ocpmodels.common import DataDict, package_registry
 from ocpmodels.common.types import DataDict, GraphTypes, AbstractGraph
 from ocpmodels.datasets.transforms.representations import RepresentationTransform
+from ocpmodels.datasets.utils import retrieve_pointcloud_node_types
 
 """
 Construct graphs from point clouds
@@ -104,6 +105,39 @@ class PointCloudToGraphTransform(RepresentationTransform):
             raise KeyError(
                 f"No suitable atom types to read from; expect either 'atomic_numbers' or 'pc_features' to read from a data sample."
             )
+
+    @staticmethod
+    def _apply_mask(
+        atomic_numbers: torch.Tensor, pos: torch.Tensor, data: DataDict
+    ) -> Tuple[torch.Tensor]:
+        """
+        Applies a mask to the data used to construct the graph.
+
+        In some cases, like ``SyntheticPointGroupDataset``, the node
+        data may come padded and a ``src_mask`` can be used to retrieve
+        only non-padding nodes. If this key isn't present, then we will
+        use the fact that ``atomic_numbers`` should be greater than zero
+        to generate a mask to the data.
+
+        Parameters
+        ----------
+        atomic_numbers : torch.Tensor
+            Atomic numbers, as a 1D tensor [N,]
+        pos : torch.Tensor
+            Atomic positions, shape [N, 3]
+        data : DataDict
+            Point cloud data sample to transform into a graph
+
+        Returns
+        -------
+        Tuple[torch.Tensor]
+            Pair of atomic number and positions tensors as a 2-tuple.
+        """
+        if "src_mask" in data:
+            mask = data.get("src_mask")
+        else:
+            mask = atomic_numbers > 0.0
+        return (atomic_numbers[mask], pos[mask])
 
     @staticmethod
     def node_distances(coords: torch.Tensor) -> torch.Tensor:
