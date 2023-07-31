@@ -38,9 +38,8 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         sample = super().data_from_key(lmdb_index, subindex)
         # coordinates remains the original particle positions
         coords = sample["coordinates"]
-        pc_pos = coords[None, :] - coords[:, None]
         # remap to the same keys as other datasets
-        sample["pos"] = pc_pos
+        sample["pos"] = coords
         # have filler keys to pretend like other data
         sample["pc_features"] = point_cloud_featurization(
             sample["source_types"], sample["dest_types"], self.max_types
