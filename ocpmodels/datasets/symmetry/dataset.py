@@ -47,6 +47,8 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         sample["symmetry"] = {"number": sample["label"].item()}
         sample["num_centers"] = len(sample["source_types"])
         sample["num_neighbors"] = len(sample["dest_types"])
+        # get number of particles in the original system
+        sample["sizes"] = len(coords)
         # clean up keys
         for key in ["label"]:
             del sample[key]
