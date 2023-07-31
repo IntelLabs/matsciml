@@ -207,7 +207,14 @@ class SubgroupGenerator:
 
     BatchType = collections.namedtuple(
         "BatchType",
-        ["coordinates", "src_nodes", "dst_nodes", "label", "num_tiles", "point_group"],
+        [
+            "coordinates",
+            "source_types",
+            "dest_types",
+            "label",
+            "num_tiles",
+            "point_group",
+        ],
     )
 
     def __init__(
