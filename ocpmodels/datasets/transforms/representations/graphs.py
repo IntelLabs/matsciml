@@ -195,6 +195,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
             adj_list = self.edges_from_dist(dist_mat, self.cutoff_dist)
             g = dgl_graph(adj_list, num_nodes=num_nodes)
             g.ndata["atomic_numbers"] = atom_numbers
+            g.ndata["pos"] = coords
             data["graph"] = g
 
     if package_registry["pyg"]:
