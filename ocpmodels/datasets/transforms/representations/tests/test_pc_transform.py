@@ -22,7 +22,7 @@ if package_registry["dgl"]:
             "node_feats": torch.rand(10, 5),
             "edge_feats": torch.rand(15, 2),
             "atomic_numbers": torch.randint(1, 100, (10,)),
-            "coords": torch.rand(10, 3),
+            "pos": torch.rand(10, 3),
             "dataset": "FakeDataset",
         }
         return data
@@ -53,7 +53,7 @@ if package_registry["dgl"]:
     @pytest.mark.dependency(depends=["test_transform_init"])
     def test_dgl_transform_fail(pc_data):
         t = PointCloudToGraphTransform("dgl")
-        del pc_data["coords"]
+        del pc_data["pos"]
         with pytest.raises(AssertionError):
             t(pc_data)
 
