@@ -153,16 +153,17 @@ def generate_subgroup_data(index: int, lmdb_root: Path, **gen_kwargs) -> None:
         Root folder to dump LMDB data files to
     """
     config = deepcopy(gen_kwargs)
-    config["seed"] += index  # offset each worker by index
+    seed = config["seed"] + index  # offset each worker by index
+    del config["seed"]
     target_env = connect_lmdb_write(lmdb_root.joinpath(f"data.{index.zfill(4)}.lmdb"))
     # instantiate generator
     dataset = SubgroupGenerator(**config)
-    generator = dataset.generate(config["seed"])
-    batches = itertools.islice(generator, 0, config["number"])
+    generator = dataset.generate(seed)
+    batches = itertools.islice(generator, 0, config["n_max"])
     for index, batch in tqdm(
         enumerate(batches),
         desc="Entries processed.",
-        total=config["number"],
+        total=config["n_max"],
         position=index,
     ):
         # convert batch object into dict for pickling
