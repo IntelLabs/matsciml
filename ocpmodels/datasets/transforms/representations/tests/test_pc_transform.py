@@ -75,12 +75,11 @@ if package_registry["dgl"]:
         g = sample.get("graph")
         assert all([key in g.ndata for key in ["pos", "atomic_numbers", "force"]])
 
-    @pytest.mark.skip(reason="SyntheticPointGroup is still not finalized")
+    @pytest.mark.dependency(depends=["test_transform_init", "test_dgl_create"])
     def test_dgl_symmetry():
         dset = SyntheticPointGroupDataset(
             symmetry_devset, transforms=[PointCloudToGraphTransform("dgl")]
         )
-        # TODO output sample only contains 'coordinates' and nothing similar to 'atomic numbers'
         sample = dset.__getitem__(0)
         assert "graph" in sample.keys()
         g = sample.get("graph")
