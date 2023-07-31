@@ -46,10 +46,12 @@ train_kwargs = {
     "lengthscale": 1.0,
     "filter_scale": 1e-2,
 }
+train_large_kwargs = deepcopy(train_kwargs)
+train_large_kwargs["number"] = int(20_000_000)
 val_kwargs = {
     "lmdb_path": "./symmetry/validation",
     "batch_size": 1,
-    "number": 30000,
+    "number": 300000,
     "symmetry": 12,
     "max_types": 100,
     "max_size": 40,
