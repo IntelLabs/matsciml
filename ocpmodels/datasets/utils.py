@@ -513,3 +513,31 @@ def parallel_lmdb_write(
         delayed(write_chunk)(chunk, target_dir, index, metadata)
         for chunk, index in zip(chunks, lmdb_indices)
     )
+
+
+def retrieve_pointcloud_node_types(pc_feats: torch.Tensor) -> Tuple[torch.Tensor]:
+    r"""
+    Attempt to reproduce the original node types from the
+    molecule-centered point cloud featurization.
+
+    Essentially just sums along the ``src`` and ``dst`` dimensions
+    for a single point cloud sample, and returns the index which
+    was the largest.
+
+    Parameters
+    ----------
+    pc_feats : torch.Tensor
+        3D tensor with shape ``[src_nodes, dst_nodes, atom_types]``
+        to retrieve the node types from.
+
+    Returns
+    -------
+    Tuple[torch.Tensor]
+        Pair of tensors with the original atomic numbers.
+    """
+    assert (
+        pc_feats.ndim == 3
+    ), f"Expected individual samples of point clouds, not batched."
+    src_types = pc_feats.sum(dim=1).argmax(-1)
+    dst_types = pc_feats.sum(dim=0).argmax(-1)
+    return (src_types, dst_types)
