@@ -62,6 +62,8 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
     def collate_fn(
         batch: List[Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]]
     ):
-        pad_keys = ["pos", "atomic_numbers"]
-        batched_data = concatenate_keys(batch, pad_keys)
+        pad_keys = ["pc_features"]
+        batched_data = concatenate_keys(
+            batch, pad_keys, unpacked_keys=["sizes", "num_centers", "num_neighbors"]
+        )
         return batched_data
