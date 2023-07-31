@@ -36,10 +36,9 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
         sample = super().data_from_key(lmdb_index, subindex)
-        # coordinates remains the original particle positions
-        coords = sample["coordinates"]
         # remap to the same keys as other datasets
-        sample["pos"] = coords
+        sample["pos"] = sample["coordinates"]
+        del sample["coordinates"]
         # have filler keys to pretend like other data
         sample["pc_features"] = point_cloud_featurization(
             sample["source_types"], sample["dest_types"], self.max_types
@@ -48,7 +47,7 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         sample["num_centers"] = len(sample["source_types"])
         sample["num_neighbors"] = len(sample["dest_types"])
         # get number of particles in the original system
-        sample["sizes"] = len(coords)
+        sample["sizes"] = len(sample["pos"])
         # clean up keys
         for key in ["label"]:
             del sample[key]
