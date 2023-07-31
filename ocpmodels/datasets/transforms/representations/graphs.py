@@ -184,6 +184,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
         def _convert_dgl(self, data: DataDict) -> None:
             atom_numbers = self.get_atom_types(data)
             coords = data["pos"]
+            atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
             num_nodes = len(atom_numbers)
             # skip edge calculation if the distance matrix
             # exists already
@@ -231,6 +232,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
             """
             atom_numbers = self.get_atom_types(data)
             coords = data["pos"]
+            atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
             if "distance_matrix" not in data:
                 dist_mat = self.node_distances(coords)
             else:
