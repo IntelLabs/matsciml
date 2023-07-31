@@ -43,6 +43,9 @@ class OutputBlock(nn.Module):
         output_dim: int,
         activation: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
         norm: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
+        input_dim: Optional[int] = None,
+        lazy: bool = True,
+        bias: bool = True,
         dropout: float = 0.0,
         residual: bool = True,
     ) -> None:
@@ -82,7 +85,14 @@ class OutputBlock(nn.Module):
         if isinstance(norm, Type):
             norm = norm()
         self.residual = residual
-        linear = nn.LazyLinear(output_dim)
+        if lazy:
+            linear = nn.LazyLinear(output_dim, bias=bias)
+        else:
+            if not lazy and not input_dim:
+                raise ValueError(
+                    f"Non-lazy model specified for 'OutputBlock', but no 'input_dim' was passed."
+                )
+            linear = nn.Linear(input_dim, output_dim, bias=bias)
         dropout = nn.Dropout(dropout)
         self.layers = nn.Sequential(linear, activation, norm, dropout)
 
