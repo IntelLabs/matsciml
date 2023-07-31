@@ -8,14 +8,15 @@ import argparse
 import itertools
 import os
 from pathlib import Path
+from copy import deepcopy
 
-import lmdb
 import torch
 import numpy as np
 from tqdm import tqdm
+from joblib import delayed, Parallel
 
 from ocpmodels.datasets.symmetry.subgroup_classes import SubgroupGenerator
-from ocpmodels.datasets.utils import write_lmdb_data
+from ocpmodels.datasets.utils import write_lmdb_data, connect_lmdb_write
 
 
 devset_kwargs = {
@@ -46,10 +47,13 @@ train_kwargs = {
     "lengthscale": 1.0,
     "filter_scale": 1e-2,
 }
+train_large_kwargs = deepcopy(train_kwargs)
+train_large_kwargs["number"] = int(20_000_000)
+train_large_kwargs["lmdb_path"] = "./symmetry/train_large"
 val_kwargs = {
     "lmdb_path": "./symmetry/validation",
     "batch_size": 1,
-    "number": 30000,
+    "number": 300000,
     "symmetry": 12,
     "max_types": 100,
     "max_size": 40,
@@ -135,53 +139,46 @@ parser.add_argument(
     action="store_true",
     help="Override settings to generate the validation set.",
 )
+parser.add_argument(
+    "--train_large_set",
+    action="store_true",
+    help="Override settings to generate the large (20M) train set.",
+)
+parser.add_argument(
+    "--num_workers",
+    type=int,
+    default=1,
+    help="Number of parallel workers to use, as well as number of LMDB files to save to.",
+)
 
 
-def main(
-    lmdb_path,
-    batch_size,
-    number,
-    symmetry,
-    max_types,
-    multilabel,
-    max_size,
-    upsample,
-    seed,
-    normalize,
-    lengthscale,
-    filter_scale,
-):
-    dataset = SubgroupGenerator(
-        number,
-        symmetry,
-        max_types,
-        max_size,
-        batch_size,
-        upsample,
-        filter_scale,
-        multilabel=multilabel,
-        normalize=normalize,
-        lengthscale=lengthscale,
+def generate_subgroup_data(index: int, lmdb_root: Path, **gen_kwargs) -> None:
+    """
+    Function for generating a set of point group data, intended
+    to be used in parallel.
+
+    Parameters
+    ----------
+    index : int
+        Worker index, used to offset the LMDB file number
+    lmdb_root : Path
+        Root folder to dump LMDB data files to
+    """
+    config = deepcopy(gen_kwargs)
+    seed = config["seed"] + index  # offset each worker by index
+    del config["seed"]
+    target_env = connect_lmdb_write(
+        Path(lmdb_root).joinpath(f"data.{str(index).zfill(4)}.lmdb")
     )
-
-    # now prepare to dump the data
-    if isinstance(lmdb_path, str):
-        lmdb_path = Path(lmdb_path)
-
-    os.makedirs(lmdb_path, exist_ok=True)
-    target_env = lmdb.open(
-        str(lmdb_path.joinpath("data.lmdb")),
-        subdir=False,
-        map_size=1099511627776 * 2,
-        meminit=False,
-        map_async=True,
-    )
+    # instantiate generator
+    dataset = SubgroupGenerator(**config)
     generator = dataset.generate(seed)
-
-    # batches = list(itertools.islice(generator, 0, number))
-    batches = itertools.islice(generator, 0, number)
+    batches = itertools.islice(generator, 0, config["n_max"])
     for index, batch in tqdm(
-        enumerate(batches), desc="Entries processed.", total=number
+        enumerate(batches),
+        desc="Entries processed.",
+        total=config["n_max"],
+        position=index,
     ):
         # convert batch object into dict for pickling
         batch = batch._asdict()
@@ -200,14 +197,55 @@ def main(
         write_lmdb_data(index, converted_dict, target_env)
 
 
+def main(
+    lmdb_path,
+    batch_size,
+    number,
+    symmetry,
+    max_types,
+    multilabel,
+    max_size,
+    upsample,
+    seed,
+    normalize,
+    lengthscale,
+    filter_scale,
+    num_workers: int = 1,
+    **kwargs,
+):
+    num_per_worker = number // num_workers
+    assert num_per_worker > 0, f"Invalid number of samples per worker: {num_per_worker}"
+    config = {
+        "n_max": num_per_worker,
+        "sym_max": symmetry,
+        "type_max": max_types,
+        "max_size": max_size,
+        "batch_size": batch_size,
+        "upsample": upsample,
+        "encoding_filter": filter_scale,
+        "multilabel": multilabel,
+        "normalize": normalize,
+        "lengthscale": lengthscale,
+        "seed": seed,
+    }
+    dupes = [deepcopy(config) for _ in range(num_workers)]
+    os.makedirs(lmdb_path, exist_ok=True)
+    with Parallel(num_workers) as p_env:
+        _ = p_env(
+            delayed(generate_subgroup_data)(i, lmdb_path, **dupe)
+            for i, dupe in enumerate(dupes)
+        )
+
+
 if __name__ == "__main__":
     args = parser.parse_args()
+    kwargs = vars(args)
     if args.devset:
-        config = devset_kwargs
+        kwargs.update(devset_kwargs)
     elif args.train_set:
-        config = train_kwargs
+        kwargs.update(train_kwargs)
     elif args.val_set:
-        config = val_kwargs
-    else:
-        config = vars(args)
-    main(**config)
+        kwargs.update(val_kwargs)
+    elif args.train_large_set:
+        kwargs.update(train_large_kwargs)
+    main(**kwargs)

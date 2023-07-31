@@ -29,9 +29,6 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         super().__init__(lmdb_root_path, transforms)
         self.max_types = max_types
 
-    def index_to_key(self, index: int) -> Tuple[int]:
-        return (0, index)
-
     def data_from_key(
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
