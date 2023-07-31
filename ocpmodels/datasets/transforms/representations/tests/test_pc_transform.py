@@ -145,7 +145,7 @@ if package_registry["pyg"]:
         g = sample.get("graph")
         assert all([key in g for key in ["pos", "atomic_numbers", "force"]])
 
-    @pytest.mark.skip(reason="SyntheticPointGroup is still not finalized")
+    @pytest.mark.dependency(depends=["test_transform_pyg_init", "test_pyg_create"])
     def test_pyg_symmetry():
         dset = SyntheticPointGroupDataset(
             symmetry_devset, transforms=[PointCloudToGraphTransform("pyg")]
