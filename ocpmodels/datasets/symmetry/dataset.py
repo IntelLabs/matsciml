@@ -39,13 +39,16 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         # remap to the same keys as other datasets
         sample["pos"] = sample["coordinates"]
         del sample["coordinates"]
-        # have filler keys to pretend like other data
+        # here dest_types and source_types are seemingly swapped: the
+        # point group seemed to match best w.r.t coordinates and atom types
+        # this way, while source_types look random
         sample["pc_features"] = point_cloud_featurization(
-            sample["source_types"], sample["dest_types"], self.max_types
+            sample["dest_types"], sample["source_types"], self.max_types
         )
         sample["symmetry"] = {"number": sample["label"].item()}
-        sample["num_centers"] = len(sample["source_types"])
-        sample["num_neighbors"] = len(sample["dest_types"])
+        # this is consistently sweapped as with the featurization
+        sample["num_centers"] = len(sample["dest_types"])
+        sample["num_neighbors"] = len(sample["source_types"])
         # get number of particles in the original system
         sample["sizes"] = len(sample["pos"])
         # clean up keys
