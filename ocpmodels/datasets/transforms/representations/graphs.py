@@ -48,8 +48,6 @@ class PointCloudToGraphTransform(RepresentationTransform):
     @node_keys.setter
     def node_keys(self, values: List[str]) -> None:
         values = set(values)
-        for key in ["pos", "atomic_numbers"]:
-            values.add(key)
         self._node_keys = list(values)
 
     def prologue(self, data: DataDict) -> None:
