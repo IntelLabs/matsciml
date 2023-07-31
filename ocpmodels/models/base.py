@@ -1,6 +1,7 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
+from pathlib import Path
 from typing import (
     Dict,
     Iterable,
@@ -954,6 +955,49 @@ class BaseTaskModule(pl.LightningModule):
             std = norm_kwargs.get(f"{key}_std", 1.0)
             normalizers[key] = Normalizer(mean=mean, std=std, device=self.device)
         return normalizers
+
+    @classmethod
+    def from_pretrained_encoder(cls, task_ckpt_path: Union[str, Path], **kwargs):
+        """
+        Attempts to instantiate a new task, adopting a previously trained encoder model.
+
+        This function will load in a saved PyTorch Lightning checkpoint,
+        copy over the hyperparameters needed to reconstruct the encoder,
+        and simply maps the encoder ``state_dict`` to the new instance.
+
+        ``Kwargs`` are passed directly into the creation of the task, and so can
+        be thought of as just a task through the typical interface normally.
+
+        Parameters
+        ----------
+        task_ckpt_path : Union[str, Path]
+            Path to an existing task checkpoint file. Typically, this
+            would be a PyTorch Lightning checkpoint.
+        """
+        if isinstance(task_ckpt_path, str):
+            task_ckpt_path = Path(task_ckpt_path)
+        assert (
+            task_ckpt_path.exists()
+        ), f"Encoder checkpoint filepath specified but does not exist."
+        ckpt = torch.load(task_ckpt_path)
+        for key in ["encoder_class", "encoder_kwargs"]:
+            assert (
+                key in ckpt["hyper_parameters"]
+            ), f"{key} expected to be in hyperparameters, but was not found."
+            # copy over the data for the new task
+            kwargs[key] = ckpt["hyper_parameters"][key]
+        # construct the new task with random weights
+        task = cls(**kwargs)
+        # this only copies over encoder weights, and removes the 'encoder.'
+        # pattern from keys
+        encoder_weights = {
+            key.replace("encoder.", ""): tensor
+            for key, tensor in ckpt["state_dict"].items()
+            if "encoder." in key
+        }
+        # load in pre-trained weights
+        task.encoder.load_state_dict(encoder_weights)
+        return task
 
 
 @registry.register_task("ScalarRegressionTask")
