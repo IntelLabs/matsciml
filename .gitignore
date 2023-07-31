@@ -1,13 +1,11 @@
 wandb
-data
-checkpoints
-results
-logs
 *.traj
-experimental
 lightning_logs
-*commands*
-*kdp*
+mp_data/
+ocpmodels/datasets/carolina_db/
+ocpmodels/datasets/nomad/
+pl-configs/README.md
+run_examples.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
