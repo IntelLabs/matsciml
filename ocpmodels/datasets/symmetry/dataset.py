@@ -43,16 +43,19 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         # point group seemed to match best w.r.t coordinates and atom types
         # this way, while source_types look random
         sample["pc_features"] = point_cloud_featurization(
-            sample["dst_nodes"], sample["src_nodes"], self.max_types
+            sample["dest_types"], sample["source_types"], self.max_types
         )
         sample["symmetry"] = {"number": sample["label"].item()}
         # this is consistently sweapped as with the featurization
-        sample["num_centers"] = len(sample["dst_nodes"])
-        sample["num_neighbors"] = len(sample["src_nodes"])
-        sample["src_mask"] = sample["dst_nodes"] != 0.0
-        sample["dst_mask"] = sample["src_nodes"] != 0.0
+        sample["num_centers"] = len(sample["dest_types"])
+        sample["num_neighbors"] = len(sample["source_types"])
+        sample["src_mask"] = sample["dest_types"] != 0.0
+        sample["dst_mask"] = sample["source_types"] != 0.0
         # get number of particles in the original system
         sample["sizes"] = len(sample["pos"])
+        # these are meant to correspond to indices
+        sample["src_nodes"] = torch.arange(sample["num_centers"])
+        sample["dst_nodes"] = torch.arange(sample["num_centers"])
         # clean up keys
         for key in ["label"]:
             del sample[key]
