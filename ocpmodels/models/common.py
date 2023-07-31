@@ -103,6 +103,18 @@ class OutputBlock(nn.Module):
             output = output + data
         return output
 
+    @property
+    def input_dim(self) -> int:
+        """
+        Return the expected input size of this ``OutputBlock``.
+
+        Returns
+        -------
+        int
+            ``nn.Linear`` weight matrix size
+        """
+        return self.layers[0].weight.size(-1)
+
 
 class OutputHead(nn.Module):
     """
