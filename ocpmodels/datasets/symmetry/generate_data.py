@@ -248,12 +248,13 @@ def main(
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    kwargs = vars(args)
     if args.devset:
-        config = devset_kwargs
+        kwargs.update(devset_kwargs)
     elif args.train_set:
-        config = train_kwargs
+        kwargs.update(train_kwargs)
     elif args.val_set:
-        config = val_kwargs
-    else:
-        config = vars(args)
-    main(**config)
+        kwargs.update(val_kwargs)
+    elif args.train_large_set:
+        kwargs.update(train_large_kwargs)
+    main(**kwargs)
