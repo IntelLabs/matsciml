@@ -49,6 +49,8 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         # this is consistently sweapped as with the featurization
         sample["num_centers"] = len(sample["dest_types"])
         sample["num_neighbors"] = len(sample["source_types"])
+        sample["src_mask"] = sample["dest_types"] != 0.0
+        sample["dst_mask"] = sample["source_types"] != 0.0
         # get number of particles in the original system
         sample["sizes"] = len(sample["pos"])
         # clean up keys
