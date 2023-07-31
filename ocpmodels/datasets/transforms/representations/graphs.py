@@ -56,8 +56,14 @@ class PointCloudToGraphTransform(RepresentationTransform):
             data, GraphTypes
         ), "Data structure already contains a graph: transform shouldn't be required."
         # check for keys needed to construct the graph
-        for key in ["pos", "atomic_numbers"]:
-            assert key in data, f"Expected {key} in sample. Found: {list(data.keys())}"
+        assert "pos" in data, f"No atomic positions 'pos' key present in data sample."
+        has_atom_key = False
+        for key in ["atomic_numbers", "pc_features"]:
+            if key in data:
+                has_atom_key = True
+        assert (
+            has_atom_key
+        ), f"Neither 'atomic_numbers' nor 'pc_features' keys were present in data sample."
         return super().prologue(data)
 
     @staticmethod
