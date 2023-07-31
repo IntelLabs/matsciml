@@ -7,6 +7,7 @@ from torch.utils.data import IterableDataset
 
 from ocpmodels.datasets.base import BaseLMDBDataset
 from ocpmodels.common.registry import registry
+from ocpmodels.datasets.utils import point_cloud_featurization
 
 
 def concatenate_keys(
@@ -61,37 +62,6 @@ def concatenate_keys(
         if key in sample:
             batched_data[key] = sample[key]
     return batched_data
-
-
-def point_cloud_featurization(
-    src_types: torch.Tensor, dst_types: torch.Tensor, max_types: int = 100
-) -> torch.Tensor:
-    """
-    Featurizes an atom-centered point cloud, given source and destination node types.
-
-    Takes integer encodings of node types for both source (atom-centers) and destination (neighborhood),
-    and converts them into one-hot encodings that take +/- combinations.
-
-    Parameters
-    ----------
-    src_types : torch.Tensor
-        1D tensor containing node types for centers
-    dst_types : torch.Tensor
-        1D tensor containing node types for neighbors
-    max_types : int
-        Maximum value for node types, default 100
-
-    Returns
-    -------
-    torch.Tensor
-        Feature tensor, with a shape of [num_src, num_dst, 2 x max_types]
-    """
-    eye = torch.eye(max_types)
-    src_onehot = eye[src_types][:, None]
-    dst_onehot = eye[dst_types][None, :]
-    plus, minus = src_onehot + dst_onehot, src_onehot - dst_onehot
-    feat_tensor = torch.concat([plus, minus], axis=-1)
-    return feat_tensor
 
 
 class OTFPointGroupDataset(IterableDataset):
