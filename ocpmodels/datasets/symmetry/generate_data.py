@@ -8,6 +8,7 @@ import argparse
 import itertools
 import os
 from pathlib import Path
+from copy import deepcopy
 
 import lmdb
 import torch
@@ -15,7 +16,7 @@ import numpy as np
 from tqdm import tqdm
 
 from ocpmodels.datasets.symmetry.subgroup_classes import SubgroupGenerator
-from ocpmodels.datasets.utils import write_lmdb_data
+from ocpmodels.datasets.utils import write_lmdb_data, connect_lmdb_write
 
 
 devset_kwargs = {
@@ -137,6 +138,48 @@ parser.add_argument(
     action="store_true",
     help="Override settings to generate the validation set.",
 )
+
+
+def generate_subgroup_data(index: int, lmdb_root: Path, **gen_kwargs) -> None:
+    """
+    Function for generating a set of point group data, intended
+    to be used in parallel.
+
+    Parameters
+    ----------
+    index : int
+        Worker index, used to offset the LMDB file number
+    lmdb_root : Path
+        Root folder to dump LMDB data files to
+    """
+    config = deepcopy(gen_kwargs)
+    config["seed"] += index  # offset each worker by index
+    target_env = connect_lmdb_write(lmdb_root.joinpath(f"data.{index.zfill(4)}.lmdb"))
+    # instantiate generator
+    dataset = SubgroupGenerator(**config)
+    generator = dataset.generate(config["seed"])
+    batches = itertools.islice(generator, 0, config["number"])
+    for index, batch in tqdm(
+        enumerate(batches),
+        desc="Entries processed.",
+        total=config["number"],
+        position=index,
+    ):
+        # convert batch object into dict for pickling
+        batch = batch._asdict()
+        converted_dict = {}
+        # loop over each point cloud property and convert them to tensors from NumPy
+        for key, array in batch.items():
+            # cast to single precision if it's double
+            if isinstance(array, np.ndarray):
+                if array.dtype == np.float64:
+                    array = array.astype(np.float32)
+                # for node types, cast to long
+                if array.dtype == np.int32:
+                    array = array.astype(np.int64)
+                array = torch.from_numpy(array.squeeze())
+            converted_dict[key] = array
+        write_lmdb_data(index, converted_dict, target_env)
 
 
 def main(
