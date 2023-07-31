@@ -167,7 +167,9 @@ def generate_subgroup_data(index: int, lmdb_root: Path, **gen_kwargs) -> None:
     config = deepcopy(gen_kwargs)
     seed = config["seed"] + index  # offset each worker by index
     del config["seed"]
-    target_env = connect_lmdb_write(lmdb_root.joinpath(f"data.{index.zfill(4)}.lmdb"))
+    target_env = connect_lmdb_write(
+        Path(lmdb_root).joinpath(f"data.{str(index).zfill(4)}.lmdb")
+    )
     # instantiate generator
     dataset = SubgroupGenerator(**config)
     generator = dataset.generate(seed)
