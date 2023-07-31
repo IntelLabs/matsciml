@@ -35,7 +35,7 @@ devset_kwargs = {
 train_kwargs = {
     "lmdb_path": "./symmetry/train",
     "batch_size": 1,
-    "number": 200000,
+    "number": 2000000,
     "symmetry": 12,
     "max_types": 100,
     "max_size": 40,
@@ -126,10 +126,14 @@ parser.add_argument(
     "--devset", action="store_true", help="Override settings to generate the devset."
 )
 parser.add_argument(
-    "--train_set", action="store_true", help="Override settings to generate the train set."
+    "--train_set",
+    action="store_true",
+    help="Override settings to generate the train set.",
 )
 parser.add_argument(
-    "--val_set", action="store_true", help="Override settings to generate the validation set."
+    "--val_set",
+    action="store_true",
+    help="Override settings to generate the validation set.",
 )
 
 
