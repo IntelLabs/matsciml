@@ -152,32 +152,50 @@ class NomadRequest:
             print(f"Downloading data to : {self.data_dir}")
             self.nomad_request()
 
+    def fetch_data(self, idx):
+        id = self.material_ids[idx]
+        response = requests.post(
+            f"{NomadRequest.base_url}/entries/{id}/archive/query",
+            json=NomadRequest.results_query,
+        )
+        if response.status_code == 200:
+            data = response.json()
+            results = data["data"]["archive"]["results"]
+            self.data[idx] = results
+        else:
+            self.request_warning(response, idx)
+
+    def request_warning(self, requested_data, id_idx):
+        warning_message = f"Sample {id_idx} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
+        warnings.warn(warning_message)
+        with open(
+            os.path.join(os.path.dirname(self.data_dir), f"failed.txt"), "a"
+        ) as f:
+            f.write(warning_message)
+        return False
+
     def nomad_request(self):
-        def request_warning(requested_data):
-            warning_message = f"Sample {id_idx} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
-            warnings.warn(warning_message)
-            with open(
-                os.path.join(os.path.dirname(self.data_dir), f"failed.txt"), "a"
-            ) as f:
-                f.write(warning_message)
-            return False
 
         self.data = [None] * len(self.material_ids)
+        
+        with suppress(OSError):
+            os.remove(os.path.join(self.data_dir, f"failed.txt"))
 
-        for id_idx, id in self.material_ids.items():
-            response = requests.post(
-                f"{NomadRequest.base_url}/entries/{id}/archive/query",
-                json=NomadRequest.results_query,
-            )
-            if response.status_code == 200:
-                data = response.json()
-                results = data["data"]["archive"]["results"]
-                self.data[id_idx] = results
-            else:
-                self.request_warning(response)
+        with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+            # List to store the future objects
+            futures = [executor.submit(self.fetch_data, n) for n in self.material_ids]
+
+            # Iterate over completed futures to access the responses
+            for future in tqdm(
+                as_completed(futures), total=len(self.material_ids), desc="Downloading"
+            ):
+                try:
+                    future.result()
+                except Exception as e:
+                    print(f"Error occurred: {e}")
 
         self.to_lmdb(self.data_dir)
-
+        return self.data
 
     def to_lmdb(self, lmdb_path: str) -> None:
         """
@@ -216,8 +234,9 @@ class NomadRequest:
                 f"No data was available for serializing - did you run `retrieve_data`?"
             )
 
+
 if __name__ == "__main__":
     nomad = NomadRequest()
-    # nomad.fetch_ids()
-    nomad.data_dir = ""
-    nomad.download_data()
+    nomad.fetch_ids()
+    # nomad.data_dir = ""
+    # nomad.download_data()
