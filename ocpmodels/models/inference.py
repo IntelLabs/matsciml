@@ -106,4 +106,7 @@ class EmbeddingInferenceTask(BaseInferenceTask):
         self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0
     ) -> DataDict:
         embeddings = self(batch)
-        return {"embedding": embeddings}
+        return_dict = {"embedding": embeddings}
+        for key in ["targets", "symmetry"]:
+            return_dict[key] = batch.get(key)
+        return return_dict
