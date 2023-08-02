@@ -23,6 +23,7 @@ import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
@@ -880,7 +881,8 @@ class BaseTaskModule(pl.LightningModule):
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
-        return opt
+        plateau = ReduceLROnPlateau(opt, mode="min", factor=0.1, patience=3)
+        return [opt], [plateau]
 
     def training_step(
         self,
