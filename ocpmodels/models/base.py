@@ -22,7 +22,7 @@ import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
-from torch.optim.lr_scheduler import ExponentialLR
+from torch.optim import lr_scheduler
 
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
@@ -643,8 +643,8 @@ class BaseTaskModule(pl.LightningModule):
         output_kwargs: Dict[str, Any] = {},
         lr: float = 1e-4,
         weight_decay: float = 0.0,
-        gamma: float = 0.7,
         normalize_kwargs: Optional[Dict[str, float]] = None,
+        scheduler_kwargs: Optional[Dict[str, Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -881,8 +881,20 @@ class BaseTaskModule(pl.LightningModule):
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
-        plateau = ExponentialLR(opt, gamma=self.hparams.gamma)
-        return [opt], [plateau]
+        # configure schedulers as a nested dictionary
+        schedule_dict = getattr(self.hparams, "scheduler_kwargs", None)
+        schedulers = []
+        if schedule_dict:
+            for scheduler_name, params in schedule_dict.items():
+                # try get the scheduler class
+                scheduler_class = getattr(lr_scheduler, scheduler_name, None)
+                if not scheduler_class:
+                    raise NameError(
+                        f"{scheduler_class} was requested for LR scheduling, but is not in 'torch.optim.lr_scheduler'."
+                    )
+                scheduler = scheduler_class(opt, **params)
+                schedulers.append(scheduler)
+        return [opt], schedulers
 
     def training_step(
         self,
