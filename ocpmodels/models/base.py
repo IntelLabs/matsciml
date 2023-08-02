@@ -17,7 +17,6 @@ from abc import abstractmethod, ABC
 from contextlib import nullcontext, ExitStack
 import logging
 from warnings import warn
-from dgl.utils import data
 
 import pytorch_lightning as pl
 import torch
