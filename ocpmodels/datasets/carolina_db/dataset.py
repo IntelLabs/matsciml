@@ -6,8 +6,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-from emmet.core.symmetry import SymmetryData
-from pymatgen.core import Structure
 
 from ocpmodels.common.registry import registry
 from ocpmodels.common.types import BatchDict, DataDict

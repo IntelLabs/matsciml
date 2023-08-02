@@ -7,12 +7,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
 from functools import cached_property
 from typing import Dict, List, Optional, Tuple, Union
+from pathlib import Path
 
 import lmdb
 import requests
 import yaml
 from ocpmodels.datasets.utils import write_lmdb_data
 from tqdm import tqdm
+import traceback
 
 
 class NomadRequest:
@@ -111,33 +113,59 @@ class NomadRequest:
         query_error = False
         from time import time
 
+        failed_pages = {}
         p_time = []
         start_time = time()
         while not query_error:
-            processing_time = time() - start_time
-            p_time.append(processing_time)
-            start_time = time()
-            response = requests.post(
-                f"{NomadRequest.base_url}/entries/query", json=NomadRequest.id_query
-            )
-            response_json = response.json()
-            if response.status_code != 200:
-                query_error = True
-                print(response.status_code)
+            try:
+                processing_time = time() - start_time
+                p_time.append(processing_time)
+                start_time = time()
+                try_again = 0
+                response = requests.post(
+                    f"{NomadRequest.base_url}/entries/query",
+                    json=NomadRequest.id_query,
+                )
+                while try_again < 5 and response.status_code != 200:
+                    response = requests.post(
+                        f"{NomadRequest.base_url}/entries/query",
+                        json=NomadRequest.id_query,
+                    )
+                    if response.status_code != 200:
+                        time.sleep(1)
+                        try_again += 1
+
+                if response.status_code != 200:
+                    query_error = True
+                    print("\n\n")
+                    print(response.status_code)
+                    print(response.text)
+                    print("\n\n")
+
+                response_json = response.json()
+
+                ids = [_["entry_id"] for _ in response_json["data"]]
+                entry_ids.update(ids)
+                NomadRequest.id_query["pagination"]["page_after_value"] = response_json[
+                    "pagination"
+                ]["next_page_after_value"]
+                num_entries = len(entry_ids)
+                print(
+                    f"Total IDs: {num_entries}\tThroughput: {round(sum(p_time)/len(p_time) , 3)}",
+                    end="\r",
+                )
+            except Exception as e:
                 print(response.text)
+                print(response.status_code)
+                start_page = NomadRequest.id_query["pagination"]["page_after_value"]
+                end_page = NomadRequest.id_query["pagination"]["next_page_after_value"]
+                failed_pages[start_page] = end_page
+                print(traceback.format_exc())
+                break
 
-            ids = [_["entry_id"] for _ in response_json["data"]]
-            entry_ids.update(ids)
-            NomadRequest.id_query["pagination"]["page_after_value"] = response_json[
-                "pagination"
-            ]["next_page_after_value"]
-            num_entries = len(entry_ids)
-            print(
-                f"Total IDs: {num_entries}\tThroughput: {round(sum(p_time)/len(p_time) , 3)}",
-                end="\r",
-            )
-
-        with open(f"{self.split_file}.yml", "w") as f:
+        self.data_dir = Path(__file__).parents[0]
+        id_file = os.path.join(self.data_dir, "nomad_ids.yml")
+        with open(id_file, "w") as f:
             entry_id_dict = dict(zip(range(num_entries), entry_ids))
             yaml.safe_dump(entry_id_dict, f, sort_keys=False)
 
@@ -175,15 +203,17 @@ class NomadRequest:
         return False
 
     def nomad_request(self):
-
         self.data = [None] * len(self.material_ids)
-        
+
         with suppress(OSError):
             os.remove(os.path.join(self.data_dir, f"failed.txt"))
 
         with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
             # List to store the future objects
-            futures = [executor.submit(self.fetch_data, n) for n in self.material_ids]
+            futures = [
+                executor.submit(self.fetch_data, n)
+                for n in range(len(self.material_ids))
+            ]
 
             # Iterate over completed futures to access the responses
             for future in tqdm(

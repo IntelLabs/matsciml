@@ -8,7 +8,6 @@ cg.py
 dcmd.py
 mp_data/
 ocpmodels/datasets/carolina_db/base/
-ocpmodels/datasets/nomad/
 pl-configs/README.md
 run_examples.sh
 test.py
