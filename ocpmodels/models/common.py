@@ -210,12 +210,14 @@ class OutputHead(nn.Module):
             )
         )
         self.blocks = nn.Sequential(*blocks)
+        self.lazy = lazy
 
     def forward(self, embedding: torch.Tensor) -> torch.Tensor:
-        expected_shape = self.blocks[0].input_dim
-        assert (
-            embedding.size(-1) == expected_shape
-        ), f"Incoming encoder output dim ({embedding.size(-1)}) does not match the expected 'OutputBlock' dim ({expected_shape})"
+        if not self.lazy:
+            expected_shape = self.blocks[0].input_dim
+            assert (
+                embedding.size(-1) == expected_shape
+            ), f"Incoming encoder output dim ({embedding.size(-1)}) does not match the expected 'OutputBlock' dim ({expected_shape})"
         return self.blocks(embedding)
 
 
