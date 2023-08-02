@@ -116,7 +116,8 @@ class NomadRequest:
         failed_pages = {}
         p_time = []
         start_time = time()
-        while not query_error:
+        more_ids = True
+        while not query_error and more_ids:
             try:
                 processing_time = time() - start_time
                 p_time.append(processing_time)
@@ -149,6 +150,10 @@ class NomadRequest:
                 NomadRequest.id_query["pagination"]["page_after_value"] = response_json[
                     "pagination"
                 ]["next_page_after_value"]
+                if len(entry_ids) > num_entries:
+                    more_ids = True
+                else:
+                    more_ids = False
                 num_entries = len(entry_ids)
                 print(
                     f"Total IDs: {num_entries}\tThroughput: {round(sum(p_time)/len(p_time) , 3)}",
