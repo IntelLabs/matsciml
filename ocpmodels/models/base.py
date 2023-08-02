@@ -1421,6 +1421,7 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         loss_func: Union[Type[nn.Module], nn.Module] = nn.CrossEntropyLoss,
         output_kwargs: Dict[str, Any] = {},
         normalize_kwargs: Optional[Dict[str, float]] = None,
+        freeze_embedding: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -1435,6 +1436,9 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
             normalize_kwargs=normalize_kwargs,
             **kwargs,
         )
+        self.freeze_embedding = freeze_embedding
+        if self.freeze_embedding:
+            self.encoder.atom_embedding.requires_grad_(False)
 
     def _make_output_heads(self) -> nn.ModuleDict:
         # this task only utilizes one output head; 230 possible space groups
