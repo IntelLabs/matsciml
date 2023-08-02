@@ -1420,8 +1420,6 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.CrossEntropyLoss,
         output_kwargs: Dict[str, Any] = {},
-        lr: float = 0.0001,
-        weight_decay: float = 0,
         normalize_kwargs: Optional[Dict[str, float]] = None,
         **kwargs,
     ) -> None:
@@ -1434,9 +1432,7 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
                 "spacegroup",
             ],
             output_kwargs,
-            lr,
-            weight_decay,
-            normalize_kwargs,
+            normalize_kwargs=normalize_kwargs,
             **kwargs,
         )
 
