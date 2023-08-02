@@ -1,5 +1,6 @@
 from typing import Callable, Optional, Union, Type, Any
 from importlib import import_module
+from copy import deepcopy
 
 import torch
 from torch import nn
@@ -94,7 +95,11 @@ class OutputBlock(nn.Module):
                 )
             linear = nn.Linear(input_dim, output_dim, bias=bias)
         dropout = nn.Dropout(dropout)
-        self.layers = nn.Sequential(linear, activation, norm, dropout)
+        # be liberal about deepcopy, to make sure we don't duplicate weights
+        # when we don't intend to
+        self.layers = nn.Sequential(
+            linear, deepcopy(activation), deepcopy(norm), deepcopy(dropout)
+        )
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         output = self.layers(data)
