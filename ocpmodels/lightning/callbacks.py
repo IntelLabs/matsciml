@@ -16,6 +16,8 @@ from torch import distributed as dist
 from torch import nn
 from torch.optim import Optimizer
 
+from ocpmodels.datasets.utils import concatenate_keys
+
 
 class LeaderboardWriter(BasePredictionWriter):
     """
@@ -449,3 +451,57 @@ class GarbageCallback(Callback):
         if step % self.frequency == 0:
             cleared_objs = gc.collect()
 
+
+class InferenceWriter(BasePredictionWriter):
+    def __init__(self, output_dir: Union[str, Path]) -> None:
+        """
+        Set up the ``InferenceWriter`` callback.
+
+        This relies on the ``predict`` loop in PyTorch Lightning to generate
+        prediction, and writes out the results in ``torch`` format for
+        each worker (i.e. can use DDP for inference). Results will be aggregated
+        once the dataset has been exhausted.
+
+        Parameters
+        ----------
+        output_dir : Union[str, Path]
+            Path to a folder to dump results to.
+
+        Examples
+        --------
+        Add the writer as a callback to ``Trainer``
+
+        >>> import pytorch_lightning as pl
+        >>> from ocpmodels.lightning.callbacks import InferenceWriter
+        >>> trainer = pl.Trainer(callbacks=[InferenceWriter("./predictions")])
+        >>> trainer.predict(...)
+        """
+        super().__init__(write_interval="epoch")
+        self.output_dir = output_dir
+
+    @property
+    def output_dir(self) -> Path:
+        return self._output_dir
+
+    @output_dir.setter
+    def output_dir(self, value: Union[str, Path]) -> None:
+        if isinstance(value, str):
+            value = Path(value)
+        os.makedirs(value, exist_ok=True)
+        self._output_dir = value
+
+    def write_on_epoch_end(
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
+        predictions: Sequence[Any],
+        batch_indices: Union[Sequence[Any], None],
+    ) -> None:
+        predictions = concatenate_keys(predictions[0])
+        # downcast to float16 to save some space
+        for key, value in predictions.items():
+            if isinstance(value, torch.FloatTensor):
+                predictions[key] = value.to(torch.float16)
+        rank = trainer.global_rank
+        path = self.output_dir.joinpath(f"results_rank{rank}.pt")
+        torch.save(predictions, path)
