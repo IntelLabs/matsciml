@@ -298,3 +298,17 @@ class PartialRMSNorm(RMSNorm):
         if self.has_bias:
             norm_output = norm_output + self.bias
         return norm_output
+
+
+class SymmetricLog(nn.Module):
+    """
+    Implements the ``SymmetricLog`` activation as described in
+    Cai et al., https://arxiv.org/abs/2111.15631
+
+    The activation is asymptotic and provides gradients over
+    a large range of possible values.
+    """
+
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
+        tanx = data.tanh()
+        return tanx * torch.log(data * tanx + 1)
