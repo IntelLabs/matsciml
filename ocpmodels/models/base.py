@@ -643,6 +643,7 @@ class BaseTaskModule(pl.LightningModule):
         output_kwargs: Dict[str, Any] = {},
         lr: float = 1e-4,
         weight_decay: float = 0.0,
+        gamma: float = 0.7,
         normalize_kwargs: Optional[Dict[str, float]] = None,
         **kwargs,
     ) -> None:
@@ -880,7 +881,7 @@ class BaseTaskModule(pl.LightningModule):
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
-        plateau = ExponentialLR(opt, gamma=0.1)
+        plateau = ExponentialLR(opt, gamma=self.hparams.gamma)
         return [opt], [plateau]
 
     def training_step(
