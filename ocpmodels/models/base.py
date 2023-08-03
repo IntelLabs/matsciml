@@ -1638,6 +1638,9 @@ class MultiTaskLitModule(pl.LightningModule):
                     if isinstance(optimizer, tuple):
                         # unpack the two things if a tuple is returned
                         optimizer, scheduler = optimizer
+                    if isinstance(optimizer, list):
+                        # we only work with one optimizer
+                        optimizer = optimizer[0]
                     # remove all the optimizer parameters, and re-add only the output heads
                     optimizer.param_groups.clear()
                     optimizer.add_param_group({"params": output_head.parameters()})
