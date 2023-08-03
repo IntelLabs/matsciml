@@ -16,6 +16,7 @@ from ocpmodels.datasets.utils import write_lmdb_data
 from tqdm import tqdm
 import traceback
 from yaml import CBaseLoader
+from time import time
 
 
 class NomadRequest:
@@ -60,7 +61,7 @@ class NomadRequest:
         if num_workers == -1:
             num_workers = multiprocessing.cpu_count()
         self.num_workers = num_workers
-
+        self.lmdb_idx = None
         # Can specify material ids' or split_files, but not both. If neither are
         # supplied, the full dataset is downloaded.
         if material_ids and split_files:
@@ -115,40 +116,36 @@ class NomadRequest:
         return ids
 
     def fetch_ids(self) -> Dict[int, str]:
+        def entry_id_query():
+            response = requests.post(
+                f"{NomadRequest.base_url}/entries/query",
+                json=NomadRequest.id_query,
+            )
+            return response
+
         entry_ids = set()
         query_error = False
-        from time import time
 
         failed_pages = {}
-        p_time = []
-        start_time = time()
+        query_times = []
         more_ids = True
         num_entries = 0
+        start_time = time()
         while not query_error and more_ids:
             try:
                 processing_time = time() - start_time
-                p_time.append(processing_time)
+                query_times.append(processing_time)
                 start_time = time()
-                try_again = 0
-                response = requests.post(
-                    f"{NomadRequest.base_url}/entries/query",
-                    json=NomadRequest.id_query,
-                )
-                while try_again < 5 and response.status_code != 200:
-                    response = requests.post(
-                        f"{NomadRequest.base_url}/entries/query",
-                        json=NomadRequest.id_query,
-                    )
+                download_attempts = 0
+                response = entry_id_query()
+                while download_attempts < 5 and response.status_code != 200:
+                    response = entry_id_query()
                     if response.status_code != 200:
                         time.sleep(1)
-                        try_again += 1
+                        download_attempts += 1
 
                 if response.status_code != 200:
                     query_error = True
-                    print("\n\n")
-                    print(response.status_code)
-                    print(response.text)
-                    print("\n\n")
 
                 response_json = response.json()
 
@@ -162,24 +159,26 @@ class NomadRequest:
                 else:
                     more_ids = False
                 num_entries = len(entry_ids)
+                avg_query_time = round(sum(query_times) / len(query_times), 3)
                 print(
-                    f"Total IDs: {num_entries}\tThroughput: {round(sum(p_time)/len(p_time) , 3)}",
+                    f"Total IDs: {num_entries}\tThroughput: {avg_query_time}",
                     end="\r",
                 )
             except Exception as e:
-                print(response.text)
-                print(response.status_code)
                 start_page = NomadRequest.id_query["pagination"]["page_after_value"]
                 end_page = NomadRequest.id_query["pagination"]["next_page_after_value"]
                 failed_pages[start_page] = end_page
-                print(traceback.format_exc())
-                break
 
         self.data_dir = Path(__file__).parents[0]
-        id_file = os.path.join(self.data_dir, "nomad_ids.yml")
+        id_file = os.path.join(self.data_dir, "all.yml")
+        failed_pages_file = os.path.join(self.data_dir, "failed.yml")
+
         with open(id_file, "w") as f:
             entry_id_dict = dict(zip(range(num_entries), entry_ids))
             yaml.safe_dump(entry_id_dict, f, sort_keys=False)
+
+        with open(failed_pages_file, "w") as f:
+            yaml.safe_dump(failed_pages, f, sort_keys=False)
 
     def download_data(self):
         """Facilitates downloading data from different splits. Makes a folder
@@ -192,36 +191,37 @@ class NomadRequest:
             print(f"Downloading data to : {self.data_dir}")
             self.nomad_request()
 
-    def fetch_data(self, idx):
-        id = self.material_ids[idx]
-        response = requests.post(
-            f"{NomadRequest.base_url}/entries/{id}/archive/query",
-            json=NomadRequest.results_query,
-        )
+    def fetch_data(self, idx, key):
+        def archive_query(id):
+            response = requests.post(
+                f"{NomadRequest.base_url}/entries/{id}/archive/query",
+                json=NomadRequest.results_query,
+            )
+            return response
+
+        id = self.material_ids[key]
+        response = archive_query(id)
         status = True
         if response.status_code == 200:
             data = response.json()
             results = data["data"]["archive"]["results"]
             self.data[idx] = results
         else:
-            tries = 0
-            while tries < 5 and response.status_code != 200:
-                response = requests.post(
-                    f"{NomadRequest.base_url}/entries/{id}/archive/query",
-                    json=NomadRequest.results_query,
-                )
+            download_attempts = 0
+            while download_attempts < 5 and response.status_code != 200:
+                response = archive_query(id)
                 if response.status_code != 200:
                     time.sleep(1)
-                    tries += 1
+                    download_attempts += 1
 
             if response.status_code != 200:
-                self.request_warning(response, idx)
+                self.request_warning(response, key)
                 status = False
-        return idx, status
+        return idx, key, status
 
     def request_warning(self, requested_data, id_idx):
         warning_message = f"Sample {id_idx} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
-        warnings.warn(warning_message)
+        warnings.warn(warning_message, category=Warning)
         with open(
             os.path.join(os.path.dirname(self.data_dir), f"failed.txt"), "a"
         ) as f:
@@ -240,8 +240,8 @@ class NomadRequest:
         with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
             # List to store the future objects
             futures = [
-                executor.submit(self.fetch_data, n)
-                for n in range(len(self.material_ids))
+                executor.submit(self.fetch_data, idx, key)
+                for idx, key in enumerate(self.material_ids.keys())
             ]
 
             # Iterate over completed futures to access the responses
@@ -249,8 +249,8 @@ class NomadRequest:
                 as_completed(futures), total=len(self.material_ids), desc="Downloading"
             ):
                 try:
-                    n, status = future.result()
-                    request_status[n] = status
+                    _, key, status = future.result()
+                    request_status[key] = status
                 except Exception as e:
                     print(traceback.format_exc())
                     print(f"Error occurred: {e}")
@@ -278,8 +278,12 @@ class NomadRequest:
             [TODO:description]
         """
         os.makedirs(lmdb_path, exist_ok=True)
+        if self.lmdb_idx is not None:
+            lmdb_file = f"data{self.lmdb_idx}.lmdb"
+        else:
+            lmdb_file = f"data.lmdb"
         target_env = lmdb.open(
-            os.path.join(lmdb_path, "data.lmdb"),
+            os.path.join(lmdb_path, lmdb_file),
             subdir=False,
             map_size=1099511627776 * 2,
             meminit=False,
@@ -297,7 +301,19 @@ class NomadRequest:
 
 
 if __name__ == "__main__":
-    nomad = NomadRequest(base_data_dir="./base", split_files=["all.yml"])
-    # nomad.fetch_ids()
-    # nomad.data_dir = ""
-    nomad.download_data()
+    nomad = NomadRequest(base_data_dir="./base")
+    ids = yaml.load(open("all.yml", "r"), Loader=CBaseLoader)
+    sub_slices = list(range(0, 1100000, 100000))
+    # sub_slices.append(len(ids))
+    start_time = time.time()
+    for idx in range(len(sub_slices) - 1):
+        start = sub_slices[idx]
+        end = sub_slices[idx + 1] - 1
+        nomad.data_dir = f"all"
+        nomad.material_ids = {k: ids[k] for k in [str(n) for n in range(start, end)]}
+        nomad.lmdb_idx = idx
+        nomad.nomad_request()
+    end_time = time.time()
+
+    with open("NomadProcessingTime.txt", "w") as f:
+        f.write(str(start_time - end_time))
