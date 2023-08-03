@@ -205,7 +205,7 @@ class NomadRequest:
             self.data[idx] = results
         else:
             tries = 0
-            while tries < 5 and response.status != 200:
+            while tries < 5 and response.status_code != 200:
                 response = requests.post(
                     f"{NomadRequest.base_url}/entries/{id}/archive/query",
                     json=NomadRequest.results_query,

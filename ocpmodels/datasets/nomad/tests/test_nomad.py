@@ -5,13 +5,13 @@ import pytest
 from ocpmodels.datasets.nomad import NomadRequest
 from ocpmodels.datasets.nomad.dataset import NomadDataset
 
-TEST_IDS = [
-    "omTIFQFoC_ryxWm61HvGfG31Y_xq",
-    "vO1djw22GPm9CJcckNyPy1JsS9mb",
-    "r31Xq3nPTsEl35wLoAfqH0eXp_Ve",
-    "kc-0nyFuX3zmx8FaHRrMCLgfTEcr",
-    "iH0lS5fum5uG_ZxKFqVFrpM1t-Vn",
-]
+TEST_IDS = {
+    0: "omTIFQFoC_ryxWm61HvGfG31Y_xq",
+    1: "vO1djw22GPm9CJcckNyPy1JsS9mb",
+    2: "r31Xq3nPTsEl35wLoAfqH0eXp_Ve",
+    3: "kc-0nyFuX3zmx8FaHRrMCLgfTEcr",
+    4: "iH0lS5fum5uG_ZxKFqVFrpM1t-Vn",
+}
 
 
 @pytest.fixture(scope="session")
@@ -36,8 +36,8 @@ def test_download_data(nomad_module):
     data = nomad_module.nomad_request()
     assert None not in data
     datum = data.pop(0)
-    assert datum.get('properties') is not None
-    assert datum.get('material') is not None
+    assert datum.get("properties") is not None
+    assert datum.get("material") is not None
 
 
 @pytest.mark.dependency(depends=["test_download_dadta"])
