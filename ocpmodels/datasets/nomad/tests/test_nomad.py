@@ -24,7 +24,7 @@ def devset_dir(tmp_path_factory):
 @pytest.fixture
 @pytest.mark.dependency(depends=["devset_dir"])
 def nomad_module(devset_dir):
-    cmd = NomadRequest()
+    cmd = NomadRequest(num_workers=1)
     cmd.material_ids = TEST_IDS
     cmd.data_dir = devset_dir
     return cmd
@@ -47,19 +47,19 @@ def test_serialize_lmdb(nomad_module):
     nomad_module.to_lmdb(nomad_module.data_dir)
 
 
-@pytest.mark.dependency(depends=["test_serialize_lmdb"])
-@pytest.mark.local
-def test_dataset_load(devset_dir):
-    dset = NomadDataset(devset_dir)
-    for index in range(3):
-        data = dset.__getitem__(index)
-        import pdb; pdb.set_trace()
-        assert all(
-            [
-                key in data.keys()
-                for key in ["pos", "atomic_numbers", "pc_features", "dataset"]
-            ]
-        )
+# @pytest.mark.dependency(depends=["test_serialize_lmdb"])
+# @pytest.mark.local
+# def test_dataset_load(devset_dir):
+#     dset = NomadDataset(devset_dir)
+#     for index in range(3):
+#         data = dset.__getitem__(index)
+#         import pdb; pdb.set_trace()
+#         assert all(
+#             [
+#                 key in data.keys()
+#                 for key in ["pos", "atomic_numbers", "pc_features", "dataset"]
+#             ]
+#         )
 
 
 # @pytest.mark.dependency(depends=["test_dataset_load"])

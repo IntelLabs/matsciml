@@ -15,6 +15,7 @@ import yaml
 from ocpmodels.datasets.utils import write_lmdb_data
 from tqdm import tqdm
 import traceback
+from yaml import CBaseLoader
 
 
 class NomadRequest:
@@ -49,12 +50,17 @@ class NomadRequest:
         split_files: Optional[List[str]] = None,
         material_ids: Optional[List[int]] = None,
         split_dir: Optional[str] = None,
+        num_workers: int = -1,
     ):
         self.split_dir = split_dir
         self.base_data_dir = base_data_dir
         os.makedirs(base_data_dir, exist_ok=True)
         self.material_ids = material_ids
         self.split_files = split_files
+        if num_workers == -1:
+            num_workers = multiprocessing.cpu_count()
+        self.num_workers = num_workers
+
         # Can specify material ids' or split_files, but not both. If neither are
         # supplied, the full dataset is downloaded.
         if material_ids and split_files:
@@ -97,15 +103,15 @@ class NomadRequest:
         ids = {}
         if self.split_files is not None:
             for split_file in self.split_files:
-                ids[split_file] = yaml.safe_load(open(split_file, "r"))
-        if self.split_dir is not None:
+                ids[split_file] = yaml.load(open(split_file, "r"), Loader=CBaseLoader)
+        elif self.split_dir is not None:
             ids[self.split_dir] = self.material_ids
         else:
             try:
                 self.split_file = os.path.join(self.data_dir, "all.yml")
-                ids["all"] = yaml.safe_load(open(self.split_file, "r"))
+                ids["all"] = yaml.load(open(self.split_file, "r"), Loader=CBaseLoader)
             except FileNotFoundError:
-                raise "Found no split files!"
+                raise f"Found no split files! {self.split_file}"
         return ids
 
     def fetch_ids(self) -> Dict[int, str]:
@@ -117,6 +123,7 @@ class NomadRequest:
         p_time = []
         start_time = time()
         more_ids = True
+        num_entries = 0
         while not query_error and more_ids:
             try:
                 processing_time = time() - start_time
@@ -191,12 +198,26 @@ class NomadRequest:
             f"{NomadRequest.base_url}/entries/{id}/archive/query",
             json=NomadRequest.results_query,
         )
+        status = True
         if response.status_code == 200:
             data = response.json()
             results = data["data"]["archive"]["results"]
             self.data[idx] = results
         else:
-            self.request_warning(response, idx)
+            tries = 0
+            while tries < 5 and response.status != 200:
+                response = requests.post(
+                    f"{NomadRequest.base_url}/entries/{id}/archive/query",
+                    json=NomadRequest.results_query,
+                )
+                if response.status_code != 200:
+                    time.sleep(1)
+                    tries += 1
+
+            if response.status_code != 200:
+                self.request_warning(response, idx)
+                status = False
+        return idx, status
 
     def request_warning(self, requested_data, id_idx):
         warning_message = f"Sample {id_idx} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
@@ -209,11 +230,14 @@ class NomadRequest:
 
     def nomad_request(self):
         self.data = [None] * len(self.material_ids)
-
+        self.material_ids = {int(k): v for k, v in self.material_ids.items()}
+        request_status = dict(
+            zip(list(self.material_ids.keys()), [None] * len(self.material_ids))
+        )
         with suppress(OSError):
             os.remove(os.path.join(self.data_dir, f"failed.txt"))
 
-        with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+        with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
             # List to store the future objects
             futures = [
                 executor.submit(self.fetch_data, n)
@@ -225,8 +249,10 @@ class NomadRequest:
                 as_completed(futures), total=len(self.material_ids), desc="Downloading"
             ):
                 try:
-                    future.result()
+                    n, status = future.result()
+                    request_status[n] = status
                 except Exception as e:
+                    print(traceback.format_exc())
                     print(f"Error occurred: {e}")
 
         self.to_lmdb(self.data_dir)
@@ -271,7 +297,7 @@ class NomadRequest:
 
 
 if __name__ == "__main__":
-    nomad = NomadRequest()
-    nomad.fetch_ids()
+    nomad = NomadRequest(base_data_dir="./base", split_files=["all.yml"])
+    # nomad.fetch_ids()
     # nomad.data_dir = ""
-    # nomad.download_data()
+    nomad.download_data()
