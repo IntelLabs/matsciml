@@ -12,6 +12,27 @@ pl-configs/README.md
 run_examples.sh
 test.py
 
+
+GALA_RUN.py
+boring_example.py
+cmd_crystal_name.yml
+cmd_other.yml
+cmd_space_group.yml
+cmd_space_group_numbers.yml
+download_cmd.py
+energy.png
+experiments/
+gala_test_script.py
+gpu_freeze_debug.py
+ocpmodels/datasets/lips/base/
+pl-configs/data/materials-project.yml
+plot_classes.py
+replace_substring.py
+scratch.py
+space_group.png
+space_group_name.png
+space_group_numbers.png
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
