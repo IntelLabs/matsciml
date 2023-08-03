@@ -1635,6 +1635,9 @@ class MultiTaskLitModule(pl.LightningModule):
                         output_head is not None
                     ), f"{subtask} does not contain output heads; ensure `task_keys` are set: {subtask.task_keys}"
                     optimizer = subtask.configure_optimizers()
+                    if isinstance(optimizer, tuple):
+                        # unpack the two things if a tuple is returned
+                        optimizer, scheduler = optimizer
                     # remove all the optimizer parameters, and re-add only the output heads
                     optimizer.param_groups.clear()
                     optimizer.add_param_group({"params": output_head.parameters()})
