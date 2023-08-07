@@ -24,11 +24,15 @@ class NomadRequest:
 
     id_query = {
         "query": {
-            "results.material.structural_type:any": [
-                "bulk",
-                "molecule / cluster",
-                "atom",
-            ],
+            "quantities:all": [
+                "results.properties.structures",
+                "results.properties.structures.structure_original.lattice_parameters",
+                "results.properties.structures.structure_original.cartesian_site_positions",
+                "results.properties.electronic.dos_electronic",
+                "results.properties.electronic.band_structure_electronic",
+                "results.material.symmetry",
+                "run.calculation.energy",
+            ]
         },
         "pagination": {
             "page_size": 10000,
@@ -61,7 +65,6 @@ class NomadRequest:
         if num_workers == -1:
             num_workers = multiprocessing.cpu_count()
         self.num_workers = num_workers
-        self.lmdb_idx = None
         # Can specify material ids' or split_files, but not both. If neither are
         # supplied, the full dataset is downloaded.
         if material_ids and split_files:
@@ -151,10 +154,7 @@ class NomadRequest:
 
                 ids = [_["entry_id"] for _ in response_json["data"]]
                 entry_ids.update(ids)
-                NomadRequest.id_query["pagination"]["page_after_value"] = response_json[
-                    "pagination"
-                ]["next_page_after_value"]
-                if len(entry_ids) > num_entries:
+                if len(entry_ids) > num_entries and len(ids) == 10000:
                     more_ids = True
                 else:
                     more_ids = False
@@ -164,10 +164,14 @@ class NomadRequest:
                     f"Total IDs: {num_entries}\tThroughput: {avg_query_time}",
                     end="\r",
                 )
+                NomadRequest.id_query["pagination"]["page_after_value"] = response_json[
+                    "pagination"
+                ]["next_page_after_value"]
             except Exception as e:
                 start_page = NomadRequest.id_query["pagination"]["page_after_value"]
                 end_page = NomadRequest.id_query["pagination"]["next_page_after_value"]
                 failed_pages[start_page] = end_page
+                print(traceback.format_exc())
 
         self.data_dir = Path(__file__).parents[0]
         id_file = os.path.join(self.data_dir, "all.yml")
@@ -278,10 +282,7 @@ class NomadRequest:
             [TODO:description]
         """
         os.makedirs(lmdb_path, exist_ok=True)
-        if self.lmdb_idx is not None:
-            lmdb_file = f"data{self.lmdb_idx}.lmdb"
-        else:
-            lmdb_file = f"data.lmdb"
+        lmdb_file = f"data.lmdb"
         target_env = lmdb.open(
             os.path.join(lmdb_path, lmdb_file),
             subdir=False,
@@ -299,21 +300,32 @@ class NomadRequest:
                 f"No data was available for serializing - did you run `retrieve_data`?"
             )
 
+    @classmethod
+    def make_devset(cls):
+        import numpy as np
+
+        np.random.seed(6)
+        ids = yaml.load(
+            open("./ocpmodels/datasets/nomad/all.yml", "r"), Loader=CBaseLoader
+        )
+        random_ids = np.random.randint(0, len(ids), 100)
+        dset_ids = list(ids.keys())
+        dset = {}
+        for idx in random_ids:
+            dset[dset_ids[idx]] = ids[str(idx)]
+
+        nomad = cls()
+        nomad.data_dir = "./ocpmodels/datasets/nomad/devset"
+        # with open(os.path.join(nomad.base_data_dir, "devset_ids.yml"), "w") as f:
+        #     yaml.safe_dump(dset, f)
+
+        nomad.material_ids = dset
+        nomad.nomad_request()
+
 
 if __name__ == "__main__":
     nomad = NomadRequest(base_data_dir="./base")
-    ids = yaml.load(open("all.yml", "r"), Loader=CBaseLoader)
-    sub_slices = list(range(0, 1100000, 100000))
-    # sub_slices.append(len(ids))
-    start_time = time.time()
-    for idx in range(len(sub_slices) - 1):
-        start = sub_slices[idx]
-        end = sub_slices[idx + 1] - 1
-        nomad.data_dir = f"all"
-        nomad.material_ids = {k: ids[k] for k in [str(n) for n in range(start, end)]}
-        nomad.lmdb_idx = idx
-        nomad.nomad_request()
-    end_time = time.time()
-
-    with open("NomadProcessingTime.txt", "w") as f:
-        f.write(str(start_time - end_time))
+    ids = yaml.load(open("./ocpmodels/datasets/nomad/all.yml", "r"), Loader=CBaseLoader)
+    nomad.data_dir = "./ocpmodels/datasets/nomad/base"
+    nomad.material_ids = ids
+    nomad.nomad_request()
