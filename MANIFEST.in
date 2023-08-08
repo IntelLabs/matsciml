@@ -4,4 +4,5 @@ recursive-include ocpmodels/datasets/dev-is2re-dgl *
 recursive-include ocpmodels/datasets/materials_project/devset *
 recursive-include ocpmodels/datasets/lips/devset *
 recursive-include ocpmodels/datasets/carolina_db/devset *
+recursive-include ocpmodels/datasets/nomad/devset *
 recursive-include ocpmodels/datasets/symmetry/devset *
