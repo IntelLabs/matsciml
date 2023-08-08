@@ -152,26 +152,15 @@ class NomadDataset(PointCloudDataset):
 
         # space_group = structure.get_space_group_info()[-1]
         # # convert lattice angles into radians
-        lattice_a = data["properties"]["structures"]["structure_original"][
+        lattice_params = data["properties"]["structures"]["structure_original"][
             "lattice_parameters"
-        ]["a"]
-        lattice_b = data["properties"]["structures"]["structure_original"][
-            "lattice_parameters"
-        ]["b"]
-        lattice_c = data["properties"]["structures"]["structure_original"][
-            "lattice_parameters"
-        ]["c"]
-        lattice_alpha = data["properties"]["structures"]["structure_original"][
-            "lattice_parameters"
-        ]["alpha"]
-        lattice_beta = data["properties"]["structures"]["structure_original"][
-            "lattice_parameters"
-        ]["beta"]
-        lattice_gamma = data["properties"]["structures"]["structure_original"][
-            "lattice_parameters"
-        ]["gamma"]
-        lattice_abc = (lattice_a, lattice_b, lattice_c)
-        lattice_angles = (lattice_alpha, lattice_beta, lattice_gamma)
+        ]
+        lattice_abc = (lattice_params["a"], lattice_params["b"], lattice_params["c"])
+        lattice_angles = (
+            lattice_params["alpha"],
+            lattice_params["beta"],
+            lattice_params["gamma"],
+        )
         # Need to check if angles are in rad or deg
         lattice_params = torch.FloatTensor(
             lattice_abc + tuple(a * (pi / 180.0) for a in lattice_angles)
