@@ -10,11 +10,8 @@ import torch
 from ocpmodels.common.registry import registry
 from ocpmodels.common.types import BatchDict, DataDict
 from ocpmodels.datasets.base import PointCloudDataset
-from ocpmodels.datasets.utils import (
-    concatenate_keys,
-    pad_point_cloud,
-    point_cloud_featurization,
-)
+from ocpmodels.datasets.utils import (concatenate_keys, pad_point_cloud,
+                                      point_cloud_featurization)
 
 
 @registry.register_dataset("NomadDataset")
@@ -114,7 +111,16 @@ class NomadDataset(PointCloudDataset):
         # fmt: on
         return an_map
 
-    def _parse_data(self, data: Dict[str, Any], return_dict: Dict[str, Any]) -> None:
+    def _parse_data(self, data: Dict[str, Any], return_dict: Dict[str, Any]) -> Dict:
+        """Parse out relevant data and store it in a MatSciML friendly format. 
+
+        Args:
+            data (Dict[str, Any]): Data from nomad request
+            return_dict (Dict[str, Any]): Empty dict to be filled with data
+
+        Returns:
+            Dict: Data compatible with MatSciML
+        """
         cart_coords = torch.Tensor(
             data["properties"]["structures"]["structure_original"][
                 "cartesian_site_positions"
@@ -219,7 +225,10 @@ class NomadDataset(PointCloudDataset):
         return return_dict
 
     def data_from_key(self, lmdb_index: int, subindex: int) -> Any:
-        # for a full list of properties avaialbe: data['properties']['available_properties'
+        # for a full list of properties avaialbe: 
+        # data['properties']['available_properties'
+        # additional energy properties also available: 
+        # data['energies'].keys()
         data = super().data_from_key(lmdb_index, subindex)
         return_dict = {}
         self._parse_data(data, return_dict=return_dict)

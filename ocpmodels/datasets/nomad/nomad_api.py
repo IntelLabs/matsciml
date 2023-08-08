@@ -2,24 +2,34 @@ import multiprocessing
 import os
 import re
 import time
+import traceback
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
 from functools import cached_property
-from typing import Dict, List, Optional, Tuple, Union
 from pathlib import Path
+from time import sleep, time
+from typing import Dict, List, Optional, Tuple, Union
 
 import lmdb
 import requests
 import yaml
-from ocpmodels.datasets.utils import write_lmdb_data
+from requests.models import Response
 from tqdm import tqdm
-import traceback
 from yaml import CBaseLoader
-from time import time, sleep
+
+from ocpmodels.datasets.utils import write_lmdb_data
 
 
 class NomadRequest:
+    """Nomad requests made through the standard python requests library should follow
+    the schema laid out in the Nomad documentation:
+    https://nomad-lab.eu/prod/v1/api/v1/extensions/docs#/materials
+
+    Queries with specific filters may be drafted using the explore page:
+    https://nomad-lab.eu/prod/v1/gui/search/entries
+    """
+
     base_url = "http://nomad-lab.eu/prod/v1/api/v1"
 
     id_query = {
@@ -70,11 +80,11 @@ class NomadRequest:
             raise Exception(f"Only one of split_dir and split_files may be supplied")
 
     @property
-    def material_ids(self) -> Union[List[str], None]:
+    def material_ids(self) -> Union[Dict[int, str], None]:
         return self._material_ids
 
     @material_ids.setter
-    def material_ids(self, values: Union[List[int], None]) -> None:
+    def material_ids(self, values: Union[Dict[int, str], None]) -> None:
         self._material_ids = values
 
     @property
@@ -99,7 +109,7 @@ class NomadRequest:
         used to create the 'all' split.
 
         Returns:
-            Dict[str, int]: _description_
+            Dict[str, int]: Dictionary containing split id names keys and id's as values.
         """
         ids = {}
         if self.split_files is not None:
@@ -116,6 +126,20 @@ class NomadRequest:
         return ids
 
     def fetch_ids(self) -> Dict[int, str]:
+        """Manually queries the Nomad API, which uses pagination to buffer data incrementally
+        to prevent crashes and potential data loss. Pagination is not conducive to
+        parallel processing so this process is somewhat slow. 10,000 samples at a time
+        are pulled in, and once there is a query error or less than 10,000 samples
+        then it is decided that this is the end of the dataset. Any pages which failed
+        to produce data will be saved for manual re-quering if desired.
+
+        Accessing large data from Nomad:
+        https://nomad-lab.eu/nomad-lab/support.html#faq:~:text=What%20options%20exist%20to%20access%20large%20amounts%20of%20NOMAD%20data%3F
+
+        Returns:
+            Dict[int, str]: _description_
+        """
+
         def entry_id_query():
             response = requests.post(
                 f"{NomadRequest.base_url}/entries/query",
@@ -153,26 +177,30 @@ class NomadRequest:
                 entry_ids.update(ids)
                 if len(entry_ids) > num_entries and len(ids) == 10000:
                     more_ids = True
+                    NomadRequest.id_query["pagination"][
+                        "page_after_value"
+                    ] = response_json["pagination"]["next_page_after_value"]
                 else:
                     more_ids = False
+
                 num_entries = len(entry_ids)
                 avg_query_time = round(sum(query_times) / len(query_times), 3)
                 print(
                     f"Total IDs: {num_entries}\tThroughput: {avg_query_time}",
                     end="\r",
                 )
-                NomadRequest.id_query["pagination"]["page_after_value"] = response_json[
-                    "pagination"
-                ]["next_page_after_value"]
             except Exception as e:
                 start_page = NomadRequest.id_query["pagination"]["page_after_value"]
                 end_page = NomadRequest.id_query["pagination"]["next_page_after_value"]
                 failed_pages[start_page] = end_page
                 print(traceback.format_exc())
 
-        self.data_dir = Path(__file__).parents[0]
-        id_file = os.path.join(self.data_dir, "all.yml")
-        failed_pages_file = os.path.join(self.data_dir, "failed.yml")
+        if self.base_data_dir is None:
+            save_dir = Path(__file__).parents[0]
+        else:
+            save_dir = self.base_data_dir
+        id_file = os.path.join(save_dir, "all.yml")
+        failed_pages_file = os.path.join(save_dir, "failed.yml")
 
         with open(id_file, "w") as f:
             entry_id_dict = dict(zip(range(num_entries), entry_ids))
@@ -181,10 +209,8 @@ class NomadRequest:
         with open(failed_pages_file, "w") as f:
             yaml.safe_dump(failed_pages, f, sort_keys=False)
 
-    def download_data(self):
-        """Facilitates downloading data from different splits. Makes a folder
-        specifically for the raw .cif files.
-        """
+    def download_data(self) -> None:
+        """Facilitates downloading data from different splits."""
         id_dict = self.process_ids()
         for split, ids in id_dict.items():
             self.material_ids = ids
@@ -192,7 +218,19 @@ class NomadRequest:
             print(f"Downloading data to : {self.data_dir}")
             self.nomad_request()
 
-    def fetch_data(self, idx, key):
+    def fetch_data(self, idx: int, key: str) -> Tuple[int, str, bool]:
+        """Uses a specific endpoint which takes a single material ID and downloads its
+        data archive. Much more data is available that what is saved to self.data.
+        Requests are retried a maximum of 5 times.
+
+        Args:
+            idx (int): index of the material id to query
+            key (str): material id to query
+
+        Returns:
+            Tuple[int, str, bool]: index queries, id queried, status of query (pass/fail)
+        """
+
         def archive_query(id):
             response = requests.post(
                 f"{NomadRequest.base_url}/entries/{id}/archive/query",
@@ -226,7 +264,16 @@ class NomadRequest:
                 status = False
         return idx, key, status
 
-    def request_warning(self, requested_data, id_idx):
+    def request_warning(self, requested_data: Response, id_idx: int) -> bool:
+        """Saves bad requests status codes and samples to a file.
+
+        Args:
+            requested_data (Response): Output of response.post()
+            id_idx (int): Index of material id being queried.
+
+        Returns:
+            bool: Indication of failed query.
+        """
         warning_message = f"Sample {id_idx} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
         warnings.warn(warning_message, category=Warning)
         with open(
@@ -235,7 +282,12 @@ class NomadRequest:
             f.write(warning_message)
         return False
 
-    def nomad_request(self):
+    def nomad_request(self) -> List:
+        """Multiprocessing to query data by material ID. Saves data to lmdb at the end
+        of the queries.
+        Returns:
+            List: List holding all of the data.
+        """
         self.data = [None] * len(self.material_ids)
         self.material_ids = {int(k): v for k, v in self.material_ids.items()}
         request_status = dict(
