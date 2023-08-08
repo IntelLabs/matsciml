@@ -34,6 +34,12 @@ class NomadDataset(PointCloudDataset):
 
     @property
     def target_keys(self) -> Dict[str, List[str]]:
+        """Specifies tasks and their target keys. If more labels are desired this is 
+        they should be added by hand.
+
+        Returns:
+            Dict[str, List[str]]: target keys 
+        """
         return {
             "regression": ["energy_total", "efermi"],
             "classification": ["spin_polarized"],
