@@ -22,7 +22,7 @@ if package_registry["dgl"]:
             "node_feats": torch.rand(10, 5),
             "edge_feats": torch.rand(15, 2),
             "atomic_numbers": torch.randint(1, 100, (10,)),
-            "coords": torch.rand(10, 3),
+            "pos": torch.rand(10, 3),
             "dataset": "FakeDataset",
         }
         return data
@@ -53,7 +53,7 @@ if package_registry["dgl"]:
     @pytest.mark.dependency(depends=["test_transform_init"])
     def test_dgl_transform_fail(pc_data):
         t = PointCloudToGraphTransform("dgl")
-        del pc_data["coords"]
+        del pc_data["pos"]
         with pytest.raises(AssertionError):
             t(pc_data)
 
@@ -75,12 +75,11 @@ if package_registry["dgl"]:
         g = sample.get("graph")
         assert all([key in g.ndata for key in ["pos", "atomic_numbers", "force"]])
 
-    @pytest.mark.skip(reason="SyntheticPointGroup is still not finalized")
+    @pytest.mark.dependency(depends=["test_transform_init", "test_dgl_create"])
     def test_dgl_symmetry():
         dset = SyntheticPointGroupDataset(
             symmetry_devset, transforms=[PointCloudToGraphTransform("dgl")]
         )
-        # TODO output sample only contains 'coordinates' and nothing similar to 'atomic numbers'
         sample = dset.__getitem__(0)
         assert "graph" in sample.keys()
         g = sample.get("graph")
@@ -146,7 +145,7 @@ if package_registry["pyg"]:
         g = sample.get("graph")
         assert all([key in g for key in ["pos", "atomic_numbers", "force"]])
 
-    @pytest.mark.skip(reason="SyntheticPointGroup is still not finalized")
+    @pytest.mark.dependency(depends=["test_transform_pyg_init", "test_pyg_create"])
     def test_pyg_symmetry():
         dset = SyntheticPointGroupDataset(
             symmetry_devset, transforms=[PointCloudToGraphTransform("pyg")]
