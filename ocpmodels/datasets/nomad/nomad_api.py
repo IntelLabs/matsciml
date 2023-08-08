@@ -16,7 +16,7 @@ from ocpmodels.datasets.utils import write_lmdb_data
 from tqdm import tqdm
 import traceback
 from yaml import CBaseLoader
-from time import time
+from time import time, sleep
 
 
 class NomadRequest:
@@ -44,10 +44,7 @@ class NomadRequest:
         "required": {"include": ["entry_id"]},
     }
 
-    results_query = {
-        "results.material.structural_type:any": ["bulk", "molecule / cluster"],
-        "quantities:all": ["results"],
-    }
+    results_query = {"query": {"quantities:all": ["results", "run"]}}
 
     def __init__(
         self,
@@ -144,7 +141,7 @@ class NomadRequest:
                 while download_attempts < 5 and response.status_code != 200:
                     response = entry_id_query()
                     if response.status_code != 200:
-                        time.sleep(1)
+                        sleep(1)
                         download_attempts += 1
 
                 if response.status_code != 200:
@@ -209,13 +206,19 @@ class NomadRequest:
         if response.status_code == 200:
             data = response.json()
             results = data["data"]["archive"]["results"]
+            energies = {
+                "energies": data["data"]["archive"]["run"][-1]["calculation"][-1][
+                    "energy"
+                ]
+            }
+            results.update(energies)
             self.data[idx] = results
         else:
             download_attempts = 0
             while download_attempts < 5 and response.status_code != 200:
                 response = archive_query(id)
                 if response.status_code != 200:
-                    time.sleep(1)
+                    sleep(1)
                     download_attempts += 1
 
             if response.status_code != 200:

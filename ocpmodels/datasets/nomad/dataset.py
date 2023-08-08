@@ -37,12 +37,15 @@ class NomadDataset(PointCloudDataset):
 
     @property
     def target_keys(self) -> Dict[str, List[str]]:
-        return {"regression": ["efermi"], "classification": ["spin_polarized"]}
+        return {
+            "regression": ["energy_total", "efermi"],
+            "classification": ["spin_polarized"],
+        }
 
     def target_key_list(self):
         keys = []
         for k, v in self.target_keys.items():
-            keys.append(*v)
+            keys.extend(v)
         return keys
 
     @staticmethod
@@ -125,9 +128,9 @@ class NomadDataset(PointCloudDataset):
         atomic_numbers = torch.LongTensor(
             [
                 self.atomic_number_map[symbol]
-                for symbol in data["properties"]["structures"][
-                    "structure_original"
-                ]["species_at_sites"]
+                for symbol in data["properties"]["structures"]["structure_original"][
+                    "species_at_sites"
+                ]
             ]
         )
         return_dict["atomic_numbers"] = atomic_numbers
@@ -171,6 +174,7 @@ class NomadDataset(PointCloudDataset):
         return_dict["efermi"] = data["properties"]["electronic"][
             "band_structure_electronic"
         ]["energy_fermi"]
+        return_dict["energy_total"] = data["energies"]["total"]["value"]
         # data['properties']['electronic']['dos_electronic']['energy_fermi']
         return_dict["spin_polarized"] = data["properties"]["electronic"][
             "band_structure_electronic"
