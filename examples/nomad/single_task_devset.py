@@ -3,7 +3,10 @@ from torch.nn import LazyBatchNorm1d, SiLU
 
 from ocpmodels.lightning.data_utils import MatSciMLDataModule
 from ocpmodels.models import PLEGNNBackbone
-from ocpmodels.models.base import ScalarRegressionTask
+from ocpmodels.models.base import (
+    ScalarRegressionTask,
+    CrystalSymmetryClassificationTask,
+)
 from ocpmodels.datasets.transforms import PointCloudToGraphTransform
 
 
@@ -37,17 +40,18 @@ model_args = {
 }
 
 model = PLEGNNBackbone(**model_args)
+
 task = ScalarRegressionTask(
     model,
     output_kwargs={"norm": LazyBatchNorm1d, "hidden_dim": 256, "activation": SiLU},
     lr=1e-3,
-    task_keys=["efermi"],
+    task_keys=["energy_total"],
 )
 
 # configure materials project from devset
 dm = MatSciMLDataModule(
     "NomadDataset",
-    train_path = "./ocpmodels/datasets/nomad/devset/",
+    train_path="./ocpmodels/datasets/nomad/devset/",
     dset_kwargs={
         "transforms": [
             PointCloudToGraphTransform(
