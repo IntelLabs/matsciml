@@ -9,6 +9,17 @@ lightning_logs
 *commands*
 *kdp*
 
+download_nomad.py
+mp_data/
+ocpmodels/datasets/carolina_db/base/
+ocpmodels/datasets/nomad/all.yml
+ocpmodels/datasets/nomad/failed.txt
+ocpmodels/datasets/nomad/retry/
+ocpmodels/datasets/nomad/simple.py
+pl-configs/README.md
+retry.yml
+run_examples.sh
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
