@@ -1,6 +1,7 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
+from pathlib import Path
 from typing import (
     Dict,
     Iterable,
@@ -16,12 +17,12 @@ from abc import abstractmethod, ABC
 from contextlib import nullcontext, ExitStack
 import logging
 from warnings import warn
-from dgl.utils import data
 
 import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
+from torch.optim import lr_scheduler
 
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.models.common import OutputHead
@@ -643,6 +644,7 @@ class BaseTaskModule(pl.LightningModule):
         lr: float = 1e-4,
         weight_decay: float = 0.0,
         normalize_kwargs: Optional[Dict[str, float]] = None,
+        scheduler_kwargs: Optional[Dict[str, Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -879,7 +881,20 @@ class BaseTaskModule(pl.LightningModule):
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
-        return opt
+        # configure schedulers as a nested dictionary
+        schedule_dict = getattr(self.hparams, "scheduler_kwargs", None)
+        schedulers = []
+        if schedule_dict:
+            for scheduler_name, params in schedule_dict.items():
+                # try get the scheduler class
+                scheduler_class = getattr(lr_scheduler, scheduler_name, None)
+                if not scheduler_class:
+                    raise NameError(
+                        f"{scheduler_class} was requested for LR scheduling, but is not in 'torch.optim.lr_scheduler'."
+                    )
+                scheduler = scheduler_class(opt, **params)
+                schedulers.append(scheduler)
+        return [opt], schedulers
 
     def training_step(
         self,
@@ -954,6 +969,67 @@ class BaseTaskModule(pl.LightningModule):
             std = norm_kwargs.get(f"{key}_std", 1.0)
             normalizers[key] = Normalizer(mean=mean, std=std, device=self.device)
         return normalizers
+
+    @classmethod
+    def from_pretrained_encoder(cls, task_ckpt_path: Union[str, Path], **kwargs):
+        """
+        Attempts to instantiate a new task, adopting a previously trained encoder model.
+
+        This function will load in a saved PyTorch Lightning checkpoint,
+        copy over the hyperparameters needed to reconstruct the encoder,
+        and simply maps the encoder ``state_dict`` to the new instance.
+
+        ``Kwargs`` are passed directly into the creation of the task, and so can
+        be thought of as just a task through the typical interface normally.
+
+        Parameters
+        ----------
+        task_ckpt_path : Union[str, Path]
+            Path to an existing task checkpoint file. Typically, this
+            would be a PyTorch Lightning checkpoint.
+
+        Examples
+        --------
+        1. Create a new task simply from training another one
+
+        >>> new_task = ScalarRegressionTask.from_pretrained_encoder(
+            "epoch=10-step=100.ckpt"
+            )
+
+        2. Create a new task, modifying output heads
+
+        >>> new_taks = ForceRegressionTask.from_pretrained_encoder(
+            "epoch=5-step=12516.ckpt",
+            output_kwargs={
+                "num_hidden": 3,
+                "activation": "nn.ReLU"
+            }
+        )
+        """
+        if isinstance(task_ckpt_path, str):
+            task_ckpt_path = Path(task_ckpt_path)
+        assert (
+            task_ckpt_path.exists()
+        ), f"Encoder checkpoint filepath specified but does not exist."
+        ckpt = torch.load(task_ckpt_path)
+        for key in ["encoder_class", "encoder_kwargs"]:
+            assert (
+                key in ckpt["hyper_parameters"]
+            ), f"{key} expected to be in hyperparameters, but was not found."
+            # copy over the data for the new task
+            kwargs[key] = ckpt["hyper_parameters"][key]
+        # construct the new task with random weights
+        task = cls(**kwargs)
+        # this only copies over encoder weights, and removes the 'encoder.'
+        # pattern from keys
+        encoder_weights = {
+            key.replace("encoder.", ""): tensor
+            for key, tensor in ckpt["state_dict"].items()
+            if "encoder." in key
+        }
+        # load in pre-trained weights
+        task.encoder.load_state_dict(encoder_weights)
+        return task
 
 
 @registry.register_task("ScalarRegressionTask")
@@ -1356,9 +1432,8 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.CrossEntropyLoss,
         output_kwargs: Dict[str, Any] = {},
-        lr: float = 0.0001,
-        weight_decay: float = 0,
         normalize_kwargs: Optional[Dict[str, float]] = None,
+        freeze_embedding: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -1370,11 +1445,12 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
                 "spacegroup",
             ],
             output_kwargs,
-            lr,
-            weight_decay,
-            normalize_kwargs,
+            normalize_kwargs=normalize_kwargs,
             **kwargs,
         )
+        self.freeze_embedding = freeze_embedding
+        if self.freeze_embedding:
+            self.encoder.atom_embedding.requires_grad_(False)
 
     def _make_output_heads(self) -> nn.ModuleDict:
         # this task only utilizes one output head; 230 possible space groups
@@ -1559,6 +1635,12 @@ class MultiTaskLitModule(pl.LightningModule):
                         output_head is not None
                     ), f"{subtask} does not contain output heads; ensure `task_keys` are set: {subtask.task_keys}"
                     optimizer = subtask.configure_optimizers()
+                    if isinstance(optimizer, tuple):
+                        # unpack the two things if a tuple is returned
+                        optimizer, scheduler = optimizer
+                    if isinstance(optimizer, list):
+                        # we only work with one optimizer
+                        optimizer = optimizer[0]
                     # remove all the optimizer parameters, and re-add only the output heads
                     optimizer.param_groups.clear()
                     optimizer.add_param_group({"params": output_head.parameters()})
@@ -2185,6 +2267,67 @@ class MultiTaskLitModule(pl.LightningModule):
         raise NotImplementedError(
             f"MultiTask should be reloaded using the `ocpmodels.models.multitask_from_checkpoint` function instead."
         )
+
+    @classmethod
+    def from_pretrained_encoder(cls, task_ckpt_path: Union[str, Path], **kwargs):
+        """
+        Attempts to instantiate a new task, adopting a previously trained encoder model.
+
+        This function will load in a saved PyTorch Lightning checkpoint,
+        copy over the hyperparameters needed to reconstruct the encoder,
+        and simply maps the encoder ``state_dict`` to the new instance.
+
+        ``Kwargs`` are passed directly into the creation of the task, and so can
+        be thought of as just a task through the typical interface normally.
+
+        Parameters
+        ----------
+        task_ckpt_path : Union[str, Path]
+            Path to an existing task checkpoint file. Typically, this
+            would be a PyTorch Lightning checkpoint.
+
+        Examples
+        --------
+        1. Create a new task simply from training another one
+
+        >>> new_task = ScalarRegressionTask.from_pretrained_encoder(
+            "epoch=10-step=100.ckpt"
+            )
+
+        2. Create a new task, modifying output heads
+
+        >>> new_taks = ForceRegressionTask.from_pretrained_encoder(
+            "epoch=5-step=12516.ckpt",
+            output_kwargs={
+                "num_hidden": 3,
+                "activation": "nn.ReLU"
+            }
+        )
+        """
+        if isinstance(task_ckpt_path, str):
+            task_ckpt_path = Path(task_ckpt_path)
+        assert (
+            task_ckpt_path.exists()
+        ), f"Encoder checkpoint filepath specified but does not exist."
+        ckpt = torch.load(task_ckpt_path)
+        for key in ["encoder_class", "encoder_kwargs"]:
+            assert (
+                key in ckpt["hyper_parameters"]
+            ), f"{key} expected to be in hyperparameters, but was not found."
+            # copy over the data for the new task
+            kwargs[key] = ckpt["hyper_parameters"][key]
+        # construct the new task with random weights
+        task = cls(**kwargs)
+        # this only copies over encoder weights, and removes the 'encoder.'
+        # pattern from keys
+        encoder_weights = {
+            key.replace("encoder.", ""): tensor
+            for key, tensor in ckpt["state_dict"].items()
+            if "encoder." in key
+        }
+        # load in pre-trained weights
+        task.encoder.load_state_dict(encoder_weights)
+        return task
 
 
 @registry.register_task("OpenCatalystInference")

@@ -1,4 +1,4 @@
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Tuple
 from logging import getLogger
 from warnings import warn
 
@@ -8,6 +8,7 @@ import numpy as np
 from ocpmodels.common import DataDict, package_registry
 from ocpmodels.common.types import DataDict, GraphTypes, AbstractGraph
 from ocpmodels.datasets.transforms.representations import RepresentationTransform
+from ocpmodels.datasets.utils import retrieve_pointcloud_node_types
 
 """
 Construct graphs from point clouds
@@ -47,8 +48,6 @@ class PointCloudToGraphTransform(RepresentationTransform):
     @node_keys.setter
     def node_keys(self, values: List[str]) -> None:
         values = set(values)
-        for key in ["pos", "atomic_numbers"]:
-            values.add(key)
         self._node_keys = list(values)
 
     def prologue(self, data: DataDict) -> None:
@@ -56,9 +55,87 @@ class PointCloudToGraphTransform(RepresentationTransform):
             data, GraphTypes
         ), "Data structure already contains a graph: transform shouldn't be required."
         # check for keys needed to construct the graph
-        for key in ["pos", "atomic_numbers"]:
-            assert key in data, f"Expected {key} in sample. Found: {list(data.keys())}"
+        assert "pos" in data, f"No atomic positions 'pos' key present in data sample."
+        has_atom_key = False
+        for key in ["atomic_numbers", "pc_features"]:
+            if key in data:
+                has_atom_key = True
+        assert (
+            has_atom_key
+        ), f"Neither 'atomic_numbers' nor 'pc_features' keys were present in data sample."
         return super().prologue(data)
+
+    @staticmethod
+    def get_atom_types(data: DataDict) -> torch.Tensor:
+        """
+        Extract out the atom types from a data sample to use as
+        node data.
+
+        If the ``atomic_numbers`` key is present in the data sample,
+        this will be used. If this is absent but ``pc_features`` is
+        available, we will infer the atom types from this instead.
+
+        Parameters
+        ----------
+        data : DataDict
+            Point cloud data sample to convert to a graph
+
+        Returns
+        -------
+        torch.Tensor
+            Source atom types from the point cloud
+
+        Raises
+        ------
+        KeyError
+            If neither ``atomic_numbers`` nor ``pc_features`` are
+            available as keys.
+        """
+        if "atomic_numbers" in data:
+            return data["atomic_numbers"]
+        elif "pc_features" in data:
+            (src_types, dst_types) = retrieve_pointcloud_node_types(data["pc_features"])
+            assert src_types.size(0) == data["pos"].size(
+                0
+            ), f"Number of source nodes != number of atom positions!"
+            return src_types
+        else:
+            raise KeyError(
+                f"No suitable atom types to read from; expect either 'atomic_numbers' or 'pc_features' to read from a data sample."
+            )
+
+    @staticmethod
+    def _apply_mask(
+        atomic_numbers: torch.Tensor, pos: torch.Tensor, data: DataDict
+    ) -> Tuple[torch.Tensor]:
+        """
+        Applies a mask to the data used to construct the graph.
+
+        In some cases, like ``SyntheticPointGroupDataset``, the node
+        data may come padded and a ``src_mask`` can be used to retrieve
+        only non-padding nodes. If this key isn't present, then we will
+        use the fact that ``atomic_numbers`` should be greater than zero
+        to generate a mask to the data.
+
+        Parameters
+        ----------
+        atomic_numbers : torch.Tensor
+            Atomic numbers, as a 1D tensor [N,]
+        pos : torch.Tensor
+            Atomic positions, shape [N, 3]
+        data : DataDict
+            Point cloud data sample to transform into a graph
+
+        Returns
+        -------
+        Tuple[torch.Tensor]
+            Pair of atomic number and positions tensors as a 2-tuple.
+        """
+        if "src_mask" in data:
+            mask = data.get("src_mask")
+        else:
+            mask = atomic_numbers > 0.0
+        return (atomic_numbers[mask], pos[mask])
 
     @staticmethod
     def node_distances(coords: torch.Tensor) -> torch.Tensor:
@@ -103,8 +180,9 @@ class PointCloudToGraphTransform(RepresentationTransform):
                         )
 
         def _convert_dgl(self, data: DataDict) -> None:
-            atom_numbers = data["atomic_numbers"]
+            atom_numbers = self.get_atom_types(data)
             coords = data["pos"]
+            atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
             num_nodes = len(atom_numbers)
             # skip edge calculation if the distance matrix
             # exists already
@@ -114,6 +192,8 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 dist_mat = data.get("distance_matrix")
             adj_list = self.edges_from_dist(dist_mat, self.cutoff_dist)
             g = dgl_graph(adj_list, num_nodes=num_nodes)
+            g.ndata["atomic_numbers"] = atom_numbers
+            g.ndata["pos"] = coords
             data["graph"] = g
 
     if package_registry["pyg"]:
@@ -149,8 +229,9 @@ class PointCloudToGraphTransform(RepresentationTransform):
             data : DataDict
                 Data structure read from base class
             """
-            atom_numbers = data["atomic_numbers"]
+            atom_numbers = self.get_atom_types(data)
             coords = data["pos"]
+            atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
             if "distance_matrix" not in data:
                 dist_mat = self.node_distances(coords)
             else:
