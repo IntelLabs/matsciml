@@ -1753,7 +1753,7 @@ class MultiTaskLitModule(pl.LightningModule):
             keys[self.dataset_names[0]] = set()
             for task in tasks:
                 keys[self.dataset_names[0]].update(task.__needs_grads__)
-        keys = {dset_name: sorted(keys) for dset_name, keys in keys.items()}
+        keys = {dset_name: sorted(subkeys) for dset_name, subkeys in keys.items()}
         return keys
 
     @property
@@ -2091,7 +2091,7 @@ class MultiTaskLitModule(pl.LightningModule):
         else:
             if "graph" in batch:
                 batch_size = batch["graph"].batch_size
-            elif len(subset["targets"]) > 0:
+            elif len(batch["targets"]) > 0:
                 key = next(iter(batch["targets"]))
                 sample = batch["targets"][key]
                 if isinstance(sample, dgl.DGLGraph):
@@ -2418,7 +2418,7 @@ class S2EFInference(OpenCatalystInference):
             # retrieve only forces corresponding to unfixed nodes
             predictions["forces"] = force[fixed_mask]
             natoms = tuple(batch.get("natoms").cpu().numpy().astype(int))
-            chunk_split = torch.split(graph.ndata["fixed"], natoms)
+            chunk_split = torch.split(fixed, natoms)
             chunk_ids = []
             for chunk in chunk_split:
                 ids = (len(chunk) - sum(chunk)).cpu().numpy().astype(int)

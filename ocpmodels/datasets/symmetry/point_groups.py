@@ -317,7 +317,6 @@ def chiral_icosahedral(x):
 
     quats = rowan.from_mirror_plane(*np.array(sym.mirror_planes).T)
     for mirror in quats:
-        break
         pieces.append(rowan.reflect(mirror[None], x))
     return np.concatenate(pieces, axis=0)
 
