@@ -19,31 +19,31 @@ from torch_geometric.data import Batch
 # )
 try:
     from ocpmodels.models.diffusion_pipeline import GenerationTask
-    from ocpmodels.datasets.cdvae_datasets import CrystDataset, TensorCrystDataset
-    from ocpmodels.datasets.cdvae_datamodule import CrystDataModule
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
+    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
+    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset, CdvaeLMDBDataset
+    from examples.simple_example_cdvae import get_scalers
     from examples.cdvae_configs import (
-        enc_config, dec_config, cdvae_config, carbon_config,
-        perov_config, mp20_config
+        enc_config, dec_config, cdvae_config, mp_config
     )
 
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
     sys.path.append("{}/../".format(dir_path))
     from ocpmodels.models.diffusion_pipeline import GenerationTask
-    from ocpmodels.datasets.cdvae_datasets import CrystDataset, TensorCrystDataset
-    from ocpmodels.datasets.cdvae_datamodule import CrystDataModule
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
+    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
+    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset, CdvaeLMDBDataset
+    from examples.simple_example_cdvae import get_scalers
     from examples.cdvae_configs import (
-        enc_config, dec_config, cdvae_config, carbon_config, 
-        perov_config, mp20_config
+        enc_config, dec_config, cdvae_config, mp_config
     )   
 
 
 def load_model(model_path, load_data):
-    data_config = carbon_config
+    data_config = mp_config
 
     # init dataset-specific params in encoder/decoder
     enc_config['num_targets'] = cdvae_config['latent_dim'] #data_config['num_targets'] 
@@ -51,22 +51,33 @@ def load_model(model_path, load_data):
     enc_config['readout'] = data_config['readout']
 
     cdvae_config['max_atoms'] = data_config['max_atoms']
+    cdvae_config['raidus'] = 12.0
     cdvae_config['teacher_forcing_max_epoch'] = data_config['teacher_forcing_max_epoch']
     cdvae_config['lattice_scale_method'] = data_config['lattice_scale_method']
 
-    dataclass = partial(CrystDataset, **data_config)
-    splits = [
-        dataclass(path=f"{data_config['root_path']}/{split}.csv") for split in ['train', 'val', 'test'] 
-    ]
-    dm = CrystDataModule(
-        train=splits[0], 
-        valid=splits[1],
-        test=splits[2],
+    # TODO: adjust after training a full model
+    # enc_config['hidden_channels'] = 128
+    # enc_config['out_emb_channels'] = 256
+    # enc_config['int_emb_size'] = 64
+    # dec_config['hidden_dim'] = 128
+    # cdvae_config['hidden_dim'] = 256
+    # cdvae_config['latent_dim'] = 256
+
+    dm = MaterialsProjectDataModule(
+        dataset=CdvaeLMDBDataset,
+        train_path=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/train/"),
+        val_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/val/"),
+        test_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/test/"),
+        batch_size=256,
         num_workers=0,
-        batch_size=4
     )
-    
-    
+    # Load the data at the setup stage
+    dm.setup()
+     # Compute scalers for regression targets and lattice parameters
+    lattice_scaler, prop_scaler = get_scalers(dm.splits['train'])
+    dm.dataset.lattice_scaler = lattice_scaler.copy()
+    dm.dataset.scaler = prop_scaler.copy()
+
     encoder = DimeNetPlusPlusWrap(**enc_config)
     decoder = GemNetTDecoder(**dec_config)
     model = GenerationTask(
@@ -78,12 +89,9 @@ def load_model(model_path, load_data):
         checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint['state_dict'])
 
-
-    print(f"Passing scaler from datamodule to model <{dm.scaler}>")
-    model.lattice_scaler = dm.lattice_scaler.copy()
-    model.scaler = dm.scaler.copy()
-    dm.setup('test')
-    test_loader = dm.test_dataloader()[0]
+    model.lattice_scaler = lattice_scaler.copy()
+    model.scaler = prop_scaler.copy()
+    test_loader = dm.test_dataloader()
     
     return model, test_loader, cdvae_config
 
@@ -110,8 +118,6 @@ def reconstructon(loader, model, ld_kwargs, num_evals,
         if torch.cuda.is_available():
             batch.cuda()
         print(f'batch {idx} in {len(loader)}')
-        # if idx > 0:
-        #     break
         batch_all_frac_coords = []
         batch_all_atom_types = []
         batch_frac_coords, batch_num_atoms, batch_atom_types = [], [], []
@@ -258,7 +264,6 @@ def optimization(model, ld_kwargs, data_loader,
 
 def main(args):
     # load_data if do reconstruction.
-    #model_path = Path(args.model_path)
     model_path = None if args.model_path is None else args.model_path
     model, test_loader, cfg = load_model(
         model_path, load_data=('recon' in args.tasks) or
@@ -273,7 +278,6 @@ def main(args):
         model.to('cuda')
 
     model_path = Path(os.path.dirname(os.path.realpath(__file__)))
-    #model_path = os.path.join(model_path, "/../outputs/")
     model_path = model_path / ".." / "outputs"
 
     if 'recon' in args.tasks:
