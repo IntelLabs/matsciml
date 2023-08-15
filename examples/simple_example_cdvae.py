@@ -15,7 +15,7 @@ try:
         enc_config, dec_config, cdvae_config, mp_config
     )
     from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset
+    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset, CdvaeLMDBDataset
     from ocpmodels.models.diffusion_utils.data_utils import StandardScalerTorch
 
 except:
@@ -75,11 +75,12 @@ def main():
     cdvae_config['lattice_scale_method'] = data_config['lattice_scale_method']
 
     dm = MaterialsProjectDataModule(
+        dataset=CdvaeLMDBDataset,
         train_path=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/train/"),
         val_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/val/"),
         test_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/test/"),
         batch_size=256,
-        num_workers=16,
+        num_workers=0,
     )
     # Load the data at the setup stage
     dm.setup()

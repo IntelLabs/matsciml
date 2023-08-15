@@ -78,8 +78,8 @@ perov_config = {
 
 # Main CDVAE
 cdvae_config = {
-    "hidden_dim": 32,  # 256
-    "latent_dim": 32,  # 256
+    "hidden_dim": 256,  # 256, 32 for debug
+    "latent_dim": 256,  # 256, 32 for debug
     "fc_num_layers": 1,
     "max_atoms": None,  # dataset.max_atoms
     "cost_natom": 1.,
@@ -93,7 +93,7 @@ cdvae_config = {
     "teacher_forcing_lattice": True,
     "teacher_forcing_max_epoch": None,  # dataset.teacher_forcing_max_epoch
     "max_neighbors": 20,  # maximum number of neighbors for OTF graph bulding in decoder
-    "radius": 7.,  # maximum search radius for OTF graph building in decoder
+    "radius": 12.,  # maximum search radius for OTF graph building in decoder
     "sigma_begin": 10.,
     "sigma_end": 0.01,
     "type_sigma_begin": 5.,
@@ -104,9 +104,9 @@ cdvae_config = {
 
 # default model configuration for DimeNetPPWrap
 enc_config = {
-    "hidden_channels": 32,  # 128
-    "out_emb_channels": 32,  # 256
-    "int_emb_size": 16,  # 64
+    "hidden_channels": 128,  # 128, 32 for debug
+    "out_emb_channels": 256,  # 256, 32 for debug
+    "int_emb_size": 64,  # 64, 16 for debug
     "basis_emb_size": 8,
     "num_blocks": 4,
     "num_spherical": 7,
@@ -128,7 +128,7 @@ enc_config = {
 
 # GemNetTDecoder
 dec_config = {
-    "hidden_dim": 32, # default 128
+    "hidden_dim": 128, # default 128, 32 for debug
     "latent_dim": cdvae_config['latent_dim'],  # cdvae latent dim
     "max_neighbors": cdvae_config['max_neighbors'],  # model.max_neighbors
     "radius": cdvae_config['radius'],  # model.radius
