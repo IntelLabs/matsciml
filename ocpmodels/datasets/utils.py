@@ -54,6 +54,8 @@ def concatenate_keys(
             if isinstance(value, dict):
                 # apply function recursively on dictionaries
                 result = concatenate_keys([s[key] for s in batch])
+            if isinstance(value, str):
+                result = value
             else:
                 elements = [s[key] for s in batch]
                 # provides an escape hatch; sometimes we don't want to stack

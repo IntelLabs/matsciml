@@ -15,6 +15,7 @@ is2re_devset = Path(__file__).parents[0].joinpath("dev-is2re-dgl")
 
 from ocpmodels.datasets.carolina_db import CMDataset
 from ocpmodels.datasets.nomad import NomadDataset
+from ocpmodels.datasets.oqmd import OQMDDataset
 from ocpmodels.datasets.ocp_datasets import IS2REDataset, S2EFDataset
 from ocpmodels.datasets.materials_project import (
     MaterialsProjectDataset,
@@ -29,6 +30,7 @@ __all__ = [
     "S2EFDataset",
     "CMDataset"
     "NomadDataset",
+    "OQMDDataset",
     "MaterialsProjectDataset",
     "LiPSDataset",
     "SyntheticPointGroupDataset",
@@ -37,6 +39,7 @@ __all__ = [
     "is2redevset",
     "carolinadb_devset"
     "nomad_devset",
+    "oqmd_devset",
     "materialsproject_devset",
     "lips_devset",
     "symmetry_devset",
