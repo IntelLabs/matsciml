@@ -1,12 +1,14 @@
+import json
 import multiprocessing
 import os
+import random
 import re
 import time
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
 from functools import cached_property
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import lmdb
 import pandas as pd
@@ -25,6 +27,7 @@ class OQMDRequest:
         material_ids: Optional[List[int]] = None,
         split_dir: Optional[str] = None,
         limit: int = 1000,
+        num_workers: int = 1,
     ):
         self.split_dir = split_dir
         self.base_data_dir = base_data_dir
@@ -32,6 +35,9 @@ class OQMDRequest:
         self.material_ids = material_ids
         self.split_files = split_files
         self.limit = limit
+        if num_workers == -1:
+            num_workers = multiprocessing.cpu_count()
+        self.num_workers = num_workers
         # Can specify material ids' or split_files, but not both. If neither are
         # supplied, the full dataset is downloaded.
         if material_ids and split_files:
@@ -90,35 +96,35 @@ class OQMDRequest:
         id_dict = self.process_ids()
         for split, ids in id_dict.items():
             self.material_ids = ids
-            self.data_dir = os.path.splitext(split)[0]
+            self.data_dir = os.path.join(os.path.splitext(split)[0], "raw_data")
             print(f"Downloading data to : {self.data_dir}")
             self.oqmd_request()
 
+    def parse_sites(self, sites):
+        symbols = []
+        cart_coords = []
+        for entry in sites:
+            parts = entry.split("@")
+            if len(parts) != 2:
+                print(f"Invalid entry: {entry}")
+                continue
+
+            symbol = parts[0].strip()
+            symbols.append(symbol)
+
+            coords_str = parts[1].strip()
+            coords = [float(coord) for coord in coords_str.split()]
+            if len(coords) != 3:
+                print(f"Invalid coordinates: {coords_str}")
+                continue
+
+            cart_coords.append(coords)
+        atomic_numbers = [self.atomic_number_map[symbol] for symbol in symbols]
+        return atomic_numbers, cart_coords
+
     def oqmd_request(self) -> None:
-        def parse_sites(sites):
-            symbols = []
-            cart_coords = []
-            for entry in sites:
-                parts = entry.split("@")
-                if len(parts) != 2:
-                    print(f"Invalid entry: {entry}")
-                    continue
-
-                symbol = parts[0].strip()
-                symbols.append(symbol)
-
-                coords_str = parts[1].strip()
-                coords = [float(coord) for coord in coords_str.split()]
-                if len(coords) != 3:
-                    print(f"Invalid coordinates: {coords_str}")
-                    continue
-
-                cart_coords.append(coords)
-            atomic_numbers = [self.atomic_number_map[symbol] for symbol in symbols]
-            return atomic_numbers, cart_coords
-
         def request_warning(requested_data):
-            warning_message = f"Offset {idx*self.limit} failed to download with: {requested_data.status_code}\n"
+            warning_message = f"Offset {index*self.limit} failed to download with: {requested_data.status_code}\n"
             warnings.warn(warning_message)
             with open(
                 os.path.join(os.path.dirname(self.data_dir), f"failed.txt"), "a"
@@ -128,35 +134,40 @@ class OQMDRequest:
 
         request_status = {}
         oqmd_url = "http://oqmd.org/oqmdapi/formationenergy?&limit={}&offset={}"
-        oqmd_data = []
 
-        idx = 0
-        data = [None] * self.limit
-        while len(data) == self.limit:
-            time.sleep(0.0001)
-            data = requests.get(url=oqmd_url.format(self.limit, idx * self.limit))
+        index = 0
+        has_more_data = True
+        while has_more_data and retry < 10:
+
+            data = requests.get(url=oqmd_url.format(self.limit, index * self.limit))
             retry = 0
-            while data.status_code != 200 and retry < 5:
-                data = requests.get(url=oqmd_url.format(self.limit, idx * self.limit))
-                time.sleep(1)
+            while data.status_code != 200 and retry < 10:
+                data = requests.get(url=oqmd_url.format(self.limit, index * self.limit))
+                time.sleep(60)
                 retry += 1
 
             if data.status_code == 200:
                 data = data.json()
-                data = data["data"]
                 for n in range(len(data)):
-                    data[n]["atomic_numbers"], data[n]["cart_coords"] = parse_sites(
-                        data[n]["sites"]
-                    )
-                    data[n].pop("sites")
-                oqmd_data.extend(data)
+                    (
+                        data[n]["data"]["atomic_numbers"],
+                        data[n]["data"]["cart_coords"],
+                    ) = self.parse_sites(data[n]["data"]["sites"])
+                    data[n]["data"].pop("sites")
+                if data["meta"]["more_data_available"]:
+                    has_more_data = True
+                else:
+                    has_more_data = False
             else:
                 request_status = request_warning(data)
-            idx += 1
-            print(len(oqmd_data), end='\r')
+                data = None
 
-        self.to_lmdb(self.data_dir)
-        return request_status
+            with open(
+                os.path.join(self.data_dir, "query_" + str(index) + ".json"), "w"
+            ) as json_file:
+                json.dump(data["data"], json_file, indent=2)
+
+        return data, request_status
 
     @cached_property
     def atomic_number_map(self) -> Dict[str, int]:
@@ -187,34 +198,58 @@ class OQMDRequest:
         # fmt: on
         return an_map
 
-    def process_data(self) -> Dict:
-        """Processes the raw .cif data. Grabbing any properties or attributes that are
-        provided, as well as the position data. Gathers everything into a dictionary,
-        and then saves to LMDB at the end. Uses multiprocessing to speed up processing.
-
-        Returns:
-            Dict: the processed data
-        """
-        self.data = [None] * len(self.files_available)
-
-        with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
-            # List to store the future objects
-            futures = [
-                executor.submit(self.parse_data, n) for n in range(len(self.data))
+    def process_json(self):
+        files = os.listdir(self.data_dir)
+        required_keys = set(
+            [
+                "name",
+                "entry_id",
+                "calculation_id",
+                "icsd_id",
+                "formationenergy_id",
+                "duplicate_entry_id",
+                "composition",
+                "composition_generic",
+                "prototype",
+                "spacegroup",
+                "volume",
+                "ntypes",
+                "natoms",
+                "unit_cell",
+                "sites",
+                "band_gap",
+                "delta_e",
+                "stability",
+                "fit",
+                "calculation_label",
+                "atomic_numbers",
+                "cart_coords",
             ]
-
-            # Iterate over completed futures to access the responses
-            for future in tqdm(
-                as_completed(futures), total=len(self.data), desc="Parsing Raw Data"
-            ):
+        )
+        oqmd_data = []
+        for file in files:
+            with open(os.path.join(self.data_dir, file)) as f:
                 try:
-                    idx, parsed_data = future.result()
-                    self.data[idx] = parsed_data
-                except Exception as e:
-                    print(f"Error occurred: {e}")
+                    data = json.load(f)
+                except Exception:
+                    print(os.path.join(self.data_dir, file))
+                    continue
+                for n in range(len(data)):
+                    if getattr(data[0], "cart_coords", True):
+                        (
+                            data[n]["atomic_numbers"],
+                            data[n]["cart_coords"],
+                        ) = self.parse_sites(data[n]["sites"])
 
+                    # import pdb; pdb.set_trace()
+                    if set(list(data[n].keys())).issubset(required_keys):
+                        oqmd_data.append(data[n])
+                    else:
+                        print(f"All required keys not present in {file}")
+
+        self.data = oqmd_data
         self.to_lmdb(os.path.dirname(self.data_dir))
-        return self.data
+        return
 
     def to_lmdb(self, lmdb_path: str) -> None:
         """
@@ -266,15 +301,10 @@ class OQMDRequest:
 
 
 if __name__ == "__main__":
-    oqmd = OQMDRequest(base_data_dir="./ocpmodels/datasets/oqmd", limit=100)
-    oqmd.download_data()
-
-    # import requests
-    # limit = 1000
-    # offset = 1000
-    # data = requests.get(
-    #     url=f"http://oqmd.org/oqmdapi/formationenergy?&limit={limit}&offset={offset}"
-    # )
-    # # data = data.json()
-    # data["data"][0]["entry_id"]
-    # data["data"][1]["entry_id"]
+    oqmd = OQMDRequest(
+        base_data_dir="./ocpmodels/datasets/oqmd", limit=100, num_workers=1
+    )
+    # oqmd.download_data()
+    # oqmd.base_data_dir = "./"
+    # oqmd.data_dir = "query_files"
+    oqmd.process_json()

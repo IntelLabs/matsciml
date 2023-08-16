@@ -19,6 +19,7 @@ ocpmodels/datasets/nomad/simple.py
 pl-configs/README.md
 retry.yml
 run_examples.sh
+query_files/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
