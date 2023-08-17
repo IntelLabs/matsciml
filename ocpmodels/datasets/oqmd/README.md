@@ -3,30 +3,30 @@
 The [Open Quantum Materials Database](https://oqmd.org/) database of DFT calculated thermodynamic and structural properties of 1,022,603 materials. The data may be accessed in multiple ways, including ad RestAPI and a direct MySQL database download. In the Open MatSciML Toolkit, the RestAPI is used to query and download data, which is then converted to a compatible format to be used with the toolkit.
 
 The endpoint `http://oqmd.org/oqmdapi/formationenergy?&limit={}&offset={}` is used to query all properties of all materials by iteratively supplying an offset and limit. To download specific samples, their offset must be known and a limt of 1 must be used. The available data keys returned are:
-```json
-name
-entry_id
-calculation_id
-icsd_id
-formationenergy_id
-duplicate_entry_id
-composition
-composition_generic
-prototype
-spacegroup
-volume
-ntypes
-natoms
-unit_cell
-sites
-band_gap
-delta_e
-stability
-fit
-calculation_label
-atomic_numbers
-cart_coords
-```
+
+- name
+- entry_id
+- calculation_id
+- icsd_id
+- formationenergy_id
+- duplicate_entry_id
+- composition
+- composition_generic
+- prototype
+- spacegroup
+- volume
+- ntypes
+- natoms
+- unit_cell
+- sites
+- band_gap
+- delta_e
+- stability
+- fit
+- calculation_label
+- atomic_numbers
+- cart_coords
+
 
 and their descriptions may be found [here](https://static.oqmd.org/static/docs/restful.html#:~:text=Available%20keywords%20for%20fields%20and%20filter%C2%B6)
 
