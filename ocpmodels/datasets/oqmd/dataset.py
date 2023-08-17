@@ -58,39 +58,21 @@ class OQMDDataset(PointCloudDataset):
     def data_from_key(
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
-        """ Description of keys: https://static.oqmd.org/static/docs/restful.html#:~:text=Available%20keywords%20for%20fields%20and%20filter%C2%B6
-        Available keys from OQMD:
-            name
-            entry_id
-            calculation_id
-            icsd_id
-            formationenergy_id
-            duplicate_entry_id
-            composition
-            composition_generic
-            prototype
-            spacegroup
-            volume
-            ntypes
-            natoms
-            unit_cell
-            sites
-            band_gap
-            delta_e
-            stability
-            fit
-            calculation_label
-            atomic_numbers
-            cart_coords
+        """Available keys and their descriptions may be found here: https://static.oqmd.org/static/docs/restful.html#
 
-        Args:
-            lmdb_index (int): lmdb file to select from
-            subindex (int): index within lmdb file to select
+        Parameters
+        ----------
+        lmdb_index : int
+            lmdb file to select
+        subindex : int
+            index within lmdb file to select
 
-        Returns:
-            Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]: output data that
-            is used during training
+        Returns
+        -------
+        Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]
+            output data that is used during training
         """
+
         data = super().data_from_key(lmdb_index, subindex)
         return_dict = {}
         # coordinates remains the original particle positions

@@ -348,6 +348,7 @@ class OQMDRequest:
 
     @classmethod
     def make_devset(cls):
+        random.seed(6)
         kwargs = {
             "base_data_dir": "./ocpmodels/datasets/oqmd/",
             "material_ids": list(random.sample(range(0, 1000000), 100)),
@@ -357,15 +358,15 @@ class OQMDRequest:
         oqmd.data_dir = "devset"
         oqmd.oqmd_request()
         oqmd.process_json()
-        oqmd.to_lmdb(os.path.dirname(oqmd.data_dir))
+        oqmd.to_lmdb(oqmd.data_dir)
 
 
 if __name__ == "__main__":
     OQMDRequest.make_devset()
-    oqmd = OQMDRequest(
-        base_data_dir="./ocpmodels/datasets/oqmd", limit=100, num_workers=1
-    )
-    oqmd.download_data()
-    oqmd.base_data_dir = "./"
-    oqmd.data_dir = "query_files"
-    oqmd.process_json()
+    # oqmd = OQMDRequest(
+    #     base_data_dir="./ocpmodels/datasets/oqmd", limit=100, num_workers=1
+    # )
+    # oqmd.download_data()
+    # oqmd.base_data_dir = "./"
+    # oqmd.data_dir = "query_files"
+    # oqmd.process_json()
