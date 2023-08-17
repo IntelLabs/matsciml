@@ -172,23 +172,21 @@ class NomadDataset(PointCloudDataset):
             lattice_abc + tuple(a * (pi / 180.0) for a in lattice_angles)
         )
         return_dict["lattice_params"] = lattice_params
-        return_dict["efermi"] = data["properties"]["electronic"][
-            "band_structure_electronic"
-        ]["energy_fermi"]
+        band_structure = data["properties"]["electronic"]["band_structure_electronic"]
+        if isinstance(band_structure, list):
+            band_structure = band_structure[-1]  # Take the last value from the list
+        return_dict["efermi"] = band_structure["energy_fermi"]
         return_dict["energy_total"] = data["energies"]["total"]["value"]
         # data['properties']['electronic']['dos_electronic']['energy_fermi']
-        return_dict["spin_polarized"] = data["properties"]["electronic"][
-            "band_structure_electronic"
-        ]["spin_polarized"]
+        return_dict["spin_polarized"] = band_structure["spin_polarized"]
         return_dict["symmetry"] = {}
         return_dict["symmetry"]["number"] = data["material"]["symmetry"][
             "space_group_number"
-        ]
+    ]
         return_dict["symmetry"]["symbol"] = data["material"]["symmetry"][
             "space_group_symbol"
         ]
         return_dict["symmetry"]["group"] = data["material"]["symmetry"]["point_group"]
-
         standard_keys = set(return_dict.keys()).difference(
             ["symmetry", "spin_polarized"]
         )
