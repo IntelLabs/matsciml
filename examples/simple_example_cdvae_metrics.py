@@ -19,76 +19,24 @@ from pymatgen.core.lattice import Lattice
 from pymatgen.analysis.structure_matcher import StructureMatcher
 from matminer.featurizers.site.fingerprint import CrystalNNFingerprint
 from matminer.featurizers.composition.composite import ElementProperty
+from torch_geometric.data import Batch
 
 try:
-    from ocpmodels.models.diffusion_pipeline import GenerationTask
-    from ocpmodels.datasets.cdvae_datasets import CrystDataset, TensorCrystDataset
-    from ocpmodels.datasets.cdvae_datamodule import CrystDataModule
-    from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
-    from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from examples.cdvae_configs import (
-        enc_config, dec_config, cdvae_config, carbon_config,
-        perov_config, mp20_config
-    )
+    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
+    from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
+    from examples.simple_example_cdvae import get_scalers
+    from examples.simple_example_cdvae_inference import load_model
 
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
     sys.path.append("{}/../".format(dir_path))
-    from ocpmodels.models.diffusion_pipeline import GenerationTask
-    from ocpmodels.datasets.cdvae_datasets import CrystDataset, TensorCrystDataset
-    from ocpmodels.datasets.cdvae_datamodule import CrystDataModule
-    from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
-    from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from examples.cdvae_configs import (
-        enc_config, dec_config, cdvae_config, carbon_config, 
-        perov_config, mp20_config
-    )   
+    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
+    from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
+    from examples.simple_example_cdvae import get_scalers  
     from ocpmodels.models.diffusion_utils.eval_utils import (
     smact_validity, structure_validity, CompScaler, get_fp_pdist,
     load_config, load_data, get_crystals_list, prop_model_eval, compute_cov)
-
-
-def load_model(model_path, load_data):
-    data_config = carbon_config
-
-    # init dataset-specific params in encoder/decoder
-    enc_config['num_targets'] = cdvae_config['latent_dim'] #data_config['num_targets'] 
-    enc_config['otf_graph'] = data_config['otf_graph']
-    enc_config['readout'] = data_config['readout']
-
-    cdvae_config['max_atoms'] = data_config['max_atoms']
-    cdvae_config['teacher_forcing_max_epoch'] = data_config['teacher_forcing_max_epoch']
-    cdvae_config['lattice_scale_method'] = data_config['lattice_scale_method']
-
-    dataclass = partial(CrystDataset, **data_config)
-    splits = [
-        dataclass(path=f"{data_config['root_path']}/{split}.csv") for split in ['train', 'val', 'test'] 
-    ]
-    dm = CrystDataModule(
-        train=splits[0], 
-        valid=splits[1],
-        test=splits[2],
-        num_workers=0,
-        batch_size=4
-    )
-    
-    if model_path is None:
-        encoder = DimeNetPlusPlusWrap(**enc_config)
-        decoder = GemNetTDecoder(**dec_config)
-        model = GenerationTask(
-            encoder=encoder, 
-            decoder=decoder,
-            **cdvae_config
-        )
-
-    print(f"Passing scaler from datamodule to model <{dm.scaler}>")
-    model.lattice_scaler = dm.lattice_scaler.copy()
-    model.scaler = dm.scaler.copy()
-
-    test_loader = dm.test_dataloader()[0]
-    
-    return model, test_loader, cdvae_config
-
+    from examples.simple_example_cdvae_inference import load_model
 
 
 CrystalNNFP = CrystalNNFingerprint.from_preset("ops")
@@ -101,6 +49,7 @@ Percentiles = {
 }
 
 COV_Cutoffs = {
+    'mp': {'struc': 0.4, 'comp': 10.},  # TODO confirm 
     'mp20': {'struc': 0.4, 'comp': 10.},
     'carbon': {'struc': 0.2, 'comp': 4.},
     'perovskite': {'struc': 0.2, 'comp': 4},
@@ -363,13 +312,37 @@ def get_crystal_array_list(file_path, batch_idx=0):
 
     return crys_array_list, true_crystal_array_list
 
+def get_crystals_from_loader():
+    dm = MaterialsProjectDataModule(
+        dataset=CdvaeLMDBDataset,
+        train_path=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/train/"),
+        val_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/val/"),
+        test_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/test/"),
+        batch_size=256,
+        num_workers=0,
+    )
+    # Load the data at the setup stage
+    dm.setup()
+    #  # Compute scalers for regression targets and lattice parameters
+    lattice_scaler, prop_scaler = get_scalers(dm.splits['train'])
+    dm.dataset.lattice_scaler = lattice_scaler.copy()
+    dm.dataset.scaler = prop_scaler.copy()
+    test_loader = dm.test_dataloader()
+    
+    structs = []
+    for batch in test_loader:
+        structs.extend(batch.to_data_list())
+
+    batch = Batch.from_data_list(structs)
+    true_crystal_array_list = get_crystals_list(
+                batch.frac_coords, batch.atom_types, batch.lengths,
+                batch.angles, batch.num_atoms)
+    
+    return true_crystal_array_list
 
 def main(args):
     all_metrics = {}
-
-    cfg = cdvae_config
-    #eval_model_name = args.eval_name if args.eval_name != "" else None
-    eval_model_name = "carbon"
+    eval_model_name = args.eval_name if args.eval_name != "" else None
 
     if 'recon' in args.tasks:
         recon_file_path = get_file_paths(args.root_path, 'recon', args.label)
@@ -388,8 +361,12 @@ def main(args):
         crys_array_list, _ = get_crystal_array_list(gen_file_path)
         gen_crys = p_map(lambda x: Crystal(x), crys_array_list)
         if 'recon' not in args.tasks:
-            _, true_crystal_array_list = get_crystal_array_list(
-                recon_file_path)
+            try:
+                # in case the recon file exists and recon experiment has been completed
+                _, true_crystal_array_list = get_crystal_array_list(
+                    recon_file_path)
+            except:
+                true_crystal_array_list = get_crystals_from_loader()
             gt_crys = p_map(lambda x: Crystal(x), true_crystal_array_list)
 
         gen_evaluator = GenEval(
@@ -435,8 +412,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_path', required=True)
     parser.add_argument('--label', default='')
-    parser.add_argument('--n_samples', default=2, type=int)
+    parser.add_argument('--n_samples', default=9000, type=int)
     parser.add_argument('--tasks', nargs='+', default=['recon', 'gen', 'opt'])
-    parser.add_argument('--eval_name', required=True)
+    parser.add_argument('--eval_name',  default='mp', required=False)
     args = parser.parse_args()
     main(args)

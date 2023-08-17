@@ -11,8 +11,8 @@ from smact.screening import pauling_test
 
 from .constants import CompScalerMeans, CompScalerStds
 from .data_utils import StandardScaler, chemical_symbols
-from ...datasets.cdvae_datasets import TensorCrystDataset
-from ...datasets.cdvae_datamodule import worker_init_fn
+# from ...datasets.cdvae_datasets import TensorCrystDataset
+# from ...datasets.cdvae_datamodule import worker_init_fn
 
 from torch_geometric.data import DataLoader
 
@@ -231,6 +231,12 @@ def compute_cov(crys, gt_crys,
     comp_fps = [c.comp_fp for c in crys]
     gt_struc_fps = [c.struct_fp for c in gt_crys]
     gt_comp_fps = [c.comp_fp for c in gt_crys]
+
+    # filter None's
+    struc_fps = [g for g in struc_fps if g is not None]
+    comp_fps = [g for g in comp_fps if g is not None]
+    gt_struc_fps = [g for g in gt_struc_fps if g is not None]
+    gt_comp_fps = [g for g in gt_comp_fps if g is not None]
 
     assert len(struc_fps) == len(comp_fps)
     assert len(gt_struc_fps) == len(gt_comp_fps)
