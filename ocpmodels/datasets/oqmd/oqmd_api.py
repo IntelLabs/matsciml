@@ -274,7 +274,6 @@ class OQMDRequest:
                 "ntypes",
                 "natoms",
                 "unit_cell",
-                "sites",
                 "band_gap",
                 "delta_e",
                 "stability",
@@ -285,7 +284,7 @@ class OQMDRequest:
             ]
         )
         oqmd_data = []
-        for file in files:
+        for file in tqdm(files, desc="Processing Json Files"):
             with open(os.path.join(self.data_dir, file)) as f:
                 try:
                     data = json.load(f)
@@ -294,20 +293,30 @@ class OQMDRequest:
                     continue
 
                 for n in range(len(data)):
-                    if not data[0].get("cart_coords", False):
-                        (
-                            data[n]["atomic_numbers"],
-                            data[n]["cart_coords"],
-                        ) = self.parse_sites(data[n]["sites"])
+                    if (
+                        not data[n].get("cart_coords", False)
+                        and data[n].get("sites") is not None
+                    ):
+                        try:
+                            (
+                                data[n]["atomic_numbers"],
+                                data[n]["cart_coords"],
+                            ) = self.parse_sites(data[n]["sites"])
+                        except KeyError:
+                            print(f"Key error in file {file}")
+                            
 
-                    # import pdb; pdb.set_trace()
-                    if set(list(data[n].keys())).issubset(required_keys):
+                    sample_keys = list(data[n].keys())
+                    present = [key in sample_keys for key in required_keys]
+
+                    if all(present):
                         oqmd_data.append(data[n])
                     else:
-                        print(f"All required keys not present in {file}")
+                        pass
 
         self.data = oqmd_data
         return
+
 
     def to_lmdb(self, lmdb_path: str) -> None:
         """
