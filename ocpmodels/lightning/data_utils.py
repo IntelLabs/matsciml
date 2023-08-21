@@ -102,6 +102,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         test_split: Optional[Union[str, Path, float]] = 0.0,
         seed: Optional[int] = None,
         dset_kwargs: Optional[Dict[str, Any]] = None,
+        persistent_workers: Optional[bool] = None,
     ):
         super().__init__()
         # make sure we have something to work with
@@ -122,7 +123,33 @@ class MatSciMLDataModule(pl.LightningDataModule):
             ), "Dataset type passed, but no paths to construct with."
         self.dataset = dataset
         self.dset_kwargs = dset_kwargs
+        self.persistent_workers = persistent_workers
         self.save_hyperparameters(ignore=["dataset"])
+
+    @property
+    def persistent_workers(self) -> bool:
+        """
+        Flag to denote whether data loader workers are pinned or not.
+
+        This property can be overridden by user by explicitly passing
+        ``persistent_workers`` into the class constructor. Otherwise,
+        the default behavior is just to have persistent workers if there
+        ``num_workers`` > 0.
+
+        Returns
+        -------
+        bool
+            True if data loader workers are pinned, otherwise False
+        """
+        is_persist = getattr(self, "_persistent_workers", None)
+        if is_persist is None:
+            return self.hparams.num_workers > 0
+        else:
+            return is_persist
+
+    @persistent_workers.setter
+    def persistent_workers(self, value: Union[None, bool]) -> None:
+        self._persistent_workers = value
 
     def _make_dataset(
         self, path: Union[str, Path], dataset: Union[TorchDataset, Type[TorchDataset]]
