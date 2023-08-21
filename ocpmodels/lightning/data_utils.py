@@ -476,7 +476,7 @@ class MultiDataModule(pl.LightningDataModule):
             num_workers=self.hparams.num_workers,
             shuffle=True,
             collate_fn=data.collate_fn,
-            persistent_workers=True,
+            persistent_workers=self.persistent_workers,
         )
 
     def val_dataloader(self) -> Union[DataLoader, None]:
@@ -488,7 +488,7 @@ class MultiDataModule(pl.LightningDataModule):
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=data.collate_fn,
-            persistent_workers=True,
+            persistent_workers=self.persistent_workers,
         )
 
     def test_dataloader(self) -> Union[DataLoader, None]:
@@ -500,7 +500,7 @@ class MultiDataModule(pl.LightningDataModule):
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=data.collate_fn,
-            persistent_workers=True,
+            persistent_workers=self.persistent_workers,
         )
 
     def predict_dataloader(self) -> Union[DataLoader, None]:
@@ -512,5 +512,5 @@ class MultiDataModule(pl.LightningDataModule):
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=data.collate_fn,
-            persistent_workers=True,
+            persistent_workers=self.persistent_workers,
         )
