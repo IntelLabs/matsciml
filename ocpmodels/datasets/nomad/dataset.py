@@ -10,8 +10,11 @@ import torch
 from ocpmodels.common.registry import registry
 from ocpmodels.common.types import BatchDict, DataDict
 from ocpmodels.datasets.base import PointCloudDataset
-from ocpmodels.datasets.utils import (concatenate_keys, pad_point_cloud,
-                                      point_cloud_featurization)
+from ocpmodels.datasets.utils import (
+    concatenate_keys,
+    pad_point_cloud,
+    point_cloud_featurization,
+)
 
 
 @registry.register_dataset("NomadDataset")
@@ -34,11 +37,11 @@ class NomadDataset(PointCloudDataset):
 
     @property
     def target_keys(self) -> Dict[str, List[str]]:
-        """Specifies tasks and their target keys. If more labels are desired this is 
+        """Specifies tasks and their target keys. If more labels are desired this is
         they should be added by hand.
 
         Returns:
-            Dict[str, List[str]]: target keys 
+            Dict[str, List[str]]: target keys
         """
         return {
             "regression": ["energy_total", "efermi"],
@@ -118,7 +121,7 @@ class NomadDataset(PointCloudDataset):
         return an_map
 
     def _parse_data(self, data: Dict[str, Any], return_dict: Dict[str, Any]) -> Dict:
-        """Parse out relevant data and store it in a MatSciML friendly format. 
+        """Parse out relevant data and store it in a MatSciML friendly format.
 
         Args:
             data (Dict[str, Any]): Data from nomad request
@@ -182,7 +185,7 @@ class NomadDataset(PointCloudDataset):
         return_dict["symmetry"] = {}
         return_dict["symmetry"]["number"] = data["material"]["symmetry"][
             "space_group_number"
-    ]
+        ]
         return_dict["symmetry"]["symbol"] = data["material"]["symmetry"][
             "space_group_symbol"
         ]
@@ -218,9 +221,9 @@ class NomadDataset(PointCloudDataset):
         return return_dict
 
     def data_from_key(self, lmdb_index: int, subindex: int) -> Any:
-        # for a full list of properties avaialbe: 
+        # for a full list of properties avaialbe:
         # data['properties']['available_properties'
-        # additional energy properties also available: 
+        # additional energy properties also available:
         # data['energies'].keys()
         data = super().data_from_key(lmdb_index, subindex)
         return_dict = {}
