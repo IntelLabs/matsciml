@@ -363,6 +363,7 @@ class MultiDataModule(pl.LightningDataModule):
         val_dataset: Optional[MultiDataset] = None,
         test_dataset: Optional[MultiDataset] = None,
         predict_dataset: Optional[MultiDataset] = None,
+        persistent_workers: Optional[bool] = None,
     ) -> None:
         r"""
         Data module specifically for using mutiple different datasets in tandem.
@@ -434,6 +435,32 @@ class MultiDataModule(pl.LightningDataModule):
                 [train_dataset, val_dataset, test_dataset, predict_dataset],
             )
         }
+        self.persistent_workers = persistent_workers
+
+    @property
+    def persistent_workers(self) -> bool:
+        """
+        Flag to denote whether data loader workers are pinned or not.
+
+        This property can be overridden by user by explicitly passing
+        ``persistent_workers`` into the class constructor. Otherwise,
+        the default behavior is just to have persistent workers if there
+        ``num_workers`` > 0.
+
+        Returns
+        -------
+        bool
+            True if data loader workers are pinned, otherwise False
+        """
+        is_persist = getattr(self, "_persistent_workers", None)
+        if is_persist is None:
+            return self.hparams.num_workers > 0
+        else:
+            return is_persist
+
+    @persistent_workers.setter
+    def persistent_workers(self, value: Union[None, bool]) -> None:
+        self._persistent_workers = value
 
     @property
     def target_keys(self) -> Dict[str, Dict[str, List[str]]]:
