@@ -256,7 +256,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             shuffle=True,
             num_workers=self.hparams.num_workers,
             collate_fn=self.dataset.collate_fn,
-            persistent_workers=True,
+            persistent_workers=self.persistent_workers,
         )
 
     def predict_dataloader(self):
@@ -268,7 +268,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=self.dataset.collate_fn,
-            persistent_workers=True,
+            persistent_workers=self.persistent_workers,
         )
 
     def test_dataloader(self):
@@ -280,7 +280,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=self.dataset.collate_fn,
-            persistent_workers=True,
+            persistent_workers=self.persistent_workers,
         )
 
     def val_dataloader(self):
@@ -292,7 +292,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=self.dataset.collate_fn,
-            persistent_workers=True,
+            persistent_workers=self.persistent_workers,
         )
 
     @classmethod
