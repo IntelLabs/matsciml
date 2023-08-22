@@ -10,8 +10,11 @@ import torch
 from ocpmodels.common.registry import registry
 from ocpmodels.common.types import BatchDict, DataDict
 from ocpmodels.datasets.base import PointCloudDataset
-from ocpmodels.datasets.utils import (concatenate_keys, pad_point_cloud,
-                                      point_cloud_featurization)
+from ocpmodels.datasets.utils import (
+    concatenate_keys,
+    pad_point_cloud,
+    point_cloud_featurization,
+)
 
 
 @registry.register_dataset("NomadDataset")
@@ -34,11 +37,11 @@ class NomadDataset(PointCloudDataset):
 
     @property
     def target_keys(self) -> Dict[str, List[str]]:
-        """Specifies tasks and their target keys. If more labels are desired this is 
+        """Specifies tasks and their target keys. If more labels are desired this is
         they should be added by hand.
 
         Returns:
-            Dict[str, List[str]]: target keys 
+            Dict[str, List[str]]: target keys
         """
         return {
             "regression": ["energy_total", "efermi"],
@@ -118,7 +121,7 @@ class NomadDataset(PointCloudDataset):
         return an_map
 
     def _parse_data(self, data: Dict[str, Any], return_dict: Dict[str, Any]) -> Dict:
-        """Parse out relevant data and store it in a MatSciML friendly format. 
+        """Parse out relevant data and store it in a MatSciML friendly format.
 
         Args:
             data (Dict[str, Any]): Data from nomad request
@@ -172,14 +175,13 @@ class NomadDataset(PointCloudDataset):
             lattice_abc + tuple(a * (pi / 180.0) for a in lattice_angles)
         )
         return_dict["lattice_params"] = lattice_params
-        return_dict["efermi"] = data["properties"]["electronic"][
-            "band_structure_electronic"
-        ]["energy_fermi"]
+        band_structure = data["properties"]["electronic"]["band_structure_electronic"]
+        if isinstance(band_structure, list):
+            band_structure = band_structure[-1]  # Take the last value from the list
+        return_dict["efermi"] = band_structure["energy_fermi"]
         return_dict["energy_total"] = data["energies"]["total"]["value"]
         # data['properties']['electronic']['dos_electronic']['energy_fermi']
-        return_dict["spin_polarized"] = data["properties"]["electronic"][
-            "band_structure_electronic"
-        ]["spin_polarized"]
+        return_dict["spin_polarized"] = band_structure["spin_polarized"]
         return_dict["symmetry"] = {}
         return_dict["symmetry"]["number"] = data["material"]["symmetry"][
             "space_group_number"
@@ -188,7 +190,6 @@ class NomadDataset(PointCloudDataset):
             "space_group_symbol"
         ]
         return_dict["symmetry"]["group"] = data["material"]["symmetry"]["point_group"]
-
         standard_keys = set(return_dict.keys()).difference(
             ["symmetry", "spin_polarized"]
         )
@@ -220,9 +221,9 @@ class NomadDataset(PointCloudDataset):
         return return_dict
 
     def data_from_key(self, lmdb_index: int, subindex: int) -> Any:
-        # for a full list of properties avaialbe: 
+        # for a full list of properties avaialbe:
         # data['properties']['available_properties'
-        # additional energy properties also available: 
+        # additional energy properties also available:
         # data['energies'].keys()
         data = super().data_from_key(lmdb_index, subindex)
         return_dict = {}
