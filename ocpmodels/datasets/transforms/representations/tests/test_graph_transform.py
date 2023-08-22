@@ -108,7 +108,6 @@ if package_registry["dgl"]:
             transforms=[OCPGraphToPointCloudTransform("dgl", full_pairwise=True)],
         )
         sample = dset.__getitem__(0)
-        import pdb; pdb.set_trace()
         assert "pc_features" in sample
         assert "pos" in sample
         # make sure positions are atom centered
