@@ -196,7 +196,7 @@ class OQMDRequest:
             retry = 0
             while data.status_code != 200 and retry < 10:
                 data = requests.get(url=oqmd_url.format(self.limit, index * self.limit))
-                time.sleep(60)
+                sleep(60)
                 retry += 1
 
             if data.status_code == 200:
