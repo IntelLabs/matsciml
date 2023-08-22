@@ -28,7 +28,7 @@ from ocpmodels.datasets.multi_dataset import MultiDataset
 __all__ = [
     "IS2REDataset",
     "S2EFDataset",
-    "CMDataset"
+    "CMDataset",
     "NomadDataset",
     "OQMDDataset",
     "MaterialsProjectDataset",

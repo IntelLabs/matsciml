@@ -1,8 +1,8 @@
-
 import pytest
 from ocpmodels.datasets import lips
 
-from ocpmodels.datasets.lips import LiPSDataset, DGLLiPSDataset, lips_devset
+from ocpmodels.datasets.lips import LiPSDataset, lips_devset
+from ocpmodels.datasets import transforms
 
 
 @pytest.mark.dependency()
@@ -10,7 +10,7 @@ def test_load_dataset():
     dset = LiPSDataset(lips_devset)
     sample = dset.__getitem__(10)
     assert all([key in sample for key in ["pos", "atomic_numbers", "cell"]])
-    assert all([key in sample["targets"] for key in ["energy", 'force']])
+    assert all([key in sample["targets"] for key in ["energy", "force"]])
 
 
 @pytest.mark.dependency(depends=["test_load_dataset"])
@@ -19,19 +19,25 @@ def test_point_cloud_batch():
     samples = [dset.__getitem__(index) for index in range(10)]
     batch = dset.collate_fn(samples)
     assert all([key in batch for key in ["pos", "atomic_numbers", "cell"]])
-    assert all([key in batch["targets"] for key in ["energy", 'force']])
+    assert all([key in batch["targets"] for key in ["energy", "force"]])
 
 
 @pytest.mark.dependency(depends=["test_load_dataset"])
 def test_graph_dataset():
-    dset = DGLLiPSDataset(lips_devset)
+    dset = LiPSDataset(
+        lips_devset,
+        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
+    )
     sample = dset.__getitem__(10)
     assert "graph" in sample
 
 
 @pytest.mark.dependency(depends=["test_graph_dataset"])
 def test_graph_batch():
-    dset = DGLLiPSDataset(lips_devset)
+    dset = LiPSDataset(
+        lips_devset,
+        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
+    )
     samples = [dset.__getitem__(index) for index in range(10)]
     batch = dset.collate_fn(samples)
     assert "graph" in batch

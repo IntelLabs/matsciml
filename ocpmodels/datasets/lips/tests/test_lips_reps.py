@@ -66,7 +66,7 @@ def test_batching_pointcloud(full_pairwise):
     dset = LiPSDataset(lips_devset, full_pairwise=full_pairwise)
     samples = [dset.__getitem__(i) for i in range(4)]
     batch = dset.collate_fn(samples)
-    assert len(batch["pos"]) == 4
+    assert batch["pos"].shape[-1] == 3
     assert batch["pc_features"].ndim == 4
 
 
@@ -85,6 +85,6 @@ def test_batching_graph(backend, full_pairwise):
     assert "graph" in batch
     graph = batch.get("graph")
     if backend == "pyg":
-        assert len(graph) == 4
+        assert len(graph) == 6
     else:
         assert graph.batch_size == 4

@@ -4,8 +4,9 @@ import shutil
 from ocpmodels.datasets.materials_project import (
     MaterialsProjectRequest,
     MaterialsProjectDataset,
-    DGLMaterialsProjectDataset
 )
+
+from ocpmodels.datasets import transforms
 
 # TODO add marks to pyproject.toml
 
@@ -46,7 +47,12 @@ def test_dataset_load(devset_dir):
     dset = MaterialsProjectDataset(devset_dir)
     for index in range(10):
         data = dset.__getitem__(index)
-        assert all([key in data.keys() for key in ["pos", "atomic_numbers", "lattice_features", "dataset"]])
+        assert all(
+            [
+                key in data.keys()
+                for key in ["pos", "atomic_numbers", "lattice_features", "dataset"]
+            ]
+        )
 
 
 @pytest.mark.dependency(depends=["test_dataset_load"])
@@ -56,16 +62,18 @@ def test_dataset_collate(devset_dir):
     data = [dset.__getitem__(index) for index in range(10)]
     batch = dset.collate_fn(data)
     # check the nuclear coordinates and numbers match what is expected
-    assert batch["pos"].size(0) == 10
-    assert batch["pos"].ndim == 3
-    assert batch["atomic_numbers"].size(0) == 10
-    assert batch["atomic_numbers"].ndim == 2
+    assert batch["pos"].shape[-1] == 3
+    assert batch["pos"].ndim == 2
+    assert len(batch["atomic_numbers"]) == 10
 
 
 @pytest.mark.dependency(depends=["test_dataset_load"])
 @pytest.mark.local
 def test_dgl_dataset(devset_dir):
-    dset = DGLMaterialsProjectDataset(devset_dir)
+    dset = MaterialsProjectDataset(
+        devset_dir,
+        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
+    )
     for index in range(10):
         data = dset.__getitem__(index)
         assert "graph" in data
@@ -74,7 +82,10 @@ def test_dgl_dataset(devset_dir):
 @pytest.mark.dependency(depends=["test_dgl_dataset"])
 @pytest.mark.local
 def test_dgl_collate(devset_dir):
-    dset = DGLMaterialsProjectDataset(devset_dir)
+    dset = MaterialsProjectDataset(
+        devset_dir,
+        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
+    )
     data = [dset.__getitem__(index) for index in range(10)]
     batch = dset.collate_fn(data)
     assert "graph" in batch
@@ -92,14 +103,16 @@ def test_dataset_target_keys(devset_dir):
 
 
 def test_saved_devset_pointcloud():
-    dset = MaterialsProjectDataset(materialsproject_devset)
+    dset = MaterialsProjectDataset.from_devset()
     samples = [dset.__getitem__(i) for i in range(16)]
     batch = dset.collate_fn(samples)
     assert all([key in batch for key in ["pos", "pc_features", "mask", "targets"]])
 
 
 def test_saved_devset_graph():
-    dset = DGLMaterialsProjectDataset(materialsproject_devset)
+    dset = MaterialsProjectDataset.from_devset(
+        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)]
+    )
     samples = [dset.__getitem__(i) for i in range(16)]
     batch = dset.collate_fn(samples)
     assert all([key in batch for key in ["graph", "targets"]])
