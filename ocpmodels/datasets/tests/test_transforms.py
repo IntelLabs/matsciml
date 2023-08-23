@@ -121,15 +121,16 @@ def test_all_supernodes():
     assert (graph.ndata["atomic_numbers"][mask] - 100).sum() == 0
 
 
-# def test_graph_sorting():
-#     trans = [
-#         transforms.GraphReordering("metis", k=10),
-#     ]
-#     import pdb; pdb.set_trace()
-#     dm = MatSciMLDataModule.from_devset(
-#         "S2EFDataset", dset_kwargs={"transforms": trans}
-#     )
-#     dm.setup()
-#     loader = dm.train_dataloader()
-#     graph = next(iter(loader))["graph"]
-#     # not really anything to test, but just make sure it runs :D
+@pytest.mark.skip(reason="Broken test.")
+def test_graph_sorting():
+    trans = [
+        transforms.GraphReordering("metis", k=10),
+    ]
+    import pdb; pdb.set_trace()
+    dm = MatSciMLDataModule.from_devset(
+        "S2EFDataset", dset_kwargs={"transforms": trans}
+    )
+    dm.setup()
+    loader = dm.train_dataloader()
+    graph = next(iter(loader))["graph"]
+    # not really anything to test, but just make sure it runs :D
