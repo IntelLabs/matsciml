@@ -2,7 +2,6 @@ import json
 import multiprocessing
 import os
 import random
-import time
 import warnings
 from functools import cached_property
 from typing import Dict, List, Optional, Union, Tuple
@@ -11,7 +10,7 @@ import lmdb
 import requests
 import yaml
 from tqdm import tqdm
-from time import time
+from time import time, sleep
 
 from ocpmodels.datasets.utils import write_lmdb_data
 
@@ -196,7 +195,7 @@ class OQMDRequest:
             retry = 0
             while data.status_code != 200 and retry < 10:
                 data = requests.get(url=oqmd_url.format(self.limit, index * self.limit))
-                time.sleep(60)
+                sleep(60)
                 retry += 1
 
             if data.status_code == 200:
