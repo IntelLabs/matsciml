@@ -114,4 +114,4 @@ if package_registry["dgl"]:
         assert sample["pos"].ndim == 2
         pos = sample["pos"]
         pc_features = sample["pc_features"]
-        assert all([pos.size(i) == pc_features.size(i) for i in [0, 1]])
+        assert all([sample['dst_nodes'].size(0) == pc_features.size(i) for i in [0, 1]])

@@ -7,17 +7,19 @@ except ImportError:
 
 import pytest
 import pytorch_lightning as pl
-from ocpmodels.lightning.data_utils import (IS2REDGLDataModule,
-                                            MaterialsProjectDataModule)
+from ocpmodels.datasets.materials_project import MaterialsProjectDataset
 from ocpmodels.lightning.ddp import MPIEnvironment
 from ocpmodels.models import GraphConvModel
 from ocpmodels.models.base import ScalarRegressionTask
 from pytorch_lightning.strategies.ddp import DDPStrategy
+from ocpmodels.datasets import transforms
 
 
 @pytest.mark.skipif(not _has_ccl, reason="No working oneCCL installation.")
 def test_ccl_is2re_ddp():
-    devset = IS2REDGLDataModule.from_devset()
+    devset = MaterialsProjectDataset.from_devset(
+        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)]
+    )
 
     model = GraphConvModel(100, 1, encoder_only=True)
     task = ScalarRegressionTask(model, lr=1e-3)
@@ -35,7 +37,9 @@ def test_ccl_is2re_ddp():
 
 @pytest.mark.skipif(not _has_ccl, reason="No working oneCCL installation.")
 def test_ccl_materials_project():
-    devset = MaterialsProjectDataModule.from_devset(graphs=True)
+    devset = MaterialsProjectDataset.from_devset(
+        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)]
+    )
 
     model = GraphConvModel(100, 1, encoder_only=True)
     task = ScalarRegressionTask(model, lr=1e-3)
@@ -52,4 +56,3 @@ def test_ccl_materials_project():
         devices=2,
     )
     trainer.fit(task, datamodule=devset)
-

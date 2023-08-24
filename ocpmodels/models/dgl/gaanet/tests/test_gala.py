@@ -31,11 +31,11 @@ def gala_kwargs():
 @pytest.fixture
 def data():
     data = {
-        "pos": [
+        "pos": torch.vstack([
             torch.rand(3, 3, requires_grad=True),
             torch.rand(3, 3, requires_grad=True),
             torch.rand(4, 3, requires_grad=True),
-        ],
+        ]),
         # this should be 3 point clouds
         "pc_features": torch.rand(3, 4, 4, 200),
         "src_nodes": [torch.arange(3), torch.arange(3), torch.arange(4)],
