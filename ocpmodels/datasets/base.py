@@ -3,18 +3,15 @@
 
 from typing import Union, List, Any, Tuple, Callable, Optional, Dict
 from pathlib import Path
-from abc import abstractstaticmethod, abstractproperty
+from abc import abstractmethod
 from random import sample
 import functools
-import pickle
 
-import lmdb
 import torch
 from torch.utils.data import Dataset, DataLoader
-from torch.nn.utils.rnn import pad_sequence
-import dgl
-from dgl.nn.pytorch.factory import KNNGraph
-from munch import Munch
+
+from ocpmodels.common.types import DataDict, BatchDict
+from ocpmodels.datasets import utils
 
 
 # this provides some backwards compatiability to Python ~3.7
@@ -26,59 +23,13 @@ else:
     cache = lru_cache(maxsize=None)
 
 
-def open_lmdb_file(path: Union[str, Path], **kwargs) -> lmdb.Environment:
-    """
-    Minimally opinionated way of opening LMDB files; by default will
-    just be in readonly to prevent accidental writes, as well as
-    assume that the path _contains_ LMDB files, and is not an LMDB
-    file itself.
-
-    Parameters
-    ----------
-    path : Union[str, Path]
-        Path to the folder containing LMDB files
-
-    Returns
-    -------
-    lmdb.Environment
-        `Environment` object for accessing the data
-    """
-    kwargs.setdefault("readonly", True)
-    kwargs.setdefault("subdir", False)
-    if isinstance(path, Path):
-        path = str(path)
-    return lmdb.open(path, **kwargs)
-
-
-def read_lmdb_file(path: Union[str, Path], **kwargs) -> lmdb.Environment:
-    """
-    Sets up opinionated defaults for _reading_ LMDB files, particularly
-    used for the Dataset loading.
-
-    Parameters
-    ----------
-    path : Union[str, Path]
-        Path to a single `.lmdb` file.
-
-    Returns
-    -------
-    lmdb.Environment
-        `Environment` object for accessing the data
-    """
-    kwargs.setdefault("readonly", True)
-    kwargs.setdefault("lock", False)
-    kwargs.setdefault("subdir", False)
-    kwargs.setdefault("readahead", False)
-    kwargs.setdefault("max_readers", 1)
-    kwargs.setdefault("meminit", False)
-    return open_lmdb_file(path, **kwargs)
-
-
 class BaseLMDBDataset(Dataset):
     """
     Main purpose of this class is to inherit LMDB file
     reading.
     """
+
+    __devset__ = None
 
     def __init__(
         self,
@@ -95,10 +46,25 @@ class BaseLMDBDataset(Dataset):
         # check LMDB files exist within the subdirectory
         db_paths = sorted(lmdb_root_path.glob("*.lmdb"))
         assert len(db_paths) > 0, f"No LMDBs found in '{lmdb_root_path}'"
-        self._envs = [read_lmdb_file(path) for path in db_paths]
+        self._envs = [utils.connect_db_read(path) for path in db_paths]
         self.transforms = transforms
 
-    @abstractproperty
+    @property
+    def transforms(self) -> List[Callable]:
+        return self._transforms
+
+    @transforms.setter
+    def transforms(self, values: Union[List[Callable], None]) -> None:
+        # if transforms are passed, this gives an opportunity for
+        # each transform to modify the state of this dataset
+        if values:
+            for transform in values:
+                if hasattr(transform, "setup_transform"):
+                    transform.setup_transform(self)
+        self._transforms = values
+
+    @property
+    @abstractmethod
     def data_loader(self) -> DataLoader:
         raise NotImplementedError(
             f"No data loader specified for {self.__class__.__name__}."
@@ -119,16 +85,37 @@ class BaseLMDBDataset(Dataset):
         """
         indices = []
         for lmdb_index, env in enumerate(self._envs):
-            with env.begin() as txn:
-                # this gets all the keys within the LMDB file, including metadata
-                lmdb_keys = [
-                    value.decode("utf-8")
-                    for value in txn.cursor().iternext(values=False)
-                ]
-                # filter out non-numeric keys
-                subindices = filter(lambda x: x.isnumeric(), lmdb_keys)
-                indices.extend([(lmdb_index, int(subindex)) for subindex in subindices])
+            # get only numeric keys from the LMDB file
+            subindices = utils.get_lmdb_data_keys(env)
+            indices.extend([(lmdb_index, (int(subindex))) for subindex in subindices])
         return indices
+
+    @property
+    @cache
+    def is_preprocessed(self) -> bool:
+        """
+        Property of the dataset that indicates it was preprocessed.
+
+        The function looks into each open LMDB file, and looks for a
+        ``metadata`` key. For legacy support, the dataset is not
+        preprocessed if this key is not present. If it does, we look
+        further for a ``preprocessed`` flag within the metadata, and
+        return whether all elements are True.
+
+        Returns
+        -------
+        bool
+            True if every LMDB environment contains a "preprocessed"
+            flag written out by ``save_preprocessed_data``, otherwise
+            False.
+        """
+        metadata = [utils.get_lmdb_metadata(env) for env in self._envs]
+        if not all(metadata):
+            # the dataset is not preprocessed if the metadata key doesn't
+            # even exist
+            return False
+        preprocessed_flags = [m.get("preprocessed", None) for m in metadata]
+        return all(preprocessed_flags)
 
     def index_to_key(self, index: int) -> Tuple[int]:
         """For trajectory dataset, just grab the 2-tuple of LMDB index and subindex"""
@@ -151,16 +138,15 @@ class BaseLMDBDataset(Dataset):
         Any
             Unpickled representation of the data
         """
-        env = self._envs[lmdb_index]
-        with env.begin() as txn:
-            return pickle.loads(txn.get(f"{subindex}".encode("ascii")))
+        data = utils.get_data_from_index(lmdb_index, subindex, self._envs)
+        return data
 
     @property
     #@cache
     def keys(self) -> List[Tuple[int, int]]:
         return self._load_keys()
 
-    def __getitem__(self, index: int) -> Any:
+    def __getitem__(self, index: int) -> DataDict:
         """
         Implements the __getitem__ method that PyTorch `DataLoader` need
         to retrieve a piece of data. This implementation should not require
@@ -182,17 +168,23 @@ class BaseLMDBDataset(Dataset):
             Returns un-pickled data from the LMDB file.
         """
         keys = self.index_to_key(index)
-        data = self.data_from_key(*keys)
-        data["dataset"] = self.__class__.__name__
-        # if some callable transforms have been provided, transform
-        # the data sequentially
-        if self.transforms:
-            # TODO transform interface should act on a dictionary
-            for transform in self.transforms:
-                data = transform(data)
+        if not self.is_preprocessed:
+            # for non-preprocessed data, we rely on any logic
+            # contained in `data_from_key`
+            data = self.data_from_key(*keys)
+            data["dataset"] = self.__class__.__name__
+            # if some callable transforms have been provided, transform
+            # the data sequentially
+            if self.transforms:
+                for transform in self.transforms:
+                    data = transform(data)
+        else:
+            # if preprocessed, we bypass all transformation steps
+            data = utils.get_data_from_index(*keys, self._envs)
+            # we don't write the dataset name, because it should already
+            # be saved
         return data
 
-    # @cache
     def __len__(self) -> int:
         """
         This is a simple implementation so that the `__len__` function
@@ -205,11 +197,9 @@ class BaseLMDBDataset(Dataset):
         for env in self._envs:
             env.close()
 
-    @abstractstaticmethod
-    def collate_fn(batch: List[Any]) -> List[Any]:
-        raise NotImplementedError(
-            "Collate function is not implemented for this class, {self.__class__.__name__}."
-        )
+    @staticmethod
+    def collate_fn(batch: List[DataDict]) -> BatchDict:
+        return utils.concatenate_keys(batch)
 
     def sample(self, num_samples: int) -> List[Any]:
         """
@@ -233,7 +223,8 @@ class BaseLMDBDataset(Dataset):
         samples = [self.__getitem__(i) for i in indices]
         return samples
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def target_keys(self) -> Dict[str, List[str]]:
         """
         Indicates what the expected keys are for targets.
@@ -248,296 +239,120 @@ class BaseLMDBDataset(Dataset):
         """
         ...
 
+    @property
+    def representation(self) -> str:
+        return self._representation
 
-class DGLDataset(BaseLMDBDataset):
-    @staticmethod
-    def collate_fn(
-        batch: List[Dict[str, Union[torch.Tensor, dgl.DGLGraph]]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    @representation.setter
+    def representation(self, value: str) -> None:
+        value = value.lower()
+        assert value in [
+            "graph",
+            "point_cloud",
+        ], "Supported representations are 'graph' and 'point_cloud'."
+        self._representation = value
+
+    @property
+    def pad_keys(self) -> List[str]:
+        ...
+
+    @pad_keys.setter
+    @abstractmethod
+    def pad_keys(self, keys: List[str]) -> None:
+        ...
+
+    @classmethod
+    def from_devset(cls, transforms: Optional[List[Callable]] = None, **kwargs):
         """
-        Collate a batch of DGL data together.
+        Instantiate an instance of this dataset conveniently from the builtin
+        devset.
 
-        A batch of DGL data comprises multiple keys with Tensor values,
-        except for `graph` which contains a `DGLGraph`. For the former,
-        we just batch them as one would with regular tensors, and for the
-        latter, we use the native `dgl.batch` function to pack them together.
+        This method should be usable by child classes, and additional kwargs
+        can be passed to modify its behavior further than providing transforms.
 
         Parameters
         ----------
-        batch : List[Dict[str, Union[torch.Tensor, dgl.DGLGraph]]]
-            A list containing individual IS2RE data points
-
-        Returns
-        -------
-        Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-            Dictionary with keys: ["graph", "natoms", "y", "sid", "fid", "cell"]
-            of batched data.
+        transforms : Optional[List[Callable]], optional
+            List of transforms, by default None
         """
-        batched_graphs = dgl.batch([entry["graph"] for entry in batch])
-        batched_data = {"graph": batched_graphs}
-        # get keys from the first batch entry
-        sample = batch[0]
-        for key, value in sample.items():
-            # ignore graph since we've already batched it
-            if key != "graph":
-                # this collates nested data
-                if isinstance(value, dict):
-                    batched_data[key] = {}
-                    for subkey, subvalue in value.items():
-                        # aggregate nested data from batch
-                        data = [s[key][subkey] for s in batch]
-                        if isinstance(subvalue, (int, float)):
-                            data = torch.FloatTensor(data).unsqueeze(-1)
-                        elif isinstance(subvalue, torch.Tensor):
-                            data = torch.vstack(data)
-                        else:
-                            pass
-                        batched_data[key][subkey] = data
-                # for everything else, assume tensors and just stack them
-                else:
-                    data = [entry.get(key) for entry in batch]
-                    if isinstance(value, torch.Tensor):
-                        data = torch.vstack(data)
-                    elif isinstance(value, (int, float)):
-                        data = torch.FloatTensor(data).unsqueeze(-1)
-                    batched_data[key] = data
-        # copy over metadata without "collating"
-        batched_data["target_types"] = sample["target_types"]
-        return batched_data
+        return cls(cls.__devset__, transforms, **kwargs)
 
-    @property
-    def data_loader(self) -> dgl.dataloading.GraphDataLoader:
+    def save_preprocessed_data(
+        self,
+        target_dir: Union[str, Path],
+        num_procs: int,
+        data: Optional[List[Any]] = None,
+        **metadata,
+    ) -> None:
         """
-        Return the bogstandard DGL graph dataloader.
+        Exports a set of LMDB files, with data passed through the gambit
+        of pipeline steps as we were computing on the fly.
 
-        Honestly not sure if it functionally makes a difference from
-        the stock PyTorch DataLoader, but for the sake of consistency
-        here we are :P
+        This is primarily to facilitate complex data transformations
+        that might be computationally expensive at run time, and the
+        we wishe to precompute these transformations to be loaded later.
 
-        Returns
-        -------
-        dgl.dataloading.GraphDataLoader
-            Referenece to the DGL DataLoader
+        Additional key/value pairs can be passed as ``metadata``, which
+        will be duplicated and saved on all LMDB outputs under the
+        "metadata" key.
+
+        Parameters
+        ----------
+        target_dir : Union[str, Path]
+            Target directory to save LMDB files to. This will contain
+            ``num_procs`` number of LMDB files; will be created if
+            it doesn't exist already.
+        num_procs : int
+            Number of processes to parallelize over
+        data: Optional[List[Any]], optional
+            List of data to save - default behavior is to save all
+            data, but if the user wishes to pass a specific subset
+            manually curated, it can be passed as this argument.
         """
-        return dgl.dataloading.GraphDataLoader
+        metadata.setdefault("preprocessed", True)
+        # retrieve samples, as it comes through the pipeline
+        if not data:
+            data = [self.__getitem__(index) for index in range(len(self))]
+        utils.parallel_lmdb_write(target_dir, data, num_procs, metadata)
 
 
-class PointCloudDataset(Dataset):
-    """
-    TODO reimplement using BaseLMDBDataset as parent
-
-    For better abstraction and performance, it would be worth looking
-    into using BaseLMDBDataset (i.e. straight from the LMDB without
-    DGLGraphs) instead of these subclasses.
-
-    Alternatively, this could be implemented as a transform instead,
-    although then the collate function abstraction would break.
-    """
-
+class PointCloudDataset(BaseLMDBDataset):
     def __init__(
         self,
-        dataset: DGLDataset,
-        point_cloud_size: Optional[int] = 24,
-        sample_size: Optional[int] = 80,
-        transforms: Optional[List[Callable]] = None,
-        natom_types: int = 100,
+        lmdb_root_path: Union[str, Path],
+        transforms: Optional[List[Callable[..., Any]]] = None,
+        full_pairwise: bool = True,
     ) -> None:
-        super().__init__()
-        # additional point cloud arguments needed for the KNN graph
-        # and sampling
-        self._pc_size = point_cloud_size
-        self._sample_size = sample_size
-        self._dataset = dataset
-        self._natom_types = natom_types
-        # construct a KNNGraph object for use
-        self._knn = KNNGraph(self._pc_size)
-
-    def __len__(self) -> int:
-        return len(self._dataset)
-
-    @property
-    def data_loader(self) -> DataLoader:
-        """
-        Since this class just uses tensors, we are able to just use
-        the regular PyTorch DataLoader class.
-
-        Returns
-        -------
-        DataLoader
-            Reference to the PyTorch DataLoader class
-        """
-        return DataLoader
-
-    @property
-    @cache
-    def eye(self) -> torch.Tensor:
-        """
-        Creates and caches a diagonal tensor of dimensionality
-        `natom_types`, representing a one-hot embedding for each
-        atom type in our dataset.
-
-        Returns
-        -------
-        torch.Tensor
-            2D diagonal [N, N] tensor
-        """
-        return torch.eye(self._natom_types)
-
-    def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
-        """
-        This function retrieves a data point from the basis dataset
-        (i.e. S2EF or IS2RE), and formats the data from the DGLGraph
-        into a point cloud representation.
-
-        We first construct a graph from k-NN based on the graph node
-        positions, then randomly sampling connected nodes to extract
-        a point cloud. Once this is completed, we copy over all of
-        the additional data (i.e. labels/targets) from the original
-        data.
-
-        Parameters
-        ----------
-        index : int
-            Index of the data point to retrieve; passed to the basis
-            dataset.
-
-        Returns
-        -------
-        Dict[str, torch.Tensor]
-            Dictionary of tensors containing the point cloud data
-            and labels/targets.
-        """
-        # this retrieves a piece of data from the underlying S2EF or IS2RE
-        # dataset; it's all the same anyway :D
-        data = self._dataset.__getitem__(index)
-        graph = data.get("graph")
-        # compute point cloud from KNN - TODO try without KNN once
-        knn_graph = graph  # self._knn(graph.ndata["pos"])
-        (u, v) = knn_graph.edges()
-        # # refer to the original graph to slice out data
-        tags, nodes = graph.ndata["tags"], graph.nodes()
-        molecule_nodes = [tags == 2]
-        surface_nodes = [tags == 1]
-        substrate_nodes = [tags == 0]
-        molecule_idx = nodes[molecule_nodes]
-        surface_idx = nodes[surface_nodes]
-        substrate_idx = nodes[substrate_nodes]
-        mol_idx = graph.nodes()[molecule_idx].tolist()
-        surface_idx = graph.nodes()[surface_idx].tolist()
-        substrate_idx = graph.nodes()[substrate_idx]
-        # calculate the number of things we _need_ so we sample on top of that
-        mol_surf_num = len(mol_idx) + len(surface_idx)
-        # random sampling
-        num_items = self._sample_size  # min(self._sample_size, len(substrate_idx))
-        choose_items = max(num_items - mol_surf_num, 0)
-
-        substrate_idx_sample_idx = substrate_idx[
-            torch.randperm(min(choose_items, len(substrate_idx)))
-        ]
-        # currently not used, but TODO adapt to KNN sampling
-        total_num = mol_surf_num + len(substrate_idx_sample_idx)
-        substrate_idx_sample_idx = substrate_idx_sample_idx.tolist()
-        substrate_indices = torch.LongTensor(
-            mol_idx + surface_idx + substrate_idx_sample_idx
-        )
-        # get data and append to their respective lists
-        source_types = graph.ndata["atomic_numbers"][mol_idx].long()
-        dest_types = graph.ndata["atomic_numbers"][substrate_indices].long()
-        # this represents the one-hot embedding lookup, relies on a cached
-        # diagonal tensor
-        source_onehot = self.eye[source_types][:, None]
-        dest_onehot = self.eye[dest_types][None, :]
-        plus = source_onehot + dest_onehot
-        minus = source_onehot - dest_onehot
-        # point cloud features as symmetric one-hot encodings
-        # shape should be [natom_centers, neighbors, natom_types * 2]
-        pc_features = torch.concat([plus, minus], axis=-1)
-        # shift coordinates according to their atom centers
-        # shape should be [natom_centers, neighbors, 3]
-        pc_pos = (
-            graph.ndata["pos"][substrate_indices][None, :]
-            - graph.ndata["pos"][mol_idx][:, None]
-        )
-
-        # now we start getting the data out
-        output_data = {
-            "pc_features": pc_features,
-            "pos": pc_pos,
-            "sizes": len(substrate_idx),  # the size of the point cloud
-            "nneighbors": len(dest_types),
-            "ncenters": len(source_types),
-        }
-        if "force" in graph.ndata.keys():
-            output_data["force"] = graph.ndata["force"][substrate_indices].squeeze()
-        # copy over labels as well
-        for key, value in data.items():
-            if "graph" not in key:
-                output_data[key] = value
-        return output_data
+        super().__init__(lmdb_root_path, transforms)
+        self.full_pairwise = full_pairwise
+        self.representation = "point_cloud"
 
     @staticmethod
-    def collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
-        """
-        Collate function for the point cloud data representation.
-        While there is osentisbly nothing special about the data (i.e. they
-        are all just tensors), there is some padding required to match
-        the maximum number of features - like a sequence.
-        The way this is implemented should also be agnostic to the
-        original dataset; the labels should be copied over correctly
-        regardless of whether you're using S2EF or IS2RE as a basis.
-        The expected shape of `pc_features` is: [N, natom_centers, nneighbors, natom_types * 2]
-        In this iteration, we use `pad_sequence` to pad out the `natom_centers` and
-        `nneighbors`, which may be variable for both.
+    def choose_dst_nodes(size: int, full_pairwise: bool) -> Dict[str, torch.Tensor]:
+        r"""
+        Generate indices for nodes to construct a point cloud with. If ``full_pairwise``
+        is ``True``, the point cloud will be symmetric with shape ``[max_size, max_size]``,
+        otherwise a random number of neighbors (ranging from 1 to ``max_size``) will be
+        used to select ``dst_nodes``, with the resulting shape being ``[max_size, num_neighbors]``.
+
         Parameters
         ----------
-        batch : List[Dict[str, torch.Tensor]]
-            List of individual data points
+        size : int
+            Number of particles in the full system
+        full_pairwise : bool
+            Toggles whether to pair all nodes with all other nodes. Setting to ``False``
+            will help improve memory footprint.
+
         Returns
         -------
         Dict[str, torch.Tensor]
-            A dictionary containing the same keys as inputs, but
-            each tensor is batched.
+            Key/value pair of source and destination node indices. If ``full_pairwise``,
+            then the two tensors are identical.
         """
-        # assume keys are the same for each entry
-        keys = batch[0].keys()
-        output_dict = {}
-        pad_keys = ["pos", "pc_features"]
-        if "force" in keys:
-            pad_keys.append("force")
-        # for everything else, there's Mastercard
-        for key in keys:
-            if key not in pad_keys:
-                data = [b[key] for b in batch]
-                # stack tensors, otherwise just make a flat 1D tensor
-                if isinstance(data[0], torch.Tensor):
-                    result = torch.stack(data)
-                elif isinstance(data[0], (dgl.DGLGraph, dgl.DGLHeteroGraph)):
-                    result = dgl.batch(data)
-                else:
-                    result = torch.as_tensor(data)
-                output_dict[key] = result
-        # these keys are special because we have to pad to match the number of point clouds
-        max_centers, max_neighbors = (
-            output_dict["ncenters"].max().item(),
-            output_dict["nneighbors"].max().item(),
-        )
-        batch_size = len(batch)
-        for key in pad_keys:
-            # force doesn't need to be padded
-            if key != "force":
-                # get the last dimension of the feature
-                example = batch[0][key]
-                feat_dim = example.size(-1)
-                # preallocate zeros tensor to hold everything
-                batched_data = torch.zeros(
-                    (batch_size, max_centers, max_neighbors, feat_dim),
-                    dtype=example.dtype,
-                )
-                # iterate over samples, and copy of data to zero-padded tensors
-                for index, sample in enumerate(batch):
-                    lengths = sample[key].shape
-                    batched_data[
-                        index, : lengths[0], : lengths[1], : lengths[2]
-                    ] = sample[key][:, :, :]
-                output_dict[key] = batched_data
-        return output_dict
+        src_indices = torch.arange(size)
+        if not full_pairwise:
+            num_neighbors = torch.randint(1, size, (1,)).item()
+            dst_indices = torch.randperm(size)[:num_neighbors].sort().values
+        else:
+            dst_indices = src_indices
+        return {"src_nodes": src_indices, "dst_nodes": dst_indices}

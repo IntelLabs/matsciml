@@ -12,7 +12,7 @@ from mp_api.client import MPRester
 from tqdm import tqdm
 import lmdb
 
-from ocpmodels.datasets.generate_subsplit import write_data
+from ocpmodels.datasets.utils import write_lmdb_data
 from ocpmodels.datasets.materials_project.utils import get_split_map
 
 
@@ -247,7 +247,7 @@ class MaterialsProjectRequest:
             for index, entry in tqdm(
                 enumerate(self.data), desc="Entries processed", total=len(self.data)
             ):
-                write_data(index, entry.__dict__, target_env)
+                write_lmdb_data(index, entry.__dict__, target_env)
         else:
             raise ValueError(
                 f"No data was available for serializing - did you run `retrieve_data`?"

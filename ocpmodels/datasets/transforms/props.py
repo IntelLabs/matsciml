@@ -2,39 +2,32 @@ from abc import abstractmethod
 from typing import Dict, List, Union, Optional, Any
 
 import torch
-import dgl
+
+from ocpmodels.common import DataDict, package_registry
+from ocpmodels.common.types import DataDict
+from ocpmodels.datasets.transforms.base import AbstractDataTransform
+
+if package_registry["dgl"]:
+    import dgl
+
+if package_registry["pyg"]:
+    import torch_geometric
+
+__all__ = [
+    "DistancesTransform",
+    "GraphVariablesTransform",
+    "RemoveTagZeroNodes",
+    "AtomicSuperNodes",
+    "GraphSuperNodes",
+    "GraphReordering",
+    "CoordinateScaling",
+    "COMShift",
+    "ScaleRegressionTargets",
+    "DummyTransform",
+]
 
 
-class AbstractGraphTransform(object):
-    @abstractmethod
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
-        """
-        Call function for an abstract graph transform.
-
-        This abstract method defines the expected input and outputs;
-        we retrieve a dictionary of data, and we expect a dictionary
-        of data to come back out.
-
-        In some sense, this might not be what you would think
-        of canonically as a "transform" in that it's not operating
-        in place, but rather as modular components of the pipeline.
-
-        Parameters
-        ----------
-        data : Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-            Item from an abstract dataset
-
-        Returns
-        -------
-        Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-            Transformed item from an abstract dataset
-        """
-        raise NotImplementedError
-
-
-class DistancesTransform(AbstractGraphTransform):
+class DistancesTransform(AbstractDataTransform):
     """
     Compute the distance and reduced mass between a pair of
     bonded nodes.
@@ -54,24 +47,20 @@ class DistancesTransform(AbstractGraphTransform):
         mu = (m_a * m_b) / (m_a + m_b)
         return {"r": r, "mu": mu}
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         graph.apply_edges(self.pairwise_distance)
         return data
 
 
-class GraphVariablesTransform(AbstractGraphTransform):
+class GraphVariablesTransform(AbstractDataTransform):
     """
     Transform to compute graph-level variables for use in models
     like MegNet. These will be included in the output dictionary
     as the "graph_variables" key.
     """
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         # retrieve the DGL graph
         graph = data.get("graph")
         # isolate the subtrate
@@ -141,7 +130,7 @@ class GraphVariablesTransform(AbstractGraphTransform):
         return [avg_dist, std_dist, avg_mu, std_mu, sub_distance]
 
 
-class RemoveTagZeroNodes(AbstractGraphTransform):
+class RemoveTagZeroNodes(AbstractDataTransform):
     """
     Create a subgraph representation where atoms tagged with
     zero are absent.
@@ -160,9 +149,7 @@ class RemoveTagZeroNodes(AbstractGraphTransform):
         super().__init__()
         self.overwrite = overwrite
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         tag_zero_mask = graph.ndata["tags"] != 0
         select_node_indices = graph.nodes()[tag_zero_mask]
@@ -176,7 +163,7 @@ class RemoveTagZeroNodes(AbstractGraphTransform):
         return data
 
 
-class GraphSuperNodes(AbstractGraphTransform):
+class GraphSuperNodes(AbstractDataTransform):
     """
     Generates a super node based on tag zero nodes.
 
@@ -194,9 +181,7 @@ class GraphSuperNodes(AbstractGraphTransform):
         # understand the embedding lookup index for the graph supernode
         return self.atom_max_embed_index
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         # check to make sure the nodes
         assert (
@@ -230,7 +215,7 @@ class GraphSuperNodes(AbstractGraphTransform):
         return data
 
 
-class AtomicSuperNodes(AbstractGraphTransform):
+class AtomicSuperNodes(AbstractDataTransform):
     def __init__(self, atom_max_embedding: int) -> None:
         super().__init__()
         self.atom_max_embedding = atom_max_embedding
@@ -261,9 +246,7 @@ class AtomicSuperNodes(AbstractGraphTransform):
             index += 1
         return index
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         # check to see if there are graph supernodes already, which will offset
         # the atomic supernode indices
@@ -322,7 +305,7 @@ class AtomicSuperNodes(AbstractGraphTransform):
         return data
 
 
-class GraphReordering(AbstractGraphTransform):
+class GraphReordering(AbstractDataTransform):
     """
     Implements a graph node/edge reordering transform, which nominally
     may help with graph processing performance. This transform
@@ -338,9 +321,7 @@ class GraphReordering(AbstractGraphTransform):
         self.edge_algo = edge_algo
         self.sort_kwargs = sort_kwargs
 
-    def __call__(
-        self, data: Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+    def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         graph = dgl.reorder_graph(
             graph, self.node_algo, self.edge_algo, permute_config=self.sort_kwargs
@@ -349,12 +330,12 @@ class GraphReordering(AbstractGraphTransform):
         return data
 
 
-class CoordinateScaling(object):
+class CoordinateScaling(AbstractDataTransform):
     def __init__(self, value: float, key: str = "pos") -> None:
         self.value = value
         self.key = key
 
-    def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, data: DataDict) -> DataDict:
         if "graph" in data:
             graph = data["graph"]
             assert self.key in graph.ndata, f"{self.key} not found in graph node data."
@@ -362,13 +343,15 @@ class CoordinateScaling(object):
         elif self.key in data:
             target_tensor: torch.Tensor = data[self.key]
         else:
-            raise KeyError(f"{self.key} not found in samples, or graph was not present.")
+            raise KeyError(
+                f"{self.key} not found in samples, or graph was not present."
+            )
         # perform inplace rescaling
         target_tensor.mul_(self.value)
         return data
 
 
-class COMShift(object):
+class COMShift(AbstractDataTransform):
     """
     Shift coordinates of a point cloud or graph based on its center of mass.
 
@@ -376,17 +359,22 @@ class COMShift(object):
     proportional to mass). The center of mass is then subtracted off the atom
     positions.
     """
+
     def __init__(self, pos_key: str = "pos", mass_key: str = "atomic_numbers") -> None:
         self.pos_key = pos_key
         self.mass_key = mass_key
 
-    def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, data: DataDict) -> DataDict:
         if "graph" in data:
             target_dict = data["graph"].ndata
         else:
             target_dict = data
-        assert self.pos_key in target_dict, f"Coordinates expected in {self.pos_key}, but not found in data."
-        assert self.mass_key in target_dict, f"Masses expected in {self.mass_key}, but not found in data."
+        assert (
+            self.pos_key in target_dict
+        ), f"Coordinates expected in {self.pos_key}, but not found in data."
+        assert (
+            self.mass_key in target_dict
+        ), f"Masses expected in {self.mass_key}, but not found in data."
         coords: torch.Tensor = target_dict[self.pos_key]
         masses: torch.Tensor = target_dict[self.mass_key]
         mass_sum = masses.sum()
@@ -397,14 +385,18 @@ class COMShift(object):
         return data
 
 
-class ScaleRegressionTargets(object):
-    def __init__(self, value: Optional[float] = None, values: Optional[Dict[str, float]] = None) -> None:
+class ScaleRegressionTargets(AbstractDataTransform):
+    def __init__(
+        self, value: Optional[float] = None, values: Optional[Dict[str, float]] = None
+    ) -> None:
         if value is None and values is None:
-            raise ValueError(f"No values provided - must provide either value or values arguments.")
-        self.value = value if value else 1.
+            raise ValueError(
+                f"No values provided - must provide either value or values arguments."
+            )
+        self.value = value if value else 1.0
         self.values = values if values else {}
 
-    def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, data: DataDict) -> DataDict:
         target_keys = data["target_types"]["regression"]
         for key in target_keys:
             # first check if it's been specified
@@ -414,3 +406,18 @@ class ScaleRegressionTargets(object):
             data["targets"][key] *= scaling
         return data
 
+
+class DummyTransform(AbstractDataTransform):
+    """
+    Implements a dummy transform class for testing the behavior
+    of transform pipelines.
+
+    All this class does is leave a ``touched`` key with ``True``
+    in an incoming data sample. This value can be checked to
+    ensure transforms are working as intended, and to check
+    whether preprocessed data has been serialized correctly.
+    """
+
+    def __call__(self, data: DataDict) -> DataDict:
+        data["touched"] = True
+        return data

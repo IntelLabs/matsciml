@@ -11,6 +11,7 @@ Original implementation by Matthew Spellings (Vector Institute) 5/25/2023
 Modifications by Kelvin Lee to integrate into matsciml
 """
 
+
 def filter_discrete(x, values=None, delta=1e-2):
     """Remove duplicate points in a point cloud by discretizing by a given lengthscale.
 
@@ -62,7 +63,7 @@ class PointGroup:
             n = two_n // 2
             return functools.partial(cls._REGISTERED_GROUPS["S2n"], n=n)
         else:
-            for (pat, base) in cls._PARAMETRIC_PATTERNS.items():
+            for pat, base in cls._PARAMETRIC_PATTERNS.items():
                 match = re.match(pat, name)
                 if match is not None:
                     kwargs = dict(n=int(match.group("n")))
@@ -287,7 +288,7 @@ def get_icosahedral_symmetries():
         np.linalg.norm(vertices[:, None] - vertices[None], axis=-1), axis=-1
     )[:, 1:6]
     edges = set()
-    for (i, js) in zip(range(len(vertices)), vertex_neighbors):
+    for i, js in zip(range(len(vertices)), vertex_neighbors):
         edges.update([(min(i, j), max(i, j)) for j in js])
     edges = np.array(list(edges))
     mirrors = np.cross(vertices[edges[:, 0]], vertices[edges[:, 1]])
@@ -301,14 +302,14 @@ def get_icosahedral_symmetries():
 def chiral_icosahedral(x):
     sym = get_icosahedral_symmetries()
     pieces = [x]
-    for (ax, dax) in sym.d3_axes:
+    for ax, dax in sym.d3_axes:
         pieces.append(dihedral(x, 3, dihedral_axis=dax, nfold_axis=ax))
 
     pieces = np.concatenate(pieces, axis=0)
     x = pieces
     pieces = [x]
 
-    for (ax, dax) in sym.d5_axes:
+    for ax, dax in sym.d5_axes:
         pieces.append(dihedral(x, 5, dihedral_axis=dax, nfold_axis=ax))
 
     pieces = np.concatenate(pieces, axis=0)
@@ -317,7 +318,6 @@ def chiral_icosahedral(x):
 
     quats = rowan.from_mirror_plane(*np.array(sym.mirror_planes).T)
     for mirror in quats:
-        break
         pieces.append(rowan.reflect(mirror[None], x))
     return np.concatenate(pieces, axis=0)
 
@@ -326,14 +326,14 @@ def chiral_icosahedral(x):
 def full_icosahedral(x):
     sym = get_icosahedral_symmetries()
     pieces = [x]
-    for (ax, _) in sym.d3_axes:
+    for ax, _ in sym.d3_axes:
         pieces.append(nfold_rotation(x, 3, axis=ax))
 
     pieces = np.concatenate(pieces, axis=0)
     x = pieces
     pieces = [x]
 
-    for (ax, _) in sym.d5_axes:
+    for ax, _ in sym.d5_axes:
         pieces.append(nfold_rotation(x, 5, axis=ax))
 
     pieces = np.concatenate(pieces, axis=0)

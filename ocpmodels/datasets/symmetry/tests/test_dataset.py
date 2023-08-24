@@ -1,6 +1,6 @@
-
 from ocpmodels.datasets.symmetry import symmetry_devset
-from ocpmodels.datasets.symmetry.dataset import SyntheticPointGroupDataset, DGLSyntheticPointGroupDataset
+from ocpmodels.datasets.symmetry.dataset import SyntheticPointGroupDataset
+from ocpmodels.datasets.transforms import PointCloudToGraphTransform
 
 
 def test_devset_init():
@@ -17,7 +17,7 @@ def test_devset_collate():
 
 
 def test_devset_collate():
-    dset = DGLSyntheticPointGroupDataset(symmetry_devset)
+    dset = SyntheticPointGroupDataset.from_devset([PointCloudToGraphTransform("dgl")])
     samples = [dset.__getitem__(i) for i in range(8)]
     batch = dset.collate_fn(samples)
     assert "graph" in batch

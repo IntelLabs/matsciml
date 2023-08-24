@@ -77,11 +77,10 @@ class BesselBasisLayer(nn.Module):
     def reset_params(self):
         torch.arange(1, self.frequencies.numel() + 1, out=self.frequencies).mul_(np.pi)
 
-    def forward(self, g: dgl.DGLGraph) -> dgl.DGLGraph:
-        d_scaled = (g.edata["r"] / self.cutoff).unsqueeze(-1)
+    def forward(self, edge_distances: torch.Tensor) -> torch.Tensor:
+        d_scaled = (edge_distances / self.cutoff).unsqueeze(-1)
         d_cutoff = self.envelope(d_scaled)
-        g.edata["rbf"] = d_cutoff * torch.sin(self.frequencies * d_scaled)
-        return g
+        return d_cutoff * torch.sin(self.frequencies * d_scaled)
 
 
 class SphericalBasisLayer(nn.Module):
@@ -215,8 +214,8 @@ class EmbeddingBlock(nn.Module):
 
         return {"m": m, "rbf_env": rbf_env}
 
-    def forward(self, g):
-        g.ndata["h"] = self.embedding(g.ndata["atomic_numbers"].long())
+    def forward(self, g: dgl.DGLGraph, atom_embeddings: torch.Tensor):
+        g.ndata["h"] = atom_embeddings
         g.apply_edges(self.edge_init)
         return g
 
@@ -333,10 +332,13 @@ class OutputPPBlock(nn.Module):
         out_emb_size: int,
         num_radial: int,
         num_dense: int,
-        num_targets: int,
+        num_targets: Optional[int] = None,
         activation: Optional[nn.Module] = None,
         extensive: Optional[bool] = True,
+        encoder_only: bool = True,
     ):
+        if num_targets and encoder_only:
+            raise ValueError(f"")
         super(OutputPPBlock, self).__init__()
 
         if activation is not None and not isinstance(activation, nn.Module):
@@ -348,7 +350,9 @@ class OutputPPBlock(nn.Module):
         self.dense_layers = nn.ModuleList(
             [nn.Linear(out_emb_size, out_emb_size) for _ in range(num_dense)]
         )
-        self.dense_final = nn.Linear(out_emb_size, num_targets, bias=False)
+        if not encoder_only:
+            self.dense_final = nn.Linear(out_emb_size, num_targets, bias=False)
+        self.encoder_only = encoder_only
         self.reset_params()
 
     def reset_params(self):
@@ -365,5 +369,6 @@ class OutputPPBlock(nn.Module):
                 g.ndata["t"] = layer(g.ndata["t"])
                 if self.activation is not None:
                     g.ndata["t"] = self.activation(g.ndata["t"])
-            g.ndata["t"] = self.dense_final(g.ndata["t"])
+            if not self.encoder_only:
+                g.ndata["t"] = self.dense_final(g.ndata["t"])
             return dgl.readout_nodes(g, "t", op="sum" if self.extensive else "mean")

@@ -168,7 +168,7 @@ class SubgroupClassMap:
             "I": ["D3", "D5", "T", "D2"],
             "Ih": ["C3", "C5", "Th", "D2", "I"],
         }
-        for (name, subs) in polyhedral_subgroups.items():
+        for name, subs in polyhedral_subgroups.items():
             for sub in subs:
                 subgroups[name].add(sub)
 
@@ -206,7 +206,15 @@ class SubgroupGenerator:
     """
 
     BatchType = collections.namedtuple(
-        "BatchType", ["coordinates", "source_types", "dest_types", "label", "num_tiles", "point_group"]
+        "BatchType",
+        [
+            "coordinates",
+            "source_types",
+            "dest_types",
+            "label",
+            "num_tiles",
+            "point_group",
+        ],
     )
 
     def __init__(
@@ -256,7 +264,8 @@ class SubgroupGenerator:
                 name_choice = rng.choice(classes)
                 n = min(self.n_max, self.max_size // orders.get(name_choice, 1))
                 n = rng.integers(1, max(n, 1), endpoint=True)
-                v = rng.integers(0, self.type_max, n)
+                # skip atom number zero to denote padding
+                v = rng.integers(1, self.type_max, n)
                 r = rng.normal(size=(n, 3))
                 symop = self.subgroup_transform_getter(name_choice)
                 r = symop(r)
@@ -289,4 +298,11 @@ class SubgroupGenerator:
                 0, self.type_max, (self.batch_size, self.max_size), dtype=np.int64
             )
 
-            yield self.BatchType(batch_r, batch_source_v, batch_v, batch_y, [num_tiles,], [name_choice,])
+            yield self.BatchType(
+                batch_r,
+                batch_source_v,
+                batch_v,
+                batch_y,
+                num_tiles,
+                name_choice,
+            )

@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
 from typing import Any, Union, Type, Optional, List, Dict
@@ -10,22 +10,24 @@ import torch
 from torch import nn
 from dgl.nn.pytorch import glob
 
-from ocpmodels.models.base import AbstractEnergyModel
+from ocpmodels.models.base import AbstractDGLModel
+from ocpmodels.common.types import BatchDict, DataDict
 
 
-class SchNet(AbstractEnergyModel):
+class SchNet(AbstractDGLModel):
     def __init__(
         self,
-        node_feats: int = 64,
+        atom_embedding_dim: int,
         hidden_feats: Optional[List[int]] = None,
-        num_atom_embedding: int = 100,
-        cutoff: float = 30.,
+        cutoff: float = 30.0,
         gap: float = 0.1,
         readout: Union[Type[nn.Module], str, nn.Module] = glob.AvgPooling,
         readout_kwargs: Optional[Dict[str, Any]] = None,
-        encoder_only: bool = False,
-    ):
-        """
+        num_atom_embedding: int = 100,
+        embedding_kwargs: Dict[str, Any] = {},
+        encoder_only: bool = True,
+    ) -> None:
+        r"""
         Instantiate a stack of SchNet layers.
 
         This wrapper also comprises a readout function, and integrates into the
@@ -33,7 +35,7 @@ class SchNet(AbstractEnergyModel):
 
         Parameters
         ----------
-        node_feats : int
+        atom_embedding_dim : int
             Dimensionality of the node embeddings
         hidden_feats : Optional[List[int]], default None
             Simultaneously sets the dimensionality of each SchNet layer
@@ -57,19 +59,23 @@ class SchNet(AbstractEnergyModel):
             Whether to return the graph embeddings only, and not return an
             energy value.
 
-        Raises
-        ------
-        ImportError:
-            [TODO:description]
         """
-        super().__init__()
-        self.model = SchNetGNN(node_feats, hidden_feats, num_atom_embedding, cutoff, gap)
+        super().__init__(
+            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+        )
+        self.model = SchNetGNN(
+            atom_embedding_dim, hidden_feats, num_atom_embedding, cutoff, gap
+        )
+        # copy over the embedding table to remove redundancy
+        self.model.embed = self.atom_embedding
         if isinstance(readout, (str, Type)):
             # if str, assume it's the name of a class
             if isinstance(readout, str):
                 readout_cls = find_spec(readout, "dgl.nn.pytorch.glob")
                 if readout_cls is None:
-                    raise ImportError(f"Class name passed to `readout`, but not found in `dgl.nn.pytorch.glob`.")
+                    raise ImportError(
+                        f"Class name passed to `readout`, but not found in `dgl.nn.pytorch.glob`."
+                    )
             else:
                 # assume it's generic type
                 readout_cls = readout
@@ -85,23 +91,76 @@ class SchNet(AbstractEnergyModel):
             output_dim = hidden_feats[-1]
         self.output = nn.Linear(output_dim, 1)
 
-    def forward(
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        r"""
+        Adds an expectation for interatomic distances in the graph edge data,
+        needed by the MPNN model.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data to be processed
+
+        Returns
+        -------
+        DataDict
+            Input data to be passed into MPNN
+        """
+        data = {}
+        graph = batch.get("graph")
+        assert isinstance(
+            graph, dgl.DGLGraph
+        ), f"Model {self.__class__.__name__} expects DGL graphs, but data in 'graph' key is type {type(graph)}"
+        # SchNet expects atomic numbers as input to the model, so we do not
+        # read from the embedding table like other models
+        atomic_numbers = graph.ndata["atomic_numbers"].long()
+        data["node_feats"] = atomic_numbers
+        # extract interatomic distances
+        assert (
+            "r" in graph.edata
+        ), f"SchNet expects interatomic distances as edge data under the 'r' key."
+        data["edge_feats"] = graph.edata["r"]
+        data["graph"] = graph
+        data.setdefault("graph_feats", None)
+        data.setdefault("pos", None)
+        return data
+
+    def _forward(
         self,
-        batch: Optional[
-            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ] = None,
-        graph: Optional[dgl.DGLGraph] = None,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        edge_feats: torch.Tensor,
+        pos: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
     ) -> torch.Tensor:
-        if batch is not None:
-            graph = batch.get("graph", None)
-        if not graph and not batch:
-            raise ValueError(f"No graph passed, and `graph` key does not exist in batch.")
-        # extract out node and edge features as expected
-        node_feats = graph.ndata.get("atomic_numbers").long()
-        edge_feats = graph.edata.get("r", None)
-        if edge_feats is None:
-            raise ValueError("`r` key is missing from graph edge data. Please use the `DistancesTransform`.")
-        # run through the model
+        r"""
+        Implement the forward method, which computes the energy of
+        a molecular graph.
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            A single or batch of molecular graphs
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        edge_feats : torch.Tensor
+            Tensor containing interatomic distances
+        pos : Optional[torch.Tensor], optional
+            XYZ coordinates of each atom, by default None and unused.
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
+        Returns
+        -------
+        torch.Tensor
+            Graph embeddings, or output value if not 'encoder_only'
+        """
         n_z = self.model(graph, node_feats, edge_feats)
         g_z = self.readout(graph, n_z)
         if self.encoder_only:

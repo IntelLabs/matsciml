@@ -1,8 +1,9 @@
 import pytorch_lightning as pl
 
-from ocpmodels.datasets.lips import DGLLiPSDataset, lips_devset
+from ocpmodels.datasets import LiPSDataset, IS2REDataset, S2EFDataset
+from ocpmodels.datasets.transforms import PointCloudToGraphTransform
+
 from ocpmodels.datasets.multi_dataset import MultiDataset
-from ocpmodels.datasets import IS2REDataset, is2re_devset, S2EFDataset, s2ef_devset
 from ocpmodels.lightning.data_utils import MultiDataModule
 from ocpmodels.models.base import (
     MultiTaskLitModule,
@@ -14,10 +15,13 @@ from ocpmodels.lightning import callbacks as cb
 
 pl.seed_everything(1616)
 
-# include transforms to the data: shift center of mass and rescale magnitude of coordinates
-lips_dset = DGLLiPSDataset(lips_devset)
-is2re_dset = IS2REDataset(is2re_devset)
-s2ef_dset = S2EFDataset(s2ef_devset)
+# LiPS data are saved as point clouds, and need to be converted to graphs
+lips_dset = LiPSDataset.from_devset(
+    transforms=[PointCloudToGraphTransform(backend="dgl", cutoff_dist=10.0)]
+)
+# OCP datasets are saved as DGL graphs
+is2re_dset = IS2REDataset.from_devset()
+s2ef_dset = S2EFDataset.from_devset()
 # use MultiDataset to concatenate each dataset
 dset = MultiDataset([lips_dset, is2re_dset, s2ef_dset])
 
@@ -26,7 +30,7 @@ dm = MultiDataModule(train_dataset=dset, batch_size=16)
 
 # configure EGNN
 model_args = {
-    "embed_in_dim": 1,
+    "embed_in_dim": 128,
     "embed_hidden_dim": 32,
     "embed_out_dim": 128,
     "embed_depth": 5,
@@ -67,10 +71,11 @@ is2re_norm = {
     "energy_init_mean": 5.4111,
     "energy_init_std": 5.4003,
 }
+# these values will differ depending on how the data was preprocessed
 s2ef_norm = {"energy_mean": -364.9521, "energy_std": 233.8758}
 lips_norm = {"energy_mean": -357.6045, "energy_std": 0.5468}
 
-# build tasks using joint encoder
+# build three individual tasks; encoder will be shared later
 r_is2re = ScalarRegressionTask(
     model,
     lr=1e-3,
@@ -79,15 +84,23 @@ r_is2re = ScalarRegressionTask(
     task_keys=["energy_relaxed"],
 )
 r_s2ef = ForceRegressionTask(
-    model, lr=1e-3, output_kwargs=output_kwargs, normalize_kwargs=s2ef_norm
+    model,
+    lr=1e-3,
+    output_kwargs=output_kwargs,
+    normalize_kwargs=s2ef_norm,
+    task_keys=["force"],
 )
 r_lips = ForceRegressionTask(
-    model, lr=1e-3, output_kwargs=output_kwargs, normalize_kwargs=lips_norm
+    model,
+    lr=1e-3,
+    output_kwargs=output_kwargs,
+    normalize_kwargs=lips_norm,
+    task_keys=["force"],
 )
 
 # initialize multitask with regression and classification on materials project and OCP
 task = MultiTaskLitModule(
-    ("IS2REDataset", r_is2re), ("S2EFDataset", r_s2ef), ("DGLLiPSDataset", r_lips)
+    ("IS2REDataset", r_is2re), ("S2EFDataset", r_s2ef), ("LiPSDataset", r_lips)
 )
 
 # using manual optimization for multitask, so "grad_clip" args do not work for trainer

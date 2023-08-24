@@ -1,10 +1,8 @@
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from abc import abstractclassmethod
-from typing import Any, Union, Optional, Type, List, Callable, Dict
+from typing import Any, Union, Optional, Type, List, Dict
 from pathlib import Path
-from warnings import warn
 from os import getenv
 
 import pytorch_lightning as pl
@@ -12,270 +10,91 @@ import torch
 from torch.utils.data import DataLoader, Dataset as TorchDataset
 from torch.utils.data import random_split
 
-from ocpmodels.datasets import (
-    IS2REDataset,
-    S2EFDataset,
-    PointCloudDataset,
-    MultiDataset,
-)
-from ocpmodels.datasets import s2ef_devset, is2re_devset
-from ocpmodels.datasets.materials_project import (
-    materialsproject_devset,
-    MaterialsProjectDataset,
-    DGLMaterialsProjectDataset,
-)
-from ocpmodels.datasets.lips import LiPSDataset, DGLLiPSDataset, lips_devset
-from ocpmodels.datasets.symmetry import DGLSyntheticPointGroupDataset, SyntheticPointGroupDataset, symmetry_devset
+from ocpmodels.common.registry import registry
+from ocpmodels.datasets import MultiDataset
 
 
-class GraphDataModule(pl.LightningDataModule):
+@registry.register_datamodule("MatSciMLDataModule")
+class MatSciMLDataModule(pl.LightningDataModule):
+    r"""
+    Initializes a `MatSciMLDataModule`, which is the primary Lightning Datamodule for
+    interacting with single types of datasets.
 
-    """
-    A high level interface to OCP datasets. This encapsulates setting up of
-    data set and data loaders, in a way that is backend agnostic. The choice
-    of backend, either PyTorch Geometric ("pyg") or Deep Graph Library ("dgl")
-    is deferred to class methods, and all the rest of the set up is designed
-    to be abstract.
+    Parameters
+    ----------
+    dataset : Optional[Union[str, Type[TorchDataset], TorchDataset]], optional
+        Reference to a dataset class or object instance. The former can be specified
+        by providing the name of the dataset, providing it is contained in the registry,
+        or by providing a reference to the class; in either case, it is subsequently
+        used with paths provided to instantiate the class. Alternatively, an instance
+        of the dataset can be passed directly.
+    train_path : Optional[Union[str, Path]], optional
+        Path to a training dataset, by default None
+    batch_size : int, optional
+        Number of data samples per batch, by default 32
+    num_workers : int, optional
+        Number of data loader workers, by default 0, which equates to
+        only using the main process for data loading.
+    val_split : Optional[Union[str, Path, float]], optional
+        Split parameter used for validation, which can be a float between 0/1
+         or a string/path, by default 0.0 which skips validation.
+    test_split : Optional[Union[str, Path, float]], optional
+        Split parameter used for test, which can be a float between 0/1
+         or a string/path, by default 0.0 which skips validation.
+    seed : Optional[int], optional
+        Random seed value used to create splits if fractional values are
+        passed into ``val_split``/``test_split``, by default None, which
+        will first try to read the environment variable followed by using
+        a hardcoded value.
+    dset_kwargs : Optional[Dict[str, Any]], optional
+        Kwargs passed into the construction of the dataset object, by default None
 
-    Each class is initialized by passing a data loader (i.e. subclasses of
-    `torch.utils.data.DataLoader`), and a dataset (e.g. `TrajectoryLMDB`).
-    The main purpose of this class is to manage data splits, and define
-    loading/transforms for each split. The initialization takes the paths
-    to each split - as you would pass to the dataset - and will set up
-    the dataset and loaders.
+    Examples
+    ----------
+    There are three approaches to instantiate this class:
 
-    PyTorch Lightning will handle wrapping `DataParallel` and `DDP` around
-    the loaders when the `Trainer` strategy is set to the appropriate value.
-    """
+    1. Passing a string name or dataset type into the ``dataset`` argument:
 
-    _backend = None
+    >>> datamodule = MatSciMLDataModule(dataset="MaterialsProjectDataset", train_path="/path/to/data/)
+    >>> datamodule = MatSciMLDataModule(dataset=ocpmodels.datasets.MaterialsProjectDataset, ...)
 
-    def __init__(
-        self,
-        train_path: Optional[str],
-        dataset_class: Type[TorchDataset],
-        batch_size: int = 32,
-        num_workers: int = 0,
-        val_path: Optional[str] = None,
-        test_path: Optional[str] = None,
-        predict_path: Optional[str] = None,
-        transforms: Optional[List[Callable]] = None,
-    ):
-        super().__init__()
-        self.paths = {
-            "train": train_path,
-            "val": val_path,
-            "test": test_path,
-            "predict": predict_path,
-        }
-        # check that the path is accessible first and not none
-        self.verify_paths()
-        assert (
-            len(self.paths) > 0
-        ), "No data paths were provided or valid; check configuration."
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.dataset_class = dataset_class
-        self.collate_fn = dataset_class.collate_fn
-        self.transforms = transforms
-        self.save_hyperparameters(ignore=["dataset_class"])
+    2. Using the ``from_devset`` class method:
 
-    def verify_paths(self) -> None:
-        """
-        Mutates the path dictionary in-place by iteratively checking the existence of
-        each _specified_ path. The user is warned if the path is unresolvable with a
-        quasi-informative warning, and appends the key to a `bad_key` list if it is
-        unresolvable or None. Keys in this list are then removed from the dictionary
-        in-place.
-        """
-        bad_keys = []
-        for key, path in self.paths.items():
-            # we only check specified paths, and drop them otherwise
-            if path is not None:
-                if isinstance(path, str):
-                    path = Path(path)
-                if not path.exists():
-                    warn(
-                        f"A path for {key} dataset was specified but unresolvable, please check {path.absolute()} exists and contains *.lmdb files."
-                    )
-                    bad_keys.append(key)
-            else:
-                bad_keys.append(key)
-        for key in bad_keys:
-            del self.paths[key]
+    >>> datamodule = MatSciMLDataModule.from_devset(dataset="MaterialsProjectDataset")
 
-    def setup(self, stage: Union[str, None] = None) -> None:
-        """
-        This is a PyTorch Lightning internal method, so one doesn't need
-        to call this manually (normally). Here, it defines a dictionary
-        of `data_splits`, which are then independently called upon in
-        respective methods.
+    3. Passing a dataset directly into the ``dataset`` argument:
 
-        Parameters
-        ----------
-        stage : Union[str, None], optional
-            _description_, by default None
-        """
-        self.data_splits = {}
-        # set up each of the dataset splits
-        for key, path in self.paths.items():
-            self.data_splits[key] = self.dataset_class(path, transforms=self.transforms)
+    >>> datamodule = MatSciMLDataModule(dataset=MaterialsProjectDataset("/path/to/train_data"))
 
-    @property
-    def target_keys(self) -> Dict[str, List[str]]:
-        splits = getattr(self, "data_splits", None)
-        if splits is None:
-            self.setup()
-            splits = self.data_splits
-        # get the first dataset we can get
-        dset = list(splits.values())[0]
-        return dset.target_keys
+    To specify val/test splits, you can pass a float or path/string: the former relies on passing
+    ``train_path``, and extract out a fraction of it to use for that particular split. The latter
+    will use dedicated data holdouts for splits:
 
-    def train_dataloader(self):
-        split = self.data_splits.get("train")
-        return split.data_loader(
-            split,
-            shuffle=False,
-            num_workers=self.num_workers,
-            batch_size=self.batch_size,
-            collate_fn=self.collate_fn,
+    >>> datamodule = MatSciMLDataModule.from_devset(
+            dataset="MaterialsProjectDataset",
+            train_path="/path/to/train_data",
+            val_split=0.2           # this uses 20% of the full data contained in ``train_path``
+        )
+    >>> datamodule = MatSciMLDataModule.from_devset(
+            dataset="MaterialsProjectDataset",
+            train_path="/path/to/train_data",
+            val_split="/path/to/val_data"    # this uses a pre-determined split
         )
 
-    def test_dataloader(self):
-        split = self.data_splits.get("test")
-        if split is not None:
-            return split.data_loader(
-                split,
-                shuffle=False,
-                num_workers=self.num_workers,
-                batch_size=self.batch_size,
-                collate_fn=self.collate_fn,
-            )
-        else:
-            warn(f"Test split not defined; not performing testing.")
-            pass
+    To convert between formats (i.e. graphs vs. point clouds), include it as a transform by
+    passing it into ``dset_kwargs``:
 
-    def val_dataloader(self):
-        split = self.data_splits.get("val")
-        if split is not None:
-            return split.data_loader(
-                split,
-                shuffle=False,
-                num_workers=self.num_workers,
-                batch_size=self.batch_size,
-                collate_fn=self.collate_fn,
-            )
-        else:
-            warn(f"Validation split not defined; not performing validation.")
-            pass
-
-    def predict_dataloader(self):
-        split = self.data_splits.get("predict")
-        if split is not None:
-            return split.data_loader(
-                split,
-                shuffle=False,
-                num_workers=self.num_workers,
-                batch_size=self.batch_size,
-                collate_fn=self.collate_fn,
-            )
-
-
-class S2EFDGLDataModule(GraphDataModule):
-    """The DGL version of the S2EF task `LightningDataModule`"""
-
-    def __init__(
-        self,
-        train_path: Optional[str] = None,
-        batch_size: int = 32,
-        num_workers: int = 0,
-        val_path: Optional[str] = None,
-        test_path: Optional[str] = None,
-        predict_path: Optional[str] = None,
-        transforms: Optional[List[Callable]] = None,
-    ):
-        super().__init__(
-            train_path,
-            S2EFDataset,
-            batch_size,
-            num_workers,
-            val_path,
-            test_path,
-            predict_path,
-            transforms,
+    >>> datamodule = MatSciMLDataModule.from_devset(
+            dataset="MaterialsProjectDataset",
+            dset_kwargs={
+                "transforms": [PointCloudToGraphTransform(backend="dgl", cutoff=10.0)]
+            },
         )
-
-    @classmethod
-    def from_devset(cls, **kwargs):
-        kwargs.setdefault("batch_size", 8)
-        kwargs.setdefault("num_workers", 0)
-        return cls(s2ef_devset, **kwargs)
-
-
-class IS2REDGLDataModule(GraphDataModule):
-    """The DGL version of the IS2RE task `LightningDataModule`"""
-
-    def __init__(
-        self,
-        train_path: Optional[str] = None,
-        batch_size: int = 32,
-        num_workers: int = 0,
-        val_path: Optional[str] = None,
-        test_path: Optional[str] = None,
-        predict_path: Optional[str] = None,
-        transforms: Optional[List[Callable]] = None,
-    ):
-        super().__init__(
-            train_path,
-            IS2REDataset,
-            batch_size,
-            num_workers,
-            val_path,
-            test_path,
-            predict_path,
-            transforms,
-        )
-
-    @classmethod
-    def from_devset(cls, **kwargs):
-        kwargs.setdefault("batch_size", 8)
-        kwargs.setdefault("num_workers", 0)
-        return cls(is2re_devset, **kwargs)
-
-
-class DGLDataModule(S2EFDGLDataModule):
-    """
-    This class is implemented only to facilitate some backwards
-    compatibility. The user is recommended to use the task specific
-    data modules above.
     """
 
     def __init__(
         self,
-        train_path: Optional[str] = None,
-        batch_size: int = 32,
-        num_workers: int = 0,
-        val_path: Optional[str] = None,
-        test_path: Optional[str] = None,
-        predict_path: Optional[str] = None,
-        transforms: Optional[List[Callable]] = None,
-    ):
-        super().__init__(
-            train_path,
-            batch_size,
-            num_workers,
-            val_path,
-            test_path,
-            predict_path,
-            transforms,
-        )
-        warn(f"DGLDataModule is being retired - please switch to S2EFDGLDataModule.")
-
-
-class BaseLightningDataModule(pl.LightningDataModule):
-    def __init__(
-        self,
-        dataset: Optional[Union[Type[TorchDataset], TorchDataset]] = None,
+        dataset: Optional[Union[str, Type[TorchDataset], TorchDataset]] = None,
         train_path: Optional[Union[str, Path]] = None,
         batch_size: int = 32,
         num_workers: int = 0,
@@ -283,6 +102,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
         test_split: Optional[Union[str, Path, float]] = 0.0,
         seed: Optional[int] = None,
         dset_kwargs: Optional[Dict[str, Any]] = None,
+        persistent_workers: Optional[bool] = None,
     ):
         super().__init__()
         # make sure we have something to work with
@@ -303,7 +123,33 @@ class BaseLightningDataModule(pl.LightningDataModule):
             ), "Dataset type passed, but no paths to construct with."
         self.dataset = dataset
         self.dset_kwargs = dset_kwargs
+        self.persistent_workers = persistent_workers
         self.save_hyperparameters(ignore=["dataset"])
+
+    @property
+    def persistent_workers(self) -> bool:
+        """
+        Flag to denote whether data loader workers are pinned or not.
+
+        This property can be overridden by user by explicitly passing
+        ``persistent_workers`` into the class constructor. Otherwise,
+        the default behavior is just to have persistent workers if there
+        ``num_workers`` > 0.
+
+        Returns
+        -------
+        bool
+            True if data loader workers are pinned, otherwise False
+        """
+        is_persist = getattr(self, "_persistent_workers", None)
+        if is_persist is None:
+            return self.hparams.num_workers > 0
+        else:
+            return is_persist
+
+    @persistent_workers.setter
+    def persistent_workers(self, value: Union[None, bool]) -> None:
+        self._persistent_workers = value
 
     def _make_dataset(
         self, path: Union[str, Path], dataset: Union[TorchDataset, Type[TorchDataset]]
@@ -327,6 +173,15 @@ class BaseLightningDataModule(pl.LightningDataModule):
         dset_kwargs = getattr(self, "dset_kwargs", None)
         if not dset_kwargs:
             dset_kwargs = {}
+        # try and grab the dataset class from registry
+        if isinstance(dataset, str):
+            dset_string = dataset
+            dataset = registry.get_dataset_class(dataset)
+            if not dataset:
+                valid_keys = registry.__entries__["datasets"].keys()
+                raise KeyError(
+                    f"Incorrect dataset specification from string: passed {dset_string}, but not found in registry: {valid_keys}."
+                )
         if isinstance(dataset, TorchDataset):
             transforms = getattr(dataset, "transforms", None)
             dset_kwargs["transforms"] = transforms
@@ -339,11 +194,10 @@ class BaseLightningDataModule(pl.LightningDataModule):
     def setup(self, stage: Optional[str] = None) -> None:
         splits = {}
         # set up the training split, if provided
-        if getattr(self.hparams, "train_path", None) is not None: #and not hasattr(self, "splits"):
-        #if getattr(self.hparams, "train_path", None) is not None:
-            # assert isinstance(
-            #     self.dataset, Type
-            # ), f"Train path provided but no valid dataset class."
+        if getattr(self.hparams, "train_path", None) is not None:
+            assert isinstance(
+                self.dataset, (Type, str)
+            ), f"Train path provided but no valid dataset class."
             train_dset = self._make_dataset(self.hparams.train_path, self.dataset)
             # set the main dataset to the train split, since it's used for other splits
             self.dataset = train_dset
@@ -402,6 +256,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
             shuffle=True,
             num_workers=self.hparams.num_workers,
             collate_fn=self.dataset.collate_fn,
+            persistent_workers=self.persistent_workers,
         )
 
     def predict_dataloader(self):
@@ -413,6 +268,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=self.dataset.collate_fn,
+            persistent_workers=self.persistent_workers,
         )
 
     def test_dataloader(self):
@@ -424,6 +280,7 @@ class BaseLightningDataModule(pl.LightningDataModule):
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=self.dataset.collate_fn,
+            persistent_workers=self.persistent_workers,
         )
 
     def val_dataloader(self):
@@ -435,191 +292,68 @@ class BaseLightningDataModule(pl.LightningDataModule):
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=self.dataset.collate_fn,
+            persistent_workers=self.persistent_workers,
         )
 
-    @abstractclassmethod
-    def from_devset(cls, *args, **kwargs):
-        ...
+    @classmethod
+    def from_devset(
+        cls,
+        dataset: str,
+        dset_kwargs: Dict[str, Any] = {},
+        **kwargs,
+    ):
+        r"""
+        Instantiate a data module from a dataset's devset.
+
+        This is intended mostly for testing and debugging purposes, with the
+        bare number of args/kwargs required to get up and running. The behavior
+        of this method will replicate the devset for train, validation, and test
+        to allow each part of the pipeline to be tested.
+
+        Parameters
+        ----------
+        dataset : str
+            Class name for dataset to use
+        dset_kwargs : Dict[str, Any], optional
+            Dictionary of keyword arguments to be passed into
+            the dataset creation, for example 'transforms', by default {}
+
+        Returns
+        -------
+        MatSciMLDataModule
+            Instance of `MatSciMLDataModule` from devset
+
+        Raises
+        ------
+        NotImplementedError
+            If the dataset specified does not contain a devset path, this
+            method will raise 'NotImplementedError'.
+        """
+        kwargs.setdefault("batch_size", 8)
+        kwargs.setdefault("num_workers", 0)
+        dset_kwargs.setdefault("transforms", None)
+        dset = registry.get_dataset_class(dataset)
+        devset_path = getattr(dset, "__devset__", None)
+        if not devset_path:
+            raise NotImplementedError(
+                f"Dataset {dset.__name__} does not contain a '__devset__' attribute, cannot instantiate from devset."
+            )
+        datamodule = cls(
+            dset,
+            train_path=devset_path,
+            val_split=devset_path,
+            test_split=devset_path,
+            dset_kwargs=dset_kwargs,
+            **kwargs,
+        )
+        return datamodule
 
     @property
     def target_keys(self) -> Dict[str, List[str]]:
         return self.dataset.target_keys
 
 
-class MaterialsProjectDataModule(BaseLightningDataModule):
-    def __init__(
-        self,
-        train_path: Optional[Union[str, Path]] = None,
-        dataset: Optional[
-            Union[Type[TorchDataset], TorchDataset]
-        ] = MaterialsProjectDataset,
-        batch_size: int = 32,
-        num_workers: int = 0,
-        val_split: Optional[Union[str, Path, float]] = 0.0,
-        test_split: Optional[Union[str, Path, float]] = 0.0,
-        seed: Optional[int] = None,
-        dset_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-        super().__init__(
-            dataset,
-            train_path,
-            batch_size,
-            num_workers,
-            val_split,
-            test_split,
-            seed,
-            dset_kwargs,
-        )
-
-    @classmethod
-    def from_devset(
-        cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
-    ):
-        kwargs.setdefault("batch_size", 8)
-        kwargs.setdefault("num_workers", 0)
-        dset_class = (
-            MaterialsProjectDataset if not graphs else DGLMaterialsProjectDataset
-        )
-        return cls(
-            dataset=dset_class(materialsproject_devset, transforms=transforms), **kwargs
-        )
-
-
-class LiPSDataModule(BaseLightningDataModule):
-    def __init__(
-        self,
-        train_path: Optional[Union[str, Path]] = None,
-        dataset: Optional[Union[Type[TorchDataset], TorchDataset]] = LiPSDataset,
-        batch_size: int = 32,
-        num_workers: int = 0,
-        val_split: Optional[Union[str, Path, float]] = 0.0,
-        test_split: Optional[Union[str, Path, float]] = 0.0,
-        seed: Optional[int] = None,
-        dset_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-        super().__init__(
-            dataset,
-            train_path,
-            batch_size,
-            num_workers,
-            val_split,
-            test_split,
-            seed,
-            dset_kwargs,
-        )
-
-    @classmethod
-    def from_devset(
-        cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
-    ):
-        kwargs.setdefault("batch_size", 8)
-        kwargs.setdefault("num_workers", 0)
-        dset_class = LiPSDataset if not graphs else DGLLiPSDataset
-        return cls(dataset=dset_class(lips_devset, transforms=transforms), **kwargs)
-
-
-class SyntheticPointGroupDataModule(BaseLightningDataModule):
-    def __init__(
-        self,
-        dataset: Optional[Union[Type[TorchDataset], TorchDataset]] = None,
-        train_path: Optional[Union[str, Path]] = None,
-        batch_size: int = 32,
-        num_workers: int = 0,
-        val_split: Optional[Union[str, Path, float]] = 0,
-        test_split: Optional[Union[str, Path, float]] = 0,
-        seed: Optional[int] = None,
-        dset_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-        super().__init__(
-            dataset,
-            train_path,
-            batch_size,
-            num_workers,
-            val_split,
-            test_split,
-            seed,
-            dset_kwargs,
-        )
-
-    @classmethod
-    def from_devset(
-            cls, graphs: bool = True, transforms: Optional[List[Callable]] = None, **kwargs
-    ):
-        kwargs.setdefault("batch_size", 8)
-        kwargs.setdefault("num_workers", 0)
-        dset_class = SyntheticPointGroupDataset if not graphs else DGLSyntheticPointGroupDataset
-        return cls(dataset=dset_class(symmetry_devset, transforms=transforms), **kwargs)
-
-
-class PointCloudDataModule(GraphDataModule):
-    def __init__(
-        self,
-        dataset_class: Type[TorchDataset],
-        train_path: Optional[str] = None,
-        batch_size: int = 32,
-        num_workers: int = 0,
-        point_cloud_size: int = 6,
-        sample_size: int = 10,
-        val_path: Optional[str] = None,
-        test_path: Optional[str] = None,
-        predict_path: Optional[str] = None,
-        transforms: Optional[List[Callable]] = None,
-    ):
-        super().__init__(
-            train_path,
-            dataset_class,
-            batch_size,
-            num_workers,
-            val_path,
-            test_path,
-            predict_path,
-            transforms,
-        )
-        self._point_cloud_size = point_cloud_size
-        self._sample_size = sample_size
-        self.collate_fn = PointCloudDataset.collate_fn
-
-    def setup(self, stage: Union[str, None] = None) -> None:
-        """
-        This class modifies the base behavior slightly, by wrapping the base
-        dataset with `PointCloudDataset`.
-        """
-        self.data_splits = {}
-        # set up each of the dataset splits
-        for key, path in self.paths.items():
-            self.data_splits[key] = PointCloudDataset(
-                self.dataset_class(path), self._point_cloud_size, self._sample_size
-            )
-
-    @classmethod
-    def from_s2ef(cls, **kwargs):
-        """
-        Convenient method to instantiate a `PointCloudDataModule` using
-        the S2EF dataset. Kwargs are passed into the constructor
-        method, and this method only overrides the dataset class explicitly.
-
-        Returns
-        -------
-        PointCloudDataModule
-            A point cloud lightning module configured to use the S2EF data.
-        """
-        return cls(dataset_class=S2EFDataset, **kwargs)
-
-    @classmethod
-    def from_is2re(cls, **kwargs):
-        """
-        Convenient method to instantiate a `PointCloudDataModule` using
-        the S2EF dataset. Kwargs are passed into the constructor
-        method, and this method only overrides the dataset class explicitly.
-
-        Returns
-        -------
-        PointCloudDataModule
-            A point cloud lightning module configured to use the IS2RE data.
-        """
-        return cls(dataset_class=IS2REDataset, **kwargs)
-
-
+@registry.register_datamodule("MultiDataModule")
 class MultiDataModule(pl.LightningDataModule):
     def __init__(
         self,
@@ -629,7 +363,62 @@ class MultiDataModule(pl.LightningDataModule):
         val_dataset: Optional[MultiDataset] = None,
         test_dataset: Optional[MultiDataset] = None,
         predict_dataset: Optional[MultiDataset] = None,
+        persistent_workers: Optional[bool] = None,
     ) -> None:
+        r"""
+        Data module specifically for using mutiple different datasets in tandem.
+
+        Parameters
+        ----------
+        batch_size : int, optional
+            Number of **total** data samples contained in a batch, comprising
+            a mix of samples from each dataset, by default 32
+        num_workers : int, optional
+            Number of parallel data loader workers, by default 0
+        train_dataset : Optional[MultiDataset], optional
+            Instance of ``MultiDataset`` to use for training, by default None
+        val_dataset : Optional[MultiDataset], optional
+            Instance of ``MultiDataset`` to use for validation, by default None
+        test_dataset : Optional[MultiDataset], optional
+            Instance of ``MultiDataset`` to use for testing, by default None
+        predict_dataset : Optional[MultiDataset], optional
+            Instance of ``MultiDataset`` to use for inference, by default None
+
+        Examples
+        ------
+        The class can be instantiated with one or more datasets passed into each
+        split. The configuration is slightly inconvenient, owing to the fact that
+        there is a lot to specify:
+
+        Train on IS2RE, S2EF, and Materials Project:
+
+        >>> datamodule = MultiDataModule(
+                train_dataset=MultiDataset(
+                    [
+                        IS2REDataset("/path/to/is2re"),
+                        S2EFDataset("/path/to/s2ef"),
+                        MaterialsProjectDataset("/path/to/mp_data")
+                    ]
+                )
+            )
+
+        Train on IS2RE+S2EF, validate on LiPS+S2EF (for pedagogical reasons):
+
+        >>> datamodule = MultiDataModule(
+                train_dataset=MultiDataset(
+                    [
+                        IS2REDataset("/path/to/is2re"),
+                        S2EFDataset("/path/to/s2ef")
+                    ]
+                ),
+                val_dataset=MultiDataset(
+                    [
+                        S2EFDataset("/path/to/another/s2ef"),
+                        LiPSDataset("/path/to/lips")
+                    ]
+                )
+            )
+        """
         super().__init__()
         if not any([train_dataset, val_dataset, test_dataset, predict_dataset]):
             raise ValueError(
@@ -646,6 +435,32 @@ class MultiDataModule(pl.LightningDataModule):
                 [train_dataset, val_dataset, test_dataset, predict_dataset],
             )
         }
+        self.persistent_workers = persistent_workers
+
+    @property
+    def persistent_workers(self) -> bool:
+        """
+        Flag to denote whether data loader workers are pinned or not.
+
+        This property can be overridden by user by explicitly passing
+        ``persistent_workers`` into the class constructor. Otherwise,
+        the default behavior is just to have persistent workers if there
+        ``num_workers`` > 0.
+
+        Returns
+        -------
+        bool
+            True if data loader workers are pinned, otherwise False
+        """
+        is_persist = getattr(self, "_persistent_workers", None)
+        if is_persist is None:
+            return self.hparams.num_workers > 0
+        else:
+            return is_persist
+
+    @persistent_workers.setter
+    def persistent_workers(self, value: Union[None, bool]) -> None:
+        self._persistent_workers = value
 
     @property
     def target_keys(self) -> Dict[str, Dict[str, List[str]]]:
@@ -661,6 +476,7 @@ class MultiDataModule(pl.LightningDataModule):
             num_workers=self.hparams.num_workers,
             shuffle=True,
             collate_fn=data.collate_fn,
+            persistent_workers=self.persistent_workers,
         )
 
     def val_dataloader(self) -> Union[DataLoader, None]:
@@ -672,6 +488,7 @@ class MultiDataModule(pl.LightningDataModule):
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=data.collate_fn,
+            persistent_workers=self.persistent_workers,
         )
 
     def test_dataloader(self) -> Union[DataLoader, None]:
@@ -683,6 +500,7 @@ class MultiDataModule(pl.LightningDataModule):
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=data.collate_fn,
+            persistent_workers=self.persistent_workers,
         )
 
     def predict_dataloader(self) -> Union[DataLoader, None]:
@@ -694,4 +512,5 @@ class MultiDataModule(pl.LightningDataModule):
             self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=data.collate_fn,
+            persistent_workers=self.persistent_workers,
         )

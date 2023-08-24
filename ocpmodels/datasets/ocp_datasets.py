@@ -7,12 +7,41 @@ from pathlib import Path
 
 import torch
 import dgl
+from dgl.dataloading import GraphDataLoader
 from munch import Munch
 
-from ocpmodels.datasets.base import DGLDataset
+from ocpmodels.datasets.base import BaseLMDBDataset
+from ocpmodels.common.registry import registry
 
 
-class S2EFDataset(DGLDataset):
+class OpenCatalystDataset(BaseLMDBDataset):
+    @property
+    def representation(self) -> str:
+        return self._representation
+
+    @representation.setter
+    def representation(self, value: str) -> None:
+        value = value.lower()
+        assert value in [
+            "graph",
+            "point_cloud",
+        ], "Supported representations are 'graph' and 'point_cloud'."
+        self._representation = value
+
+    @property
+    def pad_keys(self) -> List:
+        # in the event this i
+        return ["pc_features"]
+
+    @property
+    def data_loader(self) -> GraphDataLoader:
+        return GraphDataLoader
+
+
+@registry.register_dataset("S2EFDataset")
+class S2EFDataset(OpenCatalystDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("dev-s2ef-dgl")
+
     def data_from_key(
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
@@ -58,9 +87,11 @@ class S2EFDataset(DGLDataset):
             # loop over labels
             for key in ["natoms", "y", "sid", "fid", "cell"]:
                 output_data[key] = data.get(key)
+            # make graph bidirectional
+            graph = dgl.to_bidirected(graph, copy_ndata=True)
             output_data["graph"] = graph
         # This is the case for test set data for s2ef with dgl format.
-        elif 'graph' in data.keys():
+        elif "graph" in data.keys():
             output_data = data
         # tacking on metadata about the task; energy and force regression
         output_data["targets"] = {}
@@ -76,7 +107,10 @@ class S2EFDataset(DGLDataset):
         return {"regression": ["energy", "force"]}
 
 
-class IS2REDataset(DGLDataset):
+@registry.register_dataset("IS2REDataset")
+class IS2REDataset(OpenCatalystDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("dev-is2re-dgl")
+
     """
     Currently, this class doesn't have anything special implemented,
     but carries on the abstraction so that if there are modifications
@@ -98,6 +132,8 @@ class IS2REDataset(DGLDataset):
         self, lmdb_index: int, subindex: int
     ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
         data = super().data_from_key(lmdb_index, subindex)
+        # make graph bidirectional if it isn't already
+        data["graph"] = dgl.to_bidirected(data["graph"], copy_ndata=True)
         # tacking on metadata about the task; energy
         data["targets"] = {}
         data["target_types"] = {"regression": [], "classification": []}

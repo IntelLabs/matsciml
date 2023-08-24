@@ -1,20 +1,20 @@
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
 
-from typing import Optional
+from typing import Any, Dict, Optional
 import torch
 import torch.nn as nn
 import dgl
 
 from ocpmodels.models.dgl.dpp import dimenet_utils as du
-from ocpmodels.models.base import AbstractEnergyModel
+from ocpmodels.models.base import AbstractDGLModel
 
 """
 Credit for original code: xnuohz; https://github.com/xnuohz/DimeNet-dgl
 """
 
 
-class DimeNetPP(AbstractEnergyModel):
+class DimeNetPP(AbstractDGLModel):
     """
     DimeNet++ model.
     Parameters
@@ -69,9 +69,17 @@ class DimeNetPP(AbstractEnergyModel):
         num_dense_output: Optional[int] = 3,
         activation: Optional[nn.Module] = nn.SiLU,
         extensive: Optional[bool] = True,
-    ):
-        super(DimeNetPP, self).__init__()
-
+        num_atom_embedding: int = 100,
+        atom_embedding_dim: Optional[int] = None,
+        embedding_kwargs: Dict[str, Any] = {},
+        num_targets: Optional[int] = None,
+        encoder_only: bool = True,
+    ) -> None:
+        if atom_embedding_dim:
+            raise ValueError(
+                f"'atom_embedding_dim' should not be specified; please pass 'emb_size' instead."
+            )
+        super().__init__(emb_size, num_atom_embedding, embedding_kwargs, encoder_only)
         self.num_blocks = num_blocks
         self.num_radial = num_radial
 
@@ -98,6 +106,8 @@ class DimeNetPP(AbstractEnergyModel):
             envelope_exponent=envelope_exponent,
             activation=activation,
         )
+        # overwrite the redundant embedding table
+        self.emb_block.embedding = self.atom_embedding
 
         # output block
         self.output_blocks = nn.ModuleList(
@@ -107,9 +117,10 @@ class DimeNetPP(AbstractEnergyModel):
                     out_emb_size=out_emb_size,
                     num_radial=num_radial,
                     num_dense=num_dense_output,
-                    num_targets=1,
+                    num_targets=num_targets,
                     activation=activation,
                     extensive=extensive,
+                    encoder_only=encoder_only,
                 )
                 for _ in range(num_blocks + 1)
             }
@@ -160,7 +171,9 @@ class DimeNetPP(AbstractEnergyModel):
             return dgl.batch(l_g)
 
     @staticmethod
-    def edge_distance(graph: dgl.DGLGraph) -> None:
+    def edge_distance(
+        graph: dgl.DGLGraph, pos: torch.Tensor
+    ) -> Dict[str, torch.Tensor]:
         """
         Compute edge distances on the fly; applies a lambda function
         that computes the Euclidean distance between two atoms, and
@@ -173,28 +186,65 @@ class DimeNetPP(AbstractEnergyModel):
             stored in the node data "pos"
         """
         src, dst = graph.edges()
-        pos = graph.ndata["pos"]
         src_pos, dst_pos = pos[src], pos[dst]
-        graph.edata["r"] = nn.functional.pairwise_distance(src_pos, dst_pos, p=2.0)
-        graph.edata["o"] = src_pos - dst_pos
-        return graph
+        r = nn.functional.pairwise_distance(src_pos, dst_pos, p=2.0)
+        o = src_pos - dst_pos
+        return {"r": r, "o": o}
 
-    def forward(self, g: dgl.DGLGraph):
-        g = self.edge_distance(g)
-        l_g = self._create_line_graph(g)
-        # add rbf features for each edge in one batch graph, [num_radial,]
-        g = self.rbf_layer(g)
-        # Embedding block
-        g = self.emb_block(g)
-        # Output block
-        P = self.output_blocks[0](g)  # [batch_size, num_targets]
-        # Prepare sbf feature before the following blocks
-        for k, v in g.edata.items():
-            l_g.ndata[k] = v
+    def _forward(
+        self,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        pos: torch.Tensor,
+        edge_feats: Optional[torch.Tensor] = None,
+        graph_feats: Optional[torch.Tensor] = None,
+        **kwargs,
+    ) -> torch.Tensor:
+        r"""
+        Implement the forward method, which computes the energy of
+        a molecular graph.
 
-        l_g.apply_edges(self.edge_init)
-        # Interaction blocks
-        for i in range(self.num_blocks):
-            g = self.interaction_blocks[i](g, l_g)
-            P += self.output_blocks[i + 1](g)
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            A single or batch of molecular graphs
+
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            Instance of a DGL graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        pos : torch.Tensor
+            XYZ coordinates of each atom
+        edge_feats : Optional[torch.Tensor], optional
+            Tensor containing interatomic distances, by default None and unused.
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
+        Returns
+        -------
+        torch.Tensor
+            Graph embeddings, or output value if not 'encoder_only'
+        """
+        dist_dict = self.edge_distance(graph, pos)
+        with graph.local_scope():
+            for key in ["r", "o"]:
+                graph.edata[key] = dist_dict[key]
+            l_g = self._create_line_graph(graph)
+            # add rbf features for each edge in one batch graph, [num_radial,]
+            graph.edata["rbf"] = self.rbf_layer(dist_dict["r"])
+            # Embedding block
+            graph = self.emb_block(graph, node_feats)
+            # Output block
+            P = self.output_blocks[0](graph)
+            # Prepare sbf feature before the following blocks
+            for k, v in graph.edata.items():
+                l_g.ndata[k] = v
+
+            l_g.apply_edges(self.edge_init)
+            # Interaction blocks
+            for i in range(self.num_blocks):
+                graph = self.interaction_blocks[i](graph, l_g)
+                P += self.output_blocks[i + 1](graph)
         return P
