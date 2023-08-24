@@ -126,7 +126,6 @@ def test_graph_sorting():
     trans = [
         transforms.GraphReordering("metis", k=10),
     ]
-    import pdb; pdb.set_trace()
     dm = MatSciMLDataModule.from_devset(
         "S2EFDataset", dset_kwargs={"transforms": trans}
     )
