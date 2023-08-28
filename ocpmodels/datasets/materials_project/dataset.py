@@ -335,6 +335,7 @@ if _has_pyg:
         distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False
     )
 
+    @registry.register_dataset("PyGMaterialsProjectDataset")
     class PyGMaterialsProjectDataset(MaterialsProjectDataset):
         """
         Subclass of `MaterialsProjectDataset` that will emit PyG graphs.
@@ -463,6 +464,7 @@ if _has_pyg:
             batched_data = Batch.from_data_list(batch)
             return batched_data
 
+    @registry.register_dataset("PyGCdvaeDataset")
     class PyGCdvaeDataset(PyGMaterialsProjectDataset):
         def __init__(
             self,
@@ -587,6 +589,7 @@ if _has_pyg:
                             indices.append((lmdb_index, int(idx)))
             return indices
 
+    @registry.register_dataset("CdvaeLMDBDataset")
     class CdvaeLMDBDataset(PyGMaterialsProjectDataset):
         def __init__(
             self,
