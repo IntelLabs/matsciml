@@ -19,7 +19,6 @@ from ocpmodels.datasets.base import PointCloudDataset
 from ocpmodels.datasets.utils import (
     concatenate_keys,
     point_cloud_featurization,
-    pad_point_cloud,
 )
 from ocpmodels.common.registry import registry
 
