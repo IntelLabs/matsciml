@@ -5,6 +5,7 @@ from math import pi
 from copy import deepcopy
 from functools import cache
 from tqdm import tqdm
+from importlib.util import find_spec
 
 import torch
 import numpy as np
@@ -21,6 +22,8 @@ from ocpmodels.datasets.utils import (
     point_cloud_featurization,
 )
 from ocpmodels.common.registry import registry
+
+_has_pyg = find_spec("torch_geometric") is not None
 
 
 def item_from_structure(data: Any, *keys: str) -> Any:
