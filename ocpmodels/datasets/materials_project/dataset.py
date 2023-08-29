@@ -612,6 +612,10 @@ if _has_pyg:
                 lmdb_index, subindex
             )
             return data
+        
+        def index_to_key(self, index: int) -> Tuple[int]:
+            """Look up the index number in the list of LMDB keys"""
+            return self.keys[index]
 
         @cache
         def _load_keys(self) -> List[Tuple[int, int]]:

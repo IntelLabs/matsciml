@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 from functools import partial
 from pathlib import Path
 import torch
+import argparse
 from tqdm import tqdm
 
 try:
@@ -14,8 +15,8 @@ try:
     from examples.cdvae_configs import (
         enc_config, dec_config, cdvae_config, mp_config
     )
-    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset, CdvaeLMDBDataset
+    from ocpmodels.lightning.data_utils import MatSciMLDataModule
+    from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
     from ocpmodels.models.diffusion_utils.data_utils import StandardScalerTorch
 
 except:
@@ -24,8 +25,8 @@ except:
     from ocpmodels.models.diffusion_pipeline import GenerationTask
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset, CdvaeLMDBDataset
+    from ocpmodels.lightning.data_utils import MatSciMLDataModule
+    from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
     from ocpmodels.models.diffusion_utils.data_utils import StandardScalerTorch
 
     from examples.cdvae_configs import (
@@ -61,7 +62,7 @@ def get_scalers(dataset):
     return lattice_scaler, prop_scaler
 
 
-def main():
+def main(args):
     pl.seed_everything(1616)
     data_config = mp_config
 
@@ -74,12 +75,14 @@ def main():
     cdvae_config['teacher_forcing_max_epoch'] = data_config['teacher_forcing_max_epoch']
     cdvae_config['lattice_scale_method'] = data_config['lattice_scale_method']
 
-    dm = MaterialsProjectDataModule(
+    data_path = Path(args.data_path)
+
+    dm = MatSciMLDataModule(
         dataset=CdvaeLMDBDataset,
-        train_path=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/train/"),
-        val_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/val/"),
-        test_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/test/"),
-        batch_size=256,
+        train_path=data_path / "train",
+        val_split=data_path / "val",
+        test_split=data_path / "test",
+        batch_size=args.batch_size,
         num_workers=0,
     )
     # Load the data at the setup stage
@@ -101,10 +104,17 @@ def main():
     model.lattice_scaler = lattice_scaler.copy()
     model.scaler = prop_scaler.copy()
 
-    trainer = pl.Trainer(accelerator="cpu", #strategy="ddp", 
-                        devices=1, max_epochs=1000, gradient_clip_val=1.0)
+    trainer = pl.Trainer(accelerator="cpu" if not args.gpu else "gpu", #strategy="ddp", 
+                        devices=1, max_epochs=args.epochs, gradient_clip_val=1.0)
 
     trainer.fit(model, datamodule=dm)
 
 if __name__ == "__main__":
-    main()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', required=True)
+    parser.add_argument('--batch_size', default=256, type=int)
+    parser.add_argument('--epochs', default=1000, type=int)
+    parser.add_argument('--gpu', default=False, type=bool)
+    args = parser.parse_args()
+    main(args)
