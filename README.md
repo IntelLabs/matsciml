@@ -31,7 +31,7 @@ The MatSci ML Benchmark contains diverse sets of tasks (energy prediction, force
 The package follows the original design principles of the Open MatSci ML Toolkit, including:
 - Ease of use for new ML researchers and practitioners that want get started on interacting with the OpenCatalyst dataset.
 - Scalable computation of experiments leveraging [PyTorch Lightning](https://www.pytorchlightning.ai/) across different computation capabilities (laptop, server, cluster) and hardware platforms (CPU, GPU, XPU) without sacrificing performance in the compute and modeling.
-- Integrating support for [DGL](dgl.ai) and [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/) for rapid GNN development.
+- Integrating support for [DGL](https://docs.dgl.ai/en/0.9.x/) and [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/) for rapid GNN development.
 
 The examples outlined in the next section how to get started with Open MatSci ML Toolkit using simple Python scripts, Jupyter notebooks, or the PyTorch Lightning CLI for a simple training on a portable subset of the original dataset (dev-set) that can be run on a laptop. Subsequently, we scale our example python script to large compute systems, including distributed data parallel training (multiple GPU on a single node) and multi-node training (multiple GPUs across multiple nodes) in a computing cluster. Leveraging both PyTorch Lightning and DGL capabilities, we can enable the compute and experiment scaling with minimal additional complexity.
 
