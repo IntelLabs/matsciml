@@ -23,8 +23,8 @@ from tqdm import trange
 from ocpmodels.common.flags import flags
 from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import build_config, setup_imports, setup_logging
-from ocpmodels.models.gemnet.layers.scaling import AutomaticFit
-from ocpmodels.models.gemnet.utils import write_json
+from ocpmodels.models.pyg.gemnet.layers.scaling import AutomaticFit
+from ocpmodels.models.pyg.gemnet.utils import write_json
 
 if __name__ == "__main__":
     setup_logging()
