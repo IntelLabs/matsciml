@@ -125,6 +125,38 @@ devset = MatSciMLDataModule(
 In particular, `val_split` and `test_split` can point to their LMDB folders, _or_ just a float between [0,1] to do quick, uniform splits. The rest, including distributed sampling, will be taken care of for you under the hood.
 </details>
 
+<details>
+
+<summary>
+How do I compose multiple datasets?
+</summary>
+
+Given the amount of configuration involved, composing multiple datasets takes a little more work but we have tried to make it as seamless as possible. The main difference from the single dataset case is replacing `MatSciMLDataModule` with `MultiDataModule` from `matsciml.lightning.data_utils`, configuring each dataset manually, and passing them collectively into the data module:
+
+```python
+from matsciml.datasets import MaterialsProjectDataset, OQMDDataset, MultiDataset
+from matsciml.lightning.data_utils import MultiDataModule
+
+# configure training only here, but same logic extends to validation/test splits
+train_dset = MultiDataset(
+  [
+    MaterialsProjectDataset("/path/to/train/materialsproject"),
+    OQMDDataset("/path/to/train/oqmd")
+  ]
+)
+
+# this configures the actual data module passed into Lightning
+datamodule = MultiDataModule(
+  batch_size=32,
+  num_workers=4,
+  train_dataset=train_dset
+)
+```
+
+While it does require a bit of extra work, this was to ensure flexibility in how you can compose datasets. We welcome feedback on the user experience! 😃
+
+</details>
+
 ### Task abstraction
 
 - Abstract original model training tasks as `pl.LightningModule`s: base class manages the model abstraction, and children (e.g. `S2EFLightningModule`) takes care of training/validation loop
