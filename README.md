@@ -9,6 +9,7 @@
 [![pytorch](https://img.shields.io/badge/PyTorch-v1.12%2B-red?logo=pytorch)](https://pytorch.org/get-started/locally/)
 [![dgl](https://img.shields.io/badge/DGL-v0.9%2B-blue?logo=dgl)](https://docs.dgl.ai/en/latest/)
 [![pyg](https://img.shields.io/badge/PyG-2.3.1-red?logo=pyg)](https://pytorch-geometric.readthedocs.io/en/2.3.1/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 </div>
 
