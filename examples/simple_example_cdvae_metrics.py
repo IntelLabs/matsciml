@@ -25,7 +25,6 @@ try:
     from ocpmodels.lightning.data_utils import MatSciMLDataModule
     from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
     from examples.simple_example_cdvae import get_scalers
-    from examples.simple_example_cdvae_inference import load_model
 
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -36,7 +35,6 @@ except:
     from ocpmodels.models.diffusion_utils.eval_utils import (
     smact_validity, structure_validity, CompScaler, get_fp_pdist,
     load_config, load_data, get_crystals_list, prop_model_eval, compute_cov)
-    from examples.simple_example_cdvae_inference import load_model
 
 
 CrystalNNFP = CrystalNNFingerprint.from_preset("ops")
@@ -340,6 +338,14 @@ def get_crystals_from_loader(data_path):
                 batch.angles, batch.num_atoms)
     
     return true_crystal_array_list
+
+
+"""
+The script to compute evaluation metrics of a sampled batch
+Reconstruction: given test set samples, measure their predicted properties
+Generation: given newly generated samples, measure their quality
+Optimization: for crystal property optimization, was not tested
+"""
 
 def main(args):
     all_metrics = {}

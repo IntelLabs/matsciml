@@ -70,8 +70,6 @@ class GenerationTask(BaseTaskModule):
         super().__init__(encoder, encoder_class, encoder_kwargs, loss_func, task_keys, output_kwargs, **kwargs)
 
         # CDVAE specific stuff
-        # if decoder is not None:
-        #     warn(f"Encoder object was passed directly into {self.__class__.__name__}; saved hyperparameters will be incomplete!")
         if decoder is not None:
             self.decoder = decoder
         else:
@@ -131,6 +129,9 @@ class GenerationTask(BaseTaskModule):
     
     def encode(self, embedding: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
+        """
+        turn the embedding to a distribution with the reparameterization trick
+        """
         mu = self.fc_mu(embedding)
         log_var = self.fc_var(embedding)
         z = self.reparameterize(mu, log_var)
@@ -140,7 +141,7 @@ class GenerationTask(BaseTaskModule):
                      teacher_forcing=False, debug=False):
         """
         decode key stats from latent embeddings.
-        batch is input during training for teach-forcing.
+        batch is input during training for teacher forcing.
         """
         if gt_num_atoms is not None:
             num_atoms = self.predict_num_atoms(z)
@@ -384,6 +385,7 @@ class GenerationTask(BaseTaskModule):
         ----------
         batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
             Batch of samples to evaluate on.
+        teacher_forcing: whether to use an additional loss term or not
 
         Returns
         -------
@@ -391,16 +393,8 @@ class GenerationTask(BaseTaskModule):
             Dictionary containing the joint loss, and a subdictionary
             containing each individual target loss.
         """
-        #targets = self._get_targets(batch)
         predictions = self(batch, teacher_forcing)
         log_dict, total_loss = self.compute_stats(batch, predictions)
-        # losses = {}
-        # for key in self.task_keys:
-        #     target_val = targets[key]
-        #     if self.uses_normalizers:
-        #         target_val = self.normalizers[key].norm(target_val)
-        #     losses[key] = self.loss_func(predictions[key], target_val)
-        # total_loss: torch.Tensor = sum(losses.values())
         return {"loss": total_loss, "log": log_dict}
 
     def _make_output_heads(self) -> nn.ModuleDict:

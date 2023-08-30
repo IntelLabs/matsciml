@@ -13,10 +13,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from torch_geometric.data import Batch
 
-# from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-# from ocpmodels.datasets.materials_project import (
-#     DGLMaterialsProjectDataset,
-# )
 try:
     from ocpmodels.models.diffusion_pipeline import GenerationTask
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
@@ -54,14 +50,6 @@ def load_model(model_path, data_path, load_data, bs=256):
     cdvae_config['raidus'] = 12.0
     cdvae_config['teacher_forcing_max_epoch'] = data_config['teacher_forcing_max_epoch']
     cdvae_config['lattice_scale_method'] = data_config['lattice_scale_method']
-
-    # TODO: adjust after training a full model
-    # enc_config['hidden_channels'] = 128
-    # enc_config['out_emb_channels'] = 256
-    # enc_config['int_emb_size'] = 64
-    # dec_config['hidden_dim'] = 128
-    # cdvae_config['hidden_dim'] = 256
-    # cdvae_config['latent_dim'] = 256
 
     dm = MatSciMLDataModule(
         dataset=CdvaeLMDBDataset,
@@ -123,7 +111,7 @@ def reconstructon(loader, model, ld_kwargs, num_evals,
         batch_frac_coords, batch_num_atoms, batch_atom_types = [], [], []
         batch_lengths, batch_angles = [], []
 
-        # only sample one z, multiple evals for stoichaticity in langevin dynamics
+        # only sample one z, multiple evals for stochasticity in langevin dynamics
         embedding = model.encoder(batch)
         _, _, z = model.encode(embedding)
 
@@ -230,7 +218,8 @@ def generation(model, ld_kwargs, num_batches_to_sample, num_samples_per_z,
     return (frac_coords, num_atoms, atom_types, lengths, angles,
             all_frac_coords_stack, all_atom_types_stack)
 
-
+# The optimization component has not been tested as it requires a slightly
+# different training procedure with training an additional classifier/regressor
 def optimization(model, ld_kwargs, data_loader,
                  num_starting_points=100, num_gradient_steps=5000,
                  lr=1e-3, num_saved_crys=10):

@@ -33,7 +33,7 @@ except:
         enc_config, dec_config, cdvae_config, mp_config
     )   
 
-
+# computing scalers to re-scale regression targets to a normalized range
 def get_scalers(dataset):
     print("Building scalers")
     lattice_vals, prop_vals = [], []
@@ -61,6 +61,11 @@ def get_scalers(dataset):
 
     return lattice_scaler, prop_scaler
 
+"""
+The main script to train CDVAE and its components (encoder, decoder, denoising).
+Sampling and evaluation are performed in separate scripts (_inference, _metrics)
+based on a saved trained checkpoint.
+"""
 
 def main(args):
     pl.seed_everything(1616)
@@ -75,8 +80,8 @@ def main(args):
     cdvae_config['teacher_forcing_max_epoch'] = data_config['teacher_forcing_max_epoch']
     cdvae_config['lattice_scale_method'] = data_config['lattice_scale_method']
 
+    # data preparation
     data_path = Path(args.data_path)
-
     dm = MatSciMLDataModule(
         dataset=CdvaeLMDBDataset,
         train_path=data_path / "train",
@@ -89,10 +94,12 @@ def main(args):
     dm.setup()
 
     # Compute scalers for regression targets and lattice parameters
+    # By default, we will train CDVAE on the formation energy
     lattice_scaler, prop_scaler = get_scalers(dm.splits['train'])
     dm.dataset.lattice_scaler = lattice_scaler.copy()
     dm.dataset.scaler = prop_scaler.copy()
 
+    # create the encoder, decoder, and CDVAE generative model (GenerativeTask)
     encoder = DimeNetPlusPlusWrap(**enc_config)
     decoder = GemNetTDecoder(**dec_config)
     model = GenerationTask(
@@ -104,15 +111,17 @@ def main(args):
     model.lattice_scaler = lattice_scaler.copy()
     model.scaler = prop_scaler.copy()
 
+    # create the trainer
     trainer = pl.Trainer(accelerator="cpu" if not args.gpu else "gpu", #strategy="ddp", 
                         devices=1, max_epochs=args.epochs, gradient_clip_val=1.0)
-
+    
+    # train CDVAE
     trainer.fit(model, datamodule=dm)
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', required=True)
+    parser.add_argument('--data_path', required=True)  # path to the LMDB sources
     parser.add_argument('--batch_size', default=256, type=int)
     parser.add_argument('--epochs', default=1000, type=int)
     parser.add_argument('--gpu', default=False, type=bool)
