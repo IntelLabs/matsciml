@@ -108,7 +108,7 @@ Miret, S.; Lee, K. L. K.; Gonzales, C.; Nassar, M.; Spellings, M. The Open MatSc
 </summary>
 
 ```bibtex
-@article{miret2023the,
+@article{openmatscimltoolkit,
   title = {The Open {{MatSci ML}} Toolkit: {{A}} Flexible Framework for Machine Learning in Materials Science},
   author = {Miret, Santiago and Lee, Kin Long Kelvin and Gonzales, Carmelo and Nassar, Marcel and Spellings, Matthew},
   year = {2023},
