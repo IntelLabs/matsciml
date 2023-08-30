@@ -103,6 +103,27 @@ devset = MatSciMLDataModule.from_devset(
 
 </details>
 
+<details>
+<summary>
+What else can I configure with `MatSciMLDataModule`?
+</summary>
+
+Datasets beyond devsets can be configured through class arguments:
+
+```python
+devset = MatSciMLDataModule(
+    dataset="MaterialsProjectDataset",
+    train_path="/path/to/training/lmdb/folder",
+    batch_size=64,
+    num_workers=4,     # configure data loader instances
+    dset_kwargs={"transforms": [PointCloudToGraphTransform(backend="pyg", cutoff_dist=10.)]},
+    val_split="/path/to/val/lmdb/folder"
+)
+```
+
+In particular, `val_split` and `test_split` can point to their LMDB folders, _or_ just a float between [0,1] to do quick, uniform splits. The rest, including distributed sampling, will be taken care of for you under the hood.
+</details>
+
 ### Task abstraction
 
 - Abstract original model training tasks as `pl.LightningModule`s: base class manages the model abstraction, and children (e.g. `S2EFLightningModule`) takes care of training/validation loop
