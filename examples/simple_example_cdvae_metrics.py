@@ -22,7 +22,7 @@ from matminer.featurizers.composition.composite import ElementProperty
 from torch_geometric.data import Batch
 
 try:
-    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
+    from ocpmodels.lightning.data_utils import MatSciMLDataModule
     from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
     from examples.simple_example_cdvae import get_scalers
     from examples.simple_example_cdvae_inference import load_model
@@ -30,7 +30,7 @@ try:
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
     sys.path.append("{}/../".format(dir_path))
-    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
+    from ocpmodels.lightning.data_utils import MatSciMLDataModule
     from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
     from examples.simple_example_cdvae import get_scalers  
     from ocpmodels.models.diffusion_utils.eval_utils import (
@@ -313,12 +313,12 @@ def get_crystal_array_list(file_path, batch_idx=0):
 
     return crys_array_list, true_crystal_array_list
 
-def get_crystals_from_loader():
-    dm = MaterialsProjectDataModule(
+def get_crystals_from_loader(data_path):
+    dm = MatSciMLDataModule(
         dataset=CdvaeLMDBDataset,
-        train_path=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/train/"),
-        val_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/val/"),
-        test_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/test/"),
+        train_path=data_path / "train",
+        val_split=data_path / "val",
+        test_split=data_path / "test",
         batch_size=256,
         num_workers=0,
     )
@@ -367,7 +367,8 @@ def main(args):
                 _, true_crystal_array_list = get_crystal_array_list(
                     recon_file_path)
             except:
-                true_crystal_array_list = get_crystals_from_loader()
+                data_path = Path(args.data_path)
+                true_crystal_array_list = get_crystals_from_loader(data_path)
             gt_crys = p_map(lambda x: Crystal(x), true_crystal_array_list)
 
         gen_evaluator = GenEval(
@@ -412,6 +413,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_path', required=True)
+    parser.add_argument('--data_path', required=True)
     parser.add_argument('--label', default='')
     parser.add_argument('--n_samples', default=9000, type=int)
     parser.add_argument('--tasks', nargs='+', default=['recon', 'gen', 'opt'])

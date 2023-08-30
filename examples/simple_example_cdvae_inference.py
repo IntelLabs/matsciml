@@ -21,8 +21,8 @@ try:
     from ocpmodels.models.diffusion_pipeline import GenerationTask
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset, CdvaeLMDBDataset
+    from ocpmodels.lightning.data_utils import MatSciMLDataModule
+    from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
     from examples.simple_example_cdvae import get_scalers
     from examples.cdvae_configs import (
         enc_config, dec_config, cdvae_config, mp_config
@@ -34,15 +34,15 @@ except:
     from ocpmodels.models.diffusion_pipeline import GenerationTask
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-    from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset, PyGMaterialsProjectDataset, PyGCdvaeDataset, CdvaeLMDBDataset
+    from ocpmodels.lightning.data_utils import MatSciMLDataModule
+    from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
     from examples.simple_example_cdvae import get_scalers
     from examples.cdvae_configs import (
         enc_config, dec_config, cdvae_config, mp_config
     )   
 
 
-def load_model(model_path, load_data):
+def load_model(model_path, data_path, load_data, bs=256):
     data_config = mp_config
 
     # init dataset-specific params in encoder/decoder
@@ -63,12 +63,12 @@ def load_model(model_path, load_data):
     # cdvae_config['hidden_dim'] = 256
     # cdvae_config['latent_dim'] = 256
 
-    dm = MaterialsProjectDataModule(
+    dm = MatSciMLDataModule(
         dataset=CdvaeLMDBDataset,
-        train_path=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/train/"),
-        val_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/val/"),
-        test_split=Path("/Users/mgalkin/git/projects.research.chem-ai.open-catalyst-collab/data/cdvae_data/test/"),
-        batch_size=256,
+        train_path=data_path / "train",
+        val_split=data_path / "val",
+        test_split=data_path / "test",
+        batch_size=bs,
         num_workers=0,
     )
     # Load the data at the setup stage
@@ -265,9 +265,12 @@ def optimization(model, ld_kwargs, data_loader,
 def main(args):
     # load_data if do reconstruction.
     model_path = None if args.model_path is None else args.model_path
+
+    data_path = Path(args.data_path)
     model, test_loader, cfg = load_model(
         model_path, load_data=('recon' in args.tasks) or
-        ('opt' in args.tasks and args.start_from == 'data'))
+        ('opt' in args.tasks and args.start_from == 'data'),
+        data_path=data_path, bs=args.batch_size)
     ld_kwargs = SimpleNamespace(n_step_each=args.n_step_each,
                                 step_lr=args.step_lr,
                                 min_sigma=args.min_sigma,
@@ -353,6 +356,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_path', required=False)
+    parser.add_argument('--data_path', required=True)
     parser.add_argument('--tasks', nargs='+', default=['recon', 'gen', 'opt'])
     parser.add_argument('--n_step_each', default=100, type=int)
     parser.add_argument('--step_lr', default=1e-4, type=float)
