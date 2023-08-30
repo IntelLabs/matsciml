@@ -101,8 +101,7 @@ devset = MatSciMLDataModule.from_devset(
 )
 ```
 
-This will let you springboard into development without needing to worry about _how_ to wrangle with the datasets; just grab a batch and go! This
-mechanism is also used for the unit tests pertaining to the data pipeline.
+</details>
 
 ### Task abstraction
 
