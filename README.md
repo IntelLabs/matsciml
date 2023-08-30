@@ -16,8 +16,8 @@ This is the implementation of the MatSci ML benchmark, which includes ~1.5 milli
 
 ### News
 
-[2023/08/31] Initial release of the MatSci ML Benchmark with integration of ~1.5 million ground state materials.
-[2023/07/31] The Open MatSci ML Toolkit : A Flexible Framework for Deep Learning on the OpenCatalyst Dataset paper is accepted into TMLR. See previous version for code related to the benchmark.
+- [2023/08/31] Initial release of the MatSci ML Benchmark with integration of ~1.5 million ground state materials.
+- [2023/07/31] The Open MatSci ML Toolkit : A Flexible Framework for Deep Learning on the OpenCatalyst Dataset paper is accepted into TMLR. See previous version for code related to the benchmark.
 
 ### Introduction
 
