@@ -99,8 +99,22 @@ mechanism is also used for the unit tests pertaining to the data pipeline.
 
 ## Cite
 
-If you use Open MatSci ML Toolkit in your technical work or publication, we would appreciate it if you cite the Open MatSci ML Toolkit library:
+If you use Open MatSci ML Toolkit in your technical work or publication, we would appreciate it if you cite the Open MatSci ML Toolkit paper in TMLR:
+
+<details>
+
+<summary>
+Miret, S.; Lee, K. L. K.; Gonzales, C.; Nassar, M.; Spellings, M. The Open MatSci ML Toolkit: A Flexible Framework for Machine Learning in Materials Science. Transactions on Machine Learning Research, 2023.
+</summary>
+
+```bibtex
+@article{miret2023the,
+  title = {The Open {{MatSci ML}} Toolkit: {{A}} Flexible Framework for Machine Learning in Materials Science},
+  author = {Miret, Santiago and Lee, Kin Long Kelvin and Gonzales, Carmelo and Nassar, Marcel and Spellings, Matthew},
+  year = {2023},
+  journal = {Transactions on Machine Learning Research},
+  issn = {2835-8856}
+}
 ```
 
-```
-
+</details>
