@@ -59,21 +59,46 @@ The `examples` folder contains simple, unit scripts that demonstrate how to use 
 
 ### Data Pipeline
 
-Our data pipeline leverages the processing capabilities of the original OpenCatalyst repo with additional modifications to provide flexibility to process the data in various format, including:
-
-- Support for generalized, abstract data structures that can be saved in `lmdb` format and a sub-sampling script for small datasets in small compute testing environments
-- Use of `pl.LightningDataModule` abstracts away splits, distributed loading, and data management while running experiments
-- Data objects are defined in `matsciml/datasets` and the classes for data pre-processing is contained in `matsciml/preprocessing`
-
-
-The minimal energy path to testing and development would be to use the minimal devset. There is a convenient mechanism for getting the DGL version of the devset regardless
-of how you install the package:
+In the current release, we have implemented interfaces to a number of large scale materials science datasets. Under the hood, the data structures pulled from each dataset have been homogenized, and the only real interaction layer for users is through the `MatSciMLDataModule`, a subclass of `LightningDataModule`.
 
 ```python
-from matsciml.lightning.data_utils import DGLDataModule
+from matsciml.lightning.data_utils import MatSciMLDataModule
 
 # no configuration needed, although one can specify the batch size and number of workers
-devset_module = DGLDataModule.from_devset()
+devset_module = MatSciMLDataModule.from_devset(dataset="MaterialsProjectDataset")
+```
+
+This will let you springboard into development without needing to worry about _how_ to wrangle with the datasets; just grab a batch and go! With the exception of Open Catalyst, datasets will typically return point cloud representations; we provide a flexible transform interface to interconvert between representations and frameworks:
+
+<details>
+<summary>
+From point clouds to DGL graphs
+</summary>
+
+```python
+from matsciml.datasets.transforms import PointCloudToGraphTransform
+
+# make the materials project dataset emit DGL graphs, based on a atom-atom distance cutoff of 10
+devset = MatSciMLDataModule.from_devset(
+    dataset="MaterialsProjectDataset",
+    dset_kwargs={"transforms": [PointCloudToGraphTransform(backend="dgl", cutoff_dist=10.)]}
+)
+```
+</details>
+
+<details>
+<summary>
+But I want to use PyG?
+</summary>
+
+```python
+from matsciml.datasets.transforms import PointCloudToGraphTransform
+
+# change the backend argument to obtain PyG graphs
+devset = MatSciMLDataModule.from_devset(
+    dataset="MaterialsProjectDataset",
+    dset_kwargs={"transforms": [PointCloudToGraphTransform(backend="pyg", cutoff_dist=10.)]}
+)
 ```
 
 This will let you springboard into development without needing to worry about _how_ to wrangle with the datasets; just grab a batch and go! This
