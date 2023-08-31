@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from torch.nn import LazyBatchNorm1d, SiLU
+from torch.nn import LayerNorm, SiLU
 
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.datasets.transforms import PointCloudToGraphTransform
@@ -39,14 +39,20 @@ model_args = {
 model = PLEGNNBackbone(**model_args)
 task = ScalarRegressionTask(
     model,
-    output_kwargs={"norm": LazyBatchNorm1d, "hidden_dim": 256, "activation": SiLU},
+    output_kwargs={
+        "norm": LayerNorm(128),
+        "hidden_dim": 128,
+        "activation": SiLU,
+        "lazy": False,
+        "input_dim": 128,
+    },
     lr=1e-3,
-    task_keys=["efermi"],
+    task_keys=["band_gap"],
 )
 
 dm = MatSciMLDataModule(
     dataset="MaterialsProjectDataset",
-    train_path="mp_data/base",
+    train_path="./matsciml/datasets/materials_project/devset",
     dset_kwargs={
         "transforms": [
             PointCloudToGraphTransform(
@@ -56,7 +62,7 @@ dm = MatSciMLDataModule(
     },
     val_split=0.2,
     batch_size=16,
-    num_workers=2,
+    num_workers=0,
 )
 
 trainer = pl.Trainer(
