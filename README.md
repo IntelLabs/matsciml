@@ -48,14 +48,58 @@ Additionally, for a development install, one can specify the extra packages like
 
 The `examples` folder contains simple, unit scripts that demonstrate how to use the pipeline in specific ways:
 
-- [Basic script for task training with PyTorch Lightning abstractions](examples/simple_example_pt_lightning.py)
-- [Manual training; the traditional way](examples/simple_example_torch.py)
-- [Distributed data parallelism with CPUs on a SLURM managed cluster](examples/simple_example_slurm.py)
-- [Using the Lightning CLI with YAML configuration files](examples/simple_cli_example.sh)
-- [Model development and testing in a Jupyter notebook](examples/devel-example.ipynb)
-- [Multi-GPU training script](examples/simple_example_multi_node.py)
-- [Modifying the pipeline with `Callbacks`](examples/train_with_callbacks_example.py)
+<details>
+<summary>
+Get started with different datasets with "devsets"
+</summary>
 
+```bash
+# Materials project
+python examples/datasets/materials_project/single_task_devset.py
+
+# Carolina materials database
+python examples/datasets/carolina_db/single_task_devset.py
+
+# NOMAD
+python examples/datasets/nomad/single_task_devset.py
+
+# OQMD
+python examples/datasets/oqmd/single_task_devset.py
+```
+</details>
+
+<details>
+<summary>
+Checkout materials generation with CDVAE
+</summary>
+
+```bash
+# training
+python examples/model_demos/cdvae/cdvae.py
+
+# inference
+python examples/model_demos/cdvae/cdvae_inference.py
+```
+</details>
+
+<details>
+<summary>
+Representation learning with symmetry pretraining
+</summary>
+```bash
+# uses the devset for synthetic point group point clouds
+python examples/tasks/symmetry/single_symmetry_example.py
+```
+</details>
+
+<details>
+<summary>
+Example notebook-based development and testing
+</summary>
+```bash
+jupyter notebook examples/devel-example.ipynb
+```
+</details>
 
 
 ### Data Pipeline
