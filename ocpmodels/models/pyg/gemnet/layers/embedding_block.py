@@ -9,7 +9,7 @@ import numpy as np
 import torch
 
 from .base_layers import Dense
-
+from ocpmodels.models.diffusion_utils import MAX_ATOMIC_NUM
 
 class AtomEmbedding(torch.nn.Module):
     """
@@ -26,7 +26,7 @@ class AtomEmbedding(torch.nn.Module):
         self.emb_size = emb_size
 
         # Atom embeddings: We go up to Bi (83).
-        self.embeddings = torch.nn.Embedding(83, emb_size)
+        self.embeddings = torch.nn.Embedding(MAX_ATOMIC_NUM, emb_size)
         # init by uniform distribution
         torch.nn.init.uniform_(
             self.embeddings.weight, a=-np.sqrt(3), b=np.sqrt(3)

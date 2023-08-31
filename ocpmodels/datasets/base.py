@@ -142,7 +142,7 @@ class BaseLMDBDataset(Dataset):
         return data
 
     @property
-    @cache
+    #@cache
     def keys(self) -> List[Tuple[int, int]]:
         return self._load_keys()
 

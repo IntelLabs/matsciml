@@ -48,17 +48,93 @@ Additionally, for a development install, one can specify the extra packages like
 
 The `examples` folder contains simple, unit scripts that demonstrate how to use the pipeline in specific ways:
 
-- [Basic script for task training with PyTorch Lightning abstractions](examples/simple_example_pt_lightning.py)
-- [Manual training; the traditional way](examples/simple_example_torch.py)
-- [Distributed data parallelism with CPUs on a SLURM managed cluster](examples/simple_example_slurm.py)
-- [Using the Lightning CLI with YAML configuration files](examples/simple_cli_example.sh)
-- [Model development and testing in a Jupyter notebook](examples/devel-example.ipynb)
-- [Multi-GPU training script](examples/simple_example_multi_node.py)
-- [Modifying the pipeline with `Callbacks`](examples/train_with_callbacks_example.py)
+<details>
+<summary>
+Get started with different datasets with "devsets"
+</summary>
 
+```bash
+# Materials project
+python examples/datasets/materials_project/single_task_devset.py
+
+# Carolina materials database
+python examples/datasets/carolina_db/single_task_devset.py
+
+# NOMAD
+python examples/datasets/nomad/single_task_devset.py
+
+# OQMD
+python examples/datasets/oqmd/single_task_devset.py
+```
+</details>
+
+<details>
+<summary>
+Representation learning with symmetry pretraining
+</summary>
+
+```bash
+# uses the devset for synthetic point group point clouds
+python examples/tasks/symmetry/single_symmetry_example.py
+```
+</details>
+
+<details>
+<summary>
+Example notebook-based development and testing
+</summary>
+
+```bash
+jupyter notebook examples/devel-example.ipynb
+```
+</details>
+
+For more advanced use cases:
+
+<details>
+<summary>
+Checkout materials generation with CDVAE
+</summary>
+
+```bash
+# training
+python examples/model_demos/cdvae/cdvae.py
+
+# inference
+python examples/model_demos/cdvae/cdvae_inference.py
+```
+</details>
+
+<details>
+<summary>
+Multiple tasks trained using the same dataset
+</summary>
+
+```bash
+# this script requires modification as you'll need to download the materials
+# project dataset, and point L24 to the folder where it was saved
+python examples/tasks/multitask/single_data_multitask_example.py
+```
+
+Utilizes Materials Project data to train property regression and material classification jointly 
+</details>
+
+<details>
+<summary>
+Multiple tasks trained using multiple datasets
+</summary>
+
+```bash
+python examples/tasks/multitask/three_datasets.py
+```
+
+Train regression tasks against IS2RE, S2EF, and LiPS datasets jointly
+</details>
 
 
 ### Data Pipeline
+
+In the `scripts` folder you will find two scripts needed to download and preprocess datasets: the `download_datasets.py` can be used to obtain Carolina DB, Materials Project, NOMAD, and OQMD datasets, while the `download_ocp_data.py` preserves the original Open Catalyst script.
 
 In the current release, we have implemented interfaces to a number of large scale materials science datasets. Under the hood, the data structures pulled from each dataset have been homogenized, and the only real interaction layer for users is through the `MatSciMLDataModule`, a subclass of `LightningDataModule`.
 
@@ -159,9 +235,7 @@ While it does require a bit of extra work, this was to ensure flexibility in how
 
 ### Task abstraction
 
-- Abstract original model training tasks as `pl.LightningModule`s: base class manages the model abstraction, and children (e.g. `S2EFLightningModule`) takes care of training/validation loop
-  - This pattern ensures extendibility: task and data flexibility for future tasks, or different model architectures (e.g. those that do not use graphs representations)
-
+In Open MatSci ML Toolkit, tasks effective form learning objectives: at a high level, a task takes an encoding model/backbone that ingests a structure to predict one or several properties, or classify a material. In the single task case, there may be multiple _targets_ and the neural network architecture may be fluid, but there is only _one_ optimizer. Under this definition, multi-task learning comprises multiple tasks and optimizers operating jointly through _a single embedding_.
 
 
 ## References
@@ -174,7 +248,7 @@ While it does require a bit of extra work, this was to ensure flexibility in how
 - [7] Xie, T., Fu, X., Ganea, O.E., Barzilay, R. and Jaakkola, T.S., 2021, October. Crystal Diffusion Variational Autoencoder for Periodic Material Generation. In International Conference on Learning Representations.
 
 
-## Cite
+## Citations
 
 If you use Open MatSci ML Toolkit in your technical work or publication, we would appreciate it if you cite the Open MatSci ML Toolkit paper in TMLR:
 
@@ -195,3 +269,5 @@ Miret, S.; Lee, K. L. K.; Gonzales, C.; Nassar, M.; Spellings, M. The Open MatSc
 ```
 
 </details>
+
+Please cite datasets used in your work as well. You can find additional descriptions and details regarding each dataset [here](ocpmodels/datasets/DATASETS.md).

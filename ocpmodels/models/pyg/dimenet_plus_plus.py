@@ -35,7 +35,7 @@ THE SOFTWARE.
 import torch
 from torch import nn
 from torch_geometric.nn import radius_graph
-from torch_geometric.nn.acts import swish
+from torch_geometric.nn.resolver import swish
 from torch_geometric.nn.inits import glorot_orthogonal
 from torch_geometric.nn.models.dimenet import (
     BesselBasisLayer,
@@ -300,7 +300,7 @@ class DimeNetPlusPlus(torch.nn.Module):
         for interaction in self.interaction_blocks:
             interaction.reset_parameters()
 
-    def triplets(self, edge_index, cell_offsets, num_nodes):
+    def triplets(self, edge_index, num_nodes, cell_offsets=None):
         row, col = edge_index  # j->i
 
         value = torch.arange(row.size(0), device=row.device)
@@ -321,8 +321,9 @@ class DimeNetPlusPlus(torch.nn.Module):
 
         # Remove self-loop triplets d->b->d
         # Check atom as well as cell offset
-        cell_offset_kji = cell_offsets[idx_kj] + cell_offsets[idx_ji]
-        mask = (idx_i != idx_k) | torch.any(cell_offset_kji != 0, dim=-1)
+        # TODO CDVAE fix
+        #cell_offset_kji = cell_offsets[idx_kj] + cell_offsets[idx_ji]
+        mask = (idx_i != idx_k) #| torch.any(cell_offset_kji != 0, dim=-1)
 
         idx_i, idx_j, idx_k = idx_i[mask], idx_j[mask], idx_k[mask]
         idx_kj, idx_ji = idx_kj[mask], idx_ji[mask]
@@ -355,12 +356,16 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
         num_before_skip=1,
         num_after_skip=2,
         num_output_layers=3,
+        # max_num_neighbors=50,
+        # readout = "mean"
     ):
         self.num_targets = num_targets
         self.regress_forces = regress_forces
         self.use_pbc = use_pbc
         self.cutoff = cutoff
         self.otf_graph = otf_graph
+        # self.max_num_neighbors = max_num_neighbors
+        # self.readout = readout
 
         super(DimeNetPlusPlusWrap, self).__init__(
             hidden_channels=hidden_channels,
@@ -385,7 +390,7 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
 
         if self.otf_graph:
             edge_index, cell_offsets, neighbors = radius_graph_pbc(
-                data, self.cutoff, 50
+                data, self.cutoff, 50  # self.max_num_neighbors
             )
             data.edge_index = edge_index
             data.cell_offsets = cell_offsets
@@ -449,7 +454,7 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
             x = interaction_block(x, rbf, sbf, idx_kj, idx_ji)
             P += output_block(x, rbf, i, num_nodes=pos.size(0))
 
-        energy = P.sum(dim=0) if batch is None else scatter(P, batch, dim=0)
+        energy = P.sum(dim=0) if batch is None else scatter(P, batch, dim=0)  # reduce
 
         return energy
 

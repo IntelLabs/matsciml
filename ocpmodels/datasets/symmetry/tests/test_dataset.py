@@ -1,4 +1,3 @@
-
 from ocpmodels.datasets.symmetry import symmetry_devset
 from ocpmodels.datasets.symmetry.dataset import SyntheticPointGroupDataset
 from ocpmodels.datasets.transforms import PointCloudToGraphTransform
