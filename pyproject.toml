@@ -49,6 +49,7 @@ dev = [
   "flake8-bandit",
   "pre-commit",
   "bandit",
+  "pytest"
 ]
 pyg = [
   "torch_geometric==2.3.1",
