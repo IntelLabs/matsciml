@@ -246,7 +246,7 @@ In Open MatSci ML Toolkit, tasks effective form learning objectives: at a high l
 - [7] Xie, T., Fu, X., Ganea, O.E., Barzilay, R. and Jaakkola, T.S., 2021, October. Crystal Diffusion Variational Autoencoder for Periodic Material Generation. In International Conference on Learning Representations.
 
 
-## Cite
+## Citations
 
 If you use Open MatSci ML Toolkit in your technical work or publication, we would appreciate it if you cite the Open MatSci ML Toolkit paper in TMLR:
 
@@ -267,3 +267,5 @@ Miret, S.; Lee, K. L. K.; Gonzales, C.; Nassar, M.; Spellings, M. The Open MatSc
 ```
 
 </details>
+
+Please cite datasets used in your work as well. You can find additional descriptions and details regarding each dataset [here](ocpmodels/datasets/DATASETS.md).
