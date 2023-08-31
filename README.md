@@ -134,6 +134,8 @@ Train regression tasks against IS2RE, S2EF, and LiPS datasets jointly
 
 ### Data Pipeline
 
+In the `scripts` folder you will find two scripts needed to download and preprocess datasets: the `download_datasets.py` can be used to obtain Carolina DB, Materials Project, NOMAD, and OQMD datasets, while the `download_ocp_data.py` preserves the original Open Catalyst script.
+
 In the current release, we have implemented interfaces to a number of large scale materials science datasets. Under the hood, the data structures pulled from each dataset have been homogenized, and the only real interaction layer for users is through the `MatSciMLDataModule`, a subclass of `LightningDataModule`.
 
 ```python
