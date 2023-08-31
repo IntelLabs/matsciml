@@ -1,10 +1,10 @@
 import pytorch_lightning as pl
 from torch.nn import LazyBatchNorm1d, SiLU
 
-from ocpmodels.datasets.materials_project import MaterialsProjectDataset
-from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-from ocpmodels.models import GalaPotential
-from ocpmodels.models.base import ScalarRegressionTask
+from matsciml.datasets.materials_project import MaterialsProjectDataset
+from matsciml.lightning.data_utils import MaterialsProjectDataModule
+from matsciml.models import GalaPotential
+from matsciml.models.base import ScalarRegressionTask
 
 
 model_args = {

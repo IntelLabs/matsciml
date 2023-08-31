@@ -3,10 +3,10 @@ from pathlib import Path
 
 import yaml
 
-from ocpmodels.datasets.carolina_db import CMDRequest
-from ocpmodels.datasets.materials_project import MaterialsProjectRequest
-from ocpmodels.datasets.nomad import NomadRequest
-from ocpmodels.datasets.oqmd import OQMDRequest
+from matsciml.datasets.carolina_db import CMDRequest
+from matsciml.datasets.materials_project import MaterialsProjectRequest
+from matsciml.datasets.nomad import NomadRequest
+from matsciml.datasets.oqmd import OQMDRequest
 
 
 def main(args):
@@ -51,9 +51,9 @@ def main(args):
                 "chunk_size": 1000,
             }
             split_files = [
-                "../ocpmodels/datasets/materials_project/train.yml",
-                "../ocpmodels/datasets/materials_project/test.yml",
-                "../ocpmodels/datasets/materials_project/val.yml",
+                "../matsciml/datasets/materials_project/train.yml",
+                "../matsciml/datasets/materials_project/test.yml",
+                "../matsciml/datasets/materials_project/val.yml",
             ]
             for file in split_files:
                 with open(file, "r") as f:
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--base_dataset_dir",
         type=Path,
-        help="Root directory that holds Open MatSciML Toolkit data; typically same as OCP. (ocpmodels/datasets)",
+        help="Root directory that holds Open MatSciML Toolkit data; typically same as OCP. (matsciml/datasets)",
         required=True,
     )
     args = parser.parse_args()

@@ -1,9 +1,9 @@
 from typing import List
 from abc import abstractmethod
-from ocpmodels.common import DataDict
+from matsciml.common import DataDict
 
-from ocpmodels.datasets.transforms.base import AbstractDataTransform
-from ocpmodels.common.types import DataDict
+from matsciml.datasets.transforms.base import AbstractDataTransform
+from matsciml.common.types import DataDict
 
 
 class RepresentationTransform(AbstractDataTransform):

@@ -1,2 +1,2 @@
-from ocpmodels.datasets.nomad.dataset import NomadDataset
-from ocpmodels.datasets.nomad.nomad_api import NomadRequest
+from matsciml.datasets.nomad.dataset import NomadDataset
+from matsciml.datasets.nomad.nomad_api import NomadRequest

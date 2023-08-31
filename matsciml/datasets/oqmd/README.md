@@ -33,11 +33,11 @@ and their descriptions may be found [here](https://static.oqmd.org/static/docs/r
 A simple python script may be used to query, save and process the data into an lmdb file: 
 
 ```python
-from ocpmodels.datasets.oqmd import OQMDRequest
+from matsciml.datasets.oqmd import OQMDRequest
 
 OQMDRequest.make_devset()
 oqmd = OQMDRequest(
-    base_data_dir="./ocpmodels/datasets/oqmd"
+    base_data_dir="./matsciml/datasets/oqmd"
 )
 oqmd.download_data()
 oqmd.process_json()
@@ -48,7 +48,7 @@ The raw data takes a while to download, mainly limited by the OQMD API itself. O
 
 The ID's may the be used to query the data associated with each material:
 ```python
-from ocpmodels.datasets.oqmd import OQMDRequest
+from matsciml.datasets.oqmd import OQMDRequest
 
 oqmd = OQMDRequest(split_files=["./base/all.yml"])
 oqmd.download_data()
@@ -58,7 +58,7 @@ Finally, material ID's may be specified specifically along with a `split_dir` to
 
 ```python
 oqmd = OQMDRequest(
-    base_data_dir="./ocpmodels/datasets/oqmd",
+    base_data_dir="./matsciml/datasets/oqmd",
     limit=1,
     split_dir="mini_split",
     material_ids=[1, 2, 3, 4, 5],

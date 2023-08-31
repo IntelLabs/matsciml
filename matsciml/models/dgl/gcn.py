@@ -34,7 +34,7 @@ import dgl
 from dgl.nn import pytorch as dgl_nn
 from torch import nn
 
-from ocpmodels.models.base import AbstractDGLModel
+from matsciml.models.base import AbstractDGLModel
 
 
 class GraphConvBlock(nn.Module):

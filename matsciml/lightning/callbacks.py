@@ -16,7 +16,7 @@ from torch import distributed as dist
 from torch import nn
 from torch.optim import Optimizer
 
-from ocpmodels.datasets.utils import concatenate_keys
+from matsciml.datasets.utils import concatenate_keys
 
 
 class LeaderboardWriter(BasePredictionWriter):
@@ -107,9 +107,7 @@ def deep_tensor_trawling(input_data: Tuple[Dict[str, Any]]):
     return results
 
 
-def forward_nan_hook(
-        module: nn.Module, inputs: Any, output: torch.Tensor
-) -> None:
+def forward_nan_hook(module: nn.Module, inputs: Any, output: torch.Tensor) -> None:
     """
     Create a hook that will save the input/output tensors to a module if there are NaNs
     detected in the output tensor.
@@ -129,7 +127,7 @@ def forward_nan_hook(
         setattr(
             module,
             "nan_detection",
-            {"input": deep_tensor_trawling(inputs), "output": output.detach()}
+            {"input": deep_tensor_trawling(inputs), "output": output.detach()},
         )
 
 
@@ -142,7 +140,9 @@ class GradientCheckCallback(Callback):
     gradient norm and ensure it's above a specified threshold.
     """
 
-    def __init__(self, thres: float = 1e-2, num_steps: int = -1, verbose: bool = False) -> None:
+    def __init__(
+        self, thres: float = 1e-2, num_steps: int = -1, verbose: bool = False
+    ) -> None:
         super().__init__()
         self.thres = thres
         self.logger = getLogger("pytorch_lightning")
@@ -161,7 +161,7 @@ class GradientCheckCallback(Callback):
         # this checks to make sure we're still running the nan check
         if self.num_steps <= step_number:
             gradients = []
-            for (name, param) in pl_module.named_parameters():
+            for name, param in pl_module.named_parameters():
                 if param.requires_grad and param.grad is not None:
                     # check if there are NaNs as well
                     if torch.any(torch.isnan(param.grad)):
@@ -313,7 +313,14 @@ class ForwardNaNDetection(Callback):
         for child in pl_module.children():
             child.register_forward_hook(forward_nan_hook)
 
-    def on_train_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", outputs, batch: Any, batch_idx: int) -> None:
+    def on_train_batch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        outputs,
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
         self.step_num = trainer.global_step
         all_data = []
         for name, child in pl_module.named_children():
@@ -376,7 +383,10 @@ class MonitorGradients(Callback):
     live, and perform an `allclose` on current and previous gradients to
     make sure each batch provides gradient signals that are not the same.
     """
-    def __init__(self, step_frequency: int, verbose: bool = False, eps: float = 1e-10) -> None:
+
+    def __init__(
+        self, step_frequency: int, verbose: bool = False, eps: float = 1e-10
+    ) -> None:
         super().__init__()
         self.step_frequency = step_frequency
         self.verbose = verbose
@@ -414,7 +424,7 @@ class MonitorGradients(Callback):
         for name, parameter in encoder.named_parameters():
             if parameter.grad is not None:
                 tensors.append(parameter.grad.flatten())
-            elif parameter.grad is None or parameter.grad.sum() == 0.:
+            elif parameter.grad is None or parameter.grad.sum() == 0.0:
                 no_grads.append(name)
         joint_state = torch.concat(tensors)
         if hasattr(self, "last_state"):
@@ -424,7 +434,7 @@ class MonitorGradients(Callback):
         self.last_state = joint_state
         if self.verbose:
             print(
-                    f"Step: {trainer.global_step} - Grads: {joint_state[:50]} - Equal? {is_close} - Zero grads: {no_grads}\n"
+                f"Step: {trainer.global_step} - Grads: {joint_state[:50]} - Equal? {is_close} - Zero grads: {no_grads}\n"
             )
 
 
@@ -433,7 +443,9 @@ class GarbageCallback(Callback):
         super().__init__()
         self.frequency = frequency
 
-    def on_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+    def on_batch_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
         """
         Run garbage collection at the end of a batch.
 
@@ -472,7 +484,7 @@ class InferenceWriter(BasePredictionWriter):
         Add the writer as a callback to ``Trainer``
 
         >>> import pytorch_lightning as pl
-        >>> from ocpmodels.lightning.callbacks import InferenceWriter
+        >>> from matsciml.lightning.callbacks import InferenceWriter
         >>> trainer = pl.Trainer(callbacks=[InferenceWriter("./predictions")])
         >>> trainer.predict(...)
         """

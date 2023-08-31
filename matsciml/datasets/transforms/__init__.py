@@ -1,7 +1,7 @@
-from ocpmodels.datasets.transforms.representations import (
+from matsciml.datasets.transforms.representations import (
     GraphToPointCloudTransform,
     PointCloudToGraphTransform,
     OCPGraphToPointCloudTransform,
 )
 
-from ocpmodels.datasets.transforms.props import *
+from matsciml.datasets.transforms.props import *

@@ -5,10 +5,10 @@ from warnings import warn
 import torch
 import numpy as np
 
-from ocpmodels.common import DataDict, package_registry
-from ocpmodels.common.types import DataDict, GraphTypes, AbstractGraph
-from ocpmodels.datasets.transforms.representations import RepresentationTransform
-from ocpmodels.datasets.utils import retrieve_pointcloud_node_types
+from matsciml.common import DataDict, package_registry
+from matsciml.common.types import DataDict, GraphTypes, AbstractGraph
+from matsciml.datasets.transforms.representations import RepresentationTransform
+from matsciml.datasets.utils import retrieve_pointcloud_node_types
 
 """
 Construct graphs from point clouds

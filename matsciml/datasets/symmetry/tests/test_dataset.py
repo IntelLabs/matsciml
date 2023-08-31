@@ -1,6 +1,6 @@
-from ocpmodels.datasets.symmetry import symmetry_devset
-from ocpmodels.datasets.symmetry.dataset import SyntheticPointGroupDataset
-from ocpmodels.datasets.transforms import PointCloudToGraphTransform
+from matsciml.datasets.symmetry import symmetry_devset
+from matsciml.datasets.symmetry.dataset import SyntheticPointGroupDataset
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 
 
 def test_devset_init():

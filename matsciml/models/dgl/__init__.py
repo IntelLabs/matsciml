@@ -10,10 +10,10 @@ except ImportError:
 
 
 if _has_dgl:
-    from ocpmodels.models.dgl.dpp import DimeNetPP
-    from ocpmodels.models.dgl.egnn import PLEGNNBackbone
-    from ocpmodels.models.dgl.gaanet import GalaPotential
-    from ocpmodels.models.dgl.gcn import GraphConvModel
-    from ocpmodels.models.dgl.megnet import MEGNet
-    from ocpmodels.models.dgl.schnet_dgl import SchNet
-    from ocpmodels.models.dgl.mpnn import MPNN
+    from matsciml.models.dgl.dpp import DimeNetPP
+    from matsciml.models.dgl.egnn import PLEGNNBackbone
+    from matsciml.models.dgl.gaanet import GalaPotential
+    from matsciml.models.dgl.gcn import GraphConvModel
+    from matsciml.models.dgl.megnet import MEGNet
+    from matsciml.models.dgl.schnet_dgl import SchNet
+    from matsciml.models.dgl.mpnn import MPNN

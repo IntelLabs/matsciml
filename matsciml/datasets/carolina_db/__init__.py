@@ -1,4 +1,4 @@
 from pathlib import Path
 
-from ocpmodels.datasets.carolina_db.carolina_api import CMDRequest
-from ocpmodels.datasets.carolina_db.dataset import CMDataset
+from matsciml.datasets.carolina_db.carolina_api import CMDRequest
+from matsciml.datasets.carolina_db.dataset import CMDataset

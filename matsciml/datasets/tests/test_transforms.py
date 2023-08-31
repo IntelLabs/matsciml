@@ -2,9 +2,9 @@ import pytest
 
 import torch
 
-from ocpmodels.lightning.data_utils import MatSciMLDataModule
-from ocpmodels.datasets import S2EFDataset, s2ef_devset
-from ocpmodels.datasets import transforms
+from matsciml.lightning.data_utils import MatSciMLDataModule
+from matsciml.datasets import S2EFDataset, s2ef_devset
+from matsciml.datasets import transforms
 
 
 @pytest.mark.dependency()
@@ -12,7 +12,7 @@ def test_distance_transform():
     trans = [
         transforms.DistancesTransform(),
     ]
-    dset = S2EFDataset(s2ef_devset, transforms = trans)
+    dset = S2EFDataset(s2ef_devset, transforms=trans)
     batch = dset.__getitem__(0)
     assert "r" in batch.get("graph").edata
 

@@ -10,8 +10,8 @@ import torch
 from torch.utils.data import DataLoader, Dataset as TorchDataset
 from torch.utils.data import random_split
 
-from ocpmodels.common.registry import registry
-from ocpmodels.datasets import MultiDataset
+from matsciml.common.registry import registry
+from matsciml.datasets import MultiDataset
 
 
 @registry.register_datamodule("MatSciMLDataModule")
@@ -56,7 +56,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
     1. Passing a string name or dataset type into the ``dataset`` argument:
 
     >>> datamodule = MatSciMLDataModule(dataset="MaterialsProjectDataset", train_path="/path/to/data/)
-    >>> datamodule = MatSciMLDataModule(dataset=ocpmodels.datasets.MaterialsProjectDataset, ...)
+    >>> datamodule = MatSciMLDataModule(dataset=matsciml.datasets.MaterialsProjectDataset, ...)
 
     2. Using the ``from_devset`` class method:
 

@@ -1,9 +1,9 @@
 import pytest
 import torch
 
-from ocpmodels.datasets import transforms
-from ocpmodels.datasets.materials_project import MaterialsProjectDataset
-from ocpmodels.models import MPNN
+from matsciml.datasets import transforms
+from matsciml.datasets.materials_project import MaterialsProjectDataset
+from matsciml.models import MPNN
 
 import dgl
 

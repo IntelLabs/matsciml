@@ -3,7 +3,7 @@ import functools
 
 import numpy as np
 
-from ocpmodels.datasets.symmetry.point_groups import filter_discrete, PointGroup
+from matsciml.datasets.symmetry.point_groups import filter_discrete, PointGroup
 
 """
 Original implementation by Matthew Spellings (Vector Institute) 5/25/2023

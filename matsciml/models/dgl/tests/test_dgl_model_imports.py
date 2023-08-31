@@ -13,19 +13,19 @@ import pytest
 
 @pytest.mark.skipif(not _has_dgl, reason="DGL not installed; skipping DGL model tests.")
 def test_dgl_dpp():
-    from ocpmodels.models.dgl import DimeNetPP
+    from matsciml.models.dgl import DimeNetPP
 
 
 @pytest.mark.skipif(not _has_dgl, reason="DGL not installed; skipping DGL model tests.")
 def test_dgl_egnn():
-    from ocpmodels.models.dgl import PLEGNNBackbone
+    from matsciml.models.dgl import PLEGNNBackbone
 
 
 @pytest.mark.skipif(not _has_dgl, reason="DGL not installed; skipping DGL model tests.")
 def test_dgl_gcn():
-    from ocpmodels.models.dgl import GraphConvModel
+    from matsciml.models.dgl import GraphConvModel
 
 
 @pytest.mark.skipif(not _has_dgl, reason="DGL not installed; skipping DGL model tests.")
 def test_dgl_gaanet():
-    from ocpmodels.models.dgl import GalaPotential
+    from matsciml.models.dgl import GalaPotential

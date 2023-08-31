@@ -4,8 +4,8 @@ import torch
 import dgl
 from torch.utils.data import ConcatDataset
 
-from ocpmodels.datasets.base import BaseLMDBDataset
-from ocpmodels.common.registry import registry
+from matsciml.datasets.base import BaseLMDBDataset
+from matsciml.common.registry import registry
 
 # quasi-registry of functions for collating based on dataset class name
 collate_registry = {

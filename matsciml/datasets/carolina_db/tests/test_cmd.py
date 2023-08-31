@@ -2,8 +2,8 @@ import shutil
 
 import pytest
 
-from ocpmodels.datasets.carolina_db import CMDRequest
-from ocpmodels.datasets.carolina_db.dataset import CMDataset
+from matsciml.datasets.carolina_db import CMDRequest
+from matsciml.datasets.carolina_db.dataset import CMDataset
 
 TEST_IDS = [0, 1, 2]
 

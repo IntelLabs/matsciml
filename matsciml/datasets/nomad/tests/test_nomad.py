@@ -2,8 +2,8 @@ import shutil
 
 import pytest
 
-from ocpmodels.datasets.nomad import NomadRequest
-from ocpmodels.datasets.nomad.dataset import NomadDataset
+from matsciml.datasets.nomad import NomadRequest
+from matsciml.datasets.nomad.dataset import NomadDataset
 
 TEST_IDS = {
     0: "GjAKByPxraKfkFCdFrwp0omDVQZ7",

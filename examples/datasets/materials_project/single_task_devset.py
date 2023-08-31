@@ -1,9 +1,9 @@
 import pytorch_lightning as pl
 
-from ocpmodels.lightning.data_utils import MatSciMLDataModule
-from ocpmodels.models import GraphConvModel
-from ocpmodels.models.base import ScalarRegressionTask
-from ocpmodels.datasets.transforms import PointCloudToGraphTransform
+from matsciml.lightning.data_utils import MatSciMLDataModule
+from matsciml.models import GraphConvModel
+from matsciml.models.base import ScalarRegressionTask
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 
 
 # configure a simple model for testing

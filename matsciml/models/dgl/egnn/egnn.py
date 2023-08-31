@@ -7,10 +7,10 @@ import dgl
 import torch
 import torch.nn as nn
 from dgl.nn.pytorch.glob import AvgPooling, MaxPooling, SumPooling, WeightAndSum
-from ocpmodels.common.types import BatchDict, DataDict
+from matsciml.common.types import BatchDict, DataDict
 
-from ocpmodels.models.base import AbstractDGLModel
-from ocpmodels.models.dgl.egnn.egnn_model import EGNN, MLP
+from matsciml.models.base import AbstractDGLModel
+from matsciml.models.dgl.egnn.egnn_model import EGNN, MLP
 
 
 class PLEGNNBackbone(AbstractDGLModel):

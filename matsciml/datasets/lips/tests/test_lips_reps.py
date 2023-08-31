@@ -1,8 +1,8 @@
 import pytest
 from itertools import product
 
-from ocpmodels.datasets.lips import LiPSDataset, lips_devset
-from ocpmodels.datasets.transforms import PointCloudToGraphTransform
+from matsciml.datasets.lips import LiPSDataset, lips_devset
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 
 
 def test_pairwise_pointcloud():

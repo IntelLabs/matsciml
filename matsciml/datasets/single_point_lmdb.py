@@ -18,8 +18,8 @@ sys.path.append("{}/../../".format(dir_path))
 import lmdb
 from torch.utils.data import Dataset
 
-from ocpmodels.common.registry import registry
-from ocpmodels.common.utils import pyg2_data_transform
+from matsciml.common.registry import registry
+from matsciml.common.utils import pyg2_data_transform
 
 
 @registry.register_dataset("single_point_lmdb")
@@ -48,9 +48,7 @@ class SinglePointLmdbDataset(Dataset):
 
         self.env = self.connect_db(self.db_path)
 
-        self._keys = [
-            f"{j}".encode("ascii") for j in range(self.env.stat()["entries"])
-        ]
+        self._keys = [f"{j}".encode("ascii") for j in range(self.env.stat()["entries"])]
         self.transform = transform
 
     def __len__(self):
@@ -61,9 +59,7 @@ class SinglePointLmdbDataset(Dataset):
         datapoint_pickled = self.env.begin().get(self._keys[idx])
         data_object = pyg2_data_transform(pickle.loads(datapoint_pickled))
         data_object = (
-            data_object
-            if self.transform is None
-            else self.transform(data_object)
+            data_object if self.transform is None else self.transform(data_object)
         )
 
         return data_object

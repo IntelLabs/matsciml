@@ -1,9 +1,9 @@
 import pytorch_lightning as pl
 
-from ocpmodels.models.base import ForceRegressionTask
-from ocpmodels.models import PLEGNNBackbone
-from ocpmodels.datasets.materials_project import MaterialsProjectDataset
-from ocpmodels.lightning.data_utils import MatSciMLDataModule
+from matsciml.models.base import ForceRegressionTask
+from matsciml.models import PLEGNNBackbone
+from matsciml.datasets.materials_project import MaterialsProjectDataset
+from matsciml.lightning.data_utils import MatSciMLDataModule
 
 pl.seed_everything(2156161)
 

@@ -1,8 +1,8 @@
 import pytest
-from ocpmodels.datasets import lips
+from matsciml.datasets import lips
 
-from ocpmodels.datasets.lips import LiPSDataset, lips_devset
-from ocpmodels.datasets import transforms
+from matsciml.datasets.lips import LiPSDataset, lips_devset
+from matsciml.datasets import transforms
 
 
 @pytest.mark.dependency()

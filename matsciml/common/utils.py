@@ -96,6 +96,7 @@ def print_cuda_usage():
 
 def conditional_grad(dec):
     "Decorator to enable/disable grad depending on whether force/energy predictions are being made"
+
     # Adapted from https://stackoverflow.com/questions/60907323/accessing-class-property-as-decorator-argument
     def decorator(func):
         def cls_method(self, *args, **kwargs):
@@ -204,7 +205,7 @@ def add_edge_distance_to_graph(
 
 # Copied from https://github.com/facebookresearch/mmf/blob/master/mmf/utils/env.py#L89.
 def setup_imports():
-    from ocpmodels.common.registry import registry
+    from matsciml.common.registry import registry
 
     # First, check if imports are already setup
     has_already_setup = registry.get("imports_setup", no_warning=True)
@@ -212,7 +213,7 @@ def setup_imports():
         return
     # Automatically load all of the modules, so that
     # they register with registry
-    root_folder = registry.get("ocpmodels_root", no_warning=True)
+    root_folder = registry.get("matsciml_root", no_warning=True)
 
     if root_folder is None:
         root_folder = os.path.dirname(os.path.abspath(__file__))
@@ -227,7 +228,7 @@ def setup_imports():
     task_folder = os.path.join(root_folder, "tasks")
     task_pattern = os.path.join(task_folder, "*.py")
 
-    importlib.import_module("ocpmodels.common.logger")
+    importlib.import_module("matsciml.common.logger")
 
     files = (
         glob.glob(datasets_pattern, recursive=True)
@@ -242,7 +243,7 @@ def setup_imports():
                 splits = f.split(os.sep)
                 file_name = splits[-1]
                 module_name = file_name[: file_name.find(".py")]
-                importlib.import_module("ocpmodels.%s.%s" % (key[1:], module_name))
+                importlib.import_module("matsciml.%s.%s" % (key[1:], module_name))
 
     experimental_folder = os.path.join(root_folder, "../experimental/")
     if os.path.exists(experimental_folder):

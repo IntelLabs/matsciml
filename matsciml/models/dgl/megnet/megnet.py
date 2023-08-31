@@ -14,10 +14,10 @@ import torch
 from torch import nn
 from dgl.nn import Set2Set
 from torch.nn import Dropout, Identity, Module, ModuleList, Softplus
-from ocpmodels.common.types import BatchDict, DataDict
+from matsciml.common.types import BatchDict, DataDict
 
-from ocpmodels.models.dgl.megnet import MLP, MEGNetBlock, EdgeSet2Set
-from ocpmodels.models.base import AbstractDGLModel
+from matsciml.models.dgl.megnet import MLP, MEGNetBlock, EdgeSet2Set
+from matsciml.models.base import AbstractDGLModel
 
 
 class MEGNet(AbstractDGLModel):

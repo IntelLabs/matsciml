@@ -3,11 +3,11 @@ from functools import partial
 
 import torch
 
-from ocpmodels.common import DataDict, package_registry
-from ocpmodels.common.types import DataDict, GraphTypes, AbstractGraph
-from ocpmodels.datasets.base import BaseLMDBDataset
-from ocpmodels.datasets.transforms.representations import RepresentationTransform
-from ocpmodels.datasets import utils
+from matsciml.common import DataDict, package_registry
+from matsciml.common.types import DataDict, GraphTypes, AbstractGraph
+from matsciml.datasets.base import BaseLMDBDataset
+from matsciml.datasets.transforms.representations import RepresentationTransform
+from matsciml.datasets import utils
 
 """
 Transforms that create point cloud representations from graphs.

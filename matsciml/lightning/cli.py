@@ -8,8 +8,8 @@ from pytorch_lightning.utilities.cli import (
     LightningCLI,
 )
 
-from ocpmodels import models
-from ocpmodels.lightning import data_utils
+from matsciml import models
+from matsciml.lightning import data_utils
 
 """
 This module interfaces with the PyTorch Lightning CLI, and when called, allows
@@ -27,7 +27,7 @@ module, and print `MODEL_REGISTRY` and/or `DATAMODULE_REGISTRY`: if your model w
 included in the namespace correctly, it should appear there.
 
 To use the CLI, all one needs to do is write a YAML configuration file, and then
-run `python -m ocpmodels.lightning.cli fit --config <CONFIG>.yml`, substituting
+run `python -m matsciml.lightning.cli fit --config <CONFIG>.yml`, substituting
 fit with any other appropriate task, and <CONFIG> with the name of your configuration
 file.
 """

@@ -33,7 +33,7 @@ The [Nomad Explore](https://nomad-lab.eu/prod/v1/gui/search/entries) page was us
 The material ID's may then be queried and saved with a simple script:
 
 ```python
-from ocpmodels.datasets.nomad import NomadRequest
+from matsciml.datasets.nomad import NomadRequest
 
 nomad = NomadRequest(base_data_dir="./base")
 nomad.fetch_ids()
@@ -43,7 +43,7 @@ The ID's will be saved to the `base_data_dir` in `.yml` format.
 
 The ID's may the be used to query the data associated with each material:
 ```python
-from ocpmodels.datasets.nomad import NomadRequest
+from matsciml.datasets.nomad import NomadRequest
 
 nomad = NomadRequest(split_files=["./base/all.yml"])
 nomad.download_data()
@@ -55,7 +55,7 @@ An LMDB file will be saved for each split file in a directory: `./base_dir/split
 Finally, material ID's may be specified specifically along with a `split_dir` to download to:
 
 ```python
-from ocpmodels.datasets.nomad import NomadRequest
+from matsciml.datasets.nomad import NomadRequest
 
 nomad = NomadRequest(
     base_data_dir="./base",

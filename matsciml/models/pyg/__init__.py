@@ -14,8 +14,8 @@ except ImportError:
 
 # load models if we have PyG installed
 if _has_pyg:
-    from ocpmodels.models.pyg.dimenet_plus_plus import DimeNetPlusPlusWrap
-    from ocpmodels.models.pyg.dimenet import DimeNetWrap
-    from ocpmodels.models.pyg.schnet import SchNetWrap
-    from ocpmodels.models.pyg.forcenet import ForceNet
-    from ocpmodels.models.pyg.cgcnn import CGCNN
+    from matsciml.models.pyg.dimenet_plus_plus import DimeNetPlusPlusWrap
+    from matsciml.models.pyg.dimenet import DimeNetWrap
+    from matsciml.models.pyg.schnet import SchNetWrap
+    from matsciml.models.pyg.forcenet import ForceNet
+    from matsciml.models.pyg.cgcnn import CGCNN

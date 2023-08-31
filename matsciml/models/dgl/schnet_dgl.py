@@ -10,8 +10,8 @@ import torch
 from torch import nn
 from dgl.nn.pytorch import glob
 
-from ocpmodels.models.base import AbstractDGLModel
-from ocpmodels.common.types import BatchDict, DataDict
+from matsciml.models.base import AbstractDGLModel
+from matsciml.common.types import BatchDict, DataDict
 
 
 class SchNet(AbstractDGLModel):

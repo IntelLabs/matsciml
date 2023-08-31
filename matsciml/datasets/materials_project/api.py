@@ -12,8 +12,8 @@ from mp_api.client import MPRester
 from tqdm import tqdm
 import lmdb
 
-from ocpmodels.datasets.utils import write_lmdb_data
-from ocpmodels.datasets.materials_project.utils import get_split_map
+from matsciml.datasets.utils import write_lmdb_data
+from matsciml.datasets.materials_project.utils import get_split_map
 
 
 class MaterialsProjectRequest:

@@ -8,8 +8,8 @@ import pytorch_lightning as pl
 import torch
 from torch import nn
 
-from ocpmodels.common.registry import registry
-from ocpmodels.common.types import BatchDict, DataDict
+from matsciml.common.registry import registry
+from matsciml.common.types import BatchDict, DataDict
 
 
 class BaseInferenceTask(ABC, pl.LightningModule):
@@ -45,7 +45,7 @@ class BaseInferenceTask(ABC, pl.LightningModule):
         Load in a checkpoint, and combine it with ``InferenceWriter`` to run
         distributed inference.
 
-        >>> from ocpmodels.lightning.callbacks import InferenceWriter
+        >>> from matsciml.lightning.callbacks import InferenceWriter
         >>> task = BaseInferenceTask.from_pretrained_checkpoint("epoch=0-step=100.ckpt")
         >>> trainer = pl.Trainer(callbacks=[InferenceWriter("./inference-results")], devices=2)
         >>> trainer.predict(task, datamodule=dm)
@@ -87,7 +87,7 @@ class EmbeddingInferenceTask(BaseInferenceTask):
         This task simply iterates over all of the data samples, and computes
         embeddings for them based on the pretrained encoder.
 
-        Combine this class with ``ocpmodels.lightning.callbacks.InferenceWriter``
+        Combine this class with ``matsciml.lightning.callbacks.InferenceWriter``
         to serialize distributed inference results.
         """
         super().__init__(pretrained_model, *args, **kwargs)

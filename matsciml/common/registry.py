@@ -17,7 +17,7 @@ different kind of classes.
 
 Import the global registry object using
 
-``from ocpmodels.common.registry import registry``
+``from matsciml.common.registry import registry``
 
 Various decorators for registry different kind of classes with unique keys
 

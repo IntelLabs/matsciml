@@ -9,7 +9,7 @@ import torch
 from torch_geometric.nn import SchNet
 from torch_scatter import scatter
 
-from ocpmodels.common.utils import (
+from matsciml.common.utils import (
     conditional_grad,
     get_pbc_distances,
     radius_graph_pbc,

@@ -3,9 +3,9 @@ from typing import Dict, List, Union, Optional, Any
 
 import torch
 
-from ocpmodels.common import DataDict, package_registry
-from ocpmodels.common.types import DataDict
-from ocpmodels.datasets.transforms.base import AbstractDataTransform
+from matsciml.common import DataDict, package_registry
+from matsciml.common.types import DataDict
+from matsciml.datasets.transforms.base import AbstractDataTransform
 
 if package_registry["dgl"]:
     import dgl

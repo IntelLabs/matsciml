@@ -5,8 +5,8 @@ import pytorch_lightning as pl
 from torch import nn
 from pytorch_lightning.utilities.cli import MODEL_REGISTRY, DATAMODULE_REGISTRY
 
-from ocpmodels import models
-from ocpmodels.lightning import data_utils
+from matsciml import models
+from matsciml.lightning import data_utils
 
 # add more models here; either export them into the `models` namespace,
 # or register specific modules (e.g. `models.schnet`). The registration

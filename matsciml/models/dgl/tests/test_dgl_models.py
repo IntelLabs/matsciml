@@ -1,12 +1,12 @@
 import pytest
 
-from ocpmodels.common import package_registry
+from matsciml.common import package_registry
 
 if package_registry["dgl"]:
     import dgl
     import torch
 
-    from ocpmodels.models.dgl import *
+    from matsciml.models.dgl import *
 
     dgl.seed(2151)
     torch.manual_seed(21610)

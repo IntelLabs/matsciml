@@ -6,7 +6,7 @@ from typing import Callable, List, Optional, Dict, Any, Union
 import torch, math
 import torch.nn as nn
 import numpy as np
-from ocpmodels.models.base import AbstractPointCloudModel
+from matsciml.models.base import AbstractPointCloudModel
 from dgl.nn.pytorch.factory import KNNGraph
 import dgl
 

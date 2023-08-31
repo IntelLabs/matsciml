@@ -1,10 +1,10 @@
 import pytorch_lightning as pl
 from torch.nn import LazyBatchNorm1d, SiLU
 
-from ocpmodels.lightning.data_utils import MatSciMLDataModule
-from ocpmodels.models import PLEGNNBackbone
-from ocpmodels.models.base import ScalarRegressionTask
-from ocpmodels.datasets.transforms import PointCloudToGraphTransform
+from matsciml.lightning.data_utils import MatSciMLDataModule
+from matsciml.models import PLEGNNBackbone
+from matsciml.models.base import ScalarRegressionTask
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 
 
 # configure a simple model for testing

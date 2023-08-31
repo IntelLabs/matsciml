@@ -1,11 +1,11 @@
 import pytest
 from itertools import product
 
-from ocpmodels.lightning.data_utils import MatSciMLDataModule
-from ocpmodels.common.registry import registry
-from ocpmodels.common import package_registry
-from ocpmodels.datasets import __all__
-from ocpmodels.datasets.transforms import (
+from matsciml.lightning.data_utils import MatSciMLDataModule
+from matsciml.common.registry import registry
+from matsciml.common import package_registry
+from matsciml.datasets import __all__
+from matsciml.datasets.transforms import (
     PointCloudToGraphTransform,
     GraphToPointCloudTransform,
 )

@@ -2,7 +2,7 @@ from typing import Dict, Union
 
 import torch
 
-from ocpmodels.common import package_registry
+from matsciml.common import package_registry
 
 
 # for point clouds

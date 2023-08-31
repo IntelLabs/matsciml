@@ -2,9 +2,9 @@ import pytorch_lightning as pl
 
 # import the callback responsible for aggregating and formatting
 # prediction results
-from ocpmodels.lightning.callbacks import LeaderboardWriter
-from ocpmodels.lightning.data_utils import IS2REDGLDataModule, is2re_devset
-from ocpmodels.models import GraphConvModel, IS2RELitModule
+from matsciml.lightning.callbacks import LeaderboardWriter
+from matsciml.lightning.data_utils import IS2REDGLDataModule, is2re_devset
+from matsciml.models import GraphConvModel, IS2RELitModule
 
 """
 This example walks through the bare minimum example to generate a leaderboard

@@ -1,8 +1,7 @@
-
 import pytest
 
-from ocpmodels.common.registry import registry
-from ocpmodels.datasets.transforms import DummyTransform
+from matsciml.common.registry import registry
+from matsciml.datasets.transforms import DummyTransform
 
 dsets = list(registry.__entries__["datasets"].values())
 
@@ -39,4 +38,3 @@ def test_dataset_cycle(dset, tmp_path):
         assert new_devset.is_preprocessed
         sample = new_devset.__getitem__(0)
         assert sample["touched"]
-        

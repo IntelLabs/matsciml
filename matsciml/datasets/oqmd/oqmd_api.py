@@ -12,7 +12,7 @@ import yaml
 from tqdm import tqdm
 from time import time, sleep
 
-from ocpmodels.datasets.utils import write_lmdb_data
+from matsciml.datasets.utils import write_lmdb_data
 
 
 class QueryIndex:
@@ -303,7 +303,6 @@ class OQMDRequest:
                             ) = self.parse_sites(data[n]["sites"])
                         except KeyError:
                             print(f"Key error in file {file}")
-                            
 
                     sample_keys = list(data[n].keys())
                     present = [key in sample_keys for key in required_keys]
@@ -315,7 +314,6 @@ class OQMDRequest:
 
         self.data = oqmd_data
         return
-
 
     def to_lmdb(self, lmdb_path: str) -> None:
         """
@@ -358,7 +356,7 @@ class OQMDRequest:
     def make_devset(cls):
         random.seed(6)
         kwargs = {
-            "base_data_dir": "./ocpmodels/datasets/oqmd/",
+            "base_data_dir": "./matsciml/datasets/oqmd/",
             "material_ids": list(random.sample(range(0, 1000000), 100)),
             "limit": 1,
         }
@@ -372,7 +370,7 @@ class OQMDRequest:
 if __name__ == "__main__":
     OQMDRequest.make_devset()
     # oqmd = OQMDRequest(
-    #     base_data_dir="./ocpmodels/datasets/oqmd", limit=100, num_workers=1
+    #     base_data_dir="./matsciml/datasets/oqmd", limit=100, num_workers=1
     # )
     # oqmd.download_data()
     # oqmd.base_data_dir = "./"

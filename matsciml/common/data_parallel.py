@@ -17,8 +17,8 @@ import numpy as np
 import torch
 from torch.utils.data import BatchSampler, DistributedSampler, Sampler
 
-from ocpmodels.common import distutils
-from ocpmodels.datasets import data_list_collater_dgl, data_list_collater_gaanet
+from matsciml.common import distutils
+from matsciml.datasets import data_list_collater_dgl, data_list_collater_gaanet
 
 
 class OCPDataParallel(torch.nn.DataParallel):
@@ -36,10 +36,7 @@ class OCPDataParallel(torch.nn.DataParallel):
         elif num_gpus == 1:
             device_ids = [self.src_device]
         else:
-            if (
-                self.src_device.type == "cuda"
-                and self.src_device.index >= num_gpus
-            ):
+            if self.src_device.type == "cuda" and self.src_device.index >= num_gpus:
                 raise ValueError("Main device must be less than # of GPUs")
             device_ids = list(range(num_gpus))
 
@@ -71,8 +68,7 @@ class OCPDataParallel(torch.nn.DataParallel):
                 )
 
         inputs = [
-            batch.to(f"cuda:{self.device_ids[i]}")
-            for i, batch in enumerate(batch_list)
+            batch.to(f"cuda:{self.device_ids[i]}") for i, batch in enumerate(batch_list)
         ]
         replicas = self.replicate(self.module, self.device_ids[: len(inputs)])
         outputs = self.parallel_apply(replicas, inputs, None)
@@ -95,9 +91,7 @@ class ParallelCollater:
             count = torch.tensor([data.num_nodes for data in data_list])
             cumsum = count.cumsum(0)
             cumsum = torch.cat([cumsum.new_zeros(1), cumsum], dim=0)
-            device_id = (
-                num_devices * cumsum.to(torch.float) / cumsum[-1].item()
-            )
+            device_id = num_devices * cumsum.to(torch.float) / cumsum[-1].item()
             device_id = (device_id[:-1] + device_id[1:]) / 2.0
             device_id = device_id.to(torch.long)
             split = device_id.bincount().cumsum(0)
@@ -128,9 +122,7 @@ class ParallelCollater_DGL:
             count = torch.tensor([data.num_nodes for data in data_list])
             cumsum = count.cumsum(0)
             cumsum = torch.cat([cumsum.new_zeros(1), cumsum], dim=0)
-            device_id = (
-                num_devices * cumsum.to(torch.float) / cumsum[-1].item()
-            )
+            device_id = num_devices * cumsum.to(torch.float) / cumsum[-1].item()
             device_id = (device_id[:-1] + device_id[1:]) / 2.0
             device_id = device_id.to(torch.long)
             split = device_id.bincount().cumsum(0)
@@ -150,7 +142,9 @@ class ParallelCollater_GAANet:
 
     def __call__(self, data_list):
         if self.num_gpus in [0, 1]:  # adds cpu-only case
-            node_feats, positions, true_forces, targets = data_list_collater_gaanet(data_list)
+            node_feats, positions, true_forces, targets = data_list_collater_gaanet(
+                data_list
+            )
 
             return [node_feats, positions, true_forces, targets]
         else:
@@ -159,7 +153,7 @@ class ParallelCollater_GAANet:
             count = torch.tensor([data.num_nodes for data in data_list])
             cumsum = count.cumsum(0)
             cumsum = torch.cat([cumsum.new_zeros(1), cumsum], dim=0)
-            device_id = (num_devices * cumsum.to(torch.float) / cumsum[-1].item())
+            device_id = num_devices * cumsum.to(torch.float) / cumsum[-1].item()
             device_id = (device_id[:-1] + device_id[1:]) / 2.0
             device_id = device_id.to(torch.long)
             split = device_id.bincount().cumsum(0)
@@ -167,9 +161,10 @@ class ParallelCollater_GAANet:
             split = torch.unique(split, sorted=True)
             split = split.tolist()
 
-
-            return [data_list_collater_gaanet(data_list[split[i]:split[i + 1]]) 
-                    for i in range(len(split) - 1)]
+            return [
+                data_list_collater_gaanet(data_list[split[i] : split[i + 1]])
+                for i in range(len(split) - 1)
+            ]
 
 
 @numba.njit
@@ -190,7 +185,6 @@ def balanced_partition(sizes, num_parts):
         heapq.heappush(heap, (new_size, new_idx))
     idx_balanced = [part[1] for part in heap]
     return idx_balanced
-
 
 
 class Simple_Distributed_Sampler(Sampler):
@@ -249,12 +243,14 @@ class BalancedBatchSampler(Sampler):
         self.num_replicas = num_replicas
         self.rank = rank
         self.device = device
-        self.mode = mode#.lower()
+        self.mode = mode  # .lower()
         self.shuffle = shuffle
         self.drop_last = drop_last
 
-        print('######################################################################################################')
-        print('Rank in B-Sampler: ', rank)
+        print(
+            "######################################################################################################"
+        )
+        print("Rank in B-Sampler: ", rank)
 
         self.balance_batches = self.num_replicas > 1
         if self.balance_batches:
@@ -290,7 +286,6 @@ class BalancedBatchSampler(Sampler):
         else:
             self.sizes = None
 
-
         self.single_sampler = DistributedSampler(
             dataset,
             num_replicas=num_replicas,
@@ -319,9 +314,7 @@ class BalancedBatchSampler(Sampler):
                     if self.mode == "atoms":
                         sizes = [data.num_nodes for data in data_list]
                     elif self.mode == "neighbors":
-                        sizes = [
-                            data.edge_index.shape[1] for data in data_list
-                        ]
+                        sizes = [data.edge_index.shape[1] for data in data_list]
                     else:
                         raise NotImplementedError(
                             f"Unknown load balancing mode: {self.mode}"
@@ -329,12 +322,8 @@ class BalancedBatchSampler(Sampler):
                 else:
                     sizes = [self.sizes[idx] for idx in batch_idx]
 
-                idx_sizes = torch.stack(
-                    [torch.tensor(batch_idx), torch.tensor(sizes)]
-                )
-                idx_sizes_all = distutils.all_gather(
-                    idx_sizes, device=self.device
-                )
+                idx_sizes = torch.stack([torch.tensor(batch_idx), torch.tensor(sizes)])
+                idx_sizes_all = distutils.all_gather(idx_sizes, device=self.device)
                 idx_sizes_all = torch.cat(idx_sizes_all, dim=-1).cpu()
                 idx_all = idx_sizes_all[0]
                 sizes_all = idx_sizes_all[1]

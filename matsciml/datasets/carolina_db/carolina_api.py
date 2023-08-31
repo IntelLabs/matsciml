@@ -14,7 +14,7 @@ import requests
 import yaml
 from tqdm import tqdm
 
-from ocpmodels.datasets.utils import write_lmdb_data
+from matsciml.datasets.utils import write_lmdb_data
 
 
 class CMDRequest:
@@ -289,7 +289,6 @@ class CMDRequest:
                     self.data[idx] = parsed_data
                 except Exception as e:
                     print(f"Error occurred: {e}")
-                    
 
         self.to_lmdb(os.path.dirname(self.data_dir))
         return self.data
@@ -334,7 +333,7 @@ class CMDRequest:
     @classmethod
     def make_devset(cls):
         kwargs = {
-            "base_data_dir": "./ocpmodels/datasets/carolina_db/",
+            "base_data_dir": "./matsciml/datasets/carolina_db/",
             "material_ids": list(range(0, 100)),
         }
         cmd = cls(**kwargs)

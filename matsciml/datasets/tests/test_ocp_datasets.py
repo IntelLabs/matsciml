@@ -3,8 +3,8 @@
 
 import dgl
 
-from ocpmodels.datasets import is2re_devset, s2ef_devset
-from ocpmodels.datasets.ocp_datasets import IS2REDataset, S2EFDataset
+from matsciml.datasets import is2re_devset, s2ef_devset
+from matsciml.datasets.ocp_datasets import IS2REDataset, S2EFDataset
 
 
 def test_base_s2ef_read():

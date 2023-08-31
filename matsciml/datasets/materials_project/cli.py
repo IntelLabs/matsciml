@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 import yaml
 
-from ocpmodels.datasets.materials_project import MaterialsProjectRequest
+from matsciml.datasets.materials_project import MaterialsProjectRequest
 
 """
 Functions as a simple CLI for querying and saving the Materials Project.
@@ -11,7 +11,7 @@ Functions as a simple CLI for querying and saving the Materials Project.
 The two forms of interaction with this CLI is either using a preset query,
 or by creating your own custom dataset. A minimal example of the former:
 
-> python -m ocpmodels.datasets.materials_project.cli -t devset
+> python -m matsciml.datasets.materials_project.cli -t devset
 
 ...retrieves a "dev" split, which is really just an extremely small query
 and used mainly for testing purposes. Specifying "base" will try to more
@@ -116,7 +116,9 @@ if __name__ == "__main__":
                 with open(file, "r") as f:
                     data = yaml.safe_load(f)
                     split, ids = next(iter(data.keys())), next(iter(data.values()))
-                client = MaterialsProjectRequest(material_ids=ids, **parameters, **api_kwargs)
+                client = MaterialsProjectRequest(
+                    material_ids=ids, **parameters, **api_kwargs
+                )
                 data = client.retrieve_data()
                 # if we have a predefined task the name is just the "split"
                 name = task

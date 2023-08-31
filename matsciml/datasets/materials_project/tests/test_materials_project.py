@@ -1,12 +1,12 @@
 import pytest
 import shutil
 
-from ocpmodels.datasets.materials_project import (
+from matsciml.datasets.materials_project import (
     MaterialsProjectRequest,
     MaterialsProjectDataset,
 )
 
-from ocpmodels.datasets import transforms
+from matsciml.datasets import transforms
 
 # TODO add marks to pyproject.toml
 

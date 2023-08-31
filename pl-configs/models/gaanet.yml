@@ -5,7 +5,7 @@ model:
   class_path: S2EFPointCloudModule
   init_args:
     gnn:
-      class_path: ocpmodels.models.GalaPotential
+      class_path: matsciml.models.GalaPotential
       init_args:
         # Node Embedding
         D_in: 1

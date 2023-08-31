@@ -30,8 +30,6 @@ except NameError:
     from tqdm import tqdm
 
 
-
-
 class AtomsToDGL:
     """A class to help convert periodic atomic structures to graphs.
 
@@ -147,8 +145,10 @@ class AtomsToDGL:
         # convert this to Munch Object for DGL Processing later
 
         data = munch.Munch()
-        data.cell = cell; data.pos = positions; data.atomic_numbers = atomic_numbers; data.natoms = natoms
-
+        data.cell = cell
+        data.pos = positions
+        data.atomic_numbers = atomic_numbers
+        data.natoms = natoms
 
         # optionally include other properties
         if self.r_edges:
@@ -232,9 +232,10 @@ class AtomsToDGL:
 
         return data_list
 
+
 try:
     from torch_geometric.data import Data
-    from ocpmodels.common.utils import collate
+    from matsciml.common.utils import collate
 
     class AtomsToGraphs:
 
@@ -440,9 +441,3 @@ try:
 
 except:
     pass
-
-
-
-
-
-

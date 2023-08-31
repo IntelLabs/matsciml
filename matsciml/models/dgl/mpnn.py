@@ -9,9 +9,9 @@ import dgl
 import torch
 from torch import nn
 from dgl.nn.pytorch import glob
-from ocpmodels.common.types import BatchDict, DataDict
+from matsciml.common.types import BatchDict, DataDict
 
-from ocpmodels.models.base import AbstractDGLModel
+from matsciml.models.base import AbstractDGLModel
 
 
 class MPNN(AbstractDGLModel):

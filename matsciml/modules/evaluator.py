@@ -14,7 +14,7 @@ An evaluation module for use with the OCP dataset and suite of tasks. It should
 be possible to import this independently of the rest of the codebase, e.g:
 
 ```
-from ocpmodels.modules import Evaluator
+from matsciml.modules import Evaluator
 
 evaluator = Evaluator(task="is2re")
 perf = evaluator.eval(prediction, target)
@@ -92,16 +92,12 @@ class Evaluator:
             # If dictionary, we expect it to have `metric`, `total`, `numel`.
             metrics[key]["total"] += stat["total"]
             metrics[key]["numel"] += stat["numel"]
-            metrics[key]["metric"] = (
-                metrics[key]["total"] / metrics[key]["numel"]
-            )
+            metrics[key]["metric"] = metrics[key]["total"] / metrics[key]["numel"]
         elif isinstance(stat, float) or isinstance(stat, int):
             # If float or int, just add to the total and increment numel by 1.
             metrics[key]["total"] += stat
             metrics[key]["numel"] += 1
-            metrics[key]["metric"] = (
-                metrics[key]["total"] / metrics[key]["numel"]
-            )
+            metrics[key]["metric"] = metrics[key]["total"] / metrics[key]["numel"]
         elif torch.is_tensor(stat):
             raise NotImplementedError
 
@@ -213,9 +209,7 @@ def energy_within_threshold(prediction, target):
 
 
 def average_distance_within_threshold(prediction, target):
-    pred_pos = torch.split(
-        prediction["positions"], prediction["natoms"].tolist()
-    )
+    pred_pos = torch.split(prediction["positions"], prediction["natoms"].tolist())
     target_pos = torch.split(target["positions"], target["natoms"].tolist())
 
     mean_distance = []

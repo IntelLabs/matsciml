@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import lmdb
 from tqdm import tqdm
-from ocpmodels.datasets import utils
+from matsciml.datasets import utils
 
 """
 Script for generating subsplits from the original OCP datasets.

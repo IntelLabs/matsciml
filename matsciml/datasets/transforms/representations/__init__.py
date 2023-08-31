@@ -1,4 +1,4 @@
-from ocpmodels.datasets.transforms.representations.base import RepresentationTransform
+from matsciml.datasets.transforms.representations.base import RepresentationTransform
 
-from ocpmodels.datasets.transforms.representations.graphs import *
-from ocpmodels.datasets.transforms.representations.pcs import *
+from matsciml.datasets.transforms.representations.graphs import *
+from matsciml.datasets.transforms.representations.pcs import *

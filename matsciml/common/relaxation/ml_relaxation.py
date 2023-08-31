@@ -9,7 +9,7 @@ from pathlib import Path
 
 import torch
 
-from ocpmodels.common.registry import registry
+from matsciml.common.registry import registry
 
 from .optimizers.lbfgs_torch import LBFGS, TorchCalc
 

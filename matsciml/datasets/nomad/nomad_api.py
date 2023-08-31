@@ -18,7 +18,7 @@ from requests.models import Response
 from tqdm import tqdm
 from yaml import CBaseLoader
 
-from ocpmodels.datasets.utils import write_lmdb_data
+from matsciml.datasets.utils import write_lmdb_data
 
 
 class NomadRequest:
@@ -361,7 +361,7 @@ class NomadRequest:
 
         np.random.seed(6)
         ids = yaml.load(
-            open("./ocpmodels/datasets/nomad/all.yml", "r"), Loader=CBaseLoader
+            open("./matsciml/datasets/nomad/all.yml", "r"), Loader=CBaseLoader
         )
         random_ids = np.random.randint(0, len(ids), 100)
         dset_ids = list(ids.keys())
@@ -370,7 +370,7 @@ class NomadRequest:
             dset[dset_ids[idx]] = ids[str(idx)]
 
         nomad = cls()
-        nomad.data_dir = "./ocpmodels/datasets/nomad/devset"
+        nomad.data_dir = "./matsciml/datasets/nomad/devset"
         # with open(os.path.join(nomad.base_data_dir, "devset_ids.yml"), "w") as f:
         #     yaml.safe_dump(dset, f)
 
@@ -380,7 +380,7 @@ class NomadRequest:
 
 if __name__ == "__main__":
     nomad = NomadRequest(base_data_dir="./base")
-    ids = yaml.load(open("./ocpmodels/datasets/nomad/all.yml", "r"), Loader=CBaseLoader)
-    nomad.data_dir = "./ocpmodels/datasets/nomad/base"
+    ids = yaml.load(open("./matsciml/datasets/nomad/all.yml", "r"), Loader=CBaseLoader)
+    nomad.data_dir = "./matsciml/datasets/nomad/base"
     nomad.material_ids = ids
     nomad.nomad_request()

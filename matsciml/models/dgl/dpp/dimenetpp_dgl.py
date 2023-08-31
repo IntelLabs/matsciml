@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 import dgl
 
-from ocpmodels.models.dgl.dpp import dimenet_utils as du
-from ocpmodels.models.base import AbstractDGLModel
+from matsciml.models.dgl.dpp import dimenet_utils as du
+from matsciml.models.base import AbstractDGLModel
 
 """
 Credit for original code: xnuohz; https://github.com/xnuohz/DimeNet-dgl

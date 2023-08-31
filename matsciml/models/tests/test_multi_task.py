@@ -2,16 +2,16 @@ import pytest
 
 import pytorch_lightning as pl
 
-from ocpmodels.datasets.multi_dataset import MultiDataset
-from ocpmodels.datasets import IS2REDataset, is2re_devset, S2EFDataset, s2ef_devset
-from ocpmodels.lightning.data_utils import MultiDataModule
+from matsciml.datasets.multi_dataset import MultiDataset
+from matsciml.datasets import IS2REDataset, is2re_devset, S2EFDataset, s2ef_devset
+from matsciml.lightning.data_utils import MultiDataModule
 
-from ocpmodels.models.base import (
+from matsciml.models.base import (
     MultiTaskLitModule,
     ForceRegressionTask,
     ScalarRegressionTask,
 )
-from ocpmodels.models import PLEGNNBackbone
+from matsciml.models import PLEGNNBackbone
 
 
 @pytest.fixture

@@ -3,11 +3,11 @@ from pathlib import Path
 
 import torch
 import numpy as np
-from ocpmodels.common.types import BatchDict, DataDict
+from matsciml.common.types import BatchDict, DataDict
 
-from ocpmodels.datasets.base import PointCloudDataset
-from ocpmodels.datasets.utils import concatenate_keys, point_cloud_featurization
-from ocpmodels.common.registry import registry
+from matsciml.datasets.base import PointCloudDataset
+from matsciml.datasets.utils import concatenate_keys, point_cloud_featurization
+from matsciml.common.registry import registry
 
 
 def item_from_structure(data: Any, *keys: str) -> Any:

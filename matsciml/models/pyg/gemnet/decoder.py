@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ocpmodels.models.diffusion_utils import MAX_ATOMIC_NUM
-from ocpmodels.models.pyg.gemnet.gemnet_cdvae import GemNetT
+from matsciml.models.diffusion_utils import MAX_ATOMIC_NUM
+from matsciml.models.pyg.gemnet.gemnet_cdvae import GemNetT
 
 
 def build_mlp(in_dim, hidden_dim, fc_num_layers, out_dim):
     mods = [nn.Linear(in_dim, hidden_dim), nn.ReLU()]
-    for i in range(fc_num_layers-1):
+    for i in range(fc_num_layers - 1):
         mods += [nn.Linear(hidden_dim, hidden_dim), nn.ReLU()]
     mods += [nn.Linear(hidden_dim, out_dim)]
     return nn.Sequential(*mods)
@@ -22,7 +22,7 @@ class GemNetTDecoder(nn.Module):
         hidden_dim=128,
         latent_dim=256,
         max_neighbors=20,
-        radius=6.,
+        radius=6.0,
         scale_file=None,
     ):
         super(GemNetTDecoder, self).__init__()
@@ -42,8 +42,7 @@ class GemNetTDecoder(nn.Module):
         )
         self.fc_atom = nn.Linear(hidden_dim, MAX_ATOMIC_NUM)
 
-    def forward(self, z, pred_frac_coords, pred_atom_types, num_atoms,
-                lengths, angles):
+    def forward(self, z, pred_frac_coords, pred_atom_types, num_atoms, lengths, angles):
         """
         args:
             z: (N_cryst, num_latent)

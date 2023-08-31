@@ -1,10 +1,10 @@
 import pytest
 
-from ocpmodels.datasets.materials_project import (
+from matsciml.datasets.materials_project import (
     MaterialsProjectDataset,
     materialsproject_devset,
 )
-from ocpmodels.datasets.transforms import PointCloudToGraphTransform
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 
 
 def test_pairwise_pointcloud():

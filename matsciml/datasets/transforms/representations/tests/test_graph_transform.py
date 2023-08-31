@@ -2,16 +2,16 @@ import pytest
 
 import torch
 
-from ocpmodels.datasets import is2re_devset, IS2REDataset, s2ef_devset, S2EFDataset
-from ocpmodels.datasets.materials_project import (
+from matsciml.datasets import is2re_devset, IS2REDataset, s2ef_devset, S2EFDataset
+from matsciml.datasets.materials_project import (
     materialsproject_devset,
     MaterialsProjectDataset,
 )
-from ocpmodels.datasets.transforms import (
+from matsciml.datasets.transforms import (
     GraphToPointCloudTransform,
     OCPGraphToPointCloudTransform,
 )
-from ocpmodels.common import package_registry
+from matsciml.common import package_registry
 
 
 if package_registry["dgl"]:
@@ -114,4 +114,4 @@ if package_registry["dgl"]:
         assert sample["pos"].ndim == 2
         pos = sample["pos"]
         pc_features = sample["pc_features"]
-        assert all([sample['dst_nodes'].size(0) == pc_features.size(i) for i in [0, 1]])
+        assert all([sample["dst_nodes"].size(0) == pc_features.size(i) for i in [0, 1]])

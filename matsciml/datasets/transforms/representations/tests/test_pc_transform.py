@@ -2,15 +2,15 @@ import pytest
 
 import torch
 
-from ocpmodels.datasets.materials_project import (
+from matsciml.datasets.materials_project import (
     materialsproject_devset,
     MaterialsProjectDataset,
 )
-from ocpmodels.datasets.lips import lips_devset, LiPSDataset
-from ocpmodels.datasets.symmetry import symmetry_devset, SyntheticPointGroupDataset
-from ocpmodels.datasets import is2re_devset, IS2REDataset
-from ocpmodels.datasets.transforms import PointCloudToGraphTransform
-from ocpmodels.common import package_registry
+from matsciml.datasets.lips import lips_devset, LiPSDataset
+from matsciml.datasets.symmetry import symmetry_devset, SyntheticPointGroupDataset
+from matsciml.datasets import is2re_devset, IS2REDataset
+from matsciml.datasets.transforms import PointCloudToGraphTransform
+from matsciml.common import package_registry
 
 
 if package_registry["dgl"]:

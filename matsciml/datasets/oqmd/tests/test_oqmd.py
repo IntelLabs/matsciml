@@ -3,8 +3,8 @@ import os
 
 import pytest
 
-from ocpmodels.datasets.oqmd import OQMDRequest
-from ocpmodels.datasets.oqmd.dataset import OQMDDataset
+from matsciml.datasets.oqmd import OQMDRequest
+from matsciml.datasets.oqmd.dataset import OQMDDataset
 
 TEST_IDS = [0, 1, 2, 3, 4]
 

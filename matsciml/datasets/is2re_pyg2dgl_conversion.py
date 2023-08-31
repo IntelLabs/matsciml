@@ -13,7 +13,7 @@ import torch
 from tqdm import tqdm
 from torch_geometric.data import Data as PyGData
 
-from ocpmodels.datasets.generate_subsplit import connect_db_read, write_data
+from matsciml.datasets.generate_subsplit import connect_db_read, write_data
 
 
 def convert_pyg_to_dgl(

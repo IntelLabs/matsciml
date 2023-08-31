@@ -1,13 +1,14 @@
 import torch
 
-from ocpmodels.models.pyg.dimenet_plus_plus import DimeNetPlusPlus
-from ocpmodels.models.diffusion_utils.data_utils import (
-    get_pbc_distances, 
-    frac_to_cart_coords, 
-    radius_graph_pbc_wrapper
+from matsciml.models.pyg.dimenet_plus_plus import DimeNetPlusPlus
+from matsciml.models.diffusion_utils.data_utils import (
+    get_pbc_distances,
+    frac_to_cart_coords,
+    radius_graph_pbc_wrapper,
 )
 
 from torch_scatter import scatter
+
 
 class DimeNetPlusPlusWrap(DimeNetPlusPlus):
     def __init__(
@@ -27,7 +28,7 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
         num_before_skip=1,
         num_after_skip=2,
         num_output_layers=3,
-        readout='mean',
+        readout="mean",
     ):
         self.num_targets = num_targets
         self.cutoff = cutoff
@@ -64,10 +65,8 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
             data.num_bonds = neighbors
 
         pos = frac_to_cart_coords(
-            data.frac_coords,
-            data.lengths,
-            data.angles,
-            data.num_atoms)
+            data.frac_coords, data.lengths, data.angles, data.num_atoms
+        )
 
         out = get_pbc_distances(
             data.frac_coords,
@@ -77,7 +76,7 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
             data.to_jimages,
             data.num_atoms,
             data.num_bonds,
-            return_offsets=True
+            return_offsets=True,
         )
 
         edge_index = out["edge_index"]
@@ -118,12 +117,13 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
 
         # Use mean
         if batch is None:
-            if self.readout == 'mean':
+            if self.readout == "mean":
                 energy = P.mean(dim=0)
-            elif self.readout == 'sum':
+            elif self.readout == "sum":
                 energy = P.sum(dim=0)
-            elif self.readout == 'cat':
+            elif self.readout == "cat":
                 import pdb
+
                 pdb.set_trace()
                 energy = torch.cat([P.sum(dim=0), P.mean(dim=0)])
             else:

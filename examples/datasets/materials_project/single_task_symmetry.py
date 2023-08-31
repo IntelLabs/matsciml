@@ -1,10 +1,10 @@
 import pytorch_lightning as pl
 from torch.nn import LazyBatchNorm1d, SiLU
 
-from ocpmodels.lightning.data_utils import MaterialsProjectDataModule
-from ocpmodels.datasets.materials_project import DGLMaterialsProjectDataset
-from ocpmodels.models import GraphConvModel
-from ocpmodels.models.base import CrystalSymmetryClassificationTask
+from matsciml.lightning.data_utils import MaterialsProjectDataModule
+from matsciml.datasets.materials_project import DGLMaterialsProjectDataset
+from matsciml.models import GraphConvModel
+from matsciml.models.base import CrystalSymmetryClassificationTask
 
 pl.seed_everything(21616)
 

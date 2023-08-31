@@ -3,8 +3,8 @@ from typing import Union
 
 import torch
 
-from ocpmodels.models import base
-from ocpmodels.models.base import MultiTaskLitModule
+from matsciml.models import base
+from matsciml.models.base import MultiTaskLitModule
 
 
 def multitask_from_checkpoint(ckpt_path: Union[str, Path]) -> MultiTaskLitModule:

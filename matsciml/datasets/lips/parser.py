@@ -12,7 +12,7 @@ from ase.cell import Cell
 from ase.io import read
 from tqdm import tqdm
 
-from ocpmodels.datasets.generate_subsplit import write_data
+from matsciml.datasets.generate_subsplit import write_data
 
 
 @dataclass
@@ -99,7 +99,7 @@ class LiPSStructure:
 
         This is not intended for regular use, and implemented mainly for reproducibility.
         The devset will be dumped in this directory, which should then be readily accessible
-        through `ocpmodels.datasets.lips.lips_devset` as a path.
+        through `matsciml.datasets.lips.lips_devset` as a path.
 
         Parameters
         ----------

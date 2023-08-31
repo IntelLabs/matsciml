@@ -13,7 +13,7 @@ import torch
 from torch import nn
 from torch.nn import Dropout, Identity, Module, Softplus
 
-from ocpmodels.models.dgl.megnet import MLP
+from matsciml.models.dgl.megnet import MLP
 
 
 class MEGNetGraphConv(Module):

@@ -10,7 +10,7 @@ import dgl.function as fn
 import numpy as np
 import sympy as sym
 
-from ocpmodels.models.dgl.dpp import basis_func as bf
+from matsciml.models.dgl.dpp import basis_func as bf
 
 """
 Credit for original code: xnuohz; https://github.com/xnuohz/DimeNet-dgl

@@ -11,4 +11,4 @@ if not _has_rowan:
 
 symmetry_devset = Path(__file__).parents[0].joinpath("devset")
 
-from ocpmodels.datasets.symmetry.dataset import SyntheticPointGroupDataset
+from matsciml.datasets.symmetry.dataset import SyntheticPointGroupDataset

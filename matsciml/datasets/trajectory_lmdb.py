@@ -21,7 +21,7 @@ from torch.utils.data import Dataset
 
 # from torch_geometric.data import Batch
 
-# from ocpmodels.common.utils import pyg2_data_transform
+# from matsciml.common.utils import pyg2_data_transform
 from dgl.nn.pytorch.factory import KNNGraph
 from dgl.data import DGLDataset
 

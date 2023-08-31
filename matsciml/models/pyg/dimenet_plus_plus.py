@@ -47,7 +47,7 @@ from torch_geometric.nn.models.dimenet import (
 from torch_scatter import scatter
 from torch_sparse import SparseTensor
 
-from ocpmodels.common.utils import (
+from matsciml.common.utils import (
     conditional_grad,
     get_pbc_distances,
     radius_graph_pbc,
@@ -92,17 +92,11 @@ class InteractionPPBlock(torch.nn.Module):
 
         # Residual layers before and after skip connection.
         self.layers_before_skip = torch.nn.ModuleList(
-            [
-                ResidualLayer(hidden_channels, act)
-                for _ in range(num_before_skip)
-            ]
+            [ResidualLayer(hidden_channels, act) for _ in range(num_before_skip)]
         )
         self.lin = nn.Linear(hidden_channels, hidden_channels)
         self.layers_after_skip = torch.nn.ModuleList(
-            [
-                ResidualLayer(hidden_channels, act)
-                for _ in range(num_after_skip)
-            ]
+            [ResidualLayer(hidden_channels, act) for _ in range(num_after_skip)]
         )
 
         self.reset_parameters()
@@ -322,8 +316,8 @@ class DimeNetPlusPlus(torch.nn.Module):
         # Remove self-loop triplets d->b->d
         # Check atom as well as cell offset
         # TODO CDVAE fix
-        #cell_offset_kji = cell_offsets[idx_kj] + cell_offsets[idx_ji]
-        mask = (idx_i != idx_k) #| torch.any(cell_offset_kji != 0, dim=-1)
+        # cell_offset_kji = cell_offsets[idx_kj] + cell_offsets[idx_ji]
+        mask = idx_i != idx_k  # | torch.any(cell_offset_kji != 0, dim=-1)
 
         idx_i, idx_j, idx_k = idx_i[mask], idx_j[mask], idx_k[mask]
         idx_kj, idx_ji = idx_kj[mask], idx_ji[mask]

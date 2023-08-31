@@ -7,10 +7,10 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 import numpy as np
 import torch
 
-from ocpmodels.common.registry import registry
-from ocpmodels.common.types import BatchDict, DataDict
-from ocpmodels.datasets.base import PointCloudDataset
-from ocpmodels.datasets.utils import (
+from matsciml.common.registry import registry
+from matsciml.common.types import BatchDict, DataDict
+from matsciml.datasets.base import PointCloudDataset
+from matsciml.datasets.utils import (
     concatenate_keys,
     pad_point_cloud,
     point_cloud_featurization,

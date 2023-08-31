@@ -11,7 +11,7 @@ import glob
 import logging
 import os
 
-# import ocpmodels
+# import matsciml
 
 """
 This script provides users with an automated way to download, preprocess (where

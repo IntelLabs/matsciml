@@ -1,2 +1,2 @@
-from ocpmodels.datasets.oqmd.dataset import OQMDDataset
-from ocpmodels.datasets.oqmd.oqmd_api import OQMDRequest
+from matsciml.datasets.oqmd.dataset import OQMDDataset
+from matsciml.datasets.oqmd.oqmd_api import OQMDRequest

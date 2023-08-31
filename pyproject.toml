@@ -32,12 +32,12 @@ description = "PyTorch Lightning and Deep Graph Library enabled materials scienc
 dynamic = ["version", "readme"]
 keywords = ["performance", "portability"]
 license = {file = "LICENSE.md"}
-name = "ocpmodels"
+name = "matsciml"
 requires-python = ">=3.8"
 
 [project.optional-dependencies]
 all = [
-  "ocpmodels[dev,symmetry,pyg]",
+  "matsciml[dev,symmetry,pyg]",
 ]
 dev = [
   "black>=22.3.0",
@@ -56,9 +56,9 @@ symmetry = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["ocpmodels*"]
+include = ["matsciml*"]
 where = ["."]
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md"]}
-version = {attr = "ocpmodels.__version__"}
+version = {attr = "matsciml.__version__"}

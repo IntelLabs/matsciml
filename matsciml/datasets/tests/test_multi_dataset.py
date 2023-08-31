@@ -1,12 +1,14 @@
-
 import pytest
 
 import torch
 from torch.utils.data import DataLoader
 
-from ocpmodels.datasets import IS2REDataset, is2re_devset
-from ocpmodels.datasets.materials_project import MaterialsProjectDataset, materialsproject_devset
-from ocpmodels.datasets.multi_dataset import MultiDataset
+from matsciml.datasets import IS2REDataset, is2re_devset
+from matsciml.datasets.materials_project import (
+    MaterialsProjectDataset,
+    materialsproject_devset,
+)
+from matsciml.datasets.multi_dataset import MultiDataset
 
 # make the test deterministic
 torch.manual_seed(21515)
@@ -56,5 +58,9 @@ def test_target_keys():
     keys = joint.target_keys
     expected_is2re = {"regression": ["energy_init", "energy_relaxed"]}
     expected_mp = {"regression": ["band_gap"]}
-    assert keys["IS2REDataset"] == expected_is2re, f"IS2REDataset expected {expected_is2re}, got {keys['IS2REDataset']}"
-    assert keys["MaterialsProjectDataset"] == expected_mp, f"MaterialsProjectDataset expected {expected_mp}, got {keys['MaterialsProjectDataset']}"
+    assert (
+        keys["IS2REDataset"] == expected_is2re
+    ), f"IS2REDataset expected {expected_is2re}, got {keys['IS2REDataset']}"
+    assert (
+        keys["MaterialsProjectDataset"] == expected_mp
+    ), f"MaterialsProjectDataset expected {expected_mp}, got {keys['MaterialsProjectDataset']}"

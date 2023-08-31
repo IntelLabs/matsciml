@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
-from ocpmodels.common import DataDict
-from ocpmodels.datasets.base import BaseLMDBDataset
+from matsciml.common import DataDict
+from matsciml.datasets.base import BaseLMDBDataset
 
 
 class AbstractDataTransform(object):

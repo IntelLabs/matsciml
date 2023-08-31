@@ -9,8 +9,8 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 from os import makedirs
 
-from ocpmodels.common.types import DataDict, BatchDict, GraphTypes
-from ocpmodels.common import package_registry
+from matsciml.common.types import DataDict, BatchDict, GraphTypes
+from matsciml.common import package_registry
 
 if package_registry["dgl"]:
     import dgl

@@ -1,17 +1,17 @@
 import pytest
 import torch
 
-from ocpmodels.datasets.utils import concatenate_keys
-from ocpmodels.datasets.materials_project import (
+from matsciml.datasets.utils import concatenate_keys
+from matsciml.datasets.materials_project import (
     materialsproject_devset,
     MaterialsProjectDataset,
 )
-from ocpmodels.datasets import is2re_devset, IS2REDataset
-from ocpmodels.datasets.transforms import (
+from matsciml.datasets import is2re_devset, IS2REDataset
+from matsciml.datasets.transforms import (
     PointCloudToGraphTransform,
     OCPGraphToPointCloudTransform,
 )
-from ocpmodels.common import package_registry
+from matsciml.common import package_registry
 
 
 @pytest.mark.dependency()

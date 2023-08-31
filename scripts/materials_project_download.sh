@@ -1,1 +1,1 @@
-python ../ocpmodels/datasets/materials_project/cli.py --data_dir ../ocpmodels/datasets/materials_project/ --split_files ../ocpmodels/datasets/materials_project/train.yml ../ocpmodels/datasets/materials_project/test.yml ../ocpmodels/datasets/materials_project/val.yml --task base
+python ../matsciml/datasets/materials_project/cli.py --data_dir ../matsciml/datasets/materials_project/ --split_files ../matsciml/datasets/materials_project/train.yml ../matsciml/datasets/materials_project/test.yml ../matsciml/datasets/materials_project/val.yml --task base

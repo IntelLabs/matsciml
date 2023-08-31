@@ -4,9 +4,9 @@
 import pytest
 import torch
 import dgl
-from ocpmodels.models import DimeNetPP
-from ocpmodels.datasets import transforms
-from ocpmodels.datasets.materials_project import MaterialsProjectDataset
+from matsciml.models import DimeNetPP
+from matsciml.datasets import transforms
+from matsciml.datasets.materials_project import MaterialsProjectDataset
 
 torch.random.manual_seed(10)
 dgl.random.seed(10)

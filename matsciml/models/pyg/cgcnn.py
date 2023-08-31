@@ -10,13 +10,13 @@ import torch.nn as nn
 from torch_geometric.nn import MessagePassing, global_mean_pool, radius_graph
 from torch_geometric.nn.models.schnet import GaussianSmearing
 
-from ocpmodels.common.utils import (
+from matsciml.common.utils import (
     conditional_grad,
     get_pbc_distances,
     radius_graph_pbc,
 )
-from ocpmodels.datasets.embeddings import KHOT_EMBEDDINGS, QMOF_KHOT_EMBEDDINGS
-from ocpmodels.models.base import BaseModel
+from matsciml.datasets.embeddings import KHOT_EMBEDDINGS, QMOF_KHOT_EMBEDDINGS
+from matsciml.models.base import BaseModel
 
 
 class CGCNN(BaseModel):
@@ -141,9 +141,7 @@ class CGCNN(BaseModel):
             data.edge_index = out["edge_index"]
             distances = out["distances"]
         else:
-            data.edge_index = radius_graph(
-                data.pos, r=self.cutoff, batch=data.batch
-            )
+            data.edge_index = radius_graph(data.pos, r=self.cutoff, batch=data.batch)
             row, col = data.edge_index
             distances = (pos[row] - pos[col]).norm(dim=-1)
 

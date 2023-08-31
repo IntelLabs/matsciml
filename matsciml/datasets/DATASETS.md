@@ -15,25 +15,25 @@ Train, validation, and test splits are defined by material id based on the struc
 To download and extract the train, validation and test datasets using our code, the following command can be used: 
 
 ```bash
-python -m ocpmodels.datasets.materials_project.cli \
+python -m matsciml.datasets.materials_project.cli \
     -d mp_data \
     -t base \
-    -s ocpmodels/datasets/materials_project/train.yml \
-    ocpmodels/datasets/materials_project/val.yml \
-    ocpmodels/datasets/materials_project/test.yml
+    -s matsciml/datasets/materials_project/train.yml \
+    matsciml/datasets/materials_project/val.yml \
+    matsciml/datasets/materials_project/test.yml
 ```
 
 The `-d` flag is used to specify a directory to store the data, and defaults to `mp_data`. After running the script, the data directory will include train, validation and test folders containing lmdb files with 108159, 30904, and 15,456 samples respectively. Specifying the `-t` flag will ensure all of the main data fields listed above are included in the download.
 
-A devset (development dataset) is also included which has 200 material samples containing the `band_gap`, and `structure` fields, which is accessible in `ocpmodels/datasets/materials_project/devset`.
+A devset (development dataset) is also included which has 200 material samples containing the `band_gap`, and `structure` fields, which is accessible in `matsciml/datasets/materials_project/devset`.
 
-Other property fields, material id’s, and Materials Project’s API arguments may be used with the download script to create custom datasets. Additional details on how to use the script may be found in `ocpmodels/datasets/materials_project/cli.py`.
+Other property fields, material id’s, and Materials Project’s API arguments may be used with the download script to create custom datasets. Additional details on how to use the script may be found in `matsciml/datasets/materials_project/cli.py`.
 
 ### LiPS
 
 The LiPS dataset is also released under a CC BY 4.0 license, which can be accessed via the original release in [Materials Cloud](https://archive.materialscloud.org/record/2022.45).
 
-The LiPS data splits used in the experiments are included in the codebase folders `ocpmodels/datastes/lips/base/{train, val, test}`. To create the splits, we download the dataset from it's original release and split randomly into 70%, 20% and 10% chunks for training, validation and testing. A dev set is also included in `ocpmodels/datasets/lips/devset` which holds 200 samples. 
+The LiPS data splits used in the experiments are included in the codebase folders `matsciml/datastes/lips/base/{train, val, test}`. To create the splits, we download the dataset from it's original release and split randomly into 70%, 20% and 10% chunks for training, validation and testing. A dev set is also included in `matsciml/datasets/lips/devset` which holds 200 samples. 
 
 ### OQMD
 

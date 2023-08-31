@@ -11,7 +11,7 @@ from torch_geometric.nn import DimeNet, radius_graph
 from torch_scatter import scatter
 from torch_sparse import SparseTensor
 
-from ocpmodels.common.utils import (
+from matsciml.common.utils import (
     conditional_grad,
     get_pbc_distances,
     radius_graph_pbc,

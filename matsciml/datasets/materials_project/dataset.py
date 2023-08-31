@@ -14,14 +14,14 @@ from pymatgen.core import Structure
 from pymatgen.analysis.graphs import StructureGraph
 from pymatgen.analysis import local_env
 from emmet.core.symmetry import SymmetryData
-from ocpmodels.common.types import BatchDict, DataDict
+from matsciml.common.types import BatchDict, DataDict
 
-from ocpmodels.datasets.base import PointCloudDataset
-from ocpmodels.datasets.utils import (
+from matsciml.datasets.base import PointCloudDataset
+from matsciml.datasets.utils import (
     concatenate_keys,
     point_cloud_featurization,
 )
-from ocpmodels.common.registry import registry
+from matsciml.common.registry import registry
 
 _has_pyg = find_spec("torch_geometric") is not None
 
@@ -612,7 +612,7 @@ if _has_pyg:
                 lmdb_index, subindex
             )
             return data
-        
+
         def index_to_key(self, index: int) -> Tuple[int]:
             """Look up the index number in the list of LMDB keys"""
             return self.keys[index]

@@ -24,11 +24,11 @@ from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
 from torch.optim import lr_scheduler
 
-from ocpmodels.modules.normalizer import Normalizer
-from ocpmodels.models.common import OutputHead
-from ocpmodels.common.types import DataDict, BatchDict, AbstractGraph
-from ocpmodels.common.registry import registry
-from ocpmodels.common import package_registry
+from matsciml.modules.normalizer import Normalizer
+from matsciml.models.common import OutputHead
+from matsciml.common.types import DataDict, BatchDict, AbstractGraph
+from matsciml.common.registry import registry
+from matsciml.common import package_registry
 
 if package_registry["dgl"]:
     import dgl
@@ -316,7 +316,7 @@ class AbstractPointCloudModel(AbstractTask):
             Input data for a point cloud model to process, notably
             including particle positions and features
         """
-        from ocpmodels.datasets.utils import pad_point_cloud
+        from matsciml.datasets.utils import pad_point_cloud
 
         assert isinstance(
             batch["pos"], torch.Tensor
@@ -2265,7 +2265,7 @@ class MultiTaskLitModule(pl.LightningModule):
         **kwargs: Any,
     ):
         raise NotImplementedError(
-            f"MultiTask should be reloaded using the `ocpmodels.models.multitask_from_checkpoint` function instead."
+            f"MultiTask should be reloaded using the `matsciml.models.multitask_from_checkpoint` function instead."
         )
 
     @classmethod

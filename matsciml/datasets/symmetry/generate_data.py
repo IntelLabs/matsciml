@@ -15,8 +15,8 @@ import numpy as np
 from tqdm import tqdm
 from joblib import delayed, Parallel
 
-from ocpmodels.datasets.symmetry.subgroup_classes import SubgroupGenerator
-from ocpmodels.datasets.utils import write_lmdb_data, connect_lmdb_write
+from matsciml.datasets.symmetry.subgroup_classes import SubgroupGenerator
+from matsciml.datasets.utils import write_lmdb_data, connect_lmdb_write
 
 
 devset_kwargs = {

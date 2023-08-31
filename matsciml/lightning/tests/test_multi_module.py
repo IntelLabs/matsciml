@@ -1,12 +1,12 @@
 import pytest
 
-from ocpmodels.datasets import S2EFDataset, IS2REDataset, s2ef_devset, is2re_devset
-from ocpmodels.datasets.materials_project import (
+from matsciml.datasets import S2EFDataset, IS2REDataset, s2ef_devset, is2re_devset
+from matsciml.datasets.materials_project import (
     MaterialsProjectDataset,
     materialsproject_devset,
 )
-from ocpmodels.datasets.multi_dataset import MultiDataset
-from ocpmodels.lightning.data_utils import MultiDataModule
+from matsciml.datasets.multi_dataset import MultiDataset
+from matsciml.lightning.data_utils import MultiDataModule
 
 
 @pytest.fixture

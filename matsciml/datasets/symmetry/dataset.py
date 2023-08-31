@@ -5,9 +5,9 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import IterableDataset
 
-from ocpmodels.datasets.base import BaseLMDBDataset
-from ocpmodels.common.registry import registry
-from ocpmodels.datasets.utils import point_cloud_featurization, concatenate_keys
+from matsciml.datasets.base import BaseLMDBDataset
+from matsciml.common.registry import registry
+from matsciml.datasets.utils import point_cloud_featurization, concatenate_keys
 
 
 class OTFPointGroupDataset(IterableDataset):

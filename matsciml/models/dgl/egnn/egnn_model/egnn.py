@@ -6,7 +6,7 @@ import torch
 from dgllife.model import SchNetGNN
 from munch import munchify
 
-from ocpmodels.common.utils import (
+from matsciml.common.utils import (
     conditional_grad,
     get_pbc_distances,
     radius_graph_pbc,
@@ -14,7 +14,7 @@ from ocpmodels.common.utils import (
 
 from .egnn_backbone import get_backbone
 
-from ocpmodels.models.base import AbstractEnergyModel
+from matsciml.models.base import AbstractEnergyModel
 
 
 class EGNN_Wrap(AbstractEnergyModel):
