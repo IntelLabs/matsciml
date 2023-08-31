@@ -13,6 +13,7 @@ from ocpmodels.models.base import (
 )
 from ocpmodels.models import PLEGNNBackbone
 
+
 @pytest.fixture
 def model_def():
     model_args = {
@@ -91,12 +92,10 @@ def test_multitask_static_end2end(is2re_s2ef, model_def):
     dm = is2re_s2ef
 
     encoder = model_def
-    is2re = ScalarRegressionTask(encoder, task_keys=['energy_init', "energy_relaxed"])
-    s2ef = ForceRegressionTask(encoder, task_keys=['energy', "force"])
+    is2re = ScalarRegressionTask(encoder, task_keys=["energy_init", "energy_relaxed"])
+    s2ef = ForceRegressionTask(encoder, task_keys=["energy", "force"])
 
-    task = MultiTaskLitModule(
-        ("IS2REDataset", is2re), ("S2EFDataset", s2ef)
-    )
+    task = MultiTaskLitModule(("IS2REDataset", is2re), ("S2EFDataset", s2ef))
     trainer = pl.Trainer(logger=False, enable_checkpointing=False, fast_dev_run=1)
     trainer.fit(task, datamodule=dm)
 
@@ -109,8 +108,6 @@ def test_multitask_dynamic_end2end(is2re_s2ef, model_def):
     is2re = ScalarRegressionTask(encoder)
     s2ef = ForceRegressionTask(encoder)
 
-    task = MultiTaskLitModule(
-        ("IS2REDataset", is2re), ("S2EFDataset", s2ef)
-    )
+    task = MultiTaskLitModule(("IS2REDataset", is2re), ("S2EFDataset", s2ef))
     trainer = pl.Trainer(logger=False, enable_checkpointing=False, fast_dev_run=1)
     trainer.fit(task, datamodule=dm)

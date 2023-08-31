@@ -168,7 +168,7 @@ class SubgroupClassMap:
             "I": ["D3", "D5", "T", "D2"],
             "Ih": ["C3", "C5", "Th", "D2", "I"],
         }
-        for (name, subs) in polyhedral_subgroups.items():
+        for name, subs in polyhedral_subgroups.items():
             for sub in subs:
                 subgroups[name].add(sub)
 
