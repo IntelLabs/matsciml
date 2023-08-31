@@ -1,4 +1,6 @@
 import pytorch_lightning as pl
+from torch.nn import LayerNorm, SiLU
+
 
 from matsciml.datasets import LiPSDataset, IS2REDataset, S2EFDataset
 from matsciml.datasets.transforms import PointCloudToGraphTransform
@@ -59,11 +61,15 @@ model_args = {
 
 model = PLEGNNBackbone(**model_args)
 # shared output head arguments.
-output_kwargs = {
-    "dropout": 0.2,
+output_kwargs={
+    "norm": LayerNorm(128),
     "num_hidden": 2,
-    "activation": "torch.nn.SiLU",
-}
+    "dropout": 0.2,
+    "hidden_dim": 128,
+    "activation": SiLU,
+    "lazy": False,
+    "input_dim": 128,
+},
 # add normalization to targets
 is2re_norm = {
     "energy_relaxed_mean": -1.3314,

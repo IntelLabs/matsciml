@@ -1,5 +1,6 @@
 import pytorch_lightning as pl
 from torch.nn import L1Loss
+from torch.nn import LayerNorm, SiLU
 
 from matsciml.lightning import MatSciMLDataModule
 from matsciml.datasets import MaterialsProjectDataset
@@ -61,12 +62,15 @@ model_args = {
 }
 
 # shared output head arguments
-output_kwargs = {
-    "dropout": 0.2,
+output_kwargs={
+    "norm": LayerNorm(128),
     "num_hidden": 2,
-    "norm": "torch.nn.LazyBatchNorm1d",
-    "activation": "torch.nn.SiLU",
-}
+    "dropout": 0.2,
+    "hidden_dim": 128,
+    "activation": SiLU,
+    "lazy": False,
+    "input_dim": 128,
+},
 # set target normalization valkues
 mp_norms = {
     "band_gap_mean": 1.0761,

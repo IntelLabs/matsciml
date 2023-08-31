@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from torch.nn import LazyBatchNorm1d, SiLU
+from torch.nn import LayerNorm, SiLU
 
 from matsciml.datasets.materials_project import MaterialsProjectDataset
 from matsciml.lightning.data_utils import MaterialsProjectDataModule
@@ -34,7 +34,13 @@ task = ScalarRegressionTask(
     mp_norms,
     encoder_class=GalaPotential,
     encoder_kwargs=model_args,
-    output_kwargs={"norm": LazyBatchNorm1d, "hidden_dim": 256, "activation": SiLU},
+    output_kwargs={
+        "norm": LayerNorm(128),
+        "hidden_dim": 128,
+        "activation": SiLU,
+        "lazy": False,
+        "input_dim": 128,
+    },
     lr=1e-4,
     task_keys=["formation_energy_per_atom"],
 )

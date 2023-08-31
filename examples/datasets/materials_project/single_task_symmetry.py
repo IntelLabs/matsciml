@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from torch.nn import LazyBatchNorm1d, SiLU
+from torch.nn import LayerNorm, SiLU
 
 from matsciml.lightning.data_utils import MaterialsProjectDataModule
 from matsciml.datasets.materials_project import DGLMaterialsProjectDataset
@@ -12,7 +12,13 @@ pl.seed_everything(21616)
 model = GraphConvModel(100, 1, encoder_only=True)
 task = CrystalSymmetryClassificationTask(
     model,
-    output_kwargs={"norm": LazyBatchNorm1d, "hidden_dim": 256, "activation": SiLU},
+    output_kwargs={
+        "norm": LayerNorm(128),
+        "hidden_dim": 128,
+        "activation": SiLU,
+        "lazy": False,
+        "input_dim": 128,
+    },
     lr=1e-3,
 )
 
