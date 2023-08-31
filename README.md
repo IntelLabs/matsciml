@@ -86,6 +86,7 @@ python examples/model_demos/cdvae/cdvae_inference.py
 <summary>
 Representation learning with symmetry pretraining
 </summary>
+
 ```bash
 # uses the devset for synthetic point group point clouds
 python examples/tasks/symmetry/single_symmetry_example.py
@@ -96,6 +97,7 @@ python examples/tasks/symmetry/single_symmetry_example.py
 <summary>
 Example notebook-based development and testing
 </summary>
+
 ```bash
 jupyter notebook examples/devel-example.ipynb
 ```
