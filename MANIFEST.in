@@ -1,2 +1,9 @@
 
-recursive-include ocpmodels/datasets/dev-min *
+recursive-include matsciml/datasets/dev-s2ef-dgl *
+recursive-include matsciml/datasets/dev-is2re-dgl *
+recursive-include matsciml/datasets/materials_project/devset *
+recursive-include matsciml/datasets/lips/devset *
+recursive-include matsciml/datasets/carolina_db/devset *
+recursive-include matsciml/datasets/nomad/devset *
+recursive-include matsciml/datasets/oqmd/devset *
+recursive-include matsciml/datasets/symmetry/devset *

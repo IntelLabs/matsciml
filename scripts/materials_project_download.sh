@@ -1,0 +1,1 @@
+python ../matsciml/datasets/materials_project/cli.py --data_dir ../matsciml/datasets/materials_project/ --split_files ../matsciml/datasets/materials_project/train.yml ../matsciml/datasets/materials_project/test.yml ../matsciml/datasets/materials_project/val.yml --task base

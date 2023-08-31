@@ -4,8 +4,8 @@
 model:
   class_path: "S2EFLitModule"
   init_args:
-    gnn: 
-      class_path: ocpmodels.models.DimeNetPP
+    gnn:
+      class_path: matsciml.models.DimeNetPP
       init_args:
         emb_size: 128
         out_emb_size: 128
