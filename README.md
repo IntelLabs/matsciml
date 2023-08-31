@@ -110,13 +110,13 @@ python examples/model_demos/cdvae/cdvae_inference.py
 Multiple tasks trained using the same dataset
 </summary>
 
-Utilizes Materials Project data to train property regression and material classification jointly 
-
 ```bash
 # this script requires modification as you'll need to download the materials
 # project dataset, and point L24 to the folder where it was saved
 python examples/tasks/multitask/single_data_multitask_example.py
 ```
+
+Utilizes Materials Project data to train property regression and material classification jointly 
 </details>
 
 <details>
@@ -124,11 +124,11 @@ python examples/tasks/multitask/single_data_multitask_example.py
 Multiple tasks trained using multiple datasets
 </summary>
 
-Train regression tasks against IS2RE, S2EF, and LiPS datasets jointly
-
 ```bash
 python examples/tasks/multitask/three_datasets.py
 ```
+
+Train regression tasks against IS2RE, S2EF, and LiPS datasets jointly
 </details>
 
 
