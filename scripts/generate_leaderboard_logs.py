@@ -4,15 +4,15 @@ from pathlib import Path
 
 import pytorch_lightning as pl
 from munch import Munch, munchify, unmunchify
-from ocpmodels import datasets as dsets
-from ocpmodels.datasets.transforms import DistancesTransform, GraphVariablesTransform
+from matsciml import datasets as dsets
+from matsciml.datasets.transforms import DistancesTransform, GraphVariablesTransform
 
 # import the callback responsible for aggregating and formatting
 # prediction results
-from ocpmodels.lightning.callbacks import ForwardNaNDetection, LeaderboardWriter
-from ocpmodels.lightning.cli import DATAMODULE_REGISTRY, MODEL_REGISTRY
-from ocpmodels.lightning.data_utils import IS2REDGLDataModule, is2re_devset
-from ocpmodels.models import GraphConvModel, IS2RELitModule
+from matsciml.lightning.callbacks import ForwardNaNDetection, LeaderboardWriter
+from matsciml.lightning.cli import DATAMODULE_REGISTRY, MODEL_REGISTRY
+from matsciml.lightning.data_utils import IS2REDGLDataModule, is2re_devset
+from matsciml.models import GraphConvModel, IS2RELitModule
 from pytorch_lightning.loggers import CSVLogger
 from tqdm import tqdm
 from yaml import safe_load

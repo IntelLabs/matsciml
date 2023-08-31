@@ -1,17 +1,17 @@
 import pytorch_lightning as pl
 
-from ocpmodels.datasets import LiPSDataset, IS2REDataset, S2EFDataset
-from ocpmodels.datasets.transforms import PointCloudToGraphTransform
+from matsciml.datasets import LiPSDataset, IS2REDataset, S2EFDataset
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 
-from ocpmodels.datasets.multi_dataset import MultiDataset
-from ocpmodels.lightning.data_utils import MultiDataModule
-from ocpmodels.models.base import (
+from matsciml.datasets.multi_dataset import MultiDataset
+from matsciml.lightning.data_utils import MultiDataModule
+from matsciml.models.base import (
     MultiTaskLitModule,
     ScalarRegressionTask,
     ForceRegressionTask,
 )
-from ocpmodels.models import PLEGNNBackbone
-from ocpmodels.lightning import callbacks as cb
+from matsciml.models import PLEGNNBackbone
+from matsciml.lightning import callbacks as cb
 
 pl.seed_everything(1616)
 

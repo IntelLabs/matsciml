@@ -17,11 +17,13 @@ from pymatgen.analysis import local_env
 dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append("{}/../".format(dir_path))
 
-from ocpmodels.datasets.generate_subsplit import connect_db_read, write_data
+from matsciml.datasets.generate_subsplit import connect_db_read, write_data
 
-MAX_ATOMS=25
+MAX_ATOMS = 25
 
-CrystalNN = local_env.CrystalNN(distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False)#, search_cutoff=15.0)
+CrystalNN = local_env.CrystalNN(
+    distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False
+)  # , search_cutoff=15.0)
 
 
 def parse_structure(item) -> None:
@@ -42,25 +44,21 @@ def parse_structure(item) -> None:
     # keep atomic numbers for graph featurization
     return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
     return_dict["num_particles"] = len(atom_numbers)
-    return_dict["distance_matrix"] = torch.from_numpy(
-        structure.distance_matrix
-    ).float()
+    return_dict["distance_matrix"] = torch.from_numpy(structure.distance_matrix).float()
     # jimages
 
-    # 
+    #
     try:
-        crystal_graph = StructureGraph.with_local_env_strategy(
-            structure, CrystalNN
-        )
+        crystal_graph = StructureGraph.with_local_env_strategy(structure, CrystalNN)
     except ValueError:
         return None
-    
+
     edge_indices, to_jimages = [], []
-    for i, j, to_jimage in crystal_graph.graph.edges(data='to_jimage'):
+    for i, j, to_jimage in crystal_graph.graph.edges(data="to_jimage"):
         edge_indices.append([j, i])
         to_jimages.append(to_jimage)
         edge_indices.append([i, j])
-        to_jimages.append(tuple(-tj for tj in to_jimage))            
+        to_jimages.append(tuple(-tj for tj in to_jimage))
     return_dict["to_jimages"] = torch.LongTensor(to_jimages)
     return_dict["edge_index"] = torch.LongTensor(edge_indices).T
 
@@ -75,9 +73,9 @@ def parse_structure(item) -> None:
 
     edge_index = return_dict["edge_index"]  # torch.LongTensor([[0, 1], [1, 0]])
     lattice_params = return_dict["lattice_features"]["lattice_params"]
-    y = item["formation_energy_per_atom"] 
+    y = item["formation_energy_per_atom"]
     prop = torch.Tensor([y])
-    
+
     # atom_coords are fractional coordinates
     # edge_index is incremented during batching
     # https://pytorch-geometric.readthedocs.io/en/latest/notes/batching.html
@@ -90,10 +88,13 @@ def parse_structure(item) -> None:
         to_jimages=return_dict["to_jimages"],
         num_atoms=len(return_dict["atomic_numbers"]),
         num_bonds=edge_index.shape[1],
-        num_nodes=len(return_dict["atomic_numbers"]),  # special attribute used for batching in pytorch geometric
+        num_nodes=len(
+            return_dict["atomic_numbers"]
+        ),  # special attribute used for batching in pytorch geometric
         y=prop.view(1, -1),
     )
     return data
+
 
 def convert_pyg_to_dgl(pyg_graph) -> Dict[str, Union[dgl.DGLGraph, torch.Tensor]]:
     # bijective mapping from PyG to DGL
@@ -109,14 +110,15 @@ def convert_pyg_to_dgl(pyg_graph) -> Dict[str, Union[dgl.DGLGraph, torch.Tensor]
         return_data[key] = getattr(pyg_graph, key)
     return return_data
 
+
 def data_to_cdvae(item):
-    num_atoms = len(item['structure'].atomic_numbers)
+    num_atoms = len(item["structure"].atomic_numbers)
     if num_atoms > MAX_ATOMS:
         return None
-    
+
     pyg_data = parse_structure(item)
     return pyg_data
-    
+
 
 def main(args: Namespace):
     print("Start")
@@ -163,8 +165,9 @@ def main(args: Namespace):
                     # convert the key before writing
                     key = key.decode("utf-8")
                     write_data(key, metadata, target_env)
-    
+
     print("Done")
+
 
 if __name__ == "__main__":
     parser = ArgumentParser()

@@ -23,7 +23,7 @@ from tqdm import tqdm
 dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append("{}/../".format(dir_path))
 
-from ocpmodels.preprocessing import AtomsToDGL
+from matsciml.preprocessing import AtomsToDGL
 
 
 def write_images_to_lmdb(mp_arg):
@@ -42,7 +42,6 @@ def write_images_to_lmdb(mp_arg):
         position=pid,
         desc="Preprocessing data into LMDBs",
     )
-
 
     for sample in samples:
         traj_logs = open(sample, "r").read().splitlines()
@@ -155,9 +154,7 @@ def main(args):
 
     # Log sampled image, trajectory trace
     for j, i in enumerate(range(args.num_workers)):
-        ids_log = open(
-            os.path.join(args.out_path, "data_log.%04d.txt" % i), "w"
-        )
+        ids_log = open(os.path.join(args.out_path, "data_log.%04d.txt" % i), "w")
         ids_log.writelines(sampled_ids[j])
 
 

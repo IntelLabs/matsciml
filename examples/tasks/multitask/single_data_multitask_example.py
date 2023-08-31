@@ -1,15 +1,15 @@
 import pytorch_lightning as pl
 from torch.nn import L1Loss
 
-from ocpmodels.lightning import MatSciMLDataModule
-from ocpmodels.datasets import MaterialsProjectDataset
-from ocpmodels.models.base import (
+from matsciml.lightning import MatSciMLDataModule
+from matsciml.datasets import MaterialsProjectDataset
+from matsciml.models.base import (
     MultiTaskLitModule,
     ScalarRegressionTask,
     BinaryClassificationTask,
 )
-from ocpmodels.models import PLEGNNBackbone
-from ocpmodels.datasets.transforms import (
+from matsciml.models import PLEGNNBackbone
+from matsciml.datasets.transforms import (
     CoordinateScaling,
     COMShift,
     PointCloudToGraphTransform,

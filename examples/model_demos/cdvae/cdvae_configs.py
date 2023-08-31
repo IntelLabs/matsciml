@@ -2,7 +2,7 @@ import torch
 
 mp_config = {
     "name": "Formation energy train",
-    "root_path": "ocpmodels/datasets/mp_20",
+    "root_path": "matsciml/datasets/mp_20",
     "prop": "formation_energy_per_atom",
     "num_targets": 1,
     "niggli": True,
@@ -21,7 +21,7 @@ mp_config = {
 
 mp20_config = {
     "name": "Formation energy train",
-    "root_path": "ocpmodels/datasets/mp_20",
+    "root_path": "matsciml/datasets/mp_20",
     "prop": "formation_energy_per_atom",
     "num_targets": 1,
     "niggli": True,
@@ -40,7 +40,7 @@ mp20_config = {
 
 carbon_config = {
     "name": "energy per atom",
-    "root_path": "ocpmodels/datasets/carbon_24",
+    "root_path": "matsciml/datasets/carbon_24",
     "prop": "energy_per_atom",
     "num_targets": 1,
     "niggli": True,
@@ -59,7 +59,7 @@ carbon_config = {
 
 perov_config = {
     "name": "formation energy",
-    "root_path": "ocpmodels/datasets/perov_5",
+    "root_path": "matsciml/datasets/perov_5",
     "prop": "heat_ref",
     "num_targets": 1,
     "niggli": True,
@@ -82,21 +82,21 @@ cdvae_config = {
     "latent_dim": 256,  # 256, 32 for debug
     "fc_num_layers": 1,
     "max_atoms": None,  # dataset.max_atoms
-    "cost_natom": 1.,
-    "cost_coord": 10.,
-    "cost_type": 1.,
-    "cost_lattice": 10.,
-    "cost_composition": 1.,
-    "cost_edge": 10.,
-    "cost_property": 1.,
+    "cost_natom": 1.0,
+    "cost_coord": 10.0,
+    "cost_type": 1.0,
+    "cost_lattice": 10.0,
+    "cost_composition": 1.0,
+    "cost_edge": 10.0,
+    "cost_property": 1.0,
     "beta": 0.01,
     "teacher_forcing_lattice": True,
     "teacher_forcing_max_epoch": None,  # dataset.teacher_forcing_max_epoch
     "max_neighbors": 20,  # maximum number of neighbors for OTF graph bulding in decoder
-    "radius": 12.,  # maximum search radius for OTF graph building in decoder
-    "sigma_begin": 10.,
+    "radius": 12.0,  # maximum search radius for OTF graph building in decoder
+    "sigma_begin": 10.0,
     "sigma_end": 0.01,
-    "type_sigma_begin": 5.,
+    "type_sigma_begin": 5.0,
     "type_sigma_end": 0.01,
     "num_noise_level": 50,
     "predict_property": False,
@@ -113,8 +113,8 @@ enc_config = {
     "num_radial": 6,
     "cutoff": 7.0,
     "envelope_exponent": 5.0,
-    #"activation": torch.nn.SiLU,
-    "num_targets": None, # data.num_targets
+    # "activation": torch.nn.SiLU,
+    "num_targets": None,  # data.num_targets
     "otf_graph": None,  # data.otf_graph
     "max_num_neighbors": 20,
     "num_before_skip": 1,
@@ -128,10 +128,9 @@ enc_config = {
 
 # GemNetTDecoder
 dec_config = {
-    "hidden_dim": 128, # default 128, 32 for debug
-    "latent_dim": cdvae_config['latent_dim'],  # cdvae latent dim
-    "max_neighbors": cdvae_config['max_neighbors'],  # model.max_neighbors
-    "radius": cdvae_config['radius'],  # model.radius
-    "scale_file": "ocpmodels/models/pyg/gemnet/gemnet-dT.json",  # json file
+    "hidden_dim": 128,  # default 128, 32 for debug
+    "latent_dim": cdvae_config["latent_dim"],  # cdvae latent dim
+    "max_neighbors": cdvae_config["max_neighbors"],  # model.max_neighbors
+    "radius": cdvae_config["radius"],  # model.radius
+    "scale_file": "matsciml/models/pyg/gemnet/gemnet-dT.json",  # json file
 }
-

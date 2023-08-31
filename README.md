@@ -293,4 +293,4 @@ Miret, S.; Lee, K. L. K.; Gonzales, C.; Nassar, M.; Spellings, M. The Open MatSc
 
 </details>
 
-Please cite datasets used in your work as well. You can find additional descriptions and details regarding each dataset [here](ocpmodels/datasets/DATASETS.md).
+Please cite datasets used in your work as well. You can find additional descriptions and details regarding each dataset [here](matsciml/datasets/DATASETS.md).

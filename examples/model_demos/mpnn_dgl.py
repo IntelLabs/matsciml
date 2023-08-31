@@ -1,9 +1,9 @@
 import pytorch_lightning as pl
 
-from ocpmodels.models import MPNN
-from ocpmodels.models.base import ScalarRegressionTask
-from ocpmodels.lightning.data_utils import MatSciMLDataModule
-from ocpmodels.datasets.transforms import DistancesTransform
+from matsciml.models import MPNN
+from matsciml.models.base import ScalarRegressionTask
+from matsciml.lightning.data_utils import MatSciMLDataModule
+from matsciml.datasets.transforms import DistancesTransform
 
 
 # construct a scalar regression task with SchNet encoder
