@@ -22,17 +22,17 @@ from matminer.featurizers.composition.composite import ElementProperty
 from torch_geometric.data import Batch
 
 try:
-    from ocpmodels.lightning.data_utils import MatSciMLDataModule
-    from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
+    from matsciml.lightning.data_utils import MatSciMLDataModule
+    from matsciml.datasets.materials_project import CdvaeLMDBDataset
     from examples.model_demos.cdvae.cdvae import get_scalers
 
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
     sys.path.append("{}/../".format(dir_path))
-    from ocpmodels.lightning.data_utils import MatSciMLDataModule
-    from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
+    from matsciml.lightning.data_utils import MatSciMLDataModule
+    from matsciml.datasets.materials_project import CdvaeLMDBDataset
     from examples.model_demos.cdvae.cdvae import get_scalers
-    from ocpmodels.models.diffusion_utils.eval_utils import (
+    from matsciml.models.diffusion_utils.eval_utils import (
         smact_validity,
         structure_validity,
         CompScaler,
