@@ -28,7 +28,7 @@ task = ScalarRegressionTask(
 dm = MatSciMLDataModule.from_devset(
     "IS2REDataset",
     dset_kwargs={"transforms": [DistancesTransform(), GraphVariablesTransform()]},
-    num_workers=1,
+    num_workers=0,
 )
 
 # run a quick training loop

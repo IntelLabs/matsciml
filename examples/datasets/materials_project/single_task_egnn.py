@@ -47,12 +47,12 @@ task = ScalarRegressionTask(
         "input_dim": 128,
     },
     lr=1e-3,
-    task_keys=["efermi"],
+    task_keys=["band_gap"],
 )
 
 dm = MatSciMLDataModule(
     dataset="MaterialsProjectDataset",
-    train_path="mp_data/base",
+    train_path="./matsciml/datasets/materials_project/devset",
     dset_kwargs={
         "transforms": [
             PointCloudToGraphTransform(
@@ -62,7 +62,7 @@ dm = MatSciMLDataModule(
     },
     val_split=0.2,
     batch_size=16,
-    num_workers=2,
+    num_workers=0,
 )
 
 trainer = pl.Trainer(

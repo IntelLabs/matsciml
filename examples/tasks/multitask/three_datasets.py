@@ -69,7 +69,7 @@ output_kwargs={
     "activation": SiLU,
     "lazy": False,
     "input_dim": 128,
-},
+}
 # add normalization to targets
 is2re_norm = {
     "energy_relaxed_mean": -1.3314,

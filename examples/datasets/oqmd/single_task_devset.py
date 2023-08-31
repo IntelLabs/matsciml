@@ -60,7 +60,7 @@ dm = MatSciMLDataModule.from_devset(
             )
         ]
     },
-    num_workers=2,
+    num_workers=0,
 )
 
 # run 10 steps for funsies

@@ -1,14 +1,13 @@
 import pytorch_lightning as pl
 from torch.nn import LayerNorm, SiLU
 
-from matsciml.datasets.materials_project import MaterialsProjectDataset
-from matsciml.lightning.data_utils import MaterialsProjectDataModule
+from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import GalaPotential
 from matsciml.models.base import ScalarRegressionTask
 
 
 model_args = {
-    "D_in": 200,
+    "D_in": 100,
     "hidden_dim": 128,
     "merge_fun": "concat",
     "join_fun": "concat",
@@ -22,7 +21,7 @@ model_args = {
     "block_normalization": "layer",
     "equivariant_attention": False,
     "tied_attention": True,
-    "encoder_only": False,
+    "encoder_only": True,
 }
 
 mp_norms = {
@@ -42,16 +41,16 @@ task = ScalarRegressionTask(
         "input_dim": 128,
     },
     lr=1e-4,
-    task_keys=["formation_energy_per_atom"],
+    task_keys=["band_gap"],
 )
 
 
-dm = MaterialsProjectDataModule(
-    dataset=MaterialsProjectDataset(
-        "./mp_data/base/train/",
-    ),
-    val_split="./mp_data/base/val/",
-    batch_size=12,
+dm = MatSciMLDataModule(
+    dataset="MaterialsProjectDataset",
+    train_path="./matsciml/datasets/materials_project/devset",
+    val_split=0.2,
+    batch_size=16,
+    num_workers=0,
 )
 
 trainer = pl.Trainer(

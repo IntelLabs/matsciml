@@ -1,11 +1,12 @@
 import pytorch_lightning as pl
 
 from matsciml.lightning.data_utils import MultiDataModule
-from matsciml.datasets.symmetry import DGLSyntheticPointGroupDataset, symmetry_devset
+from matsciml.datasets.symmetry import SyntheticPointGroupDataset, symmetry_devset
 from matsciml.datasets.materials_project import (
-    DGLMaterialsProjectDataset,
+    MaterialsProjectDataset,
     materialsproject_devset,
 )
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.datasets.multi_dataset import MultiDataset
 from matsciml.models import GraphConvModel
 from matsciml.models.base import (
@@ -17,8 +18,14 @@ from matsciml.models.base import (
 dm = MultiDataModule(
     train_dataset=MultiDataset(
         [
-            DGLSyntheticPointGroupDataset(symmetry_devset),
-            DGLMaterialsProjectDataset(materialsproject_devset),
+            SyntheticPointGroupDataset(
+                symmetry_devset,
+                transforms=[PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
+            ),
+            MaterialsProjectDataset(
+                materialsproject_devset,
+                transforms=[PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
+            ),
         ]
     ),
     batch_size=16,
@@ -35,8 +42,8 @@ reg_task = ScalarRegressionTask(
 )
 
 task = MultiTaskLitModule(
-    ("DGLSyntheticPointGroupDataset", sym_task),
-    ("DGLMaterialsProjectDataset", reg_task),
+    ("SyntheticPointGroupDataset", sym_task),
+    ("MaterialsProjectDataset", reg_task),
 )
 
 trainer = pl.Trainer(max_epochs=1, log_every_n_steps=5)

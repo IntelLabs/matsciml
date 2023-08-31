@@ -17,16 +17,16 @@ task = ScalarRegressionTask(
         "hidden_dim": 128,
         "activation": SiLU,
         "lazy": False,
-        "input_dim": 128,
+        "input_dim": 1,
     },
     lr=1e-3,
-    task_keys=["energy_per_atom"],
+    task_keys=["band_gap"],
 )
 
 
 dm = MatSciMLDataModule(
     "MaterialsProjectDataset",
-    train_path="mp_data/base",
+    train_path="./matsciml/datasets/materials_project/devset",
     dset_kwargs={"transforms": [PointCloudToGraphTransform("dgl", cutoff_dist=20.0)]},
     val_split=0.2,
 )

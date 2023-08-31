@@ -22,7 +22,7 @@ pl.seed_everything(1616)
 # DGL graphs, shift to center of mass, and rescale coordinate magnitudes
 dm = MatSciMLDataModule(
     dataset=MaterialsProjectDataset(
-        "../materials_project/mp_data/base",
+        "./mp-project/base/train",
         transforms=[
             PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
             COMShift(),
@@ -62,7 +62,7 @@ model_args = {
 }
 
 # shared output head arguments
-output_kwargs={
+output_kwargs = {
     "norm": LayerNorm(128),
     "num_hidden": 2,
     "dropout": 0.2,
@@ -70,7 +70,7 @@ output_kwargs={
     "activation": SiLU,
     "lazy": False,
     "input_dim": 128,
-},
+}
 # set target normalization valkues
 mp_norms = {
     "band_gap_mean": 1.0761,

@@ -5,7 +5,6 @@ from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import PLEGNNBackbone
 from matsciml.models.base import (
     ScalarRegressionTask,
-    CrystalSymmetryClassificationTask,
 )
 from matsciml.datasets.transforms import PointCloudToGraphTransform
 
