@@ -96,12 +96,35 @@ For more advanced use cases:
 Checkout materials generation with CDVAE
 </summary>
 
+CDVAE [7] is a latent diffusion model that trains a VAE on the reconstruction 
+objective, adds Gaussian noise to the latent variable, and learns to predict
+the noise. The noised and generated features inlcude lattice parameters, 
+atoms composition, and atom coordinates.
+The generation process is based on the annealed Langevin dynamics.
+
+CDVAE is implemented in the `GenerationTask` and we provide a custom data
+split from the Materials Project bounded by 25 atoms per structure.
+The process is split into 3 parts with 3 respective scripts found in
+`examples/model_demos/cdvae/`.
+1. Training CDVAE on the reconstruction and denoising objectives: `cdvae.py`
+2. Sampling the structures (from scratch or reconstruct the test set): `cdvae_inference.py`
+3. Evaluating the sampled structures: `cdvae_metrics.py`
+
+The sampling procedure takes some time (about 5-8 hours for 10000 structures
+depending on the hardware) due to the Langevin dynamics.
+The default hyperparameters of CDVAE components correspond to that from the
+original paper and can be found in `cdvae_configs.py`.
+
+
 ```bash
 # training
-python examples/model_demos/cdvae/cdvae.py
+python examples/model_demos/cdvae/cdvae.py --data_path <path/to/splits>
 
-# inference
-python examples/model_demos/cdvae/cdvae_inference.py
+# sampling 10,000 structures from scratch
+python examples/model_demos/cdvae/cdvae_inference.py --model_path <path/to/checkpoint> --data_path <path/to/splits> --tasks gen
+
+# evaluating the sampled structures
+python examples/model_demos/cdvae/cdvae_metrics.py --root_path <path/to/generated_samples> --data_path <path/to/splits> --tasks gen
 ```
 </details>
 

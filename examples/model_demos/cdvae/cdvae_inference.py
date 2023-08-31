@@ -14,24 +14,28 @@ from types import SimpleNamespace
 from torch_geometric.data import Batch
 
 try:
-    from matsciml.models.diffusion_pipeline import GenerationTask
-    from matsciml.models.pyg.gemnet.decoder import GemNetTDecoder
-    from matsciml.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from matsciml.lightning.data_utils import MatSciMLDataModule
-    from matsciml.datasets.materials_project import CdvaeLMDBDataset
-    from examples.simple_example_cdvae import get_scalers
-    from examples.cdvae_configs import enc_config, dec_config, cdvae_config, mp_config
+    from ocpmodels.models.diffusion_pipeline import GenerationTask
+    from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
+    from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
+    from ocpmodels.lightning.data_utils import MatSciMLDataModule
+    from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
+    from examples.model_demos.cdvae.cdvae import get_scalers
+    from examples.model_demos.cdvae.cdvae_configs import (
+        enc_config, dec_config, cdvae_config, mp_config
+    )
 
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
     sys.path.append("{}/../".format(dir_path))
-    from matsciml.models.diffusion_pipeline import GenerationTask
-    from matsciml.models.pyg.gemnet.decoder import GemNetTDecoder
-    from matsciml.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from matsciml.lightning.data_utils import MatSciMLDataModule
-    from matsciml.datasets.materials_project import CdvaeLMDBDataset
-    from examples.simple_example_cdvae import get_scalers
-    from examples.cdvae_configs import enc_config, dec_config, cdvae_config, mp_config
+    from ocpmodels.models.diffusion_pipeline import GenerationTask
+    from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
+    from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
+    from ocpmodels.lightning.data_utils import MatSciMLDataModule
+    from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
+    from examples.model_demos.cdvae.cdvae import get_scalers
+    from examples.model_demos.cdvae.cdvae_configs import (
+        enc_config, dec_config, cdvae_config, mp_config
+    )   
 
 
 def load_model(model_path, data_path, load_data, bs=256):
