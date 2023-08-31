@@ -1,22 +1,40 @@
 
-<h1 align="center">Open MatSci ML Toolkit : A Flexible Framework for Deep Learning on the OpenCatalyst Dataset</h1>
-<!-- # Open MatSci ML Toolkit : A Flexible Framework for Deep Learning on the OpenCatalyst Dataset 
-## Introduction -->
+<h1 align="center">Open MatSci ML Toolkit : A Broad, Multi-Task Benchmark for Solid-State Materials Modeling</h1>
 
-Catalysts are essential components in chemical systems that aim to accelerate speed of chemical reactions. Catalytic materials design, especially low-cost catalysts, remain an ongoing challenge that will continue to be more important for a variety of applications, including renewable energy and sustainable agriculture. The [OpenCatalyst Project](https://opencatalystproject.org/), jointly developed by Fundamental AI Research (FAIR) at Meta AI and Carnegie Mellon University's (CMU) Department of Chemical Engineering, encompasses one of the first large-scale datasets to enable the application of machine learning (ML) techniques containing over 1.3 million molecular relaxations of 82 adsorbates on 55 different catalytic surfaces. The original release from 2019 has also been supplemented by subsequent updates in [2020 and 2022](https://github.com/Open-Catalyst-Project/ocp/blob/main/DATASET.md) and maintains an active leaderboard and annual competition. The significant effort of providing high-quality data for catalytic materials is a major step forward in enabling ML researchers and practitioner to innovate on materials design challenges. The original combines a large variety of deep learning and high performance computing features that have been shown to train performant for the different tasks outlined in the dataset releases, as well as enabling the development of new geometric deep learning architectures ([DimeNet](https://arxiv.org/pdf/2003.03123), [GemNet](https://proceedings.neurips.cc/paper/2021/file/35cf8659cfcb13224cbd47863a34fc58-Paper.pdf) at greater scales approaching GNNs with a [billion parameters](https://arxiv.org/pdf/2203.09697).
+<div align="center">
+
+[![matsciml-preprint](https://img.shields.io/badge/TMLR-Open_MatSciML_Toolkit-blue)](https://openreview.net/forum?id=QBMyDZsPMd)
+[![hpo-paper](https://img.shields.io/badge/OpenReview-AI4Mat_2022_HPO-blue)](https://openreview.net/forum?id=_7bEq9JQKIJ)
+[![lightning](https://img.shields.io/badge/Lightning-v1.8.6%2B-792ee5?logo=pytorchlightning)](https://lightning.ai/docs/pytorch/1.8.6)
+[![pytorch](https://img.shields.io/badge/PyTorch-v1.12%2B-red?logo=pytorch)](https://pytorch.org/get-started/locally/)
+[![dgl](https://img.shields.io/badge/DGL-v0.9%2B-blue?logo=dgl)](https://docs.dgl.ai/en/latest/)
+[![pyg](https://img.shields.io/badge/PyG-2.3.1-red?logo=pyg)](https://pytorch-geometric.readthedocs.io/en/2.3.1/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+</div>
+
+This is the implementation of the MatSci ML benchmark, which includes ~1.5 million ground-state materials collected from various datasets, as well as integration of the OpenCatalyst dataset supporting diverse data format (point cloud, DGL graphs, PyG graphs), learning methods (single task, multi-task, multi-data) and deep learning models. Primary project contributors include: Santiago Miret (Intel Labs), Kin Long Kelvin Lee (Intel AXG), Carmelo Gonzales (Intel Labs), Mikhail Galkin (Intel Labs), Marcel Nassar (Intel Labs), Matthew Spellings (Vector Institute).
+
+### News
+
+- [2023/08/31] Initial release of the MatSci ML Benchmark with integration of ~1.5 million ground state materials.
+- [2023/07/31] The Open MatSci ML Toolkit : A Flexible Framework for Deep Learning on the OpenCatalyst Dataset paper is accepted into TMLR. See previous version for code related to the benchmark.
+
+### Introduction
+
+The MatSci ML Benchmark contains diverse sets of tasks (energy prediction, force prediction, property prediction) across a broad range of datasets (OpenCatalyst Project [1], Materials Project [2], LiPS [3], OQMD [4], NOMAD [5], Carolina Materials Database [6]). Most of the data is related to energy prediction task, which is the most common property tracked for most materials systems in the literature. The codebase support single-task learning, as well as multi-task (training one model for multiple tasks within a dataset) and multi-date (training a model across multiple datsets with a common property). Additionally, we provide a generative materials pipeline that applies diffusion models (CDVAE [7]) to generate new unit cells.
 
 
 <p align="center">
-  <img src="./docs/open-matsci-ml-toolkit.png"/>
+  <img src="./docs/MatSci-ML-Benchmark-Table.png"/>
 </p>
 
-
- While the toolkit of the original OpenCatalyst repository is very powerful, it contains a significant amount of complexity due to various interacting pieces of software. This can make it very challenging for new ML researchers to interact with the repository, create new architectures or modeling methods and run experiments on the dataset. To address the challenges of usability and ease of use, we introduce Open MatSci ML Toolkit, a flexible and easy-to-scale framework for deep learning on the Open Catalyst Dataset. We designed Open MatSci ML Toolkit with the following basic principles and features:
+The package follows the original design principles of the Open MatSci ML Toolkit, including:
 - Ease of use for new ML researchers and practitioners that want get started on interacting with the OpenCatalyst dataset.
 - Scalable computation of experiments leveraging [PyTorch Lightning](https://www.pytorchlightning.ai/) across different computation capabilities (laptop, server, cluster) and hardware platforms (CPU, GPU, XPU) without sacrificing performance in the compute and modeling.
-- Integrating support for [DGL](dgl.ai) for rapid GNN development to complement the original's repo usage of [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/).
+- Integrating support for [DGL](https://docs.dgl.ai/en/0.9.x/) and [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/) for rapid GNN development.
 
-The examples outlined in the next section how to get started with Open MatSci ML Toolkit using a simple python script, jupyter notebook or the PyTorchLightning CLI for a simple training on a subset of the original dataset (dev-set) that can be run on a laptop. Subsequently, we scale our example python script to large compute systems, including Distributed Training (Multiple GPU on a Single Node) and Multi-Node Training (Multiple GPUS across Multiple Nodes) in a computing cluster. Leveraging both PyTorch Lightning and DGL capabilities, we can enable the compute and experiment scaling with minimal additional complexity.
+The examples outlined in the next section how to get started with Open MatSci ML Toolkit using simple Python scripts, Jupyter notebooks, or the PyTorch Lightning CLI for a simple training on a portable subset of the original dataset (dev-set) that can be run on a laptop. Subsequently, we scale our example python script to large compute systems, including distributed data parallel training (multiple GPU on a single node) and multi-node training (multiple GPUs across multiple nodes) in a computing cluster. Leveraging both PyTorch Lightning and DGL capabilities, we can enable the compute and experiment scaling with minimal additional complexity.
 
 ### Installation
 
@@ -30,136 +48,249 @@ Additionally, for a development install, one can specify the extra packages like
 
 The `examples` folder contains simple, unit scripts that demonstrate how to use the pipeline in specific ways:
 
-- [Basic script for task training with PyTorch Lightning abstractions](examples/simple_example_pt_lightning.py)
-- [Manual training; the traditional way](examples/simple_example_torch.py)
-- [Distributed data parallelism with CPUs on a SLURM managed cluster](examples/simple_example_slurm.py)
-- [Using the Lightning CLI with YAML configuration files](examples/simple_cli_example.sh)
-- [Model development and testing in a Jupyter notebook](examples/devel-example.ipynb)
-- [Multi-GPU training script](examples/simple_example_multi_node.py)
-- [Modifying the pipeline with `Callbacks`](examples/train_with_callbacks_example.py)
+<details>
+<summary>
+Get started with different datasets with "devsets"
+</summary>
 
-## PyTorch Lightning Refactor
+```bash
+# Materials project
+python examples/datasets/materials_project/single_task_devset.py
 
-The Open MatSci ML Toolkit software framework was built with the aim of transparency in the implementation to enable agility for machine learning researchers to apply novel model architectures and training techniques to scientific data, particularly the OpenCatalyst dataset. Given those aspirations, we performed some refactoring of the code in the original repository and added additional functionality.
+# Carolina materials database
+python examples/datasets/carolina_db/single_task_devset.py
+
+# NOMAD
+python examples/datasets/nomad/single_task_devset.py
+
+# OQMD
+python examples/datasets/oqmd/single_task_devset.py
+```
+</details>
+
+<details>
+<summary>
+Representation learning with symmetry pretraining
+</summary>
+
+```bash
+# uses the devset for synthetic point group point clouds
+python examples/tasks/symmetry/single_symmetry_example.py
+```
+</details>
+
+<details>
+<summary>
+Example notebook-based development and testing
+</summary>
+
+```bash
+jupyter notebook examples/devel-example.ipynb
+```
+</details>
+
+For more advanced use cases:
+
+<details>
+<summary>
+Checkout materials generation with CDVAE
+</summary>
+
+CDVAE [7] is a latent diffusion model that trains a VAE on the reconstruction 
+objective, adds Gaussian noise to the latent variable, and learns to predict
+the noise. The noised and generated features inlcude lattice parameters, 
+atoms composition, and atom coordinates.
+The generation process is based on the annealed Langevin dynamics.
+
+CDVAE is implemented in the `GenerationTask` and we provide a custom data
+split from the Materials Project bounded by 25 atoms per structure.
+The process is split into 3 parts with 3 respective scripts found in
+`examples/model_demos/cdvae/`.
+1. Training CDVAE on the reconstruction and denoising objectives: `cdvae.py`
+2. Sampling the structures (from scratch or reconstruct the test set): `cdvae_inference.py`
+3. Evaluating the sampled structures: `cdvae_metrics.py`
+
+The sampling procedure takes some time (about 5-8 hours for 10000 structures
+depending on the hardware) due to the Langevin dynamics.
+The default hyperparameters of CDVAE components correspond to that from the
+original paper and can be found in `cdvae_configs.py`.
+
+
+```bash
+# training
+python examples/model_demos/cdvae/cdvae.py --data_path <path/to/splits>
+
+# sampling 10,000 structures from scratch
+python examples/model_demos/cdvae/cdvae_inference.py --model_path <path/to/checkpoint> --data_path <path/to/splits> --tasks gen
+
+# evaluating the sampled structures
+python examples/model_demos/cdvae/cdvae_metrics.py --root_path <path/to/generated_samples> --data_path <path/to/splits> --tasks gen
+```
+</details>
+
+<details>
+<summary>
+Multiple tasks trained using the same dataset
+</summary>
+
+```bash
+# this script requires modification as you'll need to download the materials
+# project dataset, and point L24 to the folder where it was saved
+python examples/tasks/multitask/single_data_multitask_example.py
+```
+
+Utilizes Materials Project data to train property regression and material classification jointly 
+</details>
+
+<details>
+<summary>
+Multiple tasks trained using multiple datasets
+</summary>
+
+```bash
+python examples/tasks/multitask/three_datasets.py
+```
+
+Train regression tasks against IS2RE, S2EF, and LiPS datasets jointly
+</details>
 
 
 ### Data Pipeline
 
-Our data pipeline leverages the processing capabilities of the original OpenCatalyst repo with additional modifications to provide flexibility to process the data in various format, including:
+In the `scripts` folder you will find two scripts needed to download and preprocess datasets: the `download_datasets.py` can be used to obtain Carolina DB, Materials Project, NOMAD, and OQMD datasets, while the `download_ocp_data.py` preserves the original Open Catalyst script.
 
-- Support for generalized, abstract data structures that can be saved in `lmdb` format and a sub-sampling script for small datasets in small compute testing environments
-- Use of `pl.LightningDataModule` abstracts away splits, distributed loading, and data management while running experiments
-- DGL data objects are defined in `ocpmodel/datasets` and the classes for DGL data pre-processing is contained in `ocpmodel/preprocessing`
-
-For streamlined processing of the S2EF 200k subset, you can use the following set of commands similar to [orginal repo's pipeline](https://github.com/Open-Catalyst-Project/ocp/blob/main/DATASET.md#download-and-preprocess-the-dataset):
-- Ensure all requirements are installed in the virtual environment per the installtion instructions above
-- run `python scripts/download_data.py --task s2ef --split 200k --num-workers 1 --get-edges --ref-energy --data-path <path-to-data>`
-
-The `--data-path` specifies the output location of the processed dataset,  `--task` specifies the task for which the data is to be downloaded with `--split` specifying the data split in the case of S2EF; `--ref-energy` subtracts the reference energy from raw energies and `--get-edges` creates the edges for the graph structure.
-
-The minimal energy path to testing and development would be to use the minimal devset. There is a convenient mechanism for getting the DGL version of the devset regardless
-of how you install the package:
+In the current release, we have implemented interfaces to a number of large scale materials science datasets. Under the hood, the data structures pulled from each dataset have been homogenized, and the only real interaction layer for users is through the `MatSciMLDataModule`, a subclass of `LightningDataModule`.
 
 ```python
-from ocpmodels.lightning.data_utils import DGLDataModule
+from matsciml.lightning.data_utils import MatSciMLDataModule
 
 # no configuration needed, although one can specify the batch size and number of workers
-devset_module = DGLDataModule.from_devset()
+devset_module = MatSciMLDataModule.from_devset(dataset="MaterialsProjectDataset")
 ```
 
-This will let you springboard into development without needing to worry about _how_ to wrangle with the datasets; just grab a batch and go! This
-mechanism is also used for the unit tests pertaining to the data pipeline.
+This will let you springboard into development without needing to worry about _how_ to wrangle with the datasets; just grab a batch and go! With the exception of Open Catalyst, datasets will typically return point cloud representations; we provide a flexible transform interface to interconvert between representations and frameworks:
+
+<details>
+<summary>
+From point clouds to DGL graphs
+</summary>
+
+```python
+from matsciml.datasets.transforms import PointCloudToGraphTransform
+
+# make the materials project dataset emit DGL graphs, based on a atom-atom distance cutoff of 10
+devset = MatSciMLDataModule.from_devset(
+    dataset="MaterialsProjectDataset",
+    dset_kwargs={"transforms": [PointCloudToGraphTransform(backend="dgl", cutoff_dist=10.)]}
+)
+```
+</details>
+
+<details>
+<summary>
+But I want to use PyG?
+</summary>
+
+```python
+from matsciml.datasets.transforms import PointCloudToGraphTransform
+
+# change the backend argument to obtain PyG graphs
+devset = MatSciMLDataModule.from_devset(
+    dataset="MaterialsProjectDataset",
+    dset_kwargs={"transforms": [PointCloudToGraphTransform(backend="pyg", cutoff_dist=10.)]}
+)
+```
+
+</details>
+
+<details>
+<summary>
+What else can I configure with `MatSciMLDataModule`?
+</summary>
+
+Datasets beyond devsets can be configured through class arguments:
+
+```python
+devset = MatSciMLDataModule(
+    dataset="MaterialsProjectDataset",
+    train_path="/path/to/training/lmdb/folder",
+    batch_size=64,
+    num_workers=4,     # configure data loader instances
+    dset_kwargs={"transforms": [PointCloudToGraphTransform(backend="pyg", cutoff_dist=10.)]},
+    val_split="/path/to/val/lmdb/folder"
+)
+```
+
+In particular, `val_split` and `test_split` can point to their LMDB folders, _or_ just a float between [0,1] to do quick, uniform splits. The rest, including distributed sampling, will be taken care of for you under the hood.
+</details>
+
+<details>
+
+<summary>
+How do I compose multiple datasets?
+</summary>
+
+Given the amount of configuration involved, composing multiple datasets takes a little more work but we have tried to make it as seamless as possible. The main difference from the single dataset case is replacing `MatSciMLDataModule` with `MultiDataModule` from `matsciml.lightning.data_utils`, configuring each dataset manually, and passing them collectively into the data module:
+
+```python
+from matsciml.datasets import MaterialsProjectDataset, OQMDDataset, MultiDataset
+from matsciml.lightning.data_utils import MultiDataModule
+
+# configure training only here, but same logic extends to validation/test splits
+train_dset = MultiDataset(
+  [
+    MaterialsProjectDataset("/path/to/train/materialsproject"),
+    OQMDDataset("/path/to/train/oqmd")
+  ]
+)
+
+# this configures the actual data module passed into Lightning
+datamodule = MultiDataModule(
+  batch_size=32,
+  num_workers=4,
+  train_dataset=train_dset
+)
+```
+
+While it does require a bit of extra work, this was to ensure flexibility in how you can compose datasets. We welcome feedback on the user experience! 😃
+
+</details>
 
 ### Task abstraction
 
-- Abstract original OCP training tasks as `pl.LightningModule`s: base class manages the model abstraction, and children (e.g. `S2EFLightningModule`) takes care of training/validation loop
-  - This pattern ensures extendibility: task and data flexibility for future tasks, or different model architectures (e.g. those that do not use graphs representations)
-- Logging to any PL supported platform; default is Tensorboard, but can send data to W&B, SigOpt (thanks to Carmelo and Krzysztof)
-- HPO with any PL supported platform, not just Ray
-
-### Experiment tracking
-
-By implementing the pipeline with PyTorch Lightning, we can take advantage of the extensive logging/experiment tracking ecosystem available to many MLOps platforms. The two main
-abstractions relevant to this are PyTorch Lightning [`Callback`s](https://pytorch-lightning.readthedocs.io/en/1.6.3/extensions/callbacks.html) and [`Logger`s](https://pytorch-lightning.readthedocs.io/en/1.6.3/extensions/logging.html).
-With the former, you can configure things like automatic model checkpointing every $k$ steps, use it to profile your code (see the `ocpmodels.lightning.profiling` module for examples), early stopping mechanisms, and more. With the
-latter, you can log arbitrary data into a variety of different formats: CSV for simple debugging, Tensorboard for increased interactivity, and platforms such as SigOpt (implemented in Open MatSci ML Toolkit), Weights & Biases, and Neptune.
-
-
-## Deep Graph Library (DGL) Refactor
-
-The original OpenCatalyst repo leverages [Pytorch Geometric (PyG)](https://pytorch-geometric.readthedocs.io/en/latest/) for implementing various neural networks for molecular embeddings. For Open MatSci ML Toolkit, we chose to build on top of the Deep Graph Library (DGL) instead. While both PyG and DGL are highly performant libraries for graph neural networks and the decision to choose one over the other is subjective, we motivate our choice of DGL for this library as follows:
-
-- _**Graph abstraction:**_ the dgl graph data structure `dgl.DGLGraph` offers more flexibility for storing diverse molecular data over the PyG structure `torch_geometric.data.Data`. This abstraction allows for more general data pipelines amicable to experimentation and ablation studies; two qualities that are important in scientific exploration. 
-- _**Cross-platform optimization:**_ both DGL and PyG are well optimized for single-node GPU deployment; however, DGL also supports additional platforms, such as Intel's x86,  that help accelerate GNNs on a wide range of hardware platforms.
-- _**Support for sampling-based, and distributed training beyond data-parallel:**_ many applications involve large graph data that doesn't fit onto a single GPU. Such cases require specialized sampling techniques to either shrink the graph size or distribute the storage across multiple nodes. While both PyG and DGL support sampling-based training, DGL is more mature when it comes to sampling graphs and running distributed training of GNNs [ref].
-
-We discuss each of the above points in more details:
-
-### Graph Abstraction:
-PyG's `Data` has a graph data structure composed of the following fixed attributes: node feature matrix `x`, edges `edge_index`, edge attributes `edge_attr`, labels `y`, and node position matrix `pos`. Additional attributes can be set using keyword argument collection in the constructor. 
-In contrast, DGL's `DGLGraph` provides a dictionary-style access to graph data through `DGLGraph.ndata` (node features) and `DGLGraph.edata` (edge features). These dictionaries don't impose any restrictions on feature names or number; however, the `DGLGraph` object will enforce that the feature dimension match the number of nodes and edges.
- 
-While PyG's `Data` covers a large part of the use cases in the GNN world, we argue that due to the diversity of molecular data, using the flexible `DGLGraph` as example representation decouples the dataset from the model-specific data pipeline while retaining data consistency such as matching the number of features and edges. This lends itself to a wide variety of customized pipelines that can explore various model explorations and ablation studies. Consider molecular data that contains various features on both atoms and bonds. For example, QM9 atom features includes, among others, atom coordinates `x`, atom type `tp`, atomic number `z`, number of hydrogens `nH`, hybridization [2]. A given example might contain the following fields:
-```python
-class Example(NamedTuple):
-  x: List[float]
-  tp: List[bool]
-  z: int
-  nH: int
-  bonds: List[Tuple[int, int]]
-```
-Assuming all the above fields have been cast into their appropriate `Tensor` types, converting `Example` to PyG's `Data` can be done as follows 
-```python
-example_dict = example._asdict()
-src, dst = zip(*example_dict.pop('bonds'))
-edge_index = torch.hstack((src, dst))
-pos = example_dict.pop('x')
-
-# assign to fixed attributes
-embed_tp, embed_z, embed_nH = embed(example)
-feat = torch.cat((embed_tp, embed_z, embed_nH)
-data = Data(pos=pos, x=feat, edge_index=edge_index)
-# assign to generic container
-data = Data(pos=pos, edge_index=edge_index, **example_dict)
-```
-while in DGL's `DGLGraph` this would look like 
-```python
-src, dst = zip(*qm9_example.bonds)
-dgl_graph = dgl.graph((src, dst))
-dgl_graph.ndata = example._asdict()
-```
-
-The above example demonstrates that the `DGLGraph` can accommodate diverse data without having to perform any special model-specific preprocessing but retaining graph consistency across assigned nodes and features. PyG `Data`, on the other hand, either requires feature preprocessing and assignment to the `x` field or generically attaching the features to the data object. 
-
-
-
-### Cross-platform optimization:
-GPU acceleration plays a pivotal role in modern neural network in general and GNNs in particular. 
-Recently, there has been an increasing interest in deploying GNNs on other hardware platforms such as Intel x86. While both DGL and PyG are well optimized for CUDA, DGL has extra support for CPU training through `libxsmm`, which allows a wider deployment and user base [1].
-
-
-### Sampling and distributed training beyond data-parallel
-Increasingly single device training is reaching its limits as graphs and models scale in size and memory requirements. 
-Typical way to address this is to shrink the size of the graphs by sub-sampling the graph so that it fits into single device memory [3]. However, this sampling can lead to performance degradation due to the discarded neighborhood information. Recently there has been a surge in distributed training for GNNs [3, 4]. In particular, DGL implements various form of graph distributed training for both sampled and full batch training. This capability could prove invaluable for molecular design datasets as both model and data complexity grows.
+In Open MatSci ML Toolkit, tasks effective form learning objectives: at a high level, a task takes an encoding model/backbone that ingests a structure to predict one or several properties, or classify a material. In the single task case, there may be multiple _targets_ and the neural network architecture may be fluid, but there is only _one_ optimizer. Under this definition, multi-task learning comprises multiple tasks and optimizers operating jointly through _a single embedding_.
 
 
 ## References
-- [1] Sasikanth Avancha, Md. Vasimuddin, Sanchit Misra, and Ramanarayan Mohanty, "Deep Graph Library Optimizations for Intel(R) x86 Architecture", https://arxiv.org/abs/2007.06354.
-- [2] Justin Gilmer, Samuel S. Schoenholz, Patrick F. Riley, Oriol Vinyals and George E. Dahl, "Neural Message Passing for Quantum Chemistry", ICML 2017.
-- [3] William L. Hamilton, Rex Ying, and Jure Leskovec, "Inductive Representation Learning on Large Graphs", NeurIPS 2017
-- [4] Vasimuddin Md et. al., "DistGNN: Scalable Distributed Training for Large-Scale Graph Neural Networks", 	arXiv:2104.06700.
-- [5] Hesham Mostafa, "Sequential Aggregation and Rematerialization: Distributed Full-batch Training of Graph Neural Networks on Large Graphs", MLSys 2022.
+- [1] Chanussot, L., Das, A., Goyal, S., Lavril, T., Shuaibi, M., Riviere, M., Tran, K., Heras-Domingo, J., Ho, C., Hu, W. and Palizhati, A., 2021. Open catalyst 2020 (OC20) dataset and community challenges. Acs Catalysis, 11(10), pp.6059-6072.
+- [2] Jain, A., Ong, S.P., Hautier, G., Chen, W., Richards, W.D., Dacek, S., Cholia, S., Gunter, D., Skinner, D., Ceder, G. and Persson, K.A., 2013. Commentary: The Materials Project: A materials genome approach to accelerating materials innovation. APL materials, 1(1).
+- [3] Batzner, S., Musaelian, A., Sun, L., Geiger, M., Mailoa, J.P., Kornbluth, M., Molinari, N., Smidt, T.E. and Kozinsky, B., 2022. E (3)-equivariant graph neural networks for data-efficient and accurate interatomic potentials. Nature communications, 13(1), p.2453.
+- [4] Kirklin, S., Saal, J.E., Meredig, B., Thompson, A., Doak, J.W., Aykol, M., Rühl, S. and Wolverton, C., 2015. The Open Quantum Materials Database (OQMD): assessing the accuracy of DFT formation energies. npj Computational Materials, 1(1), pp.1-15.
+- [5] Draxl, C. and Scheffler, M., 2019. The NOMAD laboratory: from data sharing to artificial intelligence. Journal of Physics: Materials, 2(3), p.036001.
+- [6] Zhao, Y., Al‐Fahdi, M., Hu, M., Siriwardane, E.M., Song, Y., Nasiri, A. and Hu, J., 2021. High‐throughput discovery of novel cubic crystal materials using deep generative neural networks. Advanced Science, 8(20), p.2100566.
+- [7] Xie, T., Fu, X., Ganea, O.E., Barzilay, R. and Jaakkola, T.S., 2021, October. Crystal Diffusion Variational Autoencoder for Periodic Material Generation. In International Conference on Learning Representations.
 
 
-## Cite
+## Citations
 
-If you use Open MatSci ML Toolkit in your technical work or publication, we would appreciate it if you cite the Open MatSci ML Toolkit library:
-```
-@software{open_matsci_ml_toolkit,
-  author = {Miret*, Santiago and *Lee, Kin Long Kelvin, and Gonzales, Carmelo and Nassar, Marcel and Sadowski, Krzysztof},
-  title = {{Open MatSci ML Toolkit : A Flexible Framework for Deep Learning on the OpenCatalyst Dataset}},
-  url = {https://github.com/IntelLabs/Open MatSci ML Toolkit},
-  year = {2022}
+If you use Open MatSci ML Toolkit in your technical work or publication, we would appreciate it if you cite the Open MatSci ML Toolkit paper in TMLR:
+
+<details>
+
+<summary>
+Miret, S.; Lee, K. L. K.; Gonzales, C.; Nassar, M.; Spellings, M. The Open MatSci ML Toolkit: A Flexible Framework for Machine Learning in Materials Science. Transactions on Machine Learning Research, 2023.
+</summary>
+
+```bibtex
+@article{openmatscimltoolkit,
+  title = {The Open {{MatSci ML}} Toolkit: {{A}} Flexible Framework for Machine Learning in Materials Science},
+  author = {Miret, Santiago and Lee, Kin Long Kelvin and Gonzales, Carmelo and Nassar, Marcel and Spellings, Matthew},
+  year = {2023},
+  journal = {Transactions on Machine Learning Research},
+  issn = {2835-8856}
 }
 ```
 
+</details>
+
+Please cite datasets used in your work as well. You can find additional descriptions and details regarding each dataset [here](ocpmodels/datasets/DATASETS.md).

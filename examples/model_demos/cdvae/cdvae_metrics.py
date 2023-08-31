@@ -24,14 +24,14 @@ from torch_geometric.data import Batch
 try:
     from ocpmodels.lightning.data_utils import MatSciMLDataModule
     from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
-    from examples.simple_example_cdvae import get_scalers
+    from examples.model_demos.cdvae.cdvae import get_scalers
 
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
     sys.path.append("{}/../".format(dir_path))
     from ocpmodels.lightning.data_utils import MatSciMLDataModule
     from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
-    from examples.simple_example_cdvae import get_scalers  
+    from examples.model_demos.cdvae.cdvae import get_scalers  
     from ocpmodels.models.diffusion_utils.eval_utils import (
     smact_validity, structure_validity, CompScaler, get_fp_pdist,
     load_config, load_data, get_crystals_list, prop_model_eval, compute_cov)

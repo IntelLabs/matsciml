@@ -19,8 +19,8 @@ try:
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
     from ocpmodels.lightning.data_utils import MatSciMLDataModule
     from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
-    from examples.simple_example_cdvae import get_scalers
-    from examples.cdvae_configs import (
+    from examples.model_demos.cdvae.cdvae import get_scalers
+    from examples.model_demos.cdvae.cdvae_configs import (
         enc_config, dec_config, cdvae_config, mp_config
     )
 
@@ -32,8 +32,8 @@ except:
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
     from ocpmodels.lightning.data_utils import MatSciMLDataModule
     from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
-    from examples.simple_example_cdvae import get_scalers
-    from examples.cdvae_configs import (
+    from examples.model_demos.cdvae.cdvae import get_scalers
+    from examples.model_demos.cdvae.cdvae_configs import (
         enc_config, dec_config, cdvae_config, mp_config
     )   
 

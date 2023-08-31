@@ -12,7 +12,7 @@ try:
     from ocpmodels.models.diffusion_pipeline import GenerationTask
     from ocpmodels.models.pyg.gemnet.decoder import GemNetTDecoder
     from ocpmodels.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from examples.cdvae_configs import (
+    from examples.model_demos.cdvae.cdvae_configs import (
         enc_config, dec_config, cdvae_config, mp_config
     )
     from ocpmodels.lightning.data_utils import MatSciMLDataModule
@@ -29,7 +29,7 @@ except:
     from ocpmodels.datasets.materials_project import CdvaeLMDBDataset
     from ocpmodels.models.diffusion_utils.data_utils import StandardScalerTorch
 
-    from examples.cdvae_configs import (
+    from examples.model_demos.cdvae.cdvae_configs import (
         enc_config, dec_config, cdvae_config, mp_config
     )   
 
