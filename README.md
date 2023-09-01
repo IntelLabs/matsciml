@@ -38,9 +38,7 @@ The examples outlined in the next section how to get started with Open MatSci ML
 
 ### Installation
 
-- `pip`: We recommend installing inside a virtual environment with `python -m venv matsciml_env && pip install -r docker/requirements` from the main directory
-- `conda`: We recommend installing inside a virtual with `conda env create --name matsciml_env --file=pl-env.yml` from the main directory
-- `Docker`: We provide a Dockerfiles inside the `docker` that can be run to install a container with pip (`Dockerfile.pip`) or conda (`Dockerfile.conda`)
+- `Docker`: We provide a Dockerfile inside the `docker` that can be run to install a container using standard docker commands.
 
 Additionally, for a development install, one can specify the extra packages like `black` and `pytest` with `pip install './[dev]'`.
 
