@@ -54,9 +54,8 @@ task = ScalarRegressionTask(
 )
 
 # configure materials project from devset
-dm = MatSciMLDataModule(
+dm = MatSciMLDataModule.from_devset(
     "NomadDataset",
-    train_path="./matsciml/datasets/nomad/devset/",
     dset_kwargs={
         "transforms": [
             PointCloudToGraphTransform(
