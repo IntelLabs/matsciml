@@ -20,7 +20,7 @@ def main(args):
         if dataset == "Nomad":
             nomad = NomadRequest(base_data_dir=base_data_dir.joinpath("nomad"))
             nomad.fetch_ids()
-            nomad.split_files = [base_data_dir.joinpath("nomad", "all")]
+            nomad.split_files = [base_data_dir.joinpath("nomad", "all.yml")]
             nomad.download_data()
 
         if dataset == "OQMD":

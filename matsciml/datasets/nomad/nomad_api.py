@@ -214,7 +214,7 @@ class NomadRequest:
         id_dict = self.process_ids()
         for split, ids in id_dict.items():
             self.material_ids = ids
-            self.data_dir = os.path.splitext(split)[0]
+            self.data_dir = os.path.basename(os.path.splitext(split)[0])
             print(f"Downloading data to : {self.data_dir}")
             self.nomad_request()
 
