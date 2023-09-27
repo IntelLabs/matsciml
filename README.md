@@ -17,6 +17,7 @@ This is the implementation of the MatSci ML benchmark, which includes ~1.5 milli
 
 ### News
 
+- [2023/09/27] Release of [pre-packaged lmdb-based datasets](https://zenodo.org/record/8381476) from v1.0.0 via Zenodo.
 - [2023/08/31] Initial release of the MatSci ML Benchmark with integration of ~1.5 million ground state materials.
 - [2023/07/31] The Open MatSci ML Toolkit : A Flexible Framework for Deep Learning on the OpenCatalyst Dataset paper is accepted into TMLR. See previous version for code related to the benchmark.
 
@@ -290,5 +291,25 @@ Miret, S.; Lee, K. L. K.; Gonzales, C.; Nassar, M.; Spellings, M. The Open MatSc
 ```
 
 </details>
+
+If you use v1.0.0, please cite our paper:
+
+<details>
+
+<summary>
+Lee, K. L. K., Gonzales, C., Nassar, M., Spellings, M., Galkin, M., & Miret, S. (2023). MatSciML: A Broad, Multi-Task Benchmark for Solid-State Materials Modeling. arXiv preprint arXiv:2309.05934.
+</summary>
+
+```bibtex
+@article{lee2023matsciml,
+  title={MatSciML: A Broad, Multi-Task Benchmark for Solid-State Materials Modeling},
+  author={Lee, Kin Long Kelvin and Gonzales, Carmelo and Nassar, Marcel and Spellings, Matthew and Galkin, Mikhail and Miret, Santiago},
+  journal={arXiv preprint arXiv:2309.05934},
+  year={2023}
+}
+```
+
+</details>
+
 
 Please cite datasets used in your work as well. You can find additional descriptions and details regarding each dataset [here](matsciml/datasets/DATASETS.md).
