@@ -11,7 +11,7 @@ Thank you for considering a contribution to our project! We appreciate your supp
 Models can come in two varieties, DGL and PyG. DGL based models generally will subclass the `BaseDGLModel` class while PyG uses `BaseModel`. 
 
 In DGL models, the `_forward` method should be defined which is used by the underlying task's standard `forward` method. Input data should match what is expected by the base task module:
-'''python
+```python
     def _forward(
         self,
         graph: AbstractGraph,
@@ -48,7 +48,12 @@ In DGL models, the `_forward` method should be defined which is used by the unde
         torch.Tensor
             Model output; either embedding or projected output
         """
-'''
+```
+
+In PyG, the `_forward` method takes only the `data` object:
+```python
+def _forward(self, data):
+```
 
 Aside from implementing the `_forward` method of the model itself, the constituent building blocks should be broken up into their own files, respective to what their functions are. For example, layer based classes and utilities should be placed into a `layers.py` file, and other helpful functions can be placed in a `helper.py` or `utils.py` file. 
 
@@ -72,6 +77,8 @@ The existing dataset's should be used as a template, and can be expanded upon de
 - Verify that all tests pass successfully before making a pull request.
 
 Tests for each new model and datasets should be added to their respective tests folder, and follow the conventions of the existing tests. Task specific tests may be added to the model folder itself. All relevant tests must pass in order for a pull request to be accepted and merged. 
+
+Model tests may be added [here](https://github.com/IntelLabs/matsciml/tree/main/matsciml/models/dgl/tests), and dataset tests may be added to their respective dataset folders when created.
 
 ### General Guidelines
 - Make your code readable and maintainable. Use meaningful variable and function names.
