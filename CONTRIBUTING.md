@@ -28,9 +28,8 @@ depending on the type of data representation being used and backend: `AbstractPo
 and edges) for consistency, and (2) to abstract out common functions, particularly how to "read" data from the minibatches.
 As an example, DGL and PyG have different interfaces, and by inheriting from the right parent class, ensures that the correct
 features are mapped to the right arguments, etc. If your abstraction permits, the `_forward` method should be the only method
-you need to override.
+you need to override:
 
-In DGL models, the `_forward` method should be defined which is used by the underlying task's standard `forward` method. Input data should match what is expected by the base task module:
 ```python
     def _forward(
         self,
