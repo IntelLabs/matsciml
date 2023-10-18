@@ -127,6 +127,7 @@ to make model architectures as modular as possible, but we do not have any rigor
 for this type of model.
 
 ## Datasets
+
 - Dataset contributions should include a brief description of the dataset and its available fields.
 - Provide proper documentation on how to access, use, and understand the data.
 - Make sure to include data preprocessing scripts if applicable.
@@ -137,8 +138,8 @@ The main dataset file should take care of all of the loading, processing and col
 
 The existing dataset's should be used as a template, and can be expanded upon depending on models needs.
 
+## Tests
 
-### Tests
 - Tests for new models and datasets should be added as necessary, following the conventions laid out for existing models and datasets.
 - Follow our testing framework and naming conventions.
 - Verify that all tests pass successfully before making a pull request.
@@ -147,7 +148,8 @@ Tests for each new model and datasets should be added to their respective tests 
 
 Model tests may be added [here](https://github.com/IntelLabs/matsciml/tree/main/matsciml/models/dgl/tests), and dataset tests may be added to their respective dataset folders when created.
 
-### General Guidelines
+## General Guidelines
+
 - Make your code readable and maintainable. Use meaningful variable and function names.
 - Follow the coding standards and style guidelines set in the repository.
 - Include a clear and concise commit message that describes your changes.
