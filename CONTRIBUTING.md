@@ -11,14 +11,24 @@ style consistency and run static code checkers such as `flake8` and `bandit`. Fo
 of code formatting. While not explicitly enforced, we highly encourage the use of type annotations for function arguments in addition
 to docstrings in NumPy style.
 
+## Models
 
-### Models
+At a high level, model implementations in Open MatSciML are expected to emit a system-level embedding; i.e. $B$
+vector embeddings with dimension $D$ for $B$ minibatch size, and $D$ some hyperparameter of your model, given
+some material structure comprising node, edge, and graph features.
+
 - When contributing models, make sure they are well-documented with clear explanations and examples.
 - Include a README file with model specifications, training parameters, and any relevant information.
 - Code should be organized, well-commented, and follow the repository's coding style and conventions.
 - If the model depends on external data or dependencies, clearly specify these requirements.
 
-Models can come in two varieties, DGL and PyG. DGL based models generally will subclass the `BaseDGLModel` class while PyG uses `BaseModel`. 
+While not compulsory, it is strongly recommended to inherit from one of the three abstract classes in `matsciml.models.base`
+depending on the type of data representation being used and backend: `AbstractPointCloudModel`, `AbstractDGLModel`, and
+`AbstractPyGModel`. The two main utilities of these classes are: (1) provide the same embedding table basis (e.g. for nodes
+and edges) for consistency, and (2) to abstract out common functions, particularly how to "read" data from the minibatches.
+As an example, DGL and PyG have different interfaces, and by inheriting from the right parent class, ensures that the correct
+features are mapped to the right arguments, etc. If your abstraction permits, the `_forward` method should be the only method
+you need to override.
 
 In DGL models, the `_forward` method should be defined which is used by the underlying task's standard `forward` method. Input data should match what is expected by the base task module:
 ```python
