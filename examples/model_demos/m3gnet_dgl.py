@@ -47,7 +47,6 @@ task = ScalarRegressionTask(
     encoder_class=M3GNet,
     encoder_kwargs={
         "element_types": element_types,
-        "encoder_only": False,
     },
     task_keys=["band_gap"],
 )
