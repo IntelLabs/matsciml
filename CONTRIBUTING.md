@@ -126,7 +126,7 @@ as they do not need to rely on framework abstractions to perform message passing
 to make model architectures as modular as possible, but we do not have any rigorous style enforcement
 for this type of model.
 
-### Datasets
+## Datasets
 - Dataset contributions should include a brief description of the dataset and its available fields.
 - Provide proper documentation on how to access, use, and understand the data.
 - Make sure to include data preprocessing scripts if applicable.
