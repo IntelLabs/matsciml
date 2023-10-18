@@ -160,6 +160,8 @@ Model tests may be added [here](https://github.com/IntelLabs/matsciml/tree/main/
 
 Once you've prepared your contribution, please submit a pull request. Our team will review it, provide feedback if needed, and work with you to merge it into the project.
 
+__If it is your first pull request, please ensure you add your name to the [contributors list](./CONTRIBUTORS.md)!__
+
 We appreciate your dedication to making our project better and look forward to your contributions! If you have any questions or need assistance, feel free to reach out through the issue tracker or discussions section.
 
 Thank you for being a part of our open-source community!
