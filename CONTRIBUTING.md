@@ -156,6 +156,7 @@ Model tests may be added [here](https://github.com/IntelLabs/matsciml/tree/main/
 - Ensure that your code is free of linting errors and passes code formatting checks.
 - Keep your pull request focused and single-purpose. If you're addressing multiple issues, create separate pull requests for each.
 - Update documentation if your contribution adds or modifies features.
+- Use informative type annotations: there are some defined in `matsciml.common.types` that help express what the intended inputs are.
 
 Once you've prepared your contribution, please submit a pull request. Our team will review it, provide feedback if needed, and work with you to merge it into the project.
 
