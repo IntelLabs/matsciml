@@ -8,7 +8,9 @@ We recommend installing Open MatSciML Toolkit as an editable install with the re
 
 Additionally, we ask contributors to use our `pre-commit` workflow, which can be installed via `pre-commit install`, which helps enforce code
 style consistency and run static code checkers such as `flake8` and `bandit`. For the latter, we rely on `black` to do the vast majority
-of code formatting.
+of code formatting. While not explicitly enforced, we highly encourage the use of type annotations for function arguments in addition
+to docstrings in NumPy style.
+
 
 ### Models
 - When contributing models, make sure they are well-documented with clear explanations and examples.
