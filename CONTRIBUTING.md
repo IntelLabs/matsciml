@@ -116,7 +116,7 @@ for a more complex case.
 
 ### PyG models
 
-Ideally, message passing layers implemented in PyG should inherit from the `MessagePassing` class, and implement
+Ideally, message passing layers implemented in PyG should inherit from the `torch_geometric.nn.MessagePassing` class, and implement
 the corresponding `message`, `propagate`, etc. functions as appropriate.
 
 ### Point cloud models
