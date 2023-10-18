@@ -29,3 +29,7 @@ def test_dgl_gcn():
 @pytest.mark.skipif(not _has_dgl, reason="DGL not installed; skipping DGL model tests.")
 def test_dgl_gaanet():
     from matsciml.models.dgl import GalaPotential
+
+@pytest.mark.skipif(not _has_dgl, reason="DGL not installed; skipping DGL model tests.")
+def test_dgl_gaanet():
+    from matsciml.models.dgl import M3GNet
