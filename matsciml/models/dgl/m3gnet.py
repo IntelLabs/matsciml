@@ -17,6 +17,8 @@ def forward(
 
 M3GNet.m3gnet_forward = M3GNet.forward
 M3GNet.forward = forward
+
+# fmt: off
 element_types = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 
                 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 
                 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 
@@ -29,3 +31,4 @@ element_types = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na',
                 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 
                 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 
                 'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og']
+# fmt: on
