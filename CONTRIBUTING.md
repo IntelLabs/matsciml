@@ -105,9 +105,26 @@ class AmazingModel(AbstractPyGModel):
         return graph_feats
 ```
 
-Aside from implementing the `_forward` method of the model itself, the constituent building blocks should be broken up into their own files, respective to what their functions are. For example, layer based classes and utilities should be placed into a `layers.py` file, and other helpful functions can be placed in a `helper.py` or `utils.py` file. 
+### DGL models
 
-Completed models can be added to the list of imports in `./matsciml/models/dgl/__init__.py`.
+DGL does not provide a class to inherit from for the message passing step, and instead, relies
+on users to define user-defined functions (`udf`), and extensive use of graph scopes. 
+
+We recommend reviewing the [MPNN](https://github.com/IntelLabs/matsciml/blob/main/matsciml/models/dgl/mpnn.py) wrapper
+to see a simplified case, and the [MegNet](https://github.com/IntelLabs/matsciml/tree/main/matsciml/models/dgl/megnet) implementation
+for a more complex case.
+
+### PyG models
+
+Ideally, message passing layers implemented in PyG should inherit from the `MessagePassing` class, and implement
+the corresponding `message`, `propagate`, etc. functions as appropriate.
+
+### Point cloud models
+
+Models that operate on point clouds directly are not necessarily as complex as graph architectures,
+as they do not need to rely on framework abstractions to perform message passing. Tt is still best
+to make model architectures as modular as possible, but we do not have any rigorous style enforcement
+for this type of model.
 
 ### Datasets
 - Dataset contributions should include a brief description of the dataset and its available fields.
