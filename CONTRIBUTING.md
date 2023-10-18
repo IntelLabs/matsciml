@@ -69,7 +69,16 @@ you need to override:
         """
 ```
 
-In PyG, the `_forward` method takes only the `data` object:
+The `**kwargs` ensures that any additional variables that are not required by your architecture (for example graph features)
+are not needed as explicit arguments.
+
+If variables/features are required by the model, one can override the `read_batch` method. See the [MPNN](https://github.com/IntelLabs/matsciml/blob/main/matsciml/models/dgl/mpnn.py)
+wrapper to see how this pattern can be used to check for data within a batch.
+
+Aside from implementing the `_forward` method of the model itself, the constituent building blocks should be broken up into their own files, respective to what their functions are. For example, layer based classes and utilities should be placed into a `layers.py` file, and other helpful functions can be placed in a `helper.py` or `utils.py` file. 
+
+Completed models can be added to the list of imports in `./matsciml/models/<framework>/__init__.py`, where `<framework>` can be `dgl` or `pyg`.
+
 ```python
 def _forward(self, data):
 ```
