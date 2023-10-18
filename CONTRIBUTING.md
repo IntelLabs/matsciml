@@ -79,8 +79,30 @@ Aside from implementing the `_forward` method of the model itself, the constitue
 
 Completed models can be added to the list of imports in `./matsciml/models/<framework>/__init__.py`, where `<framework>` can be `dgl` or `pyg`.
 
+As a general note, it is recommended to try and separate components from the model architecture. As an example, if you are developing a
+graph architecture called `AmazingModel`, if possible implement an `AmazingModelConv` block that details the message passing logic, while
+an overarching `AmazingModel` (inheriting from `AbstractDGLModel` or `AbstractPyGModel`) _composes_ multiple blocks together:
+
 ```python
-def _forward(self, data):
+class AmazingModelConv(MessagePassing):
+    def message(...):
+        ...
+
+    def aggregate(...):
+        ...
+
+    def forward(self, graph, node_feats, edge_feats):
+        messages = self.message(graph, node_feats, edge_feats)
+        new_node_feats = self.aggregate(graph, messages)
+        return new_node_feats
+
+
+class AmazingModel(AbstractPyGModel):
+    def _forward(...):
+        for block in self.blocks:
+            node_feats = block(graph, node_feats, edge_feats)
+        graph_feats = readout(node_feats)
+        return graph_feats
 ```
 
 Aside from implementing the `_forward` method of the model itself, the constituent building blocks should be broken up into their own files, respective to what their functions are. For example, layer based classes and utilities should be placed into a `layers.py` file, and other helpful functions can be placed in a `helper.py` or `utils.py` file. 
