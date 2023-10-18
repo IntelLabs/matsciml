@@ -41,7 +41,8 @@ The examples outlined in the next section how to get started with Open MatSci ML
 
 - `Docker`: We provide a Dockerfile inside the `docker` that can be run to install a container using standard docker commands.
 
-Additionally, for a development install, one can specify the extra packages like `black` and `pytest` with `pip install './[dev]'`.
+Additionally, for a development install, one can specify the extra packages like `black` and `pytest` with `pip install './[dev]'`. These can be
+added to the commit workflow by running `pre-commit install` to generate `git` hooks.
 
 ## Examples
 
