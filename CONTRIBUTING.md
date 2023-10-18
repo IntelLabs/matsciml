@@ -2,6 +2,10 @@
 
 Thank you for considering a contribution to our project! We appreciate your support and collaboration in improving our software. To ensure that your contributions are valuable and well-structured, please follow the guidelines below:
 
+## Environment
+
+We recommend installing Open MatSciML Toolkit as an editable install with the relevant development dependencies using `pip install -e './[dev]'`.
+
 ### Models
 - When contributing models, make sure they are well-documented with clear explanations and examples.
 - Include a README file with model specifications, training parameters, and any relevant information.
