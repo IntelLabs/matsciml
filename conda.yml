@@ -1,0 +1,12 @@
+name: matsciml
+channels:
+  - defaults
+  - intel
+dependencies:
+  - intel::intel-aikit-pytorch=2023.2
+  - intel::scipy
+  - intel::numba
+  - setuptools
+  - pip
+  - pip:
+    - './[all]'
