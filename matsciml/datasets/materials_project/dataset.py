@@ -1,27 +1,26 @@
-from functools import cached_property
-from typing import Iterable, Tuple, Any, Dict, Union, Optional, List, Callable
-from pathlib import Path
-from math import pi
-from copy import deepcopy
-from functools import cache
-from tqdm import tqdm
-from importlib.util import find_spec
-
-import torch
-import numpy as np
 import pickle
-from pymatgen.core import Structure
-from pymatgen.analysis.graphs import StructureGraph
-from pymatgen.analysis import local_env
-from emmet.core.symmetry import SymmetryData
-from matsciml.common.types import BatchDict, DataDict
+from copy import deepcopy
+from functools import cache, cached_property
+from importlib.util import find_spec
+from math import pi
+from pathlib import Path
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
-from matsciml.datasets.base import PointCloudDataset
-from matsciml.datasets.utils import (
-    concatenate_keys,
-    point_cloud_featurization,
-)
+import numpy as np
+import torch
+from emmet.core.symmetry import SymmetryData
+from matgl.ext.pymatgen import Structure2Graph
+from matgl.graph.data import M3GNetDataset
+from pymatgen.analysis import local_env
+from pymatgen.analysis.graphs import StructureGraph
+from pymatgen.core import Structure
+from tqdm import tqdm
+
 from matsciml.common.registry import registry
+from matsciml.common.types import BatchDict, DataDict
+from matsciml.datasets.base import PointCloudDataset
+from matsciml.datasets.utils import (concatenate_keys, element_types,
+                                     point_cloud_featurization)
 
 _has_pyg = find_spec("torch_geometric") is not None
 
@@ -329,7 +328,7 @@ class MaterialsProjectDataset(PointCloudDataset):
 
 
 if _has_pyg:
-    from torch_geometric.data import Data, Batch
+    from torch_geometric.data import Batch, Data
 
     CrystalNN = local_env.CrystalNN(
         distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False
@@ -633,3 +632,31 @@ if _has_pyg:
                         [(lmdb_index, int(subindex)) for subindex in subindices]
                     )
             return indices
+
+
+@registry.register_dataset("M3GMaterialsProjectDataset")
+class M3GMaterialsProjectDataset(MaterialsProjectDataset):
+    def __init__(
+        self,
+        lmdb_root_path: Union[str, Path],
+        threebody_cutoff: float = 4.0,
+        cutoff_dist: float = 20.0,
+        graph_labels: Union[list[Union[int, float]], None] = None,
+        transforms: Optional[List[Callable[..., Any]]] = None,
+    ):
+        super().__init__(lmdb_root_path, transforms)
+        self.threebody_cutoff = threebody_cutoff
+        self.graph_labels = graph_labels
+        self.cutoff_dist = cutoff_dist
+
+    def _parse_structure(
+        self, data: Dict[str, Any], return_dict: Dict[str, Any]
+    ) -> None:
+        super()._parse_structure(data, return_dict)
+        structure: Union[None, Structure] = data.get("structure", None)
+        self.structures = [structure]
+        self.converter = Structure2Graph(
+            element_types=element_types(), cutoff=self.cutoff_dist
+        )
+        graphs, lg, sa = M3GNetDataset.process(self)
+        return_dict["graph"] = graphs[0]
