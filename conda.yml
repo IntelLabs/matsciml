@@ -7,6 +7,7 @@ dependencies:
   - intel::scipy
   - intel::numba
   - setuptools
+  - pybind11
   - pip
   - pip:
     - './[all]'
