@@ -57,6 +57,9 @@ dev = [
 ]
 pyg = [
   "torch_geometric==2.3.1",
+  "torch_scatter==2.1.1",
+  "torch_sparse==0.6.17",
+  "pybind11"
 ]
 symmetry = [
   "rowan==1.3.0.post1",
