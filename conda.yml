@@ -9,5 +9,3 @@ dependencies:
   - setuptools
   - pybind11
   - pip
-  - pip:
-    - './[all]'
