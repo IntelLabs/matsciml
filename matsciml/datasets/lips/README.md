@@ -54,3 +54,6 @@ for split_name, index_list in indices.items():
 ```
 
 The LiPS dataset contains `energy` and `force` keys which may be used for regression tasks.
+
+
+If you use the LiPS Database, please refer to [this link](https://archive.materialscloud.org/record/2022.45#:~:text=How%20to%20cite%20this%20record) for how to cite their work.

@@ -24,3 +24,6 @@ The `-d` flag is used to specify a directory to store the data, and defaults to 
 A devset (development dataset) is also included which has 200 material samples containing the `band_gap`, and `structure` fields, which is accessible in `matsciml/datasets/materials_project/devset`.
 
 Other property fields, material id’s, and Materials Project’s API arguments may be used with the download script to create custom datasets. Additional details on how to use the script may be found in `matsciml/datasets/materials_project/cli.py`.
+
+
+If you use the Materials Project Database, please refer to [this link](https://next-gen.materialsproject.org/about/cite) for how to cite their work.
