@@ -1,9 +1,8 @@
 import pytorch_lightning as pl
-
-from matsciml.models.pyg import EGNN
-from matsciml.models.base import ScalarRegressionTask
-from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.datasets.transforms import GraphToGraphTransform
+from matsciml.lightning.data_utils import MatSciMLDataModule
+from matsciml.models.base import ScalarRegressionTask
+from matsciml.models.pyg import EGNN
 
 """
 This example script runs through a fast development run of the IS2RE devset
