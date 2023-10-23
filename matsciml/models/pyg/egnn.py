@@ -190,6 +190,7 @@ class EGNN(AbstractPyGModel):
         num_conv: int = 3,
         num_atom_embedding: int = 100,
         activation: str = "SiLU",
+        pool_norm: str | nn.Module | None = nn.LayerNorm,
         **kwargs,
     ) -> None:
         super().__init__(hidden_dim, num_atom_embedding)
@@ -212,7 +213,17 @@ class EGNN(AbstractPyGModel):
                 for _ in range(num_conv)
             ],
         )
-        self.output = nn.Linear(hidden_dim, output_dim, bias=False)
+        # apply normalization before projection layer, this is to help
+        # mitigate exploding graph features
+        if isinstance(str, pool_norm):
+            pool_norm = getattr(nn, pool_norm)
+        if pool_norm is None:
+            pool_norm = nn.Identity()
+        else:
+            pool_norm = pool_norm(hidden_dim)
+        self.output = nn.Sequential(
+            pool_norm, nn.Linear(hidden_dim, output_dim, bias=False)
+        )
 
     def _forward(
         self,
