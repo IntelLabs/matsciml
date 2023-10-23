@@ -1,39 +1,21 @@
 <h1 align="center">Datasets in the Open MatSci ML Toolkit</h1>
 
-The MatSci ML Benchmark contains diverse sets of tasks (energy prediction, force prediction, property prediction) across a broad range of datasets (OpenCatalyst Project [1], Materials Project [2], LiPS [3], OQMD [4], NOMAD [5], Carolina Materials Database [6]). Most of the data is related to energy prediction task, which is the most common property tracked for most materials systems in the literature. The codebase support single-task learning, as well as multi-task (training one model for multiple tasks within a dataset) and multi-date (training a model across multiple datsets with a common property). 
+The MatSci ML Benchmark contains diverse sets of tasks (energy prediction, force prediction, property prediction) across a broad range of datasets (OpenCatalyst Project [1], Materials Project [2], LiPS [3], OQMD [4], NOMAD [5], Carolina Materials Database [6]). Most of the data is related to energy prediction task, which is the most common property tracked for most materials systems in the literature. The codebase support single-task learning, as well as multi-task (training one model for multiple tasks within a dataset) and multi-date (training a model across multiple datsets with a common property).
 
 ### OpenCatalyst Project
 
-The OpenCatalyst dataset [1]  was originally published by Meta's Fundamental AI Research (FAIR) group with a Creative Commons Attribution 4.0 (CC BY 4.0) license. Our work leverages builds upon the implementation in our original release [7] with the same license framework.  [S2EF](https://github.com/IntelLabs/matsciml/scripts/preprocess_dgl_ef.py) can be download using a preprocessing script and [IS2RE](https://zenodo.org/record/7411133) has ready-made Zenodo. 
+The OpenCatalyst dataset [1]  was originally published by Meta's Fundamental AI Research (FAIR) group with a Creative Commons Attribution 4.0 (CC BY 4.0) license. Our work leverages builds upon the implementation in our original release [7] with the same license framework.  [S2EF](https://github.com/IntelLabs/matsciml/scripts/preprocess_dgl_ef.py) can be download using a preprocessing script and [IS2RE](https://zenodo.org/record/7411133) has ready-made Zenodo.
 
 ### Materials Project
 
 The Materials Project (MP) [2] is released under a CC BY 4.0 license and maintained by Lawrence Berkeley National Laboratory. Setting up MP datasets first requires access to the Materials Project API by creating an account on the [original website](https://materialsproject.org). The API key may then be set to an environment variable: `export MP_API_KEY=your-api-key` to interact with the command-line interface to query for specific data, or rely on pre-configured YAML configurations to process pre-defined splits we refer to in this paper.
 
-Train, validation, and test splits are defined by material id based on the structure-based split, which aims to create a chemically balanced partitioning of the available data. Our dataset splits are informed by the fact that crystal symmetry is a universal property for all of solid-state materials that significantly affects physical properties, including  structure, stability, and functional properties (e.g. band gap, magnetism). In terms of implementation, a simple command line script is used to load material id numbers and download the relevant data to lmdb files, consistent with other datasets used in Open MatSci ML Toolkit. The primary labels used for experiments includes the fields: `band_gap`, `structure`, `formula_pretty`, `efermi`, `symmetry`, `is_metal`, `is_magnetic`, `is_stable`, `formation_energy_per_atom`, `uncorrected_energy_per_atom`, and `energy_per_atom`. 
-
-To download and extract the train, validation and test datasets using our code, the following command can be used: 
-
-```bash
-python -m matsciml.datasets.materials_project.cli \
-    -d mp_data \
-    -t base \
-    -s matsciml/datasets/materials_project/train.yml \
-    matsciml/datasets/materials_project/val.yml \
-    matsciml/datasets/materials_project/test.yml
-```
-
-The `-d` flag is used to specify a directory to store the data, and defaults to `mp_data`. After running the script, the data directory will include train, validation and test folders containing lmdb files with 108159, 30904, and 15,456 samples respectively. Specifying the `-t` flag will ensure all of the main data fields listed above are included in the download.
-
-A devset (development dataset) is also included which has 200 material samples containing the `band_gap`, and `structure` fields, which is accessible in `matsciml/datasets/materials_project/devset`.
-
-Other property fields, material id’s, and Materials Project’s API arguments may be used with the download script to create custom datasets. Additional details on how to use the script may be found in `matsciml/datasets/materials_project/cli.py`.
 
 ### LiPS
 
 The LiPS dataset is also released under a CC BY 4.0 license, which can be accessed via the original release in [Materials Cloud](https://archive.materialscloud.org/record/2022.45).
 
-The LiPS data splits used in the experiments are included in the codebase folders `matsciml/datastes/lips/base/{train, val, test}`. To create the splits, we download the dataset from it's original release and split randomly into 70%, 20% and 10% chunks for training, validation and testing. A dev set is also included in `matsciml/datasets/lips/devset` which holds 200 samples. 
+The LiPS data splits used in the experiments are included in the codebase folders `matsciml/datastes/lips/base/{train, val, test}`. To create the splits, we download the dataset from it's original release and split randomly into 70%, 20% and 10% chunks for training, validation and testing. A dev set is also included in `matsciml/datasets/lips/devset` which holds 200 samples.
 
 ### OQMD
 
@@ -41,7 +23,7 @@ The Open Quantum Materials Database (OQMD) [4] aims to create a comprehensive an
 
 ### NOMAD
 
-The Novel Materials Discovery (NOMAD) Laboratory [5] is a user-driven platform designed for the purpose of sharing and leveraging computational materials science data. The project's primary objective, pursued since 2014, is to handle and disseminate materials science data in a manner that adheres to the principles of being Findable, Accessible, Interoperable, and Reusable (FAIR). This endeavor is facilitated through their [website](https://nomad-lab.eu), which is an integral component of the NOMAD Laboratory. NOMAD provides such platform for researchers to upload, publish, explore, and analyze materials data from different sources, codes, and workflows. NOMAD also offers a common data format, a rich metadata schema, and an AI toolkit for machine learning. On the NOMAD website, users can search and browse millions of data entries by various criteria, such as composition, method, property, or quantity. Among more than 12 million entries, 4.24M entries have density of states; 454K entries have band gap; 421k entries have band structure, which can be accessed  programmatically through NOMAD’s API as well. The databse is free and open source, and it is developed by the FAIRmat consortium. We construct a random dataset split based of 138,820 bulk material structures in the dataset with a 20\% validation split.
+The Novel Materials Discovery (NOMAD) Laboratory [5] is a user-driven platform designed for the purpose of sharing and leveraging computational materials science data. The project's primary objective, pursued since 2014, is to handle and disseminate materials science data in a manner that adheres to the principles of being Findable, Accessible, Interoperable, and Reusable (FAIR). This endeavor is facilitated through their [website](https://nomad-lab.eu), which is an integral component of the NOMAD Laboratory. NOMAD provides such platform for researchers to upload, publish, explore, and analyze materials data from different sources, codes, and workflows. NOMAD also offers a common data format, a rich metadata schema, and an AI toolkit for machine learning. On the NOMAD website, users can search and browse millions of data entries by various criteria, such as composition, method, property, or quantity. Among more than 12 million entries, 4.24M entries have density of states; 454K entries have band gap; 421k entries have band structure, which can be accessed  programmatically through NOMAD’s API as well. The database is free and open source, and it is developed by the FAIRmat consortium. We construct a random dataset split based of 138,820 bulk material structures in the dataset with a 20\% validation split.
 
 ### Carolina Materials Database
 
@@ -55,4 +37,4 @@ The [Carolina Materials Database (CMD)](http://www.carolinamatdb.org/) [6] is a 
 - [4] Kirklin, S., Saal, J.E., Meredig, B., Thompson, A., Doak, J.W., Aykol, M., Rühl, S. and Wolverton, C., 2015. The Open Quantum Materials Database (OQMD): assessing the accuracy of DFT formation energies. npj Computational Materials, 1(1), pp.1-15.
 - [5] Draxl, C. and Scheffler, M., 2019. The NOMAD laboratory: from data sharing to artificial intelligence. Journal of Physics: Materials, 2(3), p.036001.
 - [6] Zhao, Y., Al‐Fahdi, M., Hu, M., Siriwardane, E.M., Song, Y., Nasiri, A. and Hu, J., 2021. High‐throughput discovery of novel cubic crystal materials using deep generative neural networks. Advanced Science, 8(20), p.2100566.
-- [7] Miret, S., Lee, K.L.K., Gonzales, C., Nassar, M. and Spellings, M., 2023. The Open MatSci ML Toolkit: A flexible framework for machine learning in materials science. In Transactions on Machine Learning Research, https://openreview.net/forum?id=QBMyDZsPMd. 
+- [7] Miret, S., Lee, K.L.K., Gonzales, C., Nassar, M. and Spellings, M., 2023. The Open MatSci ML Toolkit: A flexible framework for machine learning in materials science. In Transactions on Machine Learning Research, https://openreview.net/forum?id=QBMyDZsPMd.
