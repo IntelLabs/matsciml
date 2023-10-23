@@ -19,3 +19,4 @@ if _has_pyg:
     from matsciml.models.pyg.schnet import SchNetWrap
     from matsciml.models.pyg.forcenet import ForceNet
     from matsciml.models.pyg.cgcnn import CGCNN
+    from matsciml.models.pyg.egnn import EGNN
