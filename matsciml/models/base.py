@@ -564,6 +564,11 @@ if package_registry["dgl"]:
             data.setdefault("graph_feats", None)
             return data
 
+        def read_batch_size(self, batch: BatchDict) -> int:
+            # grabs the number of batch samples from the DGLGraph attribute
+            graph = batch["graph"]
+            return graph.batch_size
+
 
 if package_registry["pyg"]:
 
@@ -599,6 +604,10 @@ if package_registry["pyg"]:
             data["node_feats"] = node_embeddings
             data["pos"] = pos
             return data
+
+        def read_batch_size(self, batch: BatchDict) -> int:
+            graph = batch["graph"]
+            return graph.num_graphs
 
 
 class AbstractEnergyModel(pl.LightningModule):
