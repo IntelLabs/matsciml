@@ -4,6 +4,7 @@ import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Union
 
 import lmdb
 import numpy as np
@@ -41,7 +42,7 @@ class LiPSStructure:
         return self.atoms[index]
 
     @staticmethod
-    def entry_to_dict(struct: Atoms) -> dict[str, torch.Tensor | float]:
+    def entry_to_dict(struct: Atoms) -> dict[str, Union[torch.Tensor, float]]:
         result = {
             "pos": struct.get_positions(),
             "cell": struct.get_cell(),
@@ -72,14 +73,14 @@ class LiPSStructure:
         return result
 
     @classmethod
-    def from_xyz(cls, xyz_path: str | Path) -> LiPSStructure:
+    def from_xyz(cls, xyz_path: Union[str, Path]) -> LiPSStructure:
         if isinstance(xyz_path, str):
             xyz_path = Path(xyz_path)
         assert xyz_path.exists(), f"{xyz_path} not found."
         atoms = read(str(xyz_path), index=":", format="extxyz")
         return cls(*atoms)
 
-    def to_lmdb(self, lmdb_path: str | Path) -> None:
+    def to_lmdb(self, lmdb_path: Union[str, Path]) -> None:
         if isinstance(lmdb_path, str):
             lmdb_path = Path(lmdb_path)
         os.makedirs(lmdb_path, exist_ok=True)
