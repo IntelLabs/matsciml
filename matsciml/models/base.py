@@ -253,6 +253,10 @@ class AbstractTask(ABC, pl.LightningModule):
         ...
 
     @abstractmethod
+    def read_batch_size(self, batch: BatchDict) -> Union[int, None]:
+        ...
+
+    @abstractmethod
     def _forward(self, *args, **kwargs) -> torch.Tensor:
         """
         Implements the actual logic of the architecture. Given a set
@@ -435,6 +439,10 @@ class AbstractPointCloudModel(AbstractTask):
         # should be [B, D] for B systems
         output = torch.stack([reduce(t, dim=0) for t in split_results])
         return output
+    
+    def read_batch_size(self, batch: BatchDict) -> None:
+        # returns None, because batch size can be readily determined by Lightning
+        return None
 
 
 class AbstractGraphModel(AbstractTask):
