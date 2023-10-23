@@ -439,7 +439,7 @@ class AbstractPointCloudModel(AbstractTask):
         # should be [B, D] for B systems
         output = torch.stack([reduce(t, dim=0) for t in split_results])
         return output
-    
+
     def read_batch_size(self, batch: BatchDict) -> None:
         # returns None, because batch size can be readily determined by Lightning
         return None
@@ -923,9 +923,12 @@ class BaseTaskModule(pl.LightningModule):
         # prepending training flag for
         for key, value in loss_dict["log"].items():
             metrics[f"train_{key}"] = value
-        if "graph" in batch.keys():
-            batch_size = batch["graph"].batch_size
-        else:
+        try:
+            batch_size = self.encoder.read_batch_size(batch)
+        except:
+            warn(
+                "Unable to parse batch size from data, defaulting to `None` for logging."
+            )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
         return loss_dict
@@ -940,9 +943,12 @@ class BaseTaskModule(pl.LightningModule):
         # prepending training flag for
         for key, value in loss_dict["log"].items():
             metrics[f"val_{key}"] = value
-        if "graph" in batch.keys():
-            batch_size = batch["graph"].batch_size
-        else:
+        try:
+            batch_size = self.encoder.read_batch_size(batch)
+        except:
+            warn(
+                "Unable to parse batch size from data, defaulting to `None` for logging."
+            )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
         return loss_dict
@@ -957,9 +963,12 @@ class BaseTaskModule(pl.LightningModule):
         # prepending training flag for
         for key, value in loss_dict["log"].items():
             metrics[f"test_{key}"] = value
-        if "graph" in batch.keys():
-            batch_size = batch["graph"].batch_size
-        else:
+        try:
+            batch_size = self.encoder.read_batch_size(batch)
+        except:
+            warn(
+                "Unable to parse batch size from data, defaulting to `None` for logging."
+            )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
         return loss_dict
@@ -1430,9 +1439,12 @@ class ForceRegressionTask(BaseTaskModule):
         # prepending training flag
         for key, value in loss_dict["log"].items():
             metrics[f"train_{key}"] = value
-        if "graph" in batch.keys():
-            batch_size = batch["graph"].batch_size
-        else:
+        try:
+            batch_size = self.encoder.read_batch_size(batch)
+        except:
+            warn(
+                "Unable to parse batch size from data, defaulting to `None` for logging."
+            )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
         return loss_dict
