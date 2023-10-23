@@ -3,23 +3,22 @@ import pytorch_lightning as pl
 from matsciml.models.pyg import EGNN
 from matsciml.models.base import ScalarRegressionTask
 from matsciml.lightning.data_utils import MatSciMLDataModule
-from matsciml.datasets.transforms import DistancesTransform
+from matsciml.datasets.transforms import GraphToGraphTransform
 
 """
 This example script runs through a fast development run of the IS2RE devset
 in combination with a PyG implementation of EGNN.
 """
 
-
-# construct a scalar regression task with SchNet encoder
+# construct IS2RE relaxed energy regression with PyG implementation of E(n)-GNN
 task = ScalarRegressionTask(
     encoder_class=EGNN,
     encoder_kwargs={"hidden_dim": 128, "output_dim": 64},
     task_keys=["energy_relaxed"],
 )
-# MPNN expects edge features corresponding to atom-atom distances
+# matsciml devset for OCP are serialized with DGL - this transform goes between the two frameworks
 dm = MatSciMLDataModule.from_devset(
-    "IS2REDataset", dset_kwargs={"transforms": [DistancesTransform()]}
+    "IS2REDataset", dset_kwargs={"transforms": [GraphToGraphTransform("pyg")]}
 )
 
 # run a quick training loop
