@@ -289,3 +289,95 @@ class PointCloudToGraphTransform(RepresentationTransform):
             # reverse edges to avoid issues with message passing
             data["graph"] = dgl.to_bidirected(data["graph"], copy_ndata=True)
         return super().epilogue(data)
+
+
+if package_registry["pyg"]:
+    # this transform needs both packages to be installed
+    __all__.append("GraphToGraphTransform")
+
+    class GraphToGraphTransform(RepresentationTransform):
+        def __init__(self, target_backend: str) -> None:
+            """
+            Transform data contained in one graph data structure/framework to another.
+
+            This is useful for data serialized as one type but you wish to use an
+            architecture implemented in another framework.
+
+            Parameters
+            ----------
+            target_backend : str
+                The backend you wish to convert the graph structure __to__. Must
+                be either 'dgl' or 'pyg'.
+            """
+            super().__init__(target_backend)
+
+        def convert(self, data: DataDict) -> None:
+            if not self._check_for_type(data, GraphTypes):
+                raise KeyError(
+                    f"GraphToGraphTransform requires an existing graph within the data. Found keys: {data.keys()}"
+                )
+            # remember this is _target_backend_, i.e. what you want to convert to
+            if self.backend == "pyg":
+                self._convert_from_dgl(data)
+            else:
+                self._convert_from_pyg(data)
+
+        def _convert_from_dgl(self, data: DataDict) -> None:
+            # implements the logic for going from DGL to PyG
+            graph = data["graph"]
+            assert isinstance(
+                graph, dgl.DGLGraph
+            ), f"Incoming graph is not a `DGLGraph`, but {type(graph)}.."
+            all_keys = {}
+            for key, tensor in graph.ndata.items():
+                if key == "atomic_numbers":
+                    tensor = tensor.long()
+                all_keys[key] = tensor
+            for key, tensor in graph.edata.items():
+                all_keys[key] = tensor
+            edge_index = torch.vstack(graph.edges())
+            all_keys["edge_index"] = edge_index
+            # pack everything together into PyG structure
+            pyg_graph = PyGGraph(**all_keys)
+            # check for consistency
+            assert (
+                pyg_graph.num_nodes == graph.num_nodes()
+            ), f"Mismatch in node # from DGL ({graph.num_nodes()}) to PyG ({pyg_graph.num_nodes})"
+            assert (
+                pyg_graph.num_edges == graph.num_edges()
+            ), f"Mismatch in edge # from DGL ({graph.num_edges()}) to PyG ({pyg_graph.num_edges})"
+            data["graph"] = pyg_graph
+
+        def _convert_from_pyg(self, data: DataDict) -> None:
+            # this is slightly less automatic, as we need to know edge/node information
+            # to map correctly
+            graph = data["graph"]
+            assert isinstance(
+                graph, PyGGraph
+            ), f"Incoming graph is not a `PyG` structure, but {type(graph)}."
+            num_nodes = graph.num_nodes
+            num_edges = graph.num_edges
+            src, dst = graph.edge_index
+            # construct the DGL analogue
+            dgl_graph = dgl.graph((src, dst))
+            assert (
+                dgl_graph.num_nodes() == num_nodes
+            ), f"Mismatch in node # from PyG ({num_nodes}), to DGL ({dgl_graph.num_nodes()})."
+            assert (
+                dgl_graph.num_edges() == num_edges
+            ), f"Mismatch in edge # from PyG ({num_edges}), to DGL ({dgl_graph.num_edges()})."
+            for key, value in graph.__dict__.items():
+                # copy over tensor data
+                if isinstance(value, torch.Tensor):
+                    if value.size(0) == num_nodes:
+                        if key == "atomic_numbers":
+                            value = value.long()
+                        dgl_graph.ndata[key] = value
+                    elif value.size(0) == num_edges:
+                        dgl_graph.edata[key] = value
+                    else:
+                        raise KeyError(
+                            f"Passed graph key {key} but first dimension does not match neither nodes nor edges."
+                        )
+            # make sure graph is "undirected" for DGL
+            data["graph"] = dgl.to_bidirected(dgl_graph, copy_ndata=True)
