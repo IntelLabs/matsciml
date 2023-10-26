@@ -17,7 +17,7 @@ dependencies = [
   "pytorch_lightning==1.8.6",
   "dgl==0.9.1",
   "dgllife==0.3.2",
-  "rdkit==2023.3.1",
+  "rdkit==2023.9.1",
   "numba>=0.55.0",
   "numpy>=1.21.0",
   "matplotlib",
