@@ -124,9 +124,6 @@ def pbc_preprocess(data, cutoff=6.0, max_num_neighbors=40):
     Returns:
         (tuple): atomic_numbers, batch, sparse adjacency matrix, relative positions, distances
     """
-    import pdb
-
-    pdb.set_trace()
     out = get_pbc_distances(
         data.pos,
         data.edge_index,
