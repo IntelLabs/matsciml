@@ -1,21 +1,28 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict, Optional, Union
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 import pandas as pd
 import torch
 import torch.nn as nn
-from mendeleev.fetch import fetch_ionization_energies, fetch_table
+from mendeleev.fetch import fetch_ionization_energies
+from mendeleev.fetch import fetch_table
 from torch import nn
-from torch.nn import Embedding, Linear
-from torch_geometric.nn import LayerNorm, MessagePassing
+from torch.nn import Embedding
+from torch.nn import Linear
+from torch_geometric.nn import LayerNorm
+from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.norm import GraphNorm
 from torch_geometric.nn.pool import global_add_pool
 from torch_geometric.typing import Size
 from torch_scatter import scatter
 
-from matsciml.common.types import AbstractGraph, BatchDict, DataDict
+from matsciml.common.types import AbstractGraph
+from matsciml.common.types import BatchDict
+from matsciml.common.types import DataDict
 from matsciml.models.base import AbstractPyGModel
 from matsciml.models.pyg.faenet.helper import *
 from matsciml.models.pyg.faenet.layers import *
@@ -256,7 +263,6 @@ class EmbeddingBlock(nn.Module):
         # Create atom embeddings based on its characteristic number
         h = self.emb(z)
 
-        # import pdb; pdb.set_trace()
         # if self.phys_emb.device != h.device:
         #     self.phys_emb = self.phys_emb.to(h.device)
 
@@ -275,7 +281,9 @@ class EmbeddingBlock(nn.Module):
         # Concat period & group embedding
         if self.use_pg:
             h_period = self.period_embedding(self.phys_emb.period[z])
-            h_group = self.group_embedding(self.phys_emb.group[z])
+            # z = tensor([55, 63, 68, 47, 41,  6, 28,  6, 12, 51, 30, 47, 67,  7, 24, 26])
+            # CG: if this isnt added, how can 0 of embedding be used? also 19 goes out of range
+            h_group = self.group_embedding(self.phys_emb.group[z]-1)
             h = torch.cat((h, h_period, h_group), dim=1)
 
         # MLP
