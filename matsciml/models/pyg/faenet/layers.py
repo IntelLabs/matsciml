@@ -13,6 +13,7 @@ from torch_geometric.nn import LayerNorm, MessagePassing
 from torch_geometric.nn.norm import GraphNorm
 from torch_geometric.nn.pool import global_add_pool
 from torch_geometric.typing import Size
+from torch_scatter import scatter
 
 from matsciml.common.types import AbstractGraph, BatchDict, DataDict
 from matsciml.models.base import AbstractPyGModel
@@ -255,8 +256,9 @@ class EmbeddingBlock(nn.Module):
         # Create atom embeddings based on its characteristic number
         h = self.emb(z)
 
-        if self.phys_emb.device != h.device:
-            self.phys_emb = self.phys_emb.to(h.device)
+        # import pdb; pdb.set_trace()
+        # if self.phys_emb.device != h.device:
+        #     self.phys_emb = self.phys_emb.to(h.device)
 
         # Concat tag embedding
         if self.use_tag:
@@ -468,7 +470,7 @@ class OutputBlock(nn.Module):
             h = h * alpha
 
         # Global pooling
-        out = torch.scatter(h, batch, dim=0, reduce="add")
+        out = scatter(h, batch, dim=0, reduce="add")
 
         return out
 

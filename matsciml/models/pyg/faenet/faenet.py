@@ -278,7 +278,6 @@ class FAENet(AbstractPyGModel):
         # Pre-process data (e.g. pbc, cutoff graph, etc.)
         # Should output all necessary attributes, in correct format.
         if preproc:
-            # import pdb; pdb.set_trace()
             z, batch, edge_index, rel_pos, edge_weight = self.preprocess(
                 data,
                 self.cutoff,
@@ -340,13 +339,9 @@ class FAENet(AbstractPyGModel):
 
         return preds
 
-    # def _forward(self, data, mode="train", preproc=True):
-    def _forward(
+    def first_forward(
         self,
         graph: AbstractGraph,
-        node_feats: torch.Tensor,
-        pos: torch.Tensor,
-        edge_feats: torch.Tensor | None = None,
         **kwargs,
     ) -> torch.Tensor:
         """Main Forward pass.
@@ -360,7 +355,13 @@ class FAENet(AbstractPyGModel):
         Returns:
             (dict): predicted energy, forces and final atomic hidden states
         """
-        mode = "train"
+        if self.training:
+            mode = "train"
+        else:
+            import pdb
+
+            pdb.set_trace()
+            mode = "inference"
         preproc = True
         data = graph
         grad_forces = forces = None
@@ -405,22 +406,14 @@ class FAENet(AbstractPyGModel):
 
         return preds
 
-    def final_forward(
+    def _forward(
         self,
-        batch,
-        model,
-        frame_averaging,
-        mode="train",
-        crystal_task=True,
-    ):
-        # def _forward(
-        #     self,
-        #     graph: AbstractGraph,
-        #     node_feats: torch.Tensor,
-        #     pos: torch.Tensor,
-        #     edge_feats: torch.Tensor | None = None,
-        #     **kwargs,
-        # ) -> torch.Tensor:
+        graph: AbstractGraph,
+        node_feats: torch.Tensor,
+        pos: torch.Tensor,
+        edge_feats: torch.Tensor | None = None,
+        **kwargs,
+    ) -> torch.Tensor:
         """Perform a model forward pass when frame averaging is applied.
 
         Args:
@@ -442,8 +435,9 @@ class FAENet(AbstractPyGModel):
         """
 
         frame_averaging = "3D"
-        mode = "train"
         crystal_task = True
+
+        batch = graph
 
         if isinstance(batch, list):
             batch = batch[0]
@@ -463,7 +457,10 @@ class FAENet(AbstractPyGModel):
                 if crystal_task:
                     batch.cell = batch.fa_cell[i]
                 # Forward pass
-                preds = model(deepcopy(batch), mode=mode)
+                preds = self.first_forward(deepcopy(batch))
+                if not self.pred_as_dict:
+                    preds = {"energy": preds}
+
                 e_all.append(preds["energy"])
                 fa_rot = None
 
@@ -517,12 +514,12 @@ class FAENet(AbstractPyGModel):
 
         # Traditional case (no frame averaging)
         else:
-            preds = model(batch, mode=mode)
+            preds = self(batch)
 
         if preds["energy"].shape[-1] == 1:
             preds["energy"] = preds["energy"].view(-1)
 
-        return preds
+        return preds["energy"]
 
     def forces_as_energy_grad(self, pos, energy):
         """Computes forces from energy gradient
