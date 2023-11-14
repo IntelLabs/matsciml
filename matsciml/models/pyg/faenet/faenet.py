@@ -10,7 +10,9 @@ import torch
 from torch import nn
 from torch.nn import Linear
 
-from matsciml.common.types import AbstractGraph, BatchDict, DataDict
+from matsciml.common.types import AbstractGraph
+from matsciml.common.types import BatchDict
+from matsciml.common.types import DataDict
 from matsciml.common.utils import radius_graph_pbc
 from matsciml.models.base import AbstractPyGModel
 from matsciml.models.pyg.faenet.helper import *
@@ -358,9 +360,6 @@ class FAENet(AbstractPyGModel):
         if self.training:
             mode = "train"
         else:
-            import pdb
-
-            pdb.set_trace()
             mode = "inference"
         preproc = True
         data = graph
@@ -436,7 +435,6 @@ class FAENet(AbstractPyGModel):
 
         frame_averaging = "3D"
         crystal_task = True
-
         batch = graph
 
         if isinstance(batch, list):
