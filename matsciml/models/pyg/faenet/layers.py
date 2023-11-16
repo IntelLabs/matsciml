@@ -43,7 +43,7 @@ class PhysEmbedding(nn.Module):
             (default: :obj:`False`)
     """
 
-    def __init__(self, props=True, props_grad=False, pg=False, short=False) -> None:
+    def __init__(self, props=True, props_grad=False, pg=False, short=False, emb_size=100) -> None:
         super().__init__()
 
         self.properties_list = [
@@ -71,6 +71,8 @@ class PhysEmbedding(nn.Module):
         self.pg = pg
         self.short = short
 
+        self.emb_size = emb_size
+
         group = None
         period = None
 
@@ -85,15 +87,16 @@ class PhysEmbedding(nn.Module):
         # Fetch group and period data
         if pg:
             df.group_id = df.group_id.fillna(value=19.0)
-            self.group_size = df.group_id.unique().shape[0]
+            # using fixed group size for embedding, was: df.group_id.unique().shape[0]
+            self.group_size = self.emb_size
             group = torch.cat(
                 [
                     torch.ones(1, dtype=torch.long),
                     torch.tensor(df.group_id.loc[:100].values, dtype=torch.long),
                 ],
             )
-
-            self.period_size = df.period.loc[:100].unique().shape[0]
+            # using fixed period size, was: df.period.loc[:100].unique().shape[0]
+            self.period_size = self.emb_size
             period = torch.cat(
                 [
                     torch.ones(1, dtype=torch.long),
@@ -108,7 +111,7 @@ class PhysEmbedding(nn.Module):
         if props:
             # Select only potentially relevant elements
             df = df[self.properties_list]
-            df = df.loc[:85, :]
+            df = df.loc[:self.emb_size, :]
 
             # Normalize
             df = (df - df.mean()) / df.std()
@@ -155,6 +158,7 @@ class EmbeddingBlock(nn.Module):
         phys_embeds,
         act,
         second_layer_MLP,
+        emb_size,
     ):
         super().__init__()
         self.act = act
@@ -164,12 +168,14 @@ class EmbeddingBlock(nn.Module):
         self.second_layer_MLP = second_layer_MLP
 
         # --- Node embedding ---
+        self.emb_size = emb_size
 
         # Phys embeddings
         self.phys_emb = PhysEmbedding(
             props=phys_embeds,
             props_grad=phys_hidden_channels > 0,
             pg=self.use_pg,
+            emb_size=emb_size,
         )
         # With MLP
         if self.use_mlp_phys:
@@ -194,7 +200,7 @@ class EmbeddingBlock(nn.Module):
 
         # Main embedding
         self.emb = Embedding(
-            85,
+            self.emb_size,
             hidden_channels
             - tag_hidden_channels
             - phys_hidden_channels
