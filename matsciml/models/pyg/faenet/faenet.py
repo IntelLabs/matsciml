@@ -104,6 +104,7 @@ class FAENet(AbstractPyGModel):
         regress_forces: str | None = None,
         force_decoder_type: str | None = "mlp",
         force_decoder_model_config: dict | None = {"hidden_channels": 128},
+        embedding_size: int = 100,
         **kwargs,
     ):
         super().__init__(atom_embedding_dim=118)
@@ -130,6 +131,7 @@ class FAENet(AbstractPyGModel):
         self.tag_hidden_channels = tag_hidden_channels
         self.preprocess = preprocess
         self.pred_as_dict = pred_as_dict
+        self.emb_size = embedding_size
 
         if isinstance(self.preprocess, str):
             self.preprocess = eval(self.preprocess)
@@ -168,6 +170,7 @@ class FAENet(AbstractPyGModel):
             self.phys_embeds,
             self.act,
             self.second_layer_MLP,
+            self.emb_size,
         )
 
         # Interaction block
