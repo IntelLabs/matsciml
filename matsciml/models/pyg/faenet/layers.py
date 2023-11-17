@@ -188,15 +188,17 @@ class EmbeddingBlock(nn.Module):
             self.period_embedding = Embedding(
                 self.phys_emb.period_size,
                 pg_hidden_channels,
+                padding_idx=0,
             )
             self.group_embedding = Embedding(
                 self.phys_emb.group_size,
                 pg_hidden_channels,
+                padding_idx=0,
             )
 
         # Tag embedding
         if tag_hidden_channels:
-            self.tag_embedding = Embedding(3, tag_hidden_channels)
+            self.tag_embedding = Embedding(3, tag_hidden_channels, padding_idx=0)
 
         # Main embedding
         self.emb = Embedding(
@@ -205,6 +207,7 @@ class EmbeddingBlock(nn.Module):
             - tag_hidden_channels
             - phys_hidden_channels
             - 2 * pg_hidden_channels,
+            padding_idx=0,
         )
 
         # MLP
@@ -287,9 +290,7 @@ class EmbeddingBlock(nn.Module):
         # Concat period & group embedding
         if self.use_pg:
             h_period = self.period_embedding(self.phys_emb.period[z])
-            # z = tensor([55, 63, 68, 47, 41,  6, 28,  6, 12, 51, 30, 47, 67,  7, 24, 26])
-            # CG: if this isnt added, how can 0 of embedding be used? also 19 goes out of range
-            h_group = self.group_embedding(self.phys_emb.group[z]-1)
+            h_group = self.group_embedding(self.phys_emb.group[z])
             h = torch.cat((h, h_period, h_group), dim=1)
 
         # MLP
