@@ -33,13 +33,47 @@ dm = MatSciMLDataModule.from_devset(
     "IS2REDataset",
     dset_kwargs={
         "transforms": [
-            UnitCellCalculator(),
             GraphToGraphTransform("pyg"),
             FrameAveraging(frame_averaging="3D", fa_method="stochastic"),
         ],
     },
 )
 
+
+# run a quick training loop
+trainer = pl.Trainer(fast_dev_run=10)
+trainer.fit(task, datamodule=dm)
+
+
+########################################################################################
+########################################################################################
+
+
+# construct Materials Project band gap regression with PyG implementation of FAENet
+task = ScalarRegressionTask(
+    encoder_class=FAENet,
+    encoder_kwargs={
+        "pred_as_dict": False,
+        "hidden_dim": 128,
+        "output_dim": 64,
+        "tag_hidden_channels": 0,
+    },
+    # output_kwargs={"lazy": False, "input_dim": 64},
+    task_keys=["band_gap"],
+)
+
+dm = MatSciMLDataModule.from_devset(
+    "MaterialsProjectDataset",
+    dset_kwargs={
+        "transforms": [
+            UnitCellCalculator(),
+            PointCloudToGraphTransform(
+                "pyg", cutoff_dist=20.0, node_keys=["pos", "atomic_numbers"],
+            ),
+            FrameAveraging(frame_averaging="3D", fa_method="stochastic"),
+        ],
+    },
+)
 
 # run a quick training loop
 trainer = pl.Trainer(fast_dev_run=10)
