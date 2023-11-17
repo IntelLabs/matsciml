@@ -26,7 +26,7 @@ from torch.optim import lr_scheduler
 
 from matsciml.modules.normalizer import Normalizer
 from matsciml.models.common import OutputHead
-from matsciml.common.types import DataDict, BatchDict, AbstractGraph
+from matsciml.common.types import DataDict, BatchDict, AbstractGraph, Embeddings
 from matsciml.common.registry import registry
 from matsciml.common import package_registry
 
@@ -257,7 +257,7 @@ class AbstractTask(ABC, pl.LightningModule):
         ...
 
     @abstractmethod
-    def _forward(self, *args, **kwargs) -> torch.Tensor:
+    def _forward(self, *args, **kwargs) -> Embeddings:
         """
         Implements the actual logic of the architecture. Given a set
         of input features, produce outputs/predictions from the model.
@@ -269,7 +269,7 @@ class AbstractTask(ABC, pl.LightningModule):
         """
         ...
 
-    def forward(self, batch: BatchDict) -> torch.Tensor:
+    def forward(self, batch: BatchDict) -> Embeddings:
         """
         Given a batch structure, extract out data and pass it into the
         neural network architecture. This implements the 'forward' method
@@ -361,7 +361,7 @@ class AbstractPointCloudModel(AbstractTask):
         mask: Optional[torch.Tensor] = None,
         sizes: Optional[List[int]] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         """
         Sets expected patterns for args for point cloud based modeling, whereby
         the bare minimum expected data are 'pos' and 'pc_features' akin to graph
@@ -497,7 +497,7 @@ class AbstractGraphModel(AbstractTask):
         edge_feats: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         """
         Sets args/kwargs for the expected components of a graph-based
         model. At the bare minimum, we expect some kind of abstract
