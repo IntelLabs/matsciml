@@ -1,9 +1,17 @@
+from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Dict, List, Union, Optional, Any
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
 import torch
+from pymatgen.core import Lattice
 
-from matsciml.common import DataDict, package_registry
+from matsciml.common import DataDict
+from matsciml.common import package_registry
 from matsciml.common.types import DataDict
 from matsciml.datasets.transforms.base import AbstractDataTransform
 
@@ -23,6 +31,7 @@ __all__ = [
     "CoordinateScaling",
     "COMShift",
     "ScaleRegressionTargets",
+    "UnitCellCalculator",
     "DummyTransform",
 ]
 
@@ -77,7 +86,7 @@ class GraphVariablesTransform(AbstractDataTransform):
 
     @staticmethod
     def _get_atomic_charge(
-        graph: dgl.DGLGraph, mol_mask: torch.Tensor
+        graph: dgl.DGLGraph, mol_mask: torch.Tensor,
     ) -> List[torch.Tensor]:
         # extract out nodes that belong to the molecule
         surf_mask = ~mol_mask
@@ -89,7 +98,7 @@ class GraphVariablesTransform(AbstractDataTransform):
 
     @staticmethod
     def _get_distance_features(
-        graph: dgl.DGLGraph, mol_mask: torch.Tensor
+        graph: dgl.DGLGraph, mol_mask: torch.Tensor,
     ) -> List[torch.Tensor]:
         """
         Compute spatial features for the graph level variables.
@@ -191,7 +200,7 @@ class GraphSuperNodes(AbstractDataTransform):
         supernode_data = {
             "tags": torch.as_tensor([3], dtype=graph.ndata["tags"].dtype),
             "atomic_numbers": torch.as_tensor(
-                [self.supernode_index], dtype=graph.ndata["atomic_numbers"].dtype
+                [self.supernode_index], dtype=graph.ndata["atomic_numbers"].dtype,
             ),
             "fixed": torch.as_tensor([1], dtype=graph.ndata["fixed"].dtype),
         }
@@ -257,7 +266,7 @@ class AtomicSuperNodes(AbstractDataTransform):
         # extract the tag zero data again
         tag_zero_mask = graph.ndata["tags"] == 0
         assert len(
-            tag_zero_mask > 0
+            tag_zero_mask > 0,
         ), "No nodes with tag == 0 in `graph`! Please apply this transform before removing tag zero nodes."
         tag_zero_indices = graph.nodes()[tag_zero_mask]
         tag_zero_subgraph = dgl.node_subgraph(graph, tag_zero_indices)
@@ -299,7 +308,7 @@ class AtomicSuperNodes(AbstractDataTransform):
             # add edges joining the supernode to existing connections
             new_node_index = graph.num_nodes() - 1
             graph = dgl.add_edges(
-                graph, [new_node_index for _ in range(num_edges)], joint
+                graph, [new_node_index for _ in range(num_edges)], joint,
             )
         data["graph"] = graph
         return data
@@ -314,7 +323,7 @@ class GraphReordering(AbstractDataTransform):
     """
 
     def __init__(
-        self, node_algo: Optional[str] = None, edge_algo: str = "src", **sort_kwargs
+        self, node_algo: Optional[str] = None, edge_algo: str = "src", **sort_kwargs,
     ) -> None:
         super().__init__()
         self.node_algo = node_algo
@@ -324,7 +333,7 @@ class GraphReordering(AbstractDataTransform):
     def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         graph = dgl.reorder_graph(
-            graph, self.node_algo, self.edge_algo, permute_config=self.sort_kwargs
+            graph, self.node_algo, self.edge_algo, permute_config=self.sort_kwargs,
         )
         data["graph"] = graph
         return data
@@ -344,7 +353,7 @@ class CoordinateScaling(AbstractDataTransform):
             target_tensor: torch.Tensor = data[self.key]
         else:
             raise KeyError(
-                f"{self.key} not found in samples, or graph was not present."
+                f"{self.key} not found in samples, or graph was not present.",
             )
         # perform inplace rescaling
         target_tensor.mul_(self.value)
@@ -387,11 +396,11 @@ class COMShift(AbstractDataTransform):
 
 class ScaleRegressionTargets(AbstractDataTransform):
     def __init__(
-        self, value: Optional[float] = None, values: Optional[Dict[str, float]] = None
+        self, value: Optional[float] = None, values: Optional[Dict[str, float]] = None,
     ) -> None:
         if value is None and values is None:
             raise ValueError(
-                f"No values provided - must provide either value or values arguments."
+                f"No values provided - must provide either value or values arguments.",
             )
         self.value = value if value else 1.0
         self.values = values if values else {}
@@ -404,6 +413,24 @@ class ScaleRegressionTargets(AbstractDataTransform):
             if not scaling:
                 scaling = self.value
             data["targets"][key] *= scaling
+        return data
+
+
+class UnitCellCalculator(AbstractDataTransform):
+
+    def __call__(self, data: DataDict) -> DataDict:
+        lattice_features = data.get("lattice_features", None)
+        if lattice_features is None:
+            lattice_params = data.get("lattice_params", None)
+        else:
+            lattice_params = lattice_features.get("lattice_params", None)
+        if lattice_params is None:
+            raise KeyError(
+                f"No lattice parameters available to calculate unit cell matrix.",
+            )
+        abc, angles = lattice_params[:3], lattice_params[3:]
+        lattice_matrix = torch.Tensor(Lattice.from_parameters(*abc, *angles).matrix)
+        data['cell'] = lattice_matrix.unsqueeze(0)
         return data
 
 
