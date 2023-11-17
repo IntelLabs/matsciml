@@ -26,7 +26,7 @@ from torch.optim import lr_scheduler
 
 from matsciml.modules.normalizer import Normalizer
 from matsciml.models.common import OutputHead
-from matsciml.common.types import DataDict, BatchDict, AbstractGraph
+from matsciml.common.types import DataDict, BatchDict, AbstractGraph, Embeddings
 from matsciml.common.registry import registry
 from matsciml.common import package_registry
 
@@ -257,19 +257,19 @@ class AbstractTask(ABC, pl.LightningModule):
         ...
 
     @abstractmethod
-    def _forward(self, *args, **kwargs) -> torch.Tensor:
+    def _forward(self, *args, **kwargs) -> Embeddings:
         """
         Implements the actual logic of the architecture. Given a set
         of input features, produce outputs/predictions from the model.
 
         Returns
         -------
-        torch.Tensor
-            Output of the model; can be embeddings or projected values
+        Embeddings
+            Data structure containing system/graph and point/node level embeddings.
         """
         ...
 
-    def forward(self, batch: BatchDict) -> torch.Tensor:
+    def forward(self, batch: BatchDict) -> Embeddings:
         """
         Given a batch structure, extract out data and pass it into the
         neural network architecture. This implements the 'forward' method
@@ -284,11 +284,16 @@ class AbstractTask(ABC, pl.LightningModule):
 
         Returns
         -------
-        torch.Tensor
-            Output of the model; can be embeddings or projected values
+        Embeddings
+            Data structure containing system/graph and point/node level embeddings.
         """
         input_data = self.read_batch(batch)
         outputs = self._forward(**input_data)
+        # raise an error to help spot models that have not yet been refactored
+        if not isinstance(outputs, Embeddings):
+            raise ValueError(
+                "Encoder did not return `Embeddings` data structure: please refactor your model!"
+            )
         return outputs
 
 
@@ -361,7 +366,7 @@ class AbstractPointCloudModel(AbstractTask):
         mask: Optional[torch.Tensor] = None,
         sizes: Optional[List[int]] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         """
         Sets expected patterns for args for point cloud based modeling, whereby
         the bare minimum expected data are 'pos' and 'pc_features' akin to graph
@@ -497,7 +502,7 @@ class AbstractGraphModel(AbstractTask):
         edge_feats: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         """
         Sets args/kwargs for the expected components of a graph-based
         model. At the bare minimum, we expect some kind of abstract
@@ -787,7 +792,7 @@ class BaseTaskModule(pl.LightningModule):
         outputs = self.process_embedding(embedding)
         return outputs
 
-    def process_embedding(self, embeddings: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def process_embedding(self, embeddings: Embeddings) -> Dict[str, torch.Tensor]:
         """
         Given a set of embeddings, output predictions for each head.
 
@@ -803,7 +808,7 @@ class BaseTaskModule(pl.LightningModule):
         """
         results = {}
         for key, head in self.output_heads.items():
-            results[key] = head(embeddings)
+            results[key] = head(embeddings.system_embedding)
         return results
 
     def _get_targets(
@@ -1310,10 +1315,10 @@ class ForceRegressionTask(BaseTaskModule):
         return outputs
 
     def process_embedding(
-        self, embeddings: torch.Tensor, pos: torch.Tensor
+        self, embeddings: Embeddings, pos: torch.Tensor
     ) -> Dict[str, torch.Tensor]:
         outputs = {}
-        energy = self.output_heads["energy"](embeddings)
+        energy = self.output_heads["energy"](embeddings.system_embedding)
         # now use autograd for force calculation
         force = (
             -1

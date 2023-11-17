@@ -12,6 +12,7 @@ import dgl
 
 from .gaanet_model import MLP, MomentumNorm, LayerNorm, TiedMultivectorAttention
 import geometric_algebra_attention.pytorch as gala
+from matsciml.common.types import Embeddings
 
 
 class GalaPotential(AbstractPointCloudModel):
@@ -250,7 +251,7 @@ class GalaPotential(AbstractPointCloudModel):
         mask: Optional[torch.Tensor] = None,
         sizes: Optional[List[int]] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         r"""
         Map input data onto the Gala architecture.
 
@@ -292,10 +293,8 @@ class GalaPotential(AbstractPointCloudModel):
 
         Returns
         -------
-        torch.Tensor
-            If ``encoder_only``, emits a 2D tensor of shape ``[B, hidden_dim]``.
-            Otherwise, emits a 2D tensor of shape ``[B, 1]`` corresponding to
-            the system energy of each point cloud.
+        Embeddings
+            Data structure containing point cloud embeddings.
         """
         positions = torch.div(pc_pos, 1)
 
@@ -347,4 +346,6 @@ class GalaPotential(AbstractPointCloudModel):
         # are actually padding nodes
         if isinstance(mask, torch.Tensor) and sizes:
             last = self.mask_model_output(last, mask, sizes, self.hparams.extensive)
-        return last
+        # TODO map point level embeddings as well
+        embeddings = Embeddings(last)
+        return embeddings

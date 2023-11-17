@@ -7,8 +7,8 @@ import dgl
 import torch
 import torch.nn as nn
 from dgl.nn.pytorch.glob import AvgPooling, MaxPooling, SumPooling, WeightAndSum
-from matsciml.common.types import BatchDict, DataDict
 
+from matsciml.common.types import BatchDict, DataDict, Embeddings
 from matsciml.models.base import AbstractDGLModel
 from matsciml.models.dgl.egnn.egnn_model import EGNN, MLP
 
@@ -185,7 +185,7 @@ class PLEGNNBackbone(AbstractDGLModel):
         edge_feats: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         r"""
         Implement the forward method, which computes the energy of
         a molecular graph.
@@ -210,12 +210,11 @@ class PLEGNNBackbone(AbstractDGLModel):
 
         Returns
         -------
-        torch.Tensor
-            Graph embeddings, or output value if not 'encoder_only'
+        Embeddings
+            Data structure containing node and graph level embeddings.
+            Node embeddings correspond to after the node projection layer.
         """
         n_z, _ = self.embed(graph, node_feats, pos)
         n_z = self.node_projection(n_z)
         g_z = self.readout(graph, n_z)
-        if self.encoder_only:
-            return g_z
-        return self.prediction(g_z)
+        return Embeddings(g_z, n_z)
