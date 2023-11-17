@@ -787,7 +787,7 @@ class BaseTaskModule(pl.LightningModule):
         outputs = self.process_embedding(embedding)
         return outputs
 
-    def process_embedding(self, embeddings: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def process_embedding(self, embeddings: Embeddings) -> Dict[str, torch.Tensor]:
         """
         Given a set of embeddings, output predictions for each head.
 
@@ -803,7 +803,7 @@ class BaseTaskModule(pl.LightningModule):
         """
         results = {}
         for key, head in self.output_heads.items():
-            results[key] = head(embeddings)
+            results[key] = head(embeddings.system_embedding)
         return results
 
     def _get_targets(
@@ -1310,10 +1310,10 @@ class ForceRegressionTask(BaseTaskModule):
         return outputs
 
     def process_embedding(
-        self, embeddings: torch.Tensor, pos: torch.Tensor
+        self, embeddings: Embeddings, pos: torch.Tensor
     ) -> Dict[str, torch.Tensor]:
         outputs = {}
-        energy = self.output_heads["energy"](embeddings)
+        energy = self.output_heads["energy"](embeddings.system_embedding)
         # now use autograd for force calculation
         force = (
             -1
