@@ -1450,6 +1450,66 @@ class ForceRegressionTask(BaseTaskModule):
         return loss_dict
 
 
+@registry.register_task("GradFreeForceRegressionTask")
+class GradFreeForceRegressionTask(ScalarRegressionTask):
+    def __init__(
+        self,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
+        loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
+        task_keys: Optional[List[str]] = ["force"],
+        output_kwargs: Dict[str, Any] = {},
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            encoder,
+            encoder_class,
+            encoder_kwargs,
+            loss_func,
+            task_keys,
+            output_kwargs,
+            **kwargs,
+        )
+
+    def _make_output_heads(self) -> nn.ModuleDict:
+        modules = {"force": OutputHead(3, **self.output_kwargs).to(self.device)}
+        return nn.ModuleDict(modules)
+
+    def _get_targets(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Extract out the energy and force targets from a batch.
+
+        The intended behavior is similar to other tasks, however explicit because
+        we actually expect "energy" and "force" keys as opposed to inferring them from a batch.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to evaluate
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing targets to evaluate against
+
+        Raises
+        ------
+        KeyError
+            If either "energy" or "force" keys aren't found in the "targets"
+            dictionary within a batch, we abort the program.
+        """
+        if "force" not in batch["targets"]:
+            raise KeyError(
+                f"Force key missing in batch targets: keys found: {batch['targets'].keys()}"
+            )
+        target_dict = {"force": batch["targets"]["force"]}
+        return target_dict
+
+
 @registry.register_task("CrystalSymmetryClassificationTask")
 class CrystalSymmetryClassificationTask(BaseTaskModule):
     __task__ = "symmetry"
