@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Union
 
 import torch
@@ -44,7 +44,7 @@ class Embeddings:
     system_embedding: torch.Tensor | None = None
     point_embedding: torch.Tensor | None = None
     reduction: str | Callable | None = None
-    reduction_kwargs: dict[str, str | float] = {}
+    reduction_kwargs: dict[str, str | float] = field(default_factory=dict)
 
     @property
     def num_points(self) -> int:
