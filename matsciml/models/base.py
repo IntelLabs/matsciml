@@ -264,8 +264,8 @@ class AbstractTask(ABC, pl.LightningModule):
 
         Returns
         -------
-        torch.Tensor
-            Output of the model; can be embeddings or projected values
+        Embeddings
+            Data structure containing system/graph and point/node level embeddings.
         """
         ...
 
@@ -284,11 +284,16 @@ class AbstractTask(ABC, pl.LightningModule):
 
         Returns
         -------
-        torch.Tensor
-            Output of the model; can be embeddings or projected values
+        Embeddings
+            Data structure containing system/graph and point/node level embeddings.
         """
         input_data = self.read_batch(batch)
         outputs = self._forward(**input_data)
+        # raise an error to help spot models that have not yet been refactored
+        if not isinstance(outputs, Embeddings):
+            raise ValueError(
+                "Encoder did not return `Embeddings` data structure: please refactor your model!"
+            )
         return outputs
 
 
