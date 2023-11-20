@@ -1,15 +1,17 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 
-from matsciml.models.base import ForceRegressionTask
-from matsciml.models import PLEGNNBackbone
 from matsciml.datasets.materials_project import MaterialsProjectDataset
 from matsciml.lightning.data_utils import MatSciMLDataModule
+from matsciml.models import PLEGNNBackbone
+from matsciml.models.base import ForceRegressionTask, GradFreeForceRegressionTask
 
 pl.seed_everything(2156161)
 
 
 def test_regression_devset():
-    dset = MaterialsProjectDataset.from_devset()
+    dset = MaterialsProjectDataset.from_devset()  # noqa: F841
 
 
 def test_force_regression():
@@ -81,7 +83,8 @@ def test_gradfree_force_regression():
         "encoder_only": True,
     }
     task = GradFreeForceRegressionTask(
-        encoder_class=PLEGNNBackbone, encoder_kwargs=model_args
+        encoder_class=PLEGNNBackbone,
+        encoder_kwargs=model_args,
     )
     trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
     trainer.fit(task, datamodule=devset)

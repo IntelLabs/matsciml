@@ -1514,6 +1514,26 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         target_dict = {"force": batch["targets"]["force"]}
         return target_dict
 
+    def process_embedding(self, embeddings: Embeddings) -> Dict[str, torch.Tensor]:
+        """
+        Given point/node-level embeddings, predict forces of each point.
+
+        Parameters
+        ----------
+        embeddings : Embeddings
+            Data structure containing system/graph and point/node-level embeddings.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing a ``force`` key that maps to predicted forces
+            per point/node
+        """
+        results = {}
+        force_head = self.output_heads["force"]
+        results["force"] = force_head(embeddings.point_embedding)
+        return results
+
 
 @registry.register_task("CrystalSymmetryClassificationTask")
 class CrystalSymmetryClassificationTask(BaseTaskModule):
