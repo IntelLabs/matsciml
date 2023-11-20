@@ -1463,16 +1463,21 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         encoder_class: Optional[Type[nn.Module]] = None,
         encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
-        task_keys: Optional[List[str]] = ["force"],
         output_kwargs: Dict[str, Any] = {},
         **kwargs: Any,
     ) -> None:
+        if "task_keys" in kwargs:
+            warn(
+                f"GradFreeForceRegressionTask does not `task_keys`; "
+                f"ignoring passed keys: {kwargs['task_keys']}"
+            )
+            del kwargs["task_keys"]
         super().__init__(
             encoder,
             encoder_class,
             encoder_kwargs,
             loss_func,
-            task_keys,
+            ["force"],
             output_kwargs,
             **kwargs,
         )
