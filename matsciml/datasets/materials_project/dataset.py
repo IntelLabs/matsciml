@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pickle
+from collections.abc import Iterable
 from copy import deepcopy
 from functools import cache
 from functools import cached_property
@@ -10,7 +11,6 @@ from pathlib import Path
 from typing import Any
 from typing import Callable
 from typing import Dict
-from collections.abc import Iterable
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -139,12 +139,6 @@ class MaterialsProjectDataset(PointCloudDataset):
         ).float()
         # grab lattice properties
         space_group = structure.get_space_group_info()[-1]
-        # convert lattice angles into radians
-        abc = structure.lattice.abc
-        angles = structure.lattice.angles
-        lattice_matrix = torch.Tensor(Lattice.from_parameters(*abc, *angles).matrix)
-        # import pdb; pdb.set_trace()
-        return_dict['cell'] = lattice_matrix.unsqueeze(0)
         return_dict['natoms'] = len(atom_numbers)
         lattice_params = torch.FloatTensor(
             structure.lattice.abc

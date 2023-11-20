@@ -1,15 +1,13 @@
-from __future__ import annotations
-
-from copy import deepcopy
+from typing import Callable, Optional, Union, Type, Any
 from importlib import import_module
-from typing import Any, Callable, Optional, Type, Union
+from copy import deepcopy
 
 import torch
 from torch import nn
 from torch.nn.parameter import Parameter
 
 
-def get_class_from_name(class_path: str) -> type[Any]:
+def get_class_from_name(class_path: str) -> Type[Any]:
     """
     Load in a specified module, and retrieve a class within
     that module.
@@ -44,9 +42,9 @@ class OutputBlock(nn.Module):
     def __init__(
         self,
         output_dim: int,
-        activation: nn.Module | type[nn.Module] | Callable | str | None = None,
-        norm: nn.Module | type[nn.Module] | Callable | str | None = None,
-        input_dim: int | None = None,
+        activation: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
+        norm: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
+        input_dim: Optional[int] = None,
         lazy: bool = True,
         bias: bool = True,
         dropout: float = 0.0,
@@ -79,13 +77,13 @@ class OutputBlock(nn.Module):
             activation = nn.Identity
         if isinstance(activation, str):
             activation = get_class_from_name(activation)
-        if isinstance(activation, type):
+        if isinstance(activation, Type):
             activation = activation()
         if norm is None:
             norm = nn.Identity
         if isinstance(norm, str):
             norm = get_class_from_name(norm)
-        if isinstance(norm, type):
+        if isinstance(norm, Type):
             norm = norm()
         self.residual = residual
         if lazy:
@@ -93,17 +91,14 @@ class OutputBlock(nn.Module):
         else:
             if not lazy and not input_dim:
                 raise ValueError(
-                    f"Non-lazy model specified for 'OutputBlock', but no 'input_dim' was passed.",
+                    f"Non-lazy model specified for 'OutputBlock', but no 'input_dim' was passed."
                 )
             linear = nn.Linear(input_dim, output_dim, bias=bias)
         dropout = nn.Dropout(dropout)
         # be liberal about deepcopy, to make sure we don't duplicate weights
         # when we don't intend to
         self.layers = nn.Sequential(
-            linear,
-            deepcopy(activation),
-            deepcopy(norm),
-            deepcopy(dropout),
+            linear, deepcopy(activation), deepcopy(norm), deepcopy(dropout)
         )
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
@@ -140,10 +135,10 @@ class OutputHead(nn.Module):
         output_dim: int,
         hidden_dim: int,
         num_hidden: int = 1,
-        activation: nn.Module | type[nn.Module] | Callable | str | None = None,
-        norm: nn.Module | type[nn.Module] | Callable | str | None = None,
-        act_last: nn.Module | type[nn.Module] | Callable | str | None = None,
-        input_dim: int | None = None,
+        activation: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
+        norm: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
+        act_last: Optional[Union[nn.Module, Type[nn.Module], Callable, str]] = None,
+        input_dim: Optional[int] = None,
         lazy: bool = True,
         bias: bool = True,
         dropout: float = 0.0,
@@ -205,7 +200,7 @@ class OutputHead(nn.Module):
                     residual=residual,
                 )
                 for _ in range(num_hidden)
-            ],
+            ]
         )
         # last layer does not use residual or normalization
         blocks.append(
@@ -217,7 +212,7 @@ class OutputHead(nn.Module):
                 lazy=lazy,
                 bias=bias,
                 residual=False,
-            ),
+            )
         )
         self.blocks = nn.Sequential(*blocks)
         self.lazy = lazy
@@ -225,8 +220,6 @@ class OutputHead(nn.Module):
     def forward(self, embedding: torch.Tensor) -> torch.Tensor:
         if not self.lazy:
             expected_shape = self.blocks[0].input_dim
-            if isinstance(embedding, dict):
-                embedding = next(iter(embedding.values()))
             assert (
                 embedding.size(-1) == expected_shape
             ), f"Incoming encoder output dim ({embedding.size(-1)}) does not match the expected 'OutputBlock' dim ({expected_shape})"
@@ -252,7 +245,7 @@ class RMSNorm(nn.Module):
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         tensor_norm: torch.Tensor = torch.norm(data, p=2, dim=-1, keepdim=True)
-        rms_values = torch.sqrt(tensor_norm * self.input_dim)
+        rms_values = torch.sqrt((tensor_norm * self.input_dim))
         # apply the RMSNorm to inputs
         norm_output = (data / (rms_values + self.eps)) * self.scale
         if self.has_bias:
@@ -296,13 +289,11 @@ class PartialRMSNorm(RMSNorm):
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         # split the input data along partial
         split_tensor, _ = torch.split(
-            data,
-            [self.partial_length, self.input_dim - self.partial_length],
-            dim=-1,
+            data, [self.partial_length, self.input_dim - self.partial_length], dim=-1
         )
         # compute norm based on the split portion
         tensor_norm: torch.Tensor = torch.norm(split_tensor, p=2, dim=1)
-        rms_values = torch.sqrt(tensor_norm * self.partial_length)
+        rms_values = torch.sqrt((tensor_norm * self.partial_length))
         norm_output = (data / (rms_values + self.eps)) * self.scale
         if self.has_bias:
             norm_output = norm_output + self.bias
