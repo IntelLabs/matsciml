@@ -1455,6 +1455,91 @@ class ForceRegressionTask(BaseTaskModule):
         return loss_dict
 
 
+@registry.register_task("GradFreeForceRegressionTask")
+class GradFreeForceRegressionTask(ScalarRegressionTask):
+    def __init__(
+        self,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
+        loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
+        output_kwargs: Dict[str, Any] = {},
+        **kwargs: Any,
+    ) -> None:
+        if "task_keys" in kwargs:
+            warn(
+                f"GradFreeForceRegressionTask does not `task_keys`; "
+                f"ignoring passed keys: {kwargs['task_keys']}"
+            )
+            del kwargs["task_keys"]
+        super().__init__(
+            encoder,
+            encoder_class,
+            encoder_kwargs,
+            loss_func,
+            ["force"],
+            output_kwargs,
+            **kwargs,
+        )
+
+    def _make_output_heads(self) -> nn.ModuleDict:
+        modules = {"force": OutputHead(3, **self.output_kwargs).to(self.device)}
+        return nn.ModuleDict(modules)
+
+    def _get_targets(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Extract out the energy and force targets from a batch.
+
+        The intended behavior is similar to other tasks, however explicit because
+        we actually expect "energy" and "force" keys as opposed to inferring them from a batch.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to evaluate
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing targets to evaluate against
+
+        Raises
+        ------
+        KeyError
+            If either "energy" or "force" keys aren't found in the "targets"
+            dictionary within a batch, we abort the program.
+        """
+        if "force" not in batch["targets"]:
+            raise KeyError(
+                f"Force key missing in batch targets: keys found: {batch['targets'].keys()}"
+            )
+        target_dict = {"force": batch["targets"]["force"]}
+        return target_dict
+
+    def process_embedding(self, embeddings: Embeddings) -> Dict[str, torch.Tensor]:
+        """
+        Given point/node-level embeddings, predict forces of each point.
+
+        Parameters
+        ----------
+        embeddings : Embeddings
+            Data structure containing system/graph and point/node-level embeddings.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing a ``force`` key that maps to predicted forces
+            per point/node
+        """
+        results = {}
+        force_head = self.output_heads["force"]
+        results["force"] = force_head(embeddings.point_embedding)
+        return results
+
+
 @registry.register_task("CrystalSymmetryClassificationTask")
 class CrystalSymmetryClassificationTask(BaseTaskModule):
     __task__ = "symmetry"
