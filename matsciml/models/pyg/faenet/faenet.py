@@ -10,7 +10,7 @@ import torch
 from torch import nn
 from torch.nn import Linear
 
-from matsciml.common.types import AbstractGraph
+from matsciml.common.types import AbstractGraph, Embeddings
 from matsciml.common.types import BatchDict
 from matsciml.common.types import DataDict
 from matsciml.common.utils import radius_graph_pbc
@@ -268,7 +268,7 @@ class FAENet(AbstractPyGModel):
         if self.decoder:
             return self.decoder(preds["hidden_state"])
 
-    def energy_forward(self, data, preproc=True):
+    def energy_forward(self, data, preproc=True) -> torch.Tensor:
         """Predicts any graph-level property (e.g. energy) for 3D atomic systems.
 
         Args:
@@ -330,19 +330,7 @@ class FAENet(AbstractPyGModel):
         if self.skip_co == "concat_atom":
             energy_skip_co.append(h)
             h = self.act(self.mlp_skip_co(torch.cat(energy_skip_co, dim=1)))
-
-        energy = self.output_block(h, edge_index, edge_weight, batch, alpha)
-
-        # Skip-connection
-        energy_skip_co.append(energy)
-        if self.skip_co == "concat":
-            energy = self.mlp_skip_co(torch.cat(energy_skip_co, dim=1))
-        elif self.skip_co == "add":
-            energy = sum(energy_skip_co)
-
-        preds = {"energy": energy, "hidden_state": h}
-
-        return preds
+        return h
 
     def first_forward(
         self,
@@ -415,7 +403,7 @@ class FAENet(AbstractPyGModel):
         pos: torch.Tensor,
         edge_feats: torch.Tensor | None = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         """Perform a model forward pass when frame averaging is applied.
 
         Args:
