@@ -1,6 +1,7 @@
 ###########################################################################################
 # Implementation of MACE models and other models based E(3)-Equivariant MPNNs
 # Authors: Ilyes Batatia, Gregor Simm
+# Integrated into matsciml by Vaibhav Bihani, Sajid Mannan
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
@@ -8,11 +9,17 @@ from typing import Any, Callable, Dict, List, Optional, Type
 
 import numpy as np
 import torch
+import torch_geometric as pyg
 from e3nn import o3
 from e3nn.util.jit import compile_mode
 
-from mace.data import AtomicData
-from mace.tools.scatter import scatter_sum
+from matsciml.models.pyg.mace.data import AtomicData
+from matsciml.models.pyg.mace.tools.scatter import scatter_sum
+from matsciml.common.types import DataDict, BatchDict
+
+
+from matsciml.common.types import AbstractGraph
+from matsciml.models.base import AbstractPyGModel
 
 from .blocks import (
     AtomicEnergiesBlock,
@@ -36,7 +43,7 @@ from .utils import (
 
 
 @compile_mode("script")
-class MACE(torch.nn.Module):
+class MACE(AbstractPyGModel):
     def __init__(
         self,
         r_max: float,
@@ -55,7 +62,7 @@ class MACE(torch.nn.Module):
         correlation: int,
         gate: Optional[Callable],
     ):
-        super().__init__()
+        super().__init__(atom_embedding_dim=16)
         self.register_buffer(
             "atomic_numbers", torch.tensor(atomic_numbers, dtype=torch.int64)
         )
@@ -147,7 +154,7 @@ class MACE(torch.nn.Module):
             else:
                 self.readouts.append(LinearReadoutBlock(hidden_irreps))
 
-    def forward(
+    def _forward(
         self,
         data: Dict[str, torch.Tensor],
         training: bool = False,
@@ -246,7 +253,6 @@ class MACE(torch.nn.Module):
             "displacement": displacement,
         }
 
-
 @compile_mode("script")
 class ScaleShiftMACE(MACE):
     def __init__(
@@ -260,7 +266,7 @@ class ScaleShiftMACE(MACE):
             scale=atomic_inter_scale, shift=atomic_inter_shift
         )
 
-    def forward(
+    def _forward(
         self,
         data: Dict[str, torch.Tensor],
         training: bool = False,
@@ -272,24 +278,7 @@ class ScaleShiftMACE(MACE):
         # Setup
         data["positions"].requires_grad_(True)
         num_graphs = data["ptr"].numel() - 1
-        displacement = torch.zeros(
-            (num_graphs, 3, 3),
-            dtype=data["positions"].dtype,
-            device=data["positions"].device,
-        )
-        if compute_virials or compute_stress or compute_displacement:
-            (
-                data["positions"],
-                data["shifts"],
-                displacement,
-            ) = get_symmetric_displacement(
-                positions=data["positions"],
-                unit_shifts=data["unit_shifts"],
-                cell=data["cell"],
-                edge_index=data["edge_index"],
-                num_graphs=num_graphs,
-                batch=data["batch"],
-            )
+       
 
         # Atomic energies
         node_e0 = self.atomic_energies_fn(data["node_attrs"])
@@ -361,6 +350,54 @@ class ScaleShiftMACE(MACE):
         }
 
         return output
+    
+    
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        """
+        Extract PyG structure and features to pass into the model.
+
+        More complicated models can override this method to extract out edge and
+        graph features as well.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data to process.
+
+        
+        Returns
+        -------
+        DataDict
+            Dictionary of input features to pass into the model
+        """
+        print("Here")
+        assert (
+            "graph" in batch
+        ), f"Model {self.__class__.__name__} expects graph structures, but 'graph' key was not found in batch."
+        graph = batch.get("graph")        
+        data={'graph':graph,'cell':batch.get('cell'),'energy':batch.get('energy')}
+        assert isinstance(
+            graph, (pyg.data.Data, pyg.data.Batch)
+        ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
+        for key in ["ptr","batch","edge_index","edge_feats", "graph_feats"]:
+            data[key] = getattr(graph, key, None)
+        data["positions"]=getattr(graph, "pos")
+        data["forces"]=getattr(graph, "force")
+        # Charges default to 0 instead of None if not found
+        data["charges"] = getattr(batch,"charges", torch.zeros_like(data["batch"]))
+        
+        atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers")
+        #node_embeddings = self.atom_embedding(atomic_numbers)
+        pos: torch.Tensor = getattr(graph, "pos")
+        # optionally can fuse into a single tensor with `self.join_position_embeddings`
+        #data["node_feats"] = node_embeddings
+        #data["pos"] = pos
+        return data
+
+    def read_batch_size(self, batch: BatchDict) -> int:
+        graph = batch["graph"]
+        return graph.num_graphs
+
 
 
 class BOTNet(torch.nn.Module):

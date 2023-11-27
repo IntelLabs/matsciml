@@ -6,8 +6,8 @@
 
 import torch
 
-from mace.tools import TensorDict
-from mace.tools.torch_geometric import Batch
+from matsciml.models.pyg.mace.tools import TensorDict
+from matsciml.models.pyg.mace.tools.torch_geometric import Batch
 
 
 def mean_squared_error_energy(ref: Batch, pred: TensorDict) -> torch.Tensor:
