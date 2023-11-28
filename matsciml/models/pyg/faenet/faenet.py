@@ -446,10 +446,11 @@ class FAENet(AbstractPyGModel):
             e_all, f_all, gt_all = [], [], []
 
             # Compute model prediction for each frame
-            for i in range(len(batch.fa_pos)):
-                batch.pos = batch.fa_pos[i]
+            for frame_idx, frame in enumerate(batch.fa_pos):
+                # set positions to current frame
+                batch.pos = frame
                 if crystal_task:
-                    batch.cell = batch.fa_cell[i]
+                    batch.cell = batch.fa_cell[frame_idx]
                 # Forward pass
                 preds = self.first_forward(deepcopy(batch))
                 if not self.pred_as_dict:
@@ -461,7 +462,7 @@ class FAENet(AbstractPyGModel):
                 # Force predictions are rotated back to be equivariant
                 if preds.get("forces") is not None:
                     fa_rot = torch.repeat_interleave(
-                        batch.fa_rot[i],
+                        batch.fa_rot[frame_idx],
                         batch.natoms,
                         dim=0,
                     )
@@ -478,7 +479,7 @@ class FAENet(AbstractPyGModel):
                 if preds.get("forces_grad_target") is not None:
                     if fa_rot is None:
                         fa_rot = torch.repeat_interleave(
-                            batch.fa_rot[i],
+                            batch.fa_rot[frame_idx],
                             batch.natoms,
                             dim=0,
                         )
