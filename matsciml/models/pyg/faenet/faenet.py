@@ -10,9 +10,7 @@ import torch
 from torch import nn
 from torch.nn import Linear
 
-from matsciml.common.types import AbstractGraph, Embeddings
-from matsciml.common.types import BatchDict
-from matsciml.common.types import DataDict
+from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
 from matsciml.common.utils import radius_graph_pbc
 from matsciml.models.base import AbstractPyGModel
 from matsciml.models.pyg.faenet.helper import *
@@ -329,10 +327,18 @@ class FAENet(AbstractPyGModel):
         # Atom skip-co
         if self.skip_co == "concat_atom":
             energy_skip_co.append(h)
-            node_embedding = self.act(self.mlp_skip_co(torch.cat(energy_skip_co, dim=1)))
+            node_embedding = self.act(
+                self.mlp_skip_co(torch.cat(energy_skip_co, dim=1)),
+            )
         else:
             node_embedding = h
-        graph_embedding = self.output_block(node_embedding, edge_index, edge_weight, batch, alpha)
+        graph_embedding = self.output_block(
+            node_embedding,
+            edge_index,
+            edge_weight,
+            batch,
+            alpha,
+        )
         return Embeddings(graph_embedding, node_embedding)
 
     def first_forward(
