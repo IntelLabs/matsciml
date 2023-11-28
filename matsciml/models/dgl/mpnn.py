@@ -9,8 +9,8 @@ import dgl
 import torch
 from torch import nn
 from dgl.nn.pytorch import glob
-from matsciml.common.types import BatchDict, DataDict
 
+from matsciml.common.types import BatchDict, DataDict, Embeddings
 from matsciml.models.base import AbstractDGLModel
 
 
@@ -114,7 +114,7 @@ class MPNN(AbstractDGLModel):
         edge_feats: torch.Tensor,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         r"""
         Implement the forward method, which computes the energy of
         a molecular graph.
@@ -139,12 +139,12 @@ class MPNN(AbstractDGLModel):
 
         Returns
         -------
-        torch.Tensor
-            Graph embeddings, or output value if not 'encoder_only'
+        Embeddings
+            Data structure with graph and node level embeddings packed.
+            Node embeddings are from the last message passing layer.
         """
         node_feats = self.join_position_embeddings(pos, node_feats)
         n_z = self.model(graph, node_feats, edge_feats)
         g_z = self.readout(graph, n_z)
-        if self.encoder_only:
-            return g_z
-        return self.output(g_z)
+        embeddings = Embeddings(g_z, n_z)
+        return embeddings

@@ -28,7 +28,7 @@ depending on the type of data representation being used and backend: `AbstractPo
 and edges) for consistency, and (2) to abstract out common functions, particularly how to "read" data from the minibatches.
 As an example, DGL and PyG have different interfaces, and by inheriting from the right parent class, ensures that the correct
 features are mapped to the right arguments, etc. If your abstraction permits, the `_forward` method should be the only method
-you need to override:
+you need to override, which returns the system/graph and point/node-level embeddings in a standardized data structure:
 
 ```python
     def _forward(
@@ -39,7 +39,7 @@ you need to override:
         edge_feats: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         """
         Sets args/kwargs for the expected components of a graph-based
         model. At the bare minimum, we expect some kind of abstract
@@ -64,8 +64,8 @@ you need to override:
 
         Returns
         -------
-        torch.Tensor
-            Model output; either embedding or projected output
+        matsciml.common.types.Embeddings
+            Data structure containing system/graph and point/node-level embeddings.
         """
 ```
 
