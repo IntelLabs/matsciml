@@ -87,7 +87,7 @@ class GraphVariablesTransform(AbstractDataTransform):
     @staticmethod
     def _get_atomic_charge(
         graph: dgl.DGLGraph, mol_mask: torch.Tensor,
-    ) -> List[torch.Tensor]:
+    ) -> list[torch.Tensor]:
         # extract out nodes that belong to the molecule
         surf_mask = ~mol_mask
         output = []
@@ -99,7 +99,7 @@ class GraphVariablesTransform(AbstractDataTransform):
     @staticmethod
     def _get_distance_features(
         graph: dgl.DGLGraph, mol_mask: torch.Tensor,
-    ) -> List[torch.Tensor]:
+    ) -> list[torch.Tensor]:
         """
         Compute spatial features for the graph level variables.
         This computes two summary features: the average bond length
@@ -323,7 +323,7 @@ class GraphReordering(AbstractDataTransform):
     """
 
     def __init__(
-        self, node_algo: Optional[str] = None, edge_algo: str = "src", **sort_kwargs,
+        self, node_algo: str | None = None, edge_algo: str = "src", **sort_kwargs,
     ) -> None:
         super().__init__()
         self.node_algo = node_algo
@@ -396,7 +396,7 @@ class COMShift(AbstractDataTransform):
 
 class ScaleRegressionTargets(AbstractDataTransform):
     def __init__(
-        self, value: Optional[float] = None, values: Optional[Dict[str, float]] = None,
+        self, value: float | None = None, values: dict[str, float] | None = None,
     ) -> None:
         if value is None and values is None:
             raise ValueError(
@@ -429,8 +429,11 @@ class UnitCellCalculator(AbstractDataTransform):
                 f"No lattice parameters available to calculate unit cell matrix.",
             )
         abc, angles = lattice_params[:3], lattice_params[3:]
+        angles = torch.FloatTensor(
+            tuple(angle * (180.0 / torch.pi) for angle in angles),
+        )
         lattice_matrix = torch.Tensor(Lattice.from_parameters(*abc, *angles).matrix)
-        data['cell'] = lattice_matrix.unsqueeze(0)
+        data["cell"] = lattice_matrix.unsqueeze(0)
         return data
 
 
