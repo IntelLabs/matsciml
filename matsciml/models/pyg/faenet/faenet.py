@@ -428,10 +428,15 @@ class FAENet(AbstractPyGModel):
         crystal_task = True
         batch = graph
 
-        if isinstance(batch, list):
-            batch = batch[0]
         if not hasattr(batch, "natoms"):
             batch.natoms = torch.unique(batch.batch, return_counts=True)[1]
+
+        # check that frame averaging properties are available
+        for key in ["fa_pos", "fa_cell", "fa_rot"]:
+            if not hasattr(batch, key):
+                raise KeyError(
+                    f"Graph is expected to have property {key}: include frame averaging transform!",
+                )
 
         # Distinguish Frame Averaging prediction from traditional case.
         if frame_averaging and frame_averaging != "DA":
