@@ -339,7 +339,7 @@ class FAENet(AbstractPyGModel):
         self,
         graph: AbstractGraph,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         """
         Actually flowing data through architecture. First we predict
         the energy, and optionally gradients.
@@ -359,47 +359,14 @@ class FAENet(AbstractPyGModel):
             mode = "inference"
         preproc = True
         data = graph
-        grad_forces = forces = None
 
         # energy gradient w.r.t. positions will be computed
         if mode == "train" or self.regress_forces == "from_energy":
             data.pos.requires_grad_(True)
 
-        # predict energy
-        preds = self.energy_forward(data, preproc)
-
-        if self.regress_forces:
-            if self.regress_forces in {"direct", "direct_with_gradient_target"}:
-                # predict forces
-                forces = self.forces_forward(preds)
-
-            if mode == "train" or self.regress_forces == "from_energy":
-                if "gemnet" in self.__class__.__name__.lower():
-                    # gemnet forces are already computed
-                    grad_forces = forces
-                else:
-                    # compute forces from energy gradient
-                    grad_forces = self.forces_as_energy_grad(data.pos, preds["energy"])
-
-            if self.regress_forces == "from_energy":
-                # predicted forces are the energy gradient
-                preds["forces"] = grad_forces
-            elif self.regress_forces in {"direct", "direct_with_gradient_target"}:
-                # predicted forces are the model's direct forces
-                preds["forces"] = forces
-                if mode == "train":
-                    # Store the energy gradient as target for "direct_with_gradient_target"
-                    # Use it as a metric only in "direct" mode.
-                    preds["forces_grad_target"] = grad_forces.detach()
-            else:
-                raise ValueError(
-                    f"Unknown forces regression mode {self.regress_forces}",
-                )
-
-        if not self.pred_as_dict:
-            return preds["energy"]
-
-        return preds
+        # produce final embeddings after going through model
+        embeddings = self.energy_forward(data, preproc)
+        return embeddings
 
     def _forward(
         self,
