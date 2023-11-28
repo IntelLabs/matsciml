@@ -510,9 +510,6 @@ class FAENet(AbstractPyGModel):
         else:
             preds = self(batch)
 
-        if preds["energy"].shape[-1] == 1:
-            preds["energy"] = preds["energy"].view(-1)
-
         return preds["energy"]
 
     def forces_as_energy_grad(self, pos, energy):
