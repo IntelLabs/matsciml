@@ -256,7 +256,8 @@ class FAENet(AbstractPyGModel):
     def forces_forward(self, preds):
         """Predicts forces for 3D atomic systems.
         Can be utilised to predict any atom-level property.
-
+        
+        TODO remove this as it is no longer needed
         Args:
             preds (dict): dictionnary with final atomic representations
                 (hidden_state) and predicted properties (e.g. energy)
@@ -504,6 +505,8 @@ class FAENet(AbstractPyGModel):
 
     def forces_as_energy_grad(self, pos, energy):
         """Computes forces from energy gradient
+
+        TODO remove this as it's no longer needed
 
         Args:
             pos (tensor): 3D atom positions
