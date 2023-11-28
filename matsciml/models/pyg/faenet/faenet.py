@@ -103,6 +103,7 @@ class FAENet(AbstractPyGModel):
         force_decoder_type: str | None = "mlp",
         force_decoder_model_config: dict | None = {"hidden_channels": 128},
         embedding_size: int = 100,
+        average_frame_embeddings: bool = False,
         **kwargs,
     ):
         super().__init__(atom_embedding_dim=118)
@@ -130,6 +131,7 @@ class FAENet(AbstractPyGModel):
         self.preprocess = preprocess
         self.pred_as_dict = pred_as_dict
         self.emb_size = embedding_size
+        self.average_frame_embeddings = average_frame_embeddings
 
         if isinstance(self.preprocess, str):
             self.preprocess = eval(self.preprocess)
@@ -381,7 +383,7 @@ class FAENet(AbstractPyGModel):
         pos: torch.Tensor,
         edge_feats: torch.Tensor | None = None,
         **kwargs,
-    ) -> list[Embeddings]:
+    ) -> list[Embeddings] | Embeddings:
         """Perform a model forward pass when frame averaging is applied.
 
         Args:
@@ -488,7 +490,16 @@ class FAENet(AbstractPyGModel):
         # Traditional case (no frame averaging)
         else:
             all_embeddings = [self.first_forward(deepcopy(batch))]
-
+        # if we want to average frame embeddings, this returns a singular
+        # embeddings structure
+        if self.average_frame_embeddings and frame_averaging:
+            node_embeddings = torch.stack(
+                [frame.point_embedding for frame in all_embeddings],
+            ).mean(dim=0)
+            graph_embeddings = torch.stack(
+                [frame.system_embedding for frame in all_embeddings],
+            ).mean(dim=0)
+            all_embeddings = Embeddings(graph_embeddings, node_embeddings)
         return all_embeddings
 
     def forces_as_energy_grad(self, pos, energy):
