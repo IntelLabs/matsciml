@@ -381,7 +381,7 @@ class FAENet(AbstractPyGModel):
         pos: torch.Tensor,
         edge_feats: torch.Tensor | None = None,
         **kwargs,
-    ) -> Embeddings:
+    ) -> list[Embeddings]:
         """Perform a model forward pass when frame averaging is applied.
 
         Args:
@@ -419,77 +419,77 @@ class FAENet(AbstractPyGModel):
         # Distinguish Frame Averaging prediction from traditional case.
         if frame_averaging and frame_averaging != "DA":
             original_pos = batch.pos
-            if crystal_task:
-                original_cell = batch.cell
-            e_all, f_all, gt_all = [], [], []
+            original_cell = getattr(batch, "cell", None)
+            # TODO refactor this out into own task
+            # e_all, f_all, gt_all = [], [], []
 
             # Compute model prediction for each frame
+            all_embeddings = []
             for frame_idx, frame in enumerate(batch.fa_pos):
                 # set positions to current frame
                 batch.pos = frame
                 if crystal_task:
                     batch.cell = batch.fa_cell[frame_idx]
                 # Forward pass
-                preds = self.first_forward(deepcopy(batch))
-                if not self.pred_as_dict:
-                    preds = {"energy": preds}
+                embeddings = self.first_forward(deepcopy(batch))
+                all_embeddings.append(embeddings)
 
-                e_all.append(preds["energy"])
-                fa_rot = None
+                # e_all.append(preds["energy"])
+                # fa_rot = None
+                # TODO refactor force predictions into own task
+                # # Force predictions are rotated back to be equivariant
+                # if preds.get("forces") is not None:
+                #     fa_rot = torch.repeat_interleave(
+                #         batch.fa_rot[frame_idx],
+                #         batch.natoms,
+                #         dim=0,
+                #     )
+                #     # Transform forces to guarantee equivariance of FA method
+                #     g_forces = (
+                #         preds["forces"]
+                #         .view(-1, 1, 3)
+                #         .bmm(fa_rot.transpose(1, 2).to(preds["forces"].device))
+                #         .view(-1, 3)
+                #     )
+                #     f_all.append(g_forces)
 
-                # Force predictions are rotated back to be equivariant
-                if preds.get("forces") is not None:
-                    fa_rot = torch.repeat_interleave(
-                        batch.fa_rot[frame_idx],
-                        batch.natoms,
-                        dim=0,
-                    )
-                    # Transform forces to guarantee equivariance of FA method
-                    g_forces = (
-                        preds["forces"]
-                        .view(-1, 1, 3)
-                        .bmm(fa_rot.transpose(1, 2).to(preds["forces"].device))
-                        .view(-1, 3)
-                    )
-                    f_all.append(g_forces)
-
-                # Energy conservation loss
-                if preds.get("forces_grad_target") is not None:
-                    if fa_rot is None:
-                        fa_rot = torch.repeat_interleave(
-                            batch.fa_rot[frame_idx],
-                            batch.natoms,
-                            dim=0,
-                        )
-                    # Transform gradients to stay consistent with FA
-                    g_grad_target = (
-                        preds["forces_grad_target"]
-                        .view(-1, 1, 3)
-                        .bmm(
-                            fa_rot.transpose(1, 2).to(
-                                preds["forces_grad_target"].device,
-                            ),
-                        )
-                        .view(-1, 3)
-                    )
-                    gt_all.append(g_grad_target)
+                # # Energy conservation loss
+                # if preds.get("forces_grad_target") is not None:
+                #     if fa_rot is None:
+                #         fa_rot = torch.repeat_interleave(
+                #             batch.fa_rot[frame_idx],
+                #             batch.natoms,
+                #             dim=0,
+                #         )
+                #     # Transform gradients to stay consistent with FA
+                #     g_grad_target = (
+                #         preds["forces_grad_target"]
+                #         .view(-1, 1, 3)
+                #         .bmm(
+                #             fa_rot.transpose(1, 2).to(
+                #                 preds["forces_grad_target"].device,
+                #             ),
+                #         )
+                #         .view(-1, 3)
+                #     )
+                #     gt_all.append(g_grad_target)
 
             batch.pos = original_pos
-            if crystal_task:
-                batch.cell = original_cell
+            batch.cell = original_cell
 
-            # Average predictions over frames
-            preds["energy"] = sum(e_all) / len(e_all)
-            if len(f_all) > 0 and all(y is not None for y in f_all):
-                preds["forces"] = sum(f_all) / len(f_all)
-            if len(gt_all) > 0 and all(y is not None for y in gt_all):
-                preds["forces_grad_target"] = sum(gt_all) / len(gt_all)
+            # TODO refactor to own task
+            # # Average predictions over frames
+            # preds["energy"] = sum(e_all) / len(e_all)
+            # if len(f_all) > 0 and all(y is not None for y in f_all):
+            #     preds["forces"] = sum(f_all) / len(f_all)
+            # if len(gt_all) > 0 and all(y is not None for y in gt_all):
+            #     preds["forces_grad_target"] = sum(gt_all) / len(gt_all)
 
         # Traditional case (no frame averaging)
         else:
-            preds = self(batch)
+            all_embeddings = [self.first_forward(deepcopy(batch))]
 
-        return preds["energy"]
+        return all_embeddings
 
     def forces_as_energy_grad(self, pos, energy):
         """Computes forces from energy gradient
