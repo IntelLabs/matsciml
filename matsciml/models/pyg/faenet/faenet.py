@@ -268,7 +268,7 @@ class FAENet(AbstractPyGModel):
         if self.decoder:
             return self.decoder(preds["hidden_state"])
 
-    def energy_forward(self, data, preproc=True) -> torch.Tensor:
+    def energy_forward(self, data, preproc=True) -> Embeddings:
         """Predicts any graph-level property (e.g. energy) for 3D atomic systems.
 
         Args:
@@ -329,8 +329,11 @@ class FAENet(AbstractPyGModel):
         # Atom skip-co
         if self.skip_co == "concat_atom":
             energy_skip_co.append(h)
-            h = self.act(self.mlp_skip_co(torch.cat(energy_skip_co, dim=1)))
-        return h
+            node_embedding = self.act(self.mlp_skip_co(torch.cat(energy_skip_co, dim=1)))
+        else:
+            node_embedding = h
+        graph_embedding = self.output_block(node_embedding, edge_index, edge_weight, batch, alpha)
+        return Embeddings(graph_embedding, node_embedding)
 
     def first_forward(
         self,
