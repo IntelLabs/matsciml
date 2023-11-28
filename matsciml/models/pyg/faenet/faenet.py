@@ -337,7 +337,9 @@ class FAENet(AbstractPyGModel):
         graph: AbstractGraph,
         **kwargs,
     ) -> torch.Tensor:
-        """Main Forward pass.
+        """
+        Actually flowing data through architecture. First we predict
+        the energy, and optionally gradients.
 
         Args:
             data (Data): input data object, with 3D atom positions (pos)
