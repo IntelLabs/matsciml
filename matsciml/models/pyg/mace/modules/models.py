@@ -376,10 +376,11 @@ class ScaleShiftMACE(MACE):
             "virials": virials,
             "stress": stress,
             "displacement": displacement,
+            "node_feats" :node_feats,
+            "edge_feats" :edge_feats
         }
 
         return output
-    
     
     def read_batch(self, batch: BatchDict) -> DataDict:
         """
