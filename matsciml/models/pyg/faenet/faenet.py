@@ -11,6 +11,7 @@ from einops import reduce
 from torch import nn
 from torch.nn import Linear
 
+from matsciml.common.registry import registry
 from matsciml.common.types import AbstractGraph
 from matsciml.common.types import BatchDict
 from matsciml.common.types import DataDict
@@ -21,6 +22,7 @@ from matsciml.models.pyg.faenet.helper import *
 from matsciml.models.pyg.faenet.layers import *
 
 
+@registry.register_model("FAENet")
 class FAENet(AbstractPyGModel):
     r"""Non-symmetry preserving GNN model for 3D atomic systems,
     called FAENet: Frame Averaging Equivariant Network.
