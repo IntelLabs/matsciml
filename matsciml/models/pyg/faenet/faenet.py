@@ -34,7 +34,7 @@ class FAENet(AbstractPyGModel):
             Examples of valid preprocessing functions include `pbc_preprocess`,
             `base_preprocess`, or custom functions.
         act (str): Activation function
-            (default: `swish`)
+            (default: `silu`)
         max_num_neighbors (int): The maximum number of neighbors to
             collect for each node within the :attr:`cutoff` distance.
             (default: `40`)
@@ -85,7 +85,7 @@ class FAENet(AbstractPyGModel):
         self,
         cutoff: float = 6.0,
         preprocess: str | callable = "pbc_preprocess",
-        act: str = "swish",
+        act: str = "silu",
         max_num_neighbors: int = 40,
         hidden_channels: int = 128,
         tag_hidden_channels: int = 32,
@@ -151,9 +151,7 @@ class FAENet(AbstractPyGModel):
             self.num_filters = self.hidden_channels
 
         self.act = (
-            (getattr(nn.functional, self.act) if self.act != "swish" else swish)
-            if isinstance(self.act, str)
-            else self.act
+            getattr(nn.functional, self.act) if isinstance(self.act, str) else self.act
         )
         assert callable(self.act), (
             "act must be a callable function or a string "
@@ -215,7 +213,8 @@ class FAENet(AbstractPyGModel):
             )
 
     def get_embed_inputs(
-        self, data,
+        self,
+        data,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         z, batch, edge_index, rel_pos, edge_weight = self.preprocess(
             data,
@@ -422,18 +421,24 @@ class FAENet(AbstractPyGModel):
             batch.cell = original_cell
             # now stack up embeddings into a single tensor
             node_embeddings = torch.stack(
-                [frame.point_embedding for frame in all_embeddings], dim=1,
+                [frame.point_embedding for frame in all_embeddings],
+                dim=1,
             )
             graph_embeddings = torch.stack(
-                [frame.system_embedding for frame in all_embeddings], dim=1,
+                [frame.system_embedding for frame in all_embeddings],
+                dim=1,
             )
             # if we're averaging the frame embeddings directly
             if self.average_frame_embeddings:
                 node_embeddings = reduce(
-                    node_embeddings, "b f h -> b h", reduction="mean",
+                    node_embeddings,
+                    "b f h -> b h",
+                    reduction="mean",
                 )
                 graph_embeddings = reduce(
-                    graph_embeddings, "b f h -> b h", reduction="mean",
+                    graph_embeddings,
+                    "b f h -> b h",
+                    reduction="mean",
                 )
             all_embeddings = Embeddings(graph_embeddings, node_embeddings)
 

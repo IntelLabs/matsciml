@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-from typing import Dict, Tuple
+from typing import Dict
+from typing import Tuple
 
 import torch
 import torch.nn as nn
 from torch_geometric.nn import radius_graph
-
-
-def swish(x):
-    """Swish activation function"""
-    return torch.nn.functional.silu(x)
 
 
 def get_pbc_distances(
@@ -20,7 +16,7 @@ def get_pbc_distances(
     neighbors: torch.Tensor,
     return_offsets: bool = False,
     return_rel_pos: bool = False,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Compute distances between atoms with periodic boundary conditions
 
     Args:
@@ -67,8 +63,8 @@ def get_pbc_distances(
 
 
 def base_preprocess(
-    data, cutoff: int = 6.0, max_num_neighbors: int = 40
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    data, cutoff: int = 6.0, max_num_neighbors: int = 40,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Preprocess datapoint: create a cutoff graph,
         compute distances and relative positions.
 
@@ -104,8 +100,8 @@ def base_preprocess(
 
 
 def pbc_preprocess(
-    data, cutoff: int = 6.0, max_num_neighbors: int = 40
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    data, cutoff: int = 6.0, max_num_neighbors: int = 40,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Preprocess datapoint using periodic boundary conditions
         to improve the existing graph.
 

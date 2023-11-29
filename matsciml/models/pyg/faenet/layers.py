@@ -245,9 +245,9 @@ class EmbeddingBlock(nn.Module):
         z: torch.Tensor,
         rel_pos: torch.Tensor,
         edge_attr: torch.Tensor,
-        tag: Union[torch.Tensor, None] = None,
+        tag: torch.Tensor | None = None,
         subnodes=None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the Embedding block.
         Called in FAENet to generate initial atom and edge representations.
 
@@ -434,9 +434,6 @@ class InteractionBlock(MessagePassing):
     def message(
         self, x_j: torch.Tensor, W: torch.Tensor, local_env=None,
     ) -> torch.Tensor:
-        import pdb
-
-        pdb.set_trace()
         if local_env is not None:
             return W
         else:
