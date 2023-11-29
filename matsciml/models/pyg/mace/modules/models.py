@@ -13,8 +13,19 @@ import torch_geometric as pyg
 from e3nn import o3
 from e3nn.util.jit import compile_mode
 
-from matsciml.models.pyg.mace.data import AtomicData
+from matsciml.models.pyg.mace.data import AtomicData , get_neighborhood
 from matsciml.models.pyg.mace.tools.scatter import scatter_sum
+
+from matsciml.models.pyg.mace import data, modules, tools
+
+from matsciml.models.pyg.mace.tools import (
+    AtomicNumberTable,
+    atomic_numbers_to_indices,
+    to_one_hot,
+    torch_geometric,
+    voigt_to_matrix,
+)
+
 from matsciml.common.types import DataDict, BatchDict
 
 
@@ -278,7 +289,25 @@ class ScaleShiftMACE(MACE):
         # Setup
         data["positions"].requires_grad_(True)
         num_graphs = data["ptr"].numel() - 1
-       
+        displacement = torch.zeros(
+            (num_graphs, 3, 3),
+            dtype=data["positions"].dtype,
+            device=data["positions"].device,
+        )
+        
+        if compute_virials or compute_stress or compute_displacement:
+            (
+                data["positions"],
+                data["shifts"],
+                displacement,
+            ) = get_symmetric_displacement(
+                positions=data["positions"],
+                unit_shifts=data["unit_shifts"],
+                cell=data["cell"],
+                edge_index=data["edge_index"],
+                num_graphs=num_graphs,
+                batch=data["batch"],
+            )
 
         # Atomic energies
         node_e0 = self.atomic_energies_fn(data["node_attrs"])
@@ -370,29 +399,64 @@ class ScaleShiftMACE(MACE):
         DataDict
             Dictionary of input features to pass into the model
         """
-        print("Here")
         assert (
             "graph" in batch
         ), f"Model {self.__class__.__name__} expects graph structures, but 'graph' key was not found in batch."
-        graph = batch.get("graph")        
-        data={'graph':graph,'cell':batch.get('cell'),'energy':batch.get('energy')}
+        graph = batch.get("graph")    
+        pbc=batch.get('pbc')    
+        data={'cell':batch.get('cell'),'energy':batch.get('energy')}
         assert isinstance(
             graph, (pyg.data.Data, pyg.data.Batch)
         ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
-        for key in ["ptr","batch","edge_index","edge_feats", "graph_feats"]:
+        for key in ["ptr","batch","edge_feats", "graph_feats"]:
             data[key] = getattr(graph, key, None)
         data["positions"]=getattr(graph, "pos")
         data["forces"]=getattr(graph, "force")
         # Charges default to 0 instead of None if not found
         data["charges"] = getattr(batch,"charges", torch.zeros_like(data["batch"]))
         
+        data["energy_weight"]=torch.ones((data["energy"].shape[0],))
+        data["forces_weight"]=torch.ones((data["energy"].shape[0],))
+        
+        
+
+        data["stress"]=torch.ones((data["energy"].shape[0],3,3))
+        data["stress_weights"]=torch.ones((data["energy"].shape[0],))
+        
+        data["virials"]=torch.ones((data["energy"].shape[0],3,3))
+        data["virials_weights"]=torch.ones((data["energy"].shape[0],))
+        
+        data["weights"]=torch.ones((data["energy"].shape[0],))
+
         atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers")
-        #node_embeddings = self.atom_embedding(atomic_numbers)
-        pos: torch.Tensor = getattr(graph, "pos")
-        # optionally can fuse into a single tensor with `self.join_position_embeddings`
-        #data["node_feats"] = node_embeddings
-        #data["pos"] = pos
-        return data
+        z_table=tools.get_atomic_number_table_from_zs(atomic_numbers.numpy())
+
+        indices = atomic_numbers_to_indices(atomic_numbers, z_table=z_table)
+        one_hot = to_one_hot(
+            torch.tensor(indices, dtype=torch.long).unsqueeze(-1),
+            num_classes=len(z_table),
+        )
+
+        data["node_attrs"]=one_hot
+        shifts=[]
+        edge_index=[]
+        unit_shifts=[]
+        b_sz=data["ptr"].numel()-1
+        pos_k=data["positions"].reshape(b_sz,-1,3)
+        cell_k=data["cell"].reshape(b_sz,3,3)
+        for k in range(b_sz):
+            pbc_tensor=pbc[k]==1
+            pbc_tuple=(pbc_tensor[0].item(),pbc_tensor[1].item(),pbc_tensor[2].item())
+            edge_index_k, shifts_k, unit_shifts_k= get_neighborhood(pos_k[k].numpy(),cutoff=self.r_max.item(),pbc=pbc_tuple, cell=cell_k[k])
+            shifts+=[torch.Tensor(shifts_k)]
+            edge_index+=[ torch.Tensor(edge_index_k).T.to(torch.int64)]
+            unit_shifts+=[torch.Tensor(unit_shifts_k)]
+
+        data["shifts"]=torch.concatenate(shifts)
+        data["unit_shifts"]=torch.concatenate(unit_shifts)
+        data["edge_index"]=torch.concatenate(edge_index).T
+        
+        return {'data':data}
 
     def read_batch_size(self, batch: BatchDict) -> int:
         graph = batch["graph"]
