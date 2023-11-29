@@ -84,6 +84,9 @@ class FAENet(AbstractPyGModel):
         frame_averaging (str): Transform method *already* used.
             Can be 2D FA, 3D FA, Data Augmentation or no FA, respectively denoted by
             (`"2D"`, `"3D"`, `"DA"`, `""`)
+        crystal_task (bool, optional): Whether crystals (molecules) are considered.
+            If they are, the unit cell (3x3) is affected by frame averaged and expected as attribute.
+            (default: :obj:`True`)
     """
 
     def __init__(
@@ -114,6 +117,7 @@ class FAENet(AbstractPyGModel):
         embedding_size: int = 100,
         average_frame_embeddings: bool = False,
         frame_averaging: str = "3D",
+        crystal_task: bool = True,
         **kwargs,
     ):
         super().__init__(atom_embedding_dim=118)
@@ -143,6 +147,7 @@ class FAENet(AbstractPyGModel):
         self.emb_size = embedding_size
         self.average_frame_embeddings = average_frame_embeddings
         self.frame_averaging = frame_averaging
+        self.crystal_task = crystal_task
 
         if isinstance(self.preprocess, str):
             self.preprocess = eval(self.preprocess)
@@ -377,26 +382,31 @@ class FAENet(AbstractPyGModel):
     ) -> Embeddings:
         """Perform a model forward pass when frame averaging is applied.
 
-        Args:
-            batch (data.Batch): batch of graphs with attributes:
-                - original atom positions (`pos`)
-                - batch indices (to which graph in batch each atom belongs to) (`batch`)
-                - frame averaged positions, cell and rotation matrices (`fa_pos`, `fa_cell`, `fa_rot`)
-            model: model instance
-            frame_averaging (str): symmetry preserving method (already) applied
-                ("2D", "3D", "DA", "")
-            mode (str, optional): model mode. Defaults to "train".
-                ("train", "eval")
-            crystal_task (bool, optional): Whether crystals (molecules) are considered.
-                If they are, the unit cell (3x3) is affected by frame averaged and expected as attribute.
-                (default: :obj:`True`)
+        Parameters
+        ----------
+        graph : dgl.DGLGraph
+            A single or batch of molecular graphs
 
-        Returns:
-            (dict): model predictions tensor for "energy" and "forces".
+        Parameters
+        ----------
+        graph : AbstractGraph
+            Instance of a PyG graph data structure
+        node_feats : torch.Tensor
+            Atomic embeddings obtained from nn.Embedding
+        pos : torch.Tensor
+            XYZ coordinates of each atom
+        edge_feats : Optional[torch.Tensor], optional
+            Tensor containing interatomic distances, by default None and unused.
+        graph_feats : Optional[torch.Tensor], optional
+            Graph-based properties, by default None and unused.
+
+        Returns
+        -------
+        Embeddings
+            Data structure containing node and graph level embeddings.
+            Node embeddings correspond to after the node projection layer.
         """
 
-
-        crystal_task = True
         batch = graph
 
         if not hasattr(batch, "natoms"):
@@ -419,7 +429,7 @@ class FAENet(AbstractPyGModel):
             for frame_idx, frame in enumerate(batch.fa_pos):
                 # set positions to current frame
                 batch.pos = frame
-                if crystal_task:
+                if self.crystal_task:
                     batch.cell = batch.fa_cell[frame_idx]
                 # Forward pass
                 embeddings = self.first_forward(batch)
