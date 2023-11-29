@@ -173,6 +173,7 @@ class FAENet(AbstractPyGModel):
             self.second_layer_MLP,
             self.emb_size,
         )
+        self.atom_embedding = self.embed_block
 
         # Interaction block
         self.interaction_blocks = nn.ModuleList(
@@ -200,18 +201,6 @@ class FAENet(AbstractPyGModel):
         # Energy head
         if self.energy_head == "weighted-av-initial-embeds":
             self.w_lin = Linear(self.hidden_channels, 1)
-
-        # Force head
-        self.decoder = (
-            ForceDecoder(
-                self.force_decoder_type,
-                self.hidden_channels,
-                self.force_decoder_model_config,
-                self.act,
-            )
-            if "direct" in self.regress_forces
-            else None
-        )
 
         # Skip co
         if self.skip_co == "concat":
@@ -253,22 +242,6 @@ class FAENet(AbstractPyGModel):
         data["graph"].cell_offsets = cell_offsets
         data["graph"].neighbors = neighbors
         return data
-
-    def forces_forward(self, preds):
-        """Predicts forces for 3D atomic systems.
-        Can be utilised to predict any atom-level property.
-        
-        TODO remove this as it is no longer needed
-        Args:
-            preds (dict): dictionnary with final atomic representations
-                (hidden_state) and predicted properties (e.g. energy)
-                for each graph
-
-        Returns:
-            (dict): additional predicted properties, at an atom-level (e.g. forces)
-        """
-        if self.decoder:
-            return self.decoder(preds["hidden_state"])
 
     def energy_forward(self, data, preproc=True) -> Embeddings:
         """Predicts any graph-level property (e.g. energy) for 3D atomic systems.
@@ -424,8 +397,6 @@ class FAENet(AbstractPyGModel):
         if frame_averaging and frame_averaging != "DA":
             original_pos = batch.pos
             original_cell = getattr(batch, "cell", None)
-            # TODO refactor this out into own task
-            # e_all, f_all, gt_all = [], [], []
 
             # Compute model prediction for each frame
             all_embeddings = []
@@ -437,47 +408,6 @@ class FAENet(AbstractPyGModel):
                 # Forward pass
                 embeddings = self.first_forward(deepcopy(batch))
                 all_embeddings.append(embeddings)
-
-                # e_all.append(preds["energy"])
-                # fa_rot = None
-                # TODO refactor force predictions into own task
-                # # Force predictions are rotated back to be equivariant
-                # if preds.get("forces") is not None:
-                #     fa_rot = torch.repeat_interleave(
-                #         batch.fa_rot[frame_idx],
-                #         batch.natoms,
-                #         dim=0,
-                #     )
-                #     # Transform forces to guarantee equivariance of FA method
-                #     g_forces = (
-                #         preds["forces"]
-                #         .view(-1, 1, 3)
-                #         .bmm(fa_rot.transpose(1, 2).to(preds["forces"].device))
-                #         .view(-1, 3)
-                #     )
-                #     f_all.append(g_forces)
-
-                # # Energy conservation loss
-                # if preds.get("forces_grad_target") is not None:
-                #     if fa_rot is None:
-                #         fa_rot = torch.repeat_interleave(
-                #             batch.fa_rot[frame_idx],
-                #             batch.natoms,
-                #             dim=0,
-                #         )
-                #     # Transform gradients to stay consistent with FA
-                #     g_grad_target = (
-                #         preds["forces_grad_target"]
-                #         .view(-1, 1, 3)
-                #         .bmm(
-                #             fa_rot.transpose(1, 2).to(
-                #                 preds["forces_grad_target"].device,
-                #             ),
-                #         )
-                #         .view(-1, 3)
-                #     )
-                #     gt_all.append(g_grad_target)
-
             batch.pos = original_pos
             batch.cell = original_cell
             # now stack up embeddings into a single tensor
@@ -489,40 +419,10 @@ class FAENet(AbstractPyGModel):
                 graph_embeddings = reduce(graph_embeddings, "b f h -> b h", reduction="mean")
             all_embeddings = Embeddings(graph_embeddings, node_embeddings)
 
-            # TODO refactor to own task
-            # # Average predictions over frames
-            # preds["energy"] = sum(e_all) / len(e_all)
-            # if len(f_all) > 0 and all(y is not None for y in f_all):
-            #     preds["forces"] = sum(f_all) / len(f_all)
-            # if len(gt_all) > 0 and all(y is not None for y in gt_all):
-            #     preds["forces_grad_target"] = sum(gt_all) / len(gt_all)
-
         # Traditional case (no frame averaging)
         else:
             all_embeddings = self.first_forward(deepcopy(batch))
         return all_embeddings
-
-    def forces_as_energy_grad(self, pos, energy):
-        """Computes forces from energy gradient
-
-        TODO remove this as it's no longer needed
-
-        Args:
-            pos (tensor): 3D atom positions
-            energy (tensor): system's predicted energy
-
-        Returns:
-            (tensor): forces as the energy gradient w.r.t. atom positions
-        """
-
-        return -1 * (
-            torch.autograd.grad(
-                energy,
-                pos,
-                grad_outputs=torch.ones_like(energy),
-                create_graph=True,
-            )[0]
-        )
 
     @property
     def num_params(self):
