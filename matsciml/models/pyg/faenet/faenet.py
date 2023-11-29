@@ -7,11 +7,14 @@ from __future__ import annotations
 from copy import deepcopy
 
 import torch
+from einops import reduce
 from torch import nn
 from torch.nn import Linear
-from einops import reduce
 
-from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
+from matsciml.common.types import AbstractGraph
+from matsciml.common.types import BatchDict
+from matsciml.common.types import DataDict
+from matsciml.common.types import Embeddings
 from matsciml.common.utils import radius_graph_pbc
 from matsciml.models.base import AbstractPyGModel
 from matsciml.models.pyg.faenet.helper import *
@@ -211,7 +214,9 @@ class FAENet(AbstractPyGModel):
                 self.hidden_channels,
             )
 
-    def get_embed_inputs(self, data):
+    def get_embed_inputs(
+        self, data,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         z, batch, edge_index, rel_pos, edge_weight = self.preprocess(
             data,
             self.cutoff,
@@ -255,7 +260,7 @@ class FAENet(AbstractPyGModel):
         data["graph"].cell_offsets = cell_offsets
         data["graph"].neighbors = neighbors
         atomic_numbers, batch, edge_index, rel_pos, edge_weight = self.get_embed_inputs(
-            data["graph"]
+            data["graph"],
         )
         edge_attr = self.distance_expansion(edge_weight)  # RBF of pairwise distances
         node_embeddings = self.atom_embedding(atomic_numbers, rel_pos, edge_attr)
@@ -263,7 +268,7 @@ class FAENet(AbstractPyGModel):
         data["node_feats"] = node_embeddings
         return data
 
-    def energy_forward(self, data, preproc=True) -> Embeddings:
+    def energy_forward(self, data, preproc: bool = True) -> Embeddings:
         """Predicts any graph-level property (e.g. energy) for 3D atomic systems.
 
         Args:
@@ -417,18 +422,18 @@ class FAENet(AbstractPyGModel):
             batch.cell = original_cell
             # now stack up embeddings into a single tensor
             node_embeddings = torch.stack(
-                [frame.point_embedding for frame in all_embeddings], dim=1
+                [frame.point_embedding for frame in all_embeddings], dim=1,
             )
             graph_embeddings = torch.stack(
-                [frame.system_embedding for frame in all_embeddings], dim=1
+                [frame.system_embedding for frame in all_embeddings], dim=1,
             )
             # if we're averaging the frame embeddings directly
             if self.average_frame_embeddings:
                 node_embeddings = reduce(
-                    node_embeddings, "b f h -> b h", reduction="mean"
+                    node_embeddings, "b f h -> b h", reduction="mean",
                 )
                 graph_embeddings = reduce(
-                    graph_embeddings, "b f h -> b h", reduction="mean"
+                    graph_embeddings, "b f h -> b h", reduction="mean",
                 )
             all_embeddings = Embeddings(graph_embeddings, node_embeddings)
 

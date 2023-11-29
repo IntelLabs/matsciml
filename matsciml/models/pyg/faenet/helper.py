@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import math
-import numbers
-import random
+from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
-import torch_geometric
 from torch_geometric.nn import radius_graph
-from torch_geometric.transforms import LinearTransformation
 
 
 def swish(x):
@@ -17,14 +13,14 @@ def swish(x):
 
 
 def get_pbc_distances(
-    pos,
-    edge_index,
-    cell,
-    cell_offsets,
-    neighbors,
-    return_offsets=False,
-    return_rel_pos=False,
-):
+    pos: torch.Tensor,
+    edge_index: torch.Tensor,
+    cell: torch.Tensor,
+    cell_offsets: torch.Tensor,
+    neighbors: torch.Tensor,
+    return_offsets: bool = False,
+    return_rel_pos: bool = False,
+) -> Dict[str, torch.Tensor]:
     """Compute distances between atoms with periodic boundary conditions
 
     Args:
@@ -70,7 +66,9 @@ def get_pbc_distances(
     return out
 
 
-def base_preprocess(data, cutoff=6.0, max_num_neighbors=40):
+def base_preprocess(
+    data, cutoff: int = 6.0, max_num_neighbors: int = 40
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Preprocess datapoint: create a cutoff graph,
         compute distances and relative positions.
 
@@ -105,7 +103,9 @@ def base_preprocess(data, cutoff=6.0, max_num_neighbors=40):
     )
 
 
-def pbc_preprocess(data, cutoff=6.0, max_num_neighbors=40):
+def pbc_preprocess(
+    data, cutoff: int = 6.0, max_num_neighbors: int = 40
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Preprocess datapoint using periodic boundary conditions
         to improve the existing graph.
 
@@ -145,12 +145,12 @@ def pbc_preprocess(data, cutoff=6.0, max_num_neighbors=40):
 class GaussianSmearing(nn.Module):
     r"""Smears a distance distribution by a Gaussian function."""
 
-    def __init__(self, start=0.0, stop=5.0, num_gaussians=50):
+    def __init__(self, start: int = 0.0, stop: int = 5.0, num_gaussians: int = 50):
         super().__init__()
         offset = torch.linspace(start, stop, num_gaussians)
         self.coeff = -0.5 / (offset[1] - offset[0]).item() ** 2
         self.register_buffer("offset", offset)
 
-    def forward(self, dist):
+    def forward(self, dist: torch.Tensor) -> torch.Tensor:
         dist = dist.view(-1, 1) - self.offset.view(1, -1)
         return torch.exp(self.coeff * torch.pow(dist, 2))

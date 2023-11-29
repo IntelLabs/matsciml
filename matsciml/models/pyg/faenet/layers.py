@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Tuple
+from typing import Union
+
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -13,6 +16,7 @@ from torch_geometric.nn.norm import GraphNorm
 from torch_scatter import scatter
 
 from matsciml.models.pyg.faenet.helper import *
+
 
 class PhysEmbedding(nn.Module):
     """
@@ -29,7 +33,14 @@ class PhysEmbedding(nn.Module):
             (default: :obj:`False`)
     """
 
-    def __init__(self, props=True, props_grad=False, pg=False, short=False, emb_size=100) -> None:
+    def __init__(
+        self,
+        props: bool = True,
+        props_grad: bool = False,
+        pg: bool = False,
+        short: bool = False,
+        emb_size: int = 100,
+    ) -> None:
         super().__init__()
 
         self.properties_list = [
@@ -97,7 +108,7 @@ class PhysEmbedding(nn.Module):
         if props:
             # Select only potentially relevant elements
             df = df[self.properties_list]
-            df = df.loc[:self.emb_size, :]
+            df = df.loc[: self.emb_size, :]
 
             # Normalize
             df = (df - df.mean()) / df.std()
@@ -135,17 +146,17 @@ class EmbeddingBlock(nn.Module):
 
     def __init__(
         self,
-        num_gaussians,
-        num_filters,
-        hidden_channels,
-        tag_hidden_channels,
-        pg_hidden_channels,
-        phys_hidden_channels,
-        phys_embeds,
-        act,
-        second_layer_MLP,
-        emb_size,
-    ):
+        num_gaussians: int,
+        num_filters: int,
+        hidden_channels: int,
+        tag_hidden_channels: int,
+        pg_hidden_channels: int,
+        phys_hidden_channels: int,
+        phys_embeds: int,
+        act: callable,
+        second_layer_MLP: bool,
+        emb_size: int,
+    ) -> None:
         super().__init__()
         self.act = act
         self.use_tag = tag_hidden_channels > 0
@@ -229,7 +240,14 @@ class EmbeddingBlock(nn.Module):
             nn.init.xavier_uniform_(self.lin_e2.weight)
             self.lin_e2.bias.data.fill_(0)
 
-    def forward(self, z, rel_pos, edge_attr, tag=None, subnodes=None):
+    def forward(
+        self,
+        z: torch.Tensor,
+        rel_pos: torch.Tensor,
+        edge_attr: torch.Tensor,
+        tag: Union[torch.Tensor, None] = None,
+        subnodes=None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the Embedding block.
         Called in FAENet to generate initial atom and edge representations.
 
@@ -283,7 +301,6 @@ class EmbeddingBlock(nn.Module):
         h = self.act(self.lin(h))
         if self.second_layer_MLP:
             h = self.act(self.lin_2(h))
-
         return h, e
 
 
@@ -292,13 +309,13 @@ class InteractionBlock(MessagePassing):
 
     def __init__(
         self,
-        hidden_channels,
-        num_filters,
-        act,
-        mp_type,
-        complex_mp,
-        graph_norm,
-    ):
+        hidden_channels: int,
+        num_filters: int,
+        act: callable,
+        mp_type: str,
+        complex_mp: bool,
+        graph_norm: bool,
+    ) -> None:
         super().__init__()
         self.act = act
         self.mp_type = mp_type
@@ -356,7 +373,9 @@ class InteractionBlock(MessagePassing):
             nn.init.xavier_uniform_(self.lin_h.weight)
             self.lin_h.bias.data.fill_(0)
 
-    def forward(self, h, edge_index, e):
+    def forward(
+        self, h: torch.Tensor, edge_index: torch.Tensor, e: torch.Tesnor,
+    ) -> torch.Tensor:
         """Forward pass of the Interaction block.
         Called in FAENet forward pass to update atom representations.
 
@@ -412,7 +431,12 @@ class InteractionBlock(MessagePassing):
 
         return h
 
-    def message(self, x_j, W, local_env=None):
+    def message(
+        self, x_j: torch.Tensor, W: torch.Tensor, local_env=None,
+    ) -> torch.Tensor:
+        import pdb
+
+        pdb.set_trace()
         if local_env is not None:
             return W
         else:
@@ -422,7 +446,9 @@ class InteractionBlock(MessagePassing):
 class OutputBlock(nn.Module):
     """Compute task-specific predictions from final atom representations."""
 
-    def __init__(self, energy_head, hidden_channels, act, out_dim=1):
+    def __init__(
+        self, energy_head: str, hidden_channels: int, act: callable, out_dim: int = 1,
+    ) -> None:
         super().__init__()
         self.energy_head = energy_head
         self.act = act
@@ -442,7 +468,14 @@ class OutputBlock(nn.Module):
             nn.init.xavier_uniform_(self.w_lin.weight)
             self.w_lin.bias.data.fill_(0)
 
-    def forward(self, h, edge_index, edge_weight, batch, alpha):
+    def forward(
+        self,
+        h: torch.Tensor,
+        edge_index: torch.Tensor,
+        edge_weight: torch.Tensor,
+        batch,
+        alpha: torch.Tensor,
+    ) -> torch.Tensor:
         """Forward pass of the Output block.
         Called in FAENet to make prediction from final atom representations.
 
@@ -477,7 +510,7 @@ class OutputBlock(nn.Module):
 
 
 class LambdaLayer(nn.Module):
-    def __init__(self, func):
+    def __init__(self, func: callable):
         super().__init__()
         self.func = func
 
@@ -503,7 +536,9 @@ class ForceDecoder(nn.Module):
         (torch.Tensor): Predicted force vector per atom
     """
 
-    def __init__(self, type, input_channels, model_configs, act):
+    def __init__(
+        self, type: str, input_channels: int, model_configs: dict, act: callable,
+    ):
         super().__init__()
         self.type = type
         self.act = act
@@ -616,7 +651,7 @@ class ForceDecoder(nn.Module):
                 if hasattr(layer, "bias"):
                     layer.bias.data.fill_(0)
 
-    def forward(self, h):
+    def forward(self, h: torch.Tensor) -> torch.Tensor:
         if self.type == "res":
             return self.mlp_3(self.mlp_2(self.mlp_1(h)) + h)
         elif self.type == "res_updown":
