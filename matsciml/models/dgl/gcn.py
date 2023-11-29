@@ -34,6 +34,7 @@ import dgl
 from dgl.nn import pytorch as dgl_nn
 from torch import nn
 
+from matsciml.common.types import Embeddings
 from matsciml.models.base import AbstractDGLModel
 
 
@@ -177,7 +178,7 @@ class GraphConvModel(AbstractDGLModel):
         edge_feats: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         r"""
         Implement the forward method, which computes the energy of
         a molecular graph.
@@ -202,8 +203,9 @@ class GraphConvModel(AbstractDGLModel):
 
         Returns
         -------
-        torch.Tensor
-            Graph embeddings, or output value if not 'encoder_only'
+        Embeddings
+            Data structure containing both graph and node level embeddings.
+            The latter is the output of the last graph convolution layer.
         """
         n_z = self.join_position_embeddings(pos, node_feats)
         with graph.local_scope():
@@ -211,10 +213,11 @@ class GraphConvModel(AbstractDGLModel):
             for block in self.blocks:
                 n_z = block(graph, n_z)
             output = self.readout(graph, n_z)
+            embeddings = Embeddings(output, n_z)
             if hasattr(self, "output"):
                 # regress if we're not just an encoder
                 output = self.output(output)
-        return output
+        return embeddings
 
     @staticmethod
     def _make_blocks(

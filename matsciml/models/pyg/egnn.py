@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import torch
 from einops import reduce
-from matsciml.common.types import AbstractGraph
+from matsciml.common.types import AbstractGraph, Embeddings
 from matsciml.models.base import AbstractPyGModel
 from torch import nn
 from torch_geometric.nn import LayerNorm, MessagePassing
@@ -232,7 +232,7 @@ class EGNN(AbstractPyGModel):
         pos: torch.Tensor,
         edge_feats: torch.Tensor | None = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         # embed coordinates, then lookup embeddings for atoms and bonds
         coords = self.coord_embedding(pos)
         # loop over each graph layer
@@ -240,4 +240,5 @@ class EGNN(AbstractPyGModel):
             node_feats, coords = layer(node_feats, coords, edge_feats, graph.edge_index)
         # use size-extensive pooling
         pooled_data = global_add_pool(node_feats, graph.batch)
-        return self.output(pooled_data)
+        embeddings = Embeddings(pooled_data, node_feats)
+        return embeddings

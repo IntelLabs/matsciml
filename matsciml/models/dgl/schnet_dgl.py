@@ -11,7 +11,7 @@ from torch import nn
 from dgl.nn.pytorch import glob
 
 from matsciml.models.base import AbstractDGLModel
-from matsciml.common.types import BatchDict, DataDict
+from matsciml.common.types import BatchDict, DataDict, Embeddings
 
 
 class SchNet(AbstractDGLModel):
@@ -133,7 +133,7 @@ class SchNet(AbstractDGLModel):
         pos: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         r"""
         Implement the forward method, which computes the energy of
         a molecular graph.
@@ -158,11 +158,9 @@ class SchNet(AbstractDGLModel):
 
         Returns
         -------
-        torch.Tensor
-            Graph embeddings, or output value if not 'encoder_only'
+        Embeddings
+            Data structure holding graph and node level embeddings.
         """
         n_z = self.model(graph, node_feats, edge_feats)
         g_z = self.readout(graph, n_z)
-        if self.encoder_only:
-            return g_z
-        return self.output(g_z)
+        return Embeddings(g_z, n_z)
