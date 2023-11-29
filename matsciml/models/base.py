@@ -23,6 +23,7 @@ import torch
 from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
 from torch.optim import lr_scheduler
+from einops import reduce
 
 from matsciml.modules.normalizer import Normalizer
 from matsciml.models.common import OutputHead
@@ -808,7 +809,11 @@ class BaseTaskModule(pl.LightningModule):
         """
         results = {}
         for key, head in self.output_heads.items():
-            results[key] = head(embeddings.system_embedding)
+            # in the event that we get multiple embeddings, we average
+            # every dimension execpt the batch and dimensionality
+            output = head(embeddings.system_embedding)
+            output = reduce(output, "b ... d -> b d", reduction="mean")
+            results[key] = output
         return results
 
     def _get_targets(
