@@ -1309,6 +1309,8 @@ class ForceRegressionTask(BaseTaskModule):
             else:
                 # assume point cloud otherwise
                 pos: torch.Tensor = batch.get("pos")
+                # no frame averaging architecture yet for point clouds
+                fa_rot = None
             if pos is None:
                 raise ValueError(
                     f"No atomic positions were found in batch - neither as standalone tensor nor graph."
@@ -1325,11 +1327,11 @@ class ForceRegressionTask(BaseTaskModule):
                 embeddings = batch.get("embeddings")
             else:
                 embeddings = self.encoder(batch)
-            outputs = self.process_embedding(embeddings, pos)
+            outputs = self.process_embedding(embeddings, pos, fa_rot)
         return outputs
 
     def process_embedding(
-        self, embeddings: Embeddings, pos: torch.Tensor
+        self, embeddings: Embeddings, pos: torch.Tensor, fa_rot: Union[None, torch.Tensor] = None
     ) -> Dict[str, torch.Tensor]:
         outputs = {}
         energy = self.output_heads["energy"](embeddings.system_embedding)
