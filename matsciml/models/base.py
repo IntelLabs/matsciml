@@ -1554,7 +1554,25 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         target_dict = {"force": batch["targets"]["force"]}
         return target_dict
 
-    def process_embedding(self, embeddings: Embeddings) -> Dict[str, torch.Tensor]:
+    def forward(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        if "embeddings" in batch:
+            embedding = batch.get("embeddings")
+        else:
+            embedding = self.encoder(batch)
+        # check for frame averaging
+        if "graph" in batch:
+            graph = batch["graph"]
+            if hasattr(graph, "ndata"):
+                fa_rot = getattr(graph.ndata, "fa_rot", None)
+            else:
+                fa_rot = getattr(graph, "fa_rot", None)
+        outputs = self.process_embedding(embedding, fa_rot)
+        return outputs
+
+    def process_embedding(self, embeddings: Embeddings, fa_rot: Union[None, torch.Tensor] = None) -> Dict[str, torch.Tensor]:
         """
         Given point/node-level embeddings, predict forces of each point.
 
@@ -1571,7 +1589,27 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         """
         results = {}
         force_head = self.output_heads["force"]
-        results["force"] = force_head(embeddings.point_embedding)
+        forces = force_head(embeddings.point_embedding)
+        if isinstance(fa_rot, torch.Tensor):
+            natoms = forces.size(0)
+            all_forces = []
+            # loop over each frame prediction, and transform to guarantee
+            # equivariance of frame averaging method
+            for frame_idx, frame_rot in fa_rot:
+                repeat_rot = torch.repeat_interleave(
+                    frame_rot,
+                    natoms,
+                    dim=0
+                ).to(self.device)
+                rotated_forces = forces[:, frame_idx, :].view(-1, 1, 3).bmm(
+                    repeat_rot.transpose(1, 2)
+                )
+                all_forces.append(rotated_forces.view(natoms, 3))
+            # combine all the force data into a single tensor
+            forces = torch.stack(all_forces, dim=1)
+        # make sure forces are in the right shape
+        forces = reduce(forces, "n ... d -> n d", "mean", d=3)
+        results["force"] = forces
         return results
 
 
