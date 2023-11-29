@@ -81,6 +81,9 @@ class FAENet(AbstractPyGModel):
             (`"simple"`, `"mlp"`, `"res"`, `"res_updown"`)
         force_decoder_model_config (dict): contains information about the
             for decoder architecture (e.g. number of layers, hidden size).
+        frame_averaging (str): Transform method *already* used.
+            Can be 2D FA, 3D FA, Data Augmentation or no FA, respectively denoted by
+            (`"2D"`, `"3D"`, `"DA"`, `""`)
     """
 
     def __init__(
@@ -110,6 +113,7 @@ class FAENet(AbstractPyGModel):
         force_decoder_model_config: dict | None = {"hidden_channels": 128},
         embedding_size: int = 100,
         average_frame_embeddings: bool = False,
+        frame_averaging: str = "3D",
         **kwargs,
     ):
         super().__init__(atom_embedding_dim=118)
@@ -138,6 +142,7 @@ class FAENet(AbstractPyGModel):
         self.pred_as_dict = pred_as_dict
         self.emb_size = embedding_size
         self.average_frame_embeddings = average_frame_embeddings
+        self.frame_averaging = frame_averaging
 
         if isinstance(self.preprocess, str):
             self.preprocess = eval(self.preprocess)
@@ -390,7 +395,7 @@ class FAENet(AbstractPyGModel):
             (dict): model predictions tensor for "energy" and "forces".
         """
 
-        frame_averaging = "3D"
+
         crystal_task = True
         batch = graph
 
@@ -405,7 +410,7 @@ class FAENet(AbstractPyGModel):
                 )
 
         # Distinguish Frame Averaging prediction from traditional case.
-        if frame_averaging and frame_averaging != "DA":
+        if self.frame_averaging and self.frame_averaging != "DA":
             original_pos = batch.pos
             original_cell = getattr(batch, "cell", None)
 

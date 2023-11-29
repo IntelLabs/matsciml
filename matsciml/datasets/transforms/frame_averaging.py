@@ -1,7 +1,6 @@
 # Frame Averaging implementation from: https://github.com/vict0rsch/faenet/tree/main
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-
 from __future__ import annotations
 
 import math
@@ -22,8 +21,6 @@ if package_registry["dgl"]:
 
 if package_registry["pyg"]:
     import torch_geometric
-
-
 
 
 def compute_frames(
