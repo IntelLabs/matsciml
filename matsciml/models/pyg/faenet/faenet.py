@@ -244,7 +244,6 @@ class FAENet(AbstractPyGModel):
             data[key] = getattr(graph, key, None)
         pos: torch.Tensor = getattr(graph, "pos")
         data["pos"] = pos
-        # data = super().read_batch(batch)
         data["graph"].cell = batch["cell"]
         data["graph"].natoms = batch["natoms"].squeeze(-1).to(torch.int32)
         edge_index, cell_offsets, neighbors = radius_graph_pbc(
