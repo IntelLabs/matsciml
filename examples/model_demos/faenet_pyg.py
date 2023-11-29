@@ -19,6 +19,7 @@ in combination with a PyG implementation of FAENet.
 task = ScalarRegressionTask(
     encoder_class=FAENet,
     encoder_kwargs={
+        "average_frame_embeddings": True,
         "pred_as_dict": False,
         "hidden_dim": 128,
         "output_dim": 64,
