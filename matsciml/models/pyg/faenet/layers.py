@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
-from typing import Dict
-from typing import Optional
-from typing import Union
-
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -13,20 +8,11 @@ from mendeleev.fetch import fetch_table
 from torch import nn
 from torch.nn import Embedding
 from torch.nn import Linear
-from torch_geometric.nn import LayerNorm
 from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.norm import GraphNorm
-from torch_geometric.nn.pool import global_add_pool
-from torch_geometric.typing import Size
 from torch_scatter import scatter
 
-from matsciml.common.types import AbstractGraph
-from matsciml.common.types import BatchDict
-from matsciml.common.types import DataDict
-from matsciml.models.base import AbstractPyGModel
 from matsciml.models.pyg.faenet.helper import *
-from matsciml.models.pyg.faenet.layers import *
-
 
 class PhysEmbedding(nn.Module):
     """
