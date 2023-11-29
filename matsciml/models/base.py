@@ -1300,9 +1300,12 @@ class ForceRegressionTask(BaseTaskModule):
                 # the DGL case
                 if hasattr(graph, "ndata"):
                     pos: torch.Tensor = graph.ndata.get("pos")
+                    # for frame averaging
+                    fa_rot = graph.ndata.get("fa_rot", None)
                 else:
                     # otherwise assume it's PyG
                     pos: torch.Tensor = graph.pos
+                    fa_rot = getattr(graph, "fa_rot", None)
             else:
                 # assume point cloud otherwise
                 pos: torch.Tensor = batch.get("pos")
