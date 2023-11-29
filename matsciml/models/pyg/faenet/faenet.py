@@ -9,6 +9,7 @@ from copy import deepcopy
 import torch
 from torch import nn
 from torch.nn import Linear
+from einops import reduce
 
 from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
 from matsciml.common.utils import radius_graph_pbc
@@ -384,7 +385,7 @@ class FAENet(AbstractPyGModel):
         pos: torch.Tensor,
         edge_feats: torch.Tensor | None = None,
         **kwargs,
-    ) -> list[Embeddings] | Embeddings:
+    ) -> Embeddings:
         """Perform a model forward pass when frame averaging is applied.
 
         Args:
@@ -479,6 +480,14 @@ class FAENet(AbstractPyGModel):
 
             batch.pos = original_pos
             batch.cell = original_cell
+            # now stack up embeddings into a single tensor
+            node_embeddings = torch.stack([frame.point_embedding for frame in all_embeddings], dim=1)
+            graph_embeddings = torch.stack([frame.system_embedding for frame in all_embeddings], dim=1)
+            # if we're averaging the frame embeddings directly
+            if self.average_frame_embeddings:
+                node_embeddings = reduce(node_embeddings, "b f h -> b h", reduction="mean")
+                graph_embeddings = reduce(graph_embeddings, "b f h -> b h", reduction="mean")
+            all_embeddings = Embeddings(graph_embeddings, node_embeddings)
 
             # TODO refactor to own task
             # # Average predictions over frames
@@ -490,17 +499,7 @@ class FAENet(AbstractPyGModel):
 
         # Traditional case (no frame averaging)
         else:
-            all_embeddings = [self.first_forward(deepcopy(batch))]
-        # if we want to average frame embeddings, this returns a singular
-        # embeddings structure
-        if self.average_frame_embeddings and frame_averaging:
-            node_embeddings = torch.stack(
-                [frame.point_embedding for frame in all_embeddings],
-            ).mean(dim=0)
-            graph_embeddings = torch.stack(
-                [frame.system_embedding for frame in all_embeddings],
-            ).mean(dim=0)
-            all_embeddings = Embeddings(graph_embeddings, node_embeddings)
+            all_embeddings = self.first_forward(deepcopy(batch))
         return all_embeddings
 
     def forces_as_energy_grad(self, pos, energy):
