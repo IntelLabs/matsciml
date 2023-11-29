@@ -1296,7 +1296,13 @@ class ForceRegressionTask(BaseTaskModule):
         with dynamic_gradients_context(True, self.has_rnn):
             # first ensure that positions tensor is backprop ready
             if "graph" in batch:
-                pos: torch.Tensor = batch["graph"].ndata.get("pos")
+                graph = batch["graph"]
+                # the DGL case
+                if hasattr(graph, "ndata"):
+                    pos: torch.Tensor = graph.ndata.get("pos")
+                else:
+                    # otherwise assume it's PyG
+                    pos: torch.Tensor = graph.pos
             else:
                 # assume point cloud otherwise
                 pos: torch.Tensor = batch.get("pos")
