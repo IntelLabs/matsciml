@@ -1,12 +1,20 @@
+# Frame Averaging implementation from: https://github.com/vict0rsch/faenet/tree/main
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 from __future__ import annotations
 
-from abc import abstractmethod
-from typing import Any, Dict, List, Optional, Union
+import math
+import numbers
+import random
+from copy import deepcopy
+from itertools import product
 
 import torch
+import torch_geometric
+from torch_geometric.transforms import LinearTransformation
 
-from matsciml.common import DataDict, package_registry
-from matsciml.common.types import DataDict
+from matsciml.common import package_registry
 from matsciml.datasets.transforms.base import AbstractDataTransform
 
 if package_registry["dgl"]:
@@ -16,20 +24,6 @@ if package_registry["pyg"]:
     import torch_geometric
 
 
-########
-import math
-import numbers
-import random
-from copy import deepcopy
-from itertools import product
-
-import torch
-import torch.nn as nn
-import torch_geometric
-from torch_geometric.nn import radius_graph
-from torch_geometric.transforms import LinearTransformation
-
-# Frame Averaging implementation from: https://github.com/vict0rsch/faenet/tree/main
 
 
 def compute_frames(
