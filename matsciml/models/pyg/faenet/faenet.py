@@ -422,7 +422,7 @@ class FAENet(AbstractPyGModel):
                 if crystal_task:
                     batch.cell = batch.fa_cell[frame_idx]
                 # Forward pass
-                embeddings = self.first_forward(deepcopy(batch))
+                embeddings = self.first_forward(batch)
                 all_embeddings.append(embeddings)
             batch.pos = original_pos
             batch.cell = original_cell
