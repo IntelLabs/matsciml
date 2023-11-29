@@ -211,6 +211,14 @@ class FAENet(AbstractPyGModel):
                 self.hidden_channels,
             )
 
+    def get_embed_inputs(self, data):
+        z, batch, edge_index, rel_pos, edge_weight = self.preprocess(
+            data,
+            self.cutoff,
+            self.max_num_neighbors,
+        )
+        return z, batch, edge_index, rel_pos, edge_weight
+
     def read_batch(self, batch: BatchDict) -> DataDict:
         r"""
         Extracts data needed by FAENet from the batch and graph
@@ -230,7 +238,13 @@ class FAENet(AbstractPyGModel):
             Input data for FAENet as a dictionary.
         """
 
-        data = super().read_batch(batch)
+        data = {"graph": batch.get("graph")}
+        graph = batch.get("graph")
+        for key in ["edge_feats", "graph_feats"]:
+            data[key] = getattr(graph, key, None)
+        pos: torch.Tensor = getattr(graph, "pos")
+        data["pos"] = pos
+        # data = super().read_batch(batch)
         data["graph"].cell = batch["cell"]
         data["graph"].natoms = batch["natoms"].squeeze(-1).to(torch.int32)
         edge_index, cell_offsets, neighbors = radius_graph_pbc(
@@ -241,6 +255,11 @@ class FAENet(AbstractPyGModel):
         data["graph"].edge_index = edge_index
         data["graph"].cell_offsets = cell_offsets
         data["graph"].neighbors = neighbors
+        atomic_numbers, batch, edge_index, rel_pos, edge_weight = self.get_embed_inputs(data['graph'])
+        edge_attr = self.distance_expansion(edge_weight)  # RBF of pairwise distances
+        node_embeddings = self.atom_embedding(atomic_numbers, rel_pos, edge_attr)
+        # optionally can fuse into a single tensor with `self.join_position_embeddings`
+        data["node_feats"] = node_embeddings
         return data
 
     def energy_forward(self, data, preproc=True) -> Embeddings:
@@ -257,22 +276,7 @@ class FAENet(AbstractPyGModel):
         """
         # Pre-process data (e.g. pbc, cutoff graph, etc.)
         # Should output all necessary attributes, in correct format.
-        if preproc:
-            z, batch, edge_index, rel_pos, edge_weight = self.preprocess(
-                data,
-                self.cutoff,
-                self.max_num_neighbors,
-            )
-        else:
-            rel_pos = data.pos[data.edge_index[0]] - data.pos[data.edge_index[1]]
-            z, batch, edge_index, rel_pos, edge_weight = (
-                data.atomic_numbers.long(),
-                data.batch,
-                data.edge_index,
-                rel_pos,
-                rel_pos.norm(dim=-1),
-            )
-
+        z, batch, edge_index, rel_pos, edge_weight = self.get_embed_inputs(data)
         edge_attr = self.distance_expansion(edge_weight)  # RBF of pairwise distances
         assert z.dim() == 1 and z.dtype == torch.long
 
