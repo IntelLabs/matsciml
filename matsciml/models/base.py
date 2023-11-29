@@ -1345,8 +1345,27 @@ class ForceRegressionTask(BaseTaskModule):
                 create_graph=True,
             )[0]
         )
-        outputs["force"] = force
-        outputs["energy"] = energy
+        # check to see if we are frame averaging
+        if isinstance(fa_rot, torch.Tensor):
+            natoms = pos.size(0)
+            all_forces = []
+            # loop over each frame prediction, and transform to guarantee
+            # equivariance of frame averaging method
+            for frame_idx, frame_rot in fa_rot:
+                repeat_rot = torch.repeat_interleave(
+                    frame_rot,
+                    natoms,
+                    dim=0
+                ).to(self.device)
+                rotated_forces = force[:, frame_idx, :].view(-1, 1, 3).bmm(
+                    repeat_rot.transpose(1, 2)
+                )
+                all_forces.append(rotated_forces.view(natoms, 3))
+            # combine all the force data into a single tensor
+            force = torch.stack(all_forces, dim=1)
+        # reduce outputs to what are expected shapes
+        outputs["force"] = reduce(force, "n ... d -> n d", "mean", d=3)
+        outputs["energy"] = reduce(energy, "b ... d -> b d", "mean", d=1)
         return outputs
 
     def _get_targets(
