@@ -255,7 +255,9 @@ class FAENet(AbstractPyGModel):
         data["graph"].edge_index = edge_index
         data["graph"].cell_offsets = cell_offsets
         data["graph"].neighbors = neighbors
-        atomic_numbers, batch, edge_index, rel_pos, edge_weight = self.get_embed_inputs(data['graph'])
+        atomic_numbers, batch, edge_index, rel_pos, edge_weight = self.get_embed_inputs(
+            data["graph"]
+        )
         edge_attr = self.distance_expansion(edge_weight)  # RBF of pairwise distances
         node_embeddings = self.atom_embedding(atomic_numbers, rel_pos, edge_attr)
         # optionally can fuse into a single tensor with `self.join_position_embeddings`
@@ -415,12 +417,20 @@ class FAENet(AbstractPyGModel):
             batch.pos = original_pos
             batch.cell = original_cell
             # now stack up embeddings into a single tensor
-            node_embeddings = torch.stack([frame.point_embedding for frame in all_embeddings], dim=1)
-            graph_embeddings = torch.stack([frame.system_embedding for frame in all_embeddings], dim=1)
+            node_embeddings = torch.stack(
+                [frame.point_embedding for frame in all_embeddings], dim=1
+            )
+            graph_embeddings = torch.stack(
+                [frame.system_embedding for frame in all_embeddings], dim=1
+            )
             # if we're averaging the frame embeddings directly
             if self.average_frame_embeddings:
-                node_embeddings = reduce(node_embeddings, "b f h -> b h", reduction="mean")
-                graph_embeddings = reduce(graph_embeddings, "b f h -> b h", reduction="mean")
+                node_embeddings = reduce(
+                    node_embeddings, "b f h -> b h", reduction="mean"
+                )
+                graph_embeddings = reduce(
+                    graph_embeddings, "b f h -> b h", reduction="mean"
+                )
             all_embeddings = Embeddings(graph_embeddings, node_embeddings)
 
         # Traditional case (no frame averaging)
