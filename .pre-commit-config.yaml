@@ -37,15 +37,15 @@ repos:
           flake8-pyproject,
         ]
 -   repo: https://github.com/psf/black
-    rev: 22.3.1
+    rev: 23.7.0
     hooks:
       - id: black
-        language_version: python3.9
+        language_version: python
 -   repo: https://github.com/psf/black
-    rev: 22.3.1
+    rev: 23.7.0
     hooks:
       - id: black-jupyter
-        language_version: python3.9
+        language_version: python
 -   repo: https://github.com/MarcoGorelli/absolufy-imports
     rev: v0.3.1
     hooks:
