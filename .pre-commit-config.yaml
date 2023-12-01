@@ -60,3 +60,4 @@ repos:
         language_version: python3
         types: [python]
         require_serial: true
+        args: [--skip, "B101", --recursive]
