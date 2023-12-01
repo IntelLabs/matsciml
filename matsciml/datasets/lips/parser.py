@@ -1,27 +1,31 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Dict, Union, Iterable
-from pathlib import Path
+
 import os
+from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Union
 
 import lmdb
-import torch
 import numpy as np
+import torch
 from ase import Atoms
 from ase.cell import Cell
 from ase.io import read
 from tqdm import tqdm
 
-from matsciml.datasets.generate_subsplit import write_data
+from matsciml.datasets.utils import write_lmdb_data
 
 
 @dataclass
 class LiPSStructure:
     """
-    Data structure for parsing the LiPS data from https://archive.materialscloud.org/record/2022.45
+    Data structure for parsing the LiPS data from
+    https://archive.materialscloud.org/record/2022.45
 
-    The main form of interaction for this class is to load in an extended XYZ file, and dump
-    it as an LMDB file consistent with other datasets in matsciml.
+    The main form of interaction for this class is to load in an extended XYZ 
+    file, and dump it as an LMDB file consistent with other datasets 
+    in matsciml.
     """
 
     def __init__(self, *atoms: Atoms) -> None:
@@ -38,7 +42,7 @@ class LiPSStructure:
         return self.atoms[index]
 
     @staticmethod
-    def entry_to_dict(struct: Atoms) -> Dict[str, Union[torch.Tensor, float]]:
+    def entry_to_dict(struct: Atoms) -> dict[str, Union[torch.Tensor, float]]:
         result = {
             "pos": struct.get_positions(),
             "cell": struct.get_cell(),
@@ -88,28 +92,29 @@ class LiPSStructure:
             map_async=True,
         )
         for index, atom in enumerate(
-            tqdm(self.atoms, desc="Entries processed", total=len(self))
+            tqdm(self.atoms, desc="Entries processed", total=len(self)),
         ):
             struct = self.entry_to_dict(atom)
-            write_data(index, struct, target_env)
+            write_lmdb_data(index, struct, target_env)
 
     def make_devset(self, random_seed: int = 2150626, num_samples: int = 200) -> None:
         """
         Serialize a devset.
 
-        This is not intended for regular use, and implemented mainly for reproducibility.
-        The devset will be dumped in this directory, which should then be readily accessible
-        through `matsciml.datasets.lips.lips_devset` as a path.
+        This is not intended for regular use, and implemented mainly for
+        reproducibility.
+        The devset will be dumped in this directory, which should then be readily
+        accessible through `matsciml.datasets.lips.lips_devset` as a path.
 
         Parameters
         ----------
         random_seed : int
             Random seed set for shuffling indices
         num_samples : int
-            Number of samples to include in the devset, should be fairly small (on order
-            of a few hundred)
+            Number of samples to include in the devset, should be fairly small
+            (on order of a few hundred)
         """
-        from random import shuffle, seed
+        from random import seed, shuffle
 
         # prepare to dump devset
         root = Path(__file__).parent

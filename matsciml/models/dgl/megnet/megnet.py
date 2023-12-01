@@ -14,8 +14,8 @@ import torch
 from torch import nn
 from dgl.nn import Set2Set
 from torch.nn import Dropout, Identity, Module, ModuleList, Softplus
-from matsciml.common.types import BatchDict, DataDict
 
+from matsciml.common.types import BatchDict, DataDict, Embeddings
 from matsciml.models.dgl.megnet import MLP, MEGNetBlock, EdgeSet2Set
 from matsciml.models.base import AbstractDGLModel
 
@@ -179,7 +179,7 @@ class MEGNet(AbstractDGLModel):
         graph_feats: torch.Tensor,
         pos: Optional[torch.Tensor] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         r"""
         Implement the forward method, which computes the energy of
         a molecular graph.
@@ -204,8 +204,8 @@ class MEGNet(AbstractDGLModel):
 
         Returns
         -------
-        torch.Tensor
-            Graph embeddings, or output value if not 'encoder_only'
+        Embeddings
+            Data structure containing graph and node level embeddings.
         """
         edge_feats = self.edge_encoder(self.edge_embed(edge_feats))
         node_feats = self.node_encoder(node_feats)
@@ -222,11 +222,5 @@ class MEGNet(AbstractDGLModel):
 
         if self.dropout:
             vec = self.dropout(vec)  # pylint: disable=E1102
-        if not self.encoder_only:
-            output = self.output_proj(vec)
-            if self.is_classification:
-                output = torch.sigmoid(output)
-        else:
-            output = vec
-
-        return output
+        embeddings = Embeddings(vec, node_vec)
+        return embeddings

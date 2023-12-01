@@ -23,10 +23,11 @@ import torch
 from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
 from torch.optim import lr_scheduler
+from einops import reduce
 
 from matsciml.modules.normalizer import Normalizer
 from matsciml.models.common import OutputHead
-from matsciml.common.types import DataDict, BatchDict, AbstractGraph
+from matsciml.common.types import DataDict, BatchDict, AbstractGraph, Embeddings
 from matsciml.common.registry import registry
 from matsciml.common import package_registry
 
@@ -253,19 +254,23 @@ class AbstractTask(ABC, pl.LightningModule):
         ...
 
     @abstractmethod
-    def _forward(self, *args, **kwargs) -> torch.Tensor:
+    def read_batch_size(self, batch: BatchDict) -> Union[int, None]:
+        ...
+
+    @abstractmethod
+    def _forward(self, *args, **kwargs) -> Embeddings:
         """
         Implements the actual logic of the architecture. Given a set
         of input features, produce outputs/predictions from the model.
 
         Returns
         -------
-        torch.Tensor
-            Output of the model; can be embeddings or projected values
+        Embeddings
+            Data structure containing system/graph and point/node level embeddings.
         """
         ...
 
-    def forward(self, batch: BatchDict) -> torch.Tensor:
+    def forward(self, batch: BatchDict) -> Embeddings:
         """
         Given a batch structure, extract out data and pass it into the
         neural network architecture. This implements the 'forward' method
@@ -280,11 +285,16 @@ class AbstractTask(ABC, pl.LightningModule):
 
         Returns
         -------
-        torch.Tensor
-            Output of the model; can be embeddings or projected values
+        Embeddings
+            Data structure containing system/graph and point/node level embeddings.
         """
         input_data = self.read_batch(batch)
         outputs = self._forward(**input_data)
+        # raise an error to help spot models that have not yet been refactored
+        if not isinstance(outputs, Embeddings):
+            raise ValueError(
+                "Encoder did not return `Embeddings` data structure: please refactor your model!"
+            )
         return outputs
 
 
@@ -357,7 +367,7 @@ class AbstractPointCloudModel(AbstractTask):
         mask: Optional[torch.Tensor] = None,
         sizes: Optional[List[int]] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         """
         Sets expected patterns for args for point cloud based modeling, whereby
         the bare minimum expected data are 'pos' and 'pc_features' akin to graph
@@ -436,6 +446,10 @@ class AbstractPointCloudModel(AbstractTask):
         output = torch.stack([reduce(t, dim=0) for t in split_results])
         return output
 
+    def read_batch_size(self, batch: BatchDict) -> None:
+        # returns None, because batch size can be readily determined by Lightning
+        return None
+
 
 class AbstractGraphModel(AbstractTask):
     def __init__(
@@ -489,7 +503,7 @@ class AbstractGraphModel(AbstractTask):
         edge_feats: Optional[torch.Tensor] = None,
         graph_feats: Optional[torch.Tensor] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         """
         Sets args/kwargs for the expected components of a graph-based
         model. At the bare minimum, we expect some kind of abstract
@@ -556,6 +570,11 @@ if package_registry["dgl"]:
             data.setdefault("graph_feats", None)
             return data
 
+        def read_batch_size(self, batch: BatchDict) -> int:
+            # grabs the number of batch samples from the DGLGraph attribute
+            graph = batch["graph"]
+            return graph.batch_size
+
 
 if package_registry["pyg"]:
 
@@ -591,6 +610,10 @@ if package_registry["pyg"]:
             data["node_feats"] = node_embeddings
             data["pos"] = pos
             return data
+
+        def read_batch_size(self, batch: BatchDict) -> int:
+            graph = batch["graph"]
+            return graph.num_graphs
 
 
 class AbstractEnergyModel(pl.LightningModule):
@@ -770,7 +793,7 @@ class BaseTaskModule(pl.LightningModule):
         outputs = self.process_embedding(embedding)
         return outputs
 
-    def process_embedding(self, embeddings: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def process_embedding(self, embeddings: Embeddings) -> Dict[str, torch.Tensor]:
         """
         Given a set of embeddings, output predictions for each head.
 
@@ -786,7 +809,11 @@ class BaseTaskModule(pl.LightningModule):
         """
         results = {}
         for key, head in self.output_heads.items():
-            results[key] = head(embeddings)
+            # in the event that we get multiple embeddings, we average
+            # every dimension execpt the batch and dimensionality
+            output = head(embeddings.system_embedding)
+            output = reduce(output, "b ... d -> b d", reduction="mean")
+            results[key] = output
         return results
 
     def _get_targets(
@@ -906,9 +933,12 @@ class BaseTaskModule(pl.LightningModule):
         # prepending training flag for
         for key, value in loss_dict["log"].items():
             metrics[f"train_{key}"] = value
-        if "graph" in batch.keys():
-            batch_size = batch["graph"].batch_size
-        else:
+        try:
+            batch_size = self.encoder.read_batch_size(batch)
+        except:
+            warn(
+                "Unable to parse batch size from data, defaulting to `None` for logging."
+            )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
         return loss_dict
@@ -923,9 +953,12 @@ class BaseTaskModule(pl.LightningModule):
         # prepending training flag for
         for key, value in loss_dict["log"].items():
             metrics[f"val_{key}"] = value
-        if "graph" in batch.keys():
-            batch_size = batch["graph"].batch_size
-        else:
+        try:
+            batch_size = self.encoder.read_batch_size(batch)
+        except:
+            warn(
+                "Unable to parse batch size from data, defaulting to `None` for logging."
+            )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
         return loss_dict
@@ -940,9 +973,12 @@ class BaseTaskModule(pl.LightningModule):
         # prepending training flag for
         for key, value in loss_dict["log"].items():
             metrics[f"test_{key}"] = value
-        if "graph" in batch.keys():
-            batch_size = batch["graph"].batch_size
-        else:
+        try:
+            batch_size = self.encoder.read_batch_size(batch)
+        except:
+            warn(
+                "Unable to parse batch size from data, defaulting to `None` for logging."
+            )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
         return loss_dict
@@ -1260,10 +1296,21 @@ class ForceRegressionTask(BaseTaskModule):
         with dynamic_gradients_context(True, self.has_rnn):
             # first ensure that positions tensor is backprop ready
             if "graph" in batch:
-                pos: torch.Tensor = batch["graph"].ndata.get("pos")
+                graph = batch["graph"]
+                # the DGL case
+                if hasattr(graph, "ndata"):
+                    pos: torch.Tensor = graph.ndata.get("pos")
+                    # for frame averaging
+                    fa_rot = graph.ndata.get("fa_rot", None)
+                else:
+                    # otherwise assume it's PyG
+                    pos: torch.Tensor = graph.pos
+                    fa_rot = getattr(graph, "fa_rot", None)
             else:
                 # assume point cloud otherwise
                 pos: torch.Tensor = batch.get("pos")
+                # no frame averaging architecture yet for point clouds
+                fa_rot = None
             if pos is None:
                 raise ValueError(
                     f"No atomic positions were found in batch - neither as standalone tensor nor graph."
@@ -1280,14 +1327,14 @@ class ForceRegressionTask(BaseTaskModule):
                 embeddings = batch.get("embeddings")
             else:
                 embeddings = self.encoder(batch)
-            outputs = self.process_embedding(embeddings, pos)
+            outputs = self.process_embedding(embeddings, pos, fa_rot)
         return outputs
 
     def process_embedding(
-        self, embeddings: torch.Tensor, pos: torch.Tensor
+        self, embeddings: Embeddings, pos: torch.Tensor, fa_rot: Union[None, torch.Tensor] = None
     ) -> Dict[str, torch.Tensor]:
         outputs = {}
-        energy = self.output_heads["energy"](embeddings)
+        energy = self.output_heads["energy"](embeddings.system_embedding)
         # now use autograd for force calculation
         force = (
             -1
@@ -1298,8 +1345,27 @@ class ForceRegressionTask(BaseTaskModule):
                 create_graph=True,
             )[0]
         )
-        outputs["force"] = force
-        outputs["energy"] = energy
+        # check to see if we are frame averaging
+        if isinstance(fa_rot, torch.Tensor):
+            natoms = pos.size(0)
+            all_forces = []
+            # loop over each frame prediction, and transform to guarantee
+            # equivariance of frame averaging method
+            for frame_idx, frame_rot in fa_rot:
+                repeat_rot = torch.repeat_interleave(
+                    frame_rot,
+                    natoms,
+                    dim=0
+                ).to(self.device)
+                rotated_forces = force[:, frame_idx, :].view(-1, 1, 3).bmm(
+                    repeat_rot.transpose(1, 2)
+                )
+                all_forces.append(rotated_forces.view(natoms, 3))
+            # combine all the force data into a single tensor
+            force = torch.stack(all_forces, dim=1)
+        # reduce outputs to what are expected shapes
+        outputs["force"] = reduce(force, "n ... d -> n d", "mean", d=3)
+        outputs["energy"] = reduce(energy, "b ... d -> b d", "mean", d=1)
         return outputs
 
     def _get_targets(
@@ -1413,12 +1479,138 @@ class ForceRegressionTask(BaseTaskModule):
         # prepending training flag
         for key, value in loss_dict["log"].items():
             metrics[f"train_{key}"] = value
-        if "graph" in batch.keys():
-            batch_size = batch["graph"].batch_size
-        else:
+        try:
+            batch_size = self.encoder.read_batch_size(batch)
+        except:
+            warn(
+                "Unable to parse batch size from data, defaulting to `None` for logging."
+            )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
         return loss_dict
+
+
+@registry.register_task("GradFreeForceRegressionTask")
+class GradFreeForceRegressionTask(ScalarRegressionTask):
+    def __init__(
+        self,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
+        loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
+        output_kwargs: Dict[str, Any] = {},
+        **kwargs: Any,
+    ) -> None:
+        if "task_keys" in kwargs:
+            warn(
+                f"GradFreeForceRegressionTask does not `task_keys`; "
+                f"ignoring passed keys: {kwargs['task_keys']}"
+            )
+            del kwargs["task_keys"]
+        super().__init__(
+            encoder,
+            encoder_class,
+            encoder_kwargs,
+            loss_func,
+            ["force"],
+            output_kwargs,
+            **kwargs,
+        )
+
+    def _make_output_heads(self) -> nn.ModuleDict:
+        modules = {"force": OutputHead(3, **self.output_kwargs).to(self.device)}
+        return nn.ModuleDict(modules)
+
+    def _get_targets(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Extract out the energy and force targets from a batch.
+
+        The intended behavior is similar to other tasks, however explicit because
+        we actually expect "energy" and "force" keys as opposed to inferring them from a batch.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to evaluate
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing targets to evaluate against
+
+        Raises
+        ------
+        KeyError
+            If either "energy" or "force" keys aren't found in the "targets"
+            dictionary within a batch, we abort the program.
+        """
+        if "force" not in batch["targets"]:
+            raise KeyError(
+                f"Force key missing in batch targets: keys found: {batch['targets'].keys()}"
+            )
+        target_dict = {"force": batch["targets"]["force"]}
+        return target_dict
+
+    def forward(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        if "embeddings" in batch:
+            embedding = batch.get("embeddings")
+        else:
+            embedding = self.encoder(batch)
+        # check for frame averaging
+        if "graph" in batch:
+            graph = batch["graph"]
+            if hasattr(graph, "ndata"):
+                fa_rot = getattr(graph.ndata, "fa_rot", None)
+            else:
+                fa_rot = getattr(graph, "fa_rot", None)
+        outputs = self.process_embedding(embedding, fa_rot)
+        return outputs
+
+    def process_embedding(self, embeddings: Embeddings, fa_rot: Union[None, torch.Tensor] = None) -> Dict[str, torch.Tensor]:
+        """
+        Given point/node-level embeddings, predict forces of each point.
+
+        Parameters
+        ----------
+        embeddings : Embeddings
+            Data structure containing system/graph and point/node-level embeddings.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing a ``force`` key that maps to predicted forces
+            per point/node
+        """
+        results = {}
+        force_head = self.output_heads["force"]
+        forces = force_head(embeddings.point_embedding)
+        if isinstance(fa_rot, torch.Tensor):
+            natoms = forces.size(0)
+            all_forces = []
+            # loop over each frame prediction, and transform to guarantee
+            # equivariance of frame averaging method
+            for frame_idx, frame_rot in fa_rot:
+                repeat_rot = torch.repeat_interleave(
+                    frame_rot,
+                    natoms,
+                    dim=0
+                ).to(self.device)
+                rotated_forces = forces[:, frame_idx, :].view(-1, 1, 3).bmm(
+                    repeat_rot.transpose(1, 2)
+                )
+                all_forces.append(rotated_forces.view(natoms, 3))
+            # combine all the force data into a single tensor
+            forces = torch.stack(all_forces, dim=1)
+        # make sure forces are in the right shape
+        forces = reduce(forces, "n ... d -> n d", "mean", d=3)
+        results["force"] = forces
+        return results
 
 
 @registry.register_task("CrystalSymmetryClassificationTask")

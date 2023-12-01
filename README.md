@@ -40,6 +40,7 @@ The examples outlined in the next section how to get started with Open MatSci ML
 ### Installation
 
 - `Docker`: We provide a Dockerfile inside the `docker` that can be run to install a container using standard docker commands.
+- `Conda`: We have included a `conda` specification that provides a complete installation including XPU support for PyTorch. Run `conda env create -n matsciml --file conda.yml`, and in the newly created environment, run `pip install './[all]'` to install all of the dependencies.
 
 Additionally, for a development install, one can specify the extra packages like `black` and `pytest` with `pip install './[dev]'`. These can be
 added to the commit workflow by running `pre-commit install` to generate `git` hooks.
