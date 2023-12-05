@@ -131,6 +131,7 @@ class OutputBlock(nn.Module):
         return self.layers[0].weight.size(-1)
 
 
+@registry.register_model("IrrepOutputBlock")
 class IrrepOutputBlock(nn.Module):
     def __init__(
         self,
