@@ -4,7 +4,6 @@ from copy import deepcopy
 from importlib import import_module
 from inspect import getfullargspec
 from typing import Any, Callable
-from sys import modules
 
 import torch
 from e3nn import nn as e3layers
