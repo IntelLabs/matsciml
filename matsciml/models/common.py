@@ -207,6 +207,7 @@ class OutputHead(nn.Module):
         norm: nn.Module | type[nn.Module] | Callable | str | None = None,
         act_last: nn.Module | type[nn.Module] | Callable | str | None = None,
         input_dim: int | None = None,
+        block_type: type[nn.Module] | str = OutputBlock,
         **kwargs,
     ) -> None:
         """
