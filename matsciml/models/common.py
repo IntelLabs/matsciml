@@ -165,6 +165,7 @@ class IrrepOutputBlock(nn.Module):
             activation = get_class_from_name(activation)
         if isinstance(activation, type):
             activation = activation()
+        activation = e3layers.Activation(irreps_in=output_dim, acts=[activation])
         if norm is None:
             norm = nn.Identity
         if isinstance(norm, str):
