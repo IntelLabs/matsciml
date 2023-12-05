@@ -4,12 +4,14 @@ from copy import deepcopy
 from importlib import import_module
 from inspect import getfullargspec
 from typing import Any, Callable
+from sys import modules
 
 import torch
 from e3nn import nn as e3layers
 from e3nn import o3
 from torch import nn
 from torch.nn.parameter import Parameter
+from matsciml.common.registry import registry
 
 
 def get_class_from_name(class_path: str) -> type[Any]:
@@ -38,6 +40,7 @@ def get_class_from_name(class_path: str) -> type[Any]:
     return getattr(module, class_str)
 
 
+@registry.register_model("OutputBlock")
 class OutputBlock(nn.Module):
     """
     Building block for output heads. Simple MLP stack with
