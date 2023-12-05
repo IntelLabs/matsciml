@@ -247,8 +247,15 @@ class OutputHead(nn.Module):
         kwargs.setdefault("residual", True)
         kwargs.setdefault("bias", True)
         super().__init__()
+        if isinstance(block_type, str):
+            type_name = block_type
+            block_type = registry.get_model_class(block_type)
+            if not block_type:
+                raise NameError(
+                    f"Specified block type {type_name} does not exist in matsciml.models.common."
+                )
         blocks = [
-            OutputBlock(
+            block_type(
                 hidden_dim,
                 activation,
                 norm,
