@@ -10,6 +10,7 @@ from e3nn import nn as e3layers
 from e3nn import o3
 from torch import nn
 from torch.nn.parameter import Parameter
+
 from matsciml.common.registry import registry
 
 
@@ -252,50 +253,42 @@ class OutputHead(nn.Module):
             block_type = registry.get_model_class(block_type)
             if not block_type:
                 raise NameError(
-                    f"Specified block type {type_name} does not exist in matsciml.models.common."
+                    f"Specified block type {type_name} does not exist in matsciml.models.common.",
                 )
         blocks = [
             block_type(
-                hidden_dim,
-                activation,
-                norm,
+                output_dim=hidden_dim,
+                activation=activation,
+                norm=norm,
                 input_dim=input_dim,
-                lazy=lazy,
-                bias=bias,
-                dropout=dropout,
-                residual=False,
+                **kwargs,
             ),
         ]
         # for everything in between
         blocks.extend(
             [
-                OutputBlock(
-                    hidden_dim,
-                    activation,
-                    norm,
+                block_type(
+                    output_dim=hidden_dim,
+                    activation=activation,
+                    norm=norm,
                     input_dim=hidden_dim,
-                    lazy=lazy,
-                    bias=bias,
-                    dropout=dropout,
-                    residual=residual,
+                    **kwargs,
                 )
                 for _ in range(num_hidden)
             ],
         )
         # last layer does not use residual or normalization
         blocks.append(
-            OutputBlock(
-                output_dim,
-                act_last,
+            block_type(
+                output_dim=output_dim,
+                activation=act_last,
                 norm=None,
                 input_dim=hidden_dim,
-                lazy=lazy,
-                bias=bias,
-                residual=False,
+                **kwargs,
             ),
         )
         self.blocks = nn.Sequential(*blocks)
-        self.lazy = lazy
+        self.lazy = kwargs.get("lazy")
 
     def forward(self, embedding: torch.Tensor) -> torch.Tensor:
         if not self.lazy:
