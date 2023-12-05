@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from importlib import import_module
+from inspect import getfullargspec
 from typing import Any, Callable
 
 import torch
@@ -149,6 +150,10 @@ class IrrepOutputBlock(nn.Module):
             output_dim = o3.Irreps(output_dim)
         if not isinstance(input_dim, o3.Irreps):
             input_dim = o3.Irreps(input_dim)
+        # before mapping kwargs, filter out bad incorrect ones
+        linear_sig = getfullargspec(o3.Linear)
+        linear_args = set(linear_sig.args) | set(linear_sig.kwonlyargs)
+        kwargs = {key: value for key, value in kwargs.items() if key in linear_args}
         linear = o3.Linear(input_dim, output_dim, **kwargs)
         if activation is None:
             activation = nn.Identity
