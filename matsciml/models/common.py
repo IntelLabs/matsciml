@@ -207,10 +207,7 @@ class OutputHead(nn.Module):
         norm: nn.Module | type[nn.Module] | Callable | str | None = None,
         act_last: nn.Module | type[nn.Module] | Callable | str | None = None,
         input_dim: int | None = None,
-        lazy: bool = True,
-        bias: bool = True,
-        dropout: float = 0.0,
-        residual: bool = True,
+        **kwargs,
     ) -> None:
         """
         Initialize an `OutputHead` architecture.
@@ -241,6 +238,10 @@ class OutputHead(nn.Module):
             Flag to specify whether residual connections are used between
             hidden layer.
         """
+        kwargs.setdefault("lazy", True)
+        kwargs.setdefault("dropout", 0.0)
+        kwargs.setdefault("residual", True)
+        kwargs.setdefault("bias", True)
         super().__init__()
         blocks = [
             OutputBlock(
