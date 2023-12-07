@@ -143,6 +143,27 @@ class IrrepOutputBlock(nn.Module):
         residual: bool = True,
         **kwargs,
     ) -> None:
+        """
+        Initialize an `IrrepOutputBlock` MLP.
+
+        This output projection block is intended to preserve irreducible representations
+        that are created through equivariant neural networks.
+
+        Parameters
+        ----------
+        output_dim : str | o3.Irreps
+            Irreducible representations of the output projection
+        input_dim : str | o3.Irreps
+            Irreducible representations of the input representation
+        activation : Optional[list[str | e3.nn.Activation | None]], default None
+            A sequence of activation functions to apply to the output projection.
+        norm : Optional[e3.nn.BatchNorm | nn.Module | bool], default True
+            Applies normalization after non-linearity. Default value of ``True``
+            will automatically use `e3.nn.BatchNorm` with the correct representations.
+        residual : bool, default True
+            Flag to specify whether residual connections are used between
+            hidden layer.
+        """
         kwargs.setdefault("biases", True)
         super().__init__()
         self.residual = residual
