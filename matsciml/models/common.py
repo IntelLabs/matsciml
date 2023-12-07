@@ -164,17 +164,21 @@ class IrrepOutputBlock(nn.Module):
             if isinstance(act, type):
                 act = act()
             activation[index] = act
+        # make sure we have enough activation functions
         if len(activation) != len(output_dim):
             raise ValueError(
                 "Number of activations passed not equal to number of representations; "
                 f"got {len(activation)}, expected {len(output_dim)}"
             )
+        # if we haven't converted the activation functions into the e3.nn wrapper,
+        # do so now
+        if not isinstance(activation, e3layers.Activation):
+            activation = e3layers.Activation(irreps_in=output_dim, acts=activation)
         if isinstance(norm, bool):
             if norm:
                 norm = e3layers.BatchNorm(output_dim)
             else:
                 norm = nn.Identity()
-        activation = e3layers.Activation(irreps_in=output_dim, acts=activation)
         self.layers = nn.Sequential(linear, deepcopy(activation), deepcopy(norm))
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
