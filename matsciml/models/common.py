@@ -182,7 +182,7 @@ class IrrepOutputBlock(nn.Module):
             if isinstance(act, str):
                 act = get_class_from_name(act)
             # if we haven't instantiated the activation, do it now
-            if isinstance(act, type):
+            if isinstance(act, type) and act is not None:
                 act = act()
             activation[index] = act
         # make sure we have enough activation functions
