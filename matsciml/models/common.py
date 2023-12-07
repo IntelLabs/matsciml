@@ -176,30 +176,34 @@ class IrrepOutputBlock(nn.Module):
         linear_args = set(linear_sig.args) | set(linear_sig.kwonlyargs)
         kwargs = {key: value for key, value in kwargs.items() if key in linear_args}
         linear = o3.Linear(input_dim, output_dim, **kwargs)
-        if not isinstance(activation, list):
-            activation = [activation]
-        for index, act in enumerate(activation):
-            if isinstance(act, str):
-                act = get_class_from_name(act)
-            # if we haven't instantiated the activation, do it now
-            if isinstance(act, type) and act is not None:
-                act = act()
-            activation[index] = act
-        # make sure we have enough activation functions
-        if len(activation) != len(output_dim):
-            raise ValueError(
-                "Number of activations passed not equal to number of representations; "
-                f"got {len(activation)}, expected {len(output_dim)}"
-            )
-        # if we haven't converted the activation functions into the e3.nn wrapper,
-        # do so now
-        if not isinstance(activation, e3layers.Activation):
-            activation = e3layers.Activation(irreps_in=output_dim, acts=activation)
+        # only go through the process of making activation if it's specified
+        if activation is not None:
+            if not isinstance(activation, list):
+                activation = [activation]
+            for index, act in enumerate(activation):
+                if isinstance(act, str):
+                    act = get_class_from_name(act)
+                # if we haven't instantiated the activation, do it now
+                if isinstance(act, type) and act is not None:
+                    act = act()
+                activation[index] = act
+            # make sure we have enough activation functions
+            if len(activation) != len(output_dim):
+                raise ValueError(
+                    "Number of activations passed not equal to number of representations; "
+                    f"got {len(activation)}, expected {len(output_dim)}"
+                )
+            # if we haven't converted the activation functions into the e3.nn wrapper,
+            # do so now
+            if not isinstance(activation, e3layers.Activation):
+                activation = e3layers.Activation(irreps_in=output_dim, acts=activation)
+        else:
+            activation = nn.Identity()
         if isinstance(norm, bool):
             if norm:
                 norm = e3layers.BatchNorm(output_dim)
-            else:
-                norm = nn.Identity()
+        else:
+            norm = nn.Identity()
         self.layers = nn.Sequential(linear, deepcopy(activation), deepcopy(norm))
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
