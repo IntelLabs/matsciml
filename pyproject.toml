@@ -35,6 +35,7 @@ dependencies = [
   "matgl==0.8.5",
   "einops==0.7.0",
   "mendeleev==0.14.0",
+  "e3nn==0.5.1"
 ]
 description = "PyTorch Lightning and Deep Graph Library enabled materials science deep learning pipeline"
 dynamic = ["version", "readme"]
