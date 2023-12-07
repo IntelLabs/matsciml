@@ -143,7 +143,7 @@ class IrrepOutputBlock(nn.Module):
         | nn.Module
         | type[nn.Module]
         | None = None,
-        norm: nn.Module | type[nn.Module] | Callable | str | None = None,
+        norm: e3layers.BatchNorm | nn.Module | bool = True,
         residual: bool = True,
         **kwargs,
     ) -> None:
@@ -167,13 +167,12 @@ class IrrepOutputBlock(nn.Module):
             activation = activation()
         if not isinstance(activation, list):
             activation = [activation]
+        if isinstance(norm, bool):
+            if norm:
+                norm = e3layers.BatchNorm(output_dim)
+            else:
+                norm = nn.Identity()
         activation = e3layers.Activation(irreps_in=output_dim, acts=activation)
-        if norm is None:
-            norm = nn.Identity
-        if isinstance(norm, str):
-            norm = get_class_from_name(norm)
-        if isinstance(norm, type):
-            norm = norm()
         self.layers = nn.Sequential(linear, deepcopy(activation), deepcopy(norm))
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
