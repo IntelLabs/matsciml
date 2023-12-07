@@ -138,11 +138,7 @@ class IrrepOutputBlock(nn.Module):
         self,
         output_dim: str | o3.Irreps,
         input_dim: str | o3.Irreps,
-        activation: e3layers.Activation
-        | str
-        | nn.Module
-        | type[nn.Module]
-        | None = None,
+        activation: list[str | e3layers.Activation | None] | None = None,
         norm: e3layers.BatchNorm | nn.Module | bool = True,
         residual: bool = True,
         **kwargs,
@@ -159,14 +155,20 @@ class IrrepOutputBlock(nn.Module):
         linear_args = set(linear_sig.args) | set(linear_sig.kwonlyargs)
         kwargs = {key: value for key, value in kwargs.items() if key in linear_args}
         linear = o3.Linear(input_dim, output_dim, **kwargs)
-        if activation is None:
-            activation = nn.Identity
-        if isinstance(activation, str):
-            activation = get_class_from_name(activation)
-        if isinstance(activation, type):
-            activation = activation()
         if not isinstance(activation, list):
             activation = [activation]
+        for index, act in enumerate(activation):
+            if isinstance(act, str):
+                act = get_class_from_name(act)
+            # if we haven't instantiated the activation, do it now
+            if isinstance(act, type):
+                act = act()
+            activation[index] = act
+        if len(activation) != len(output_dim):
+            raise ValueError(
+                "Number of activations passed not equal to number of representations; "
+                f"got {len(activation)}, expected {len(output_dim)}"
+            )
         if isinstance(norm, bool):
             if norm:
                 norm = e3layers.BatchNorm(output_dim)
