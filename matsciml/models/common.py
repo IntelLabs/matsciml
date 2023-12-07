@@ -233,13 +233,13 @@ class OutputHead(nn.Module):
 
     def __init__(
         self,
-        output_dim: int,
-        hidden_dim: int,
+        output_dim: int | str,
+        hidden_dim: int | str,
         num_hidden: int = 1,
         activation: nn.Module | type[nn.Module] | Callable | str | None = None,
         norm: nn.Module | type[nn.Module] | Callable | str | None = None,
         act_last: nn.Module | type[nn.Module] | Callable | str | None = None,
-        input_dim: int | None = None,
+        input_dim: int | str | None = None,
         block_type: type[nn.Module] | str = OutputBlock,
         **kwargs,
     ) -> None:
@@ -248,15 +248,21 @@ class OutputHead(nn.Module):
 
         This model uses `LazyLinear` layers to create uninitialized MLPs,
         which means no input dimensionality is needed to be specified.
+        Kwargs are passed into the instantiation of ``block_type``.
 
         Parameters
         ----------
-        output_dim : int
-            Dimensionality of the output of this model.
-        hidden_dim : int
-            Dimensionality of the hidden layers within this stack.
+        output_dim : int | str
+            Dimensionality of the output of this model. String inputs are
+            specifically for ``IrrepOutputBlock``.
+        hidden_dim : int | str
+            Dimensionality of the hidden layers within this stack. String
+            inputs are specifically for ``IrrepOutputBlock``.
         num_hidden : int
             Number of hidden `OutputBlock`s to use.
+        input_dim : int | str | None, default None
+            Dimensionality of input data into the output head; typically would be the
+            embedding dimensionality. String inputs are specifically for ``IrrepOutputBlock``.
         activation : Optional[Union[nn.Module, Type[nn.Module], Callable, str]], default None
             If None, uses `nn.Identity()` as a placeholder. This nonlinearity is applied
             before normalization for every hidden layer within the stack.
@@ -271,6 +277,11 @@ class OutputHead(nn.Module):
         residual : bool, default True
             Flag to specify whether residual connections are used between
             hidden layer.
+        block_type : type[nn.Module] | str, default ``OutputBlock``
+            The type of block to constitute this output head. By default, the
+            naive ``OutputBlock`` just performs MLP projections, whereas ``IrrepOutputBlock``
+            will preserve irreducible representations in the output. If a String
+            is passed, the class will be retrieved from the registry.
         """
         kwargs.setdefault("lazy", True)
         kwargs.setdefault("dropout", 0.0)
