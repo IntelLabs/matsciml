@@ -909,6 +909,11 @@ class BaseTaskModule(pl.LightningModule):
                 "Target normalization was intended but not used."
                 f"Please check your config - expected: {self.task_keys}"
             )
+        if len(used_norm) != len(self.normalizers):
+            raise RuntimeError(
+                "Normalization was performed, but number of keys do not match."
+                f"Expected {len(self.normalizers)} keys, but only used {len(used_norm)}."
+            )
         return {"loss": total_loss, "log": losses}
 
     def configure_optimizers(self) -> torch.optim.AdamW:
