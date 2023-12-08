@@ -322,6 +322,7 @@ class OutputHead(nn.Module):
             ],
         )
         # last layer does not use residual or normalization
+        kwargs["residual"] = False
         blocks.append(
             block_type(
                 output_dim=output_dim,
