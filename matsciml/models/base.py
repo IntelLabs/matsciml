@@ -23,6 +23,7 @@ import torch
 from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
 from torch.optim import lr_scheduler
+from einops import reduce
 
 from matsciml.modules.normalizer import Normalizer
 from matsciml.models.common import OutputHead
@@ -808,7 +809,11 @@ class BaseTaskModule(pl.LightningModule):
         """
         results = {}
         for key, head in self.output_heads.items():
-            results[key] = head(embeddings.system_embedding)
+            # in the event that we get multiple embeddings, we average
+            # every dimension execpt the batch and dimensionality
+            output = head(embeddings.system_embedding)
+            output = reduce(output, "b ... d -> b d", reduction="mean")
+            results[key] = output
         return results
 
     def _get_targets(
@@ -1291,10 +1296,21 @@ class ForceRegressionTask(BaseTaskModule):
         with dynamic_gradients_context(True, self.has_rnn):
             # first ensure that positions tensor is backprop ready
             if "graph" in batch:
-                pos: torch.Tensor = batch["graph"].ndata.get("pos")
+                graph = batch["graph"]
+                # the DGL case
+                if hasattr(graph, "ndata"):
+                    pos: torch.Tensor = graph.ndata.get("pos")
+                    # for frame averaging
+                    fa_rot = graph.ndata.get("fa_rot", None)
+                else:
+                    # otherwise assume it's PyG
+                    pos: torch.Tensor = graph.pos
+                    fa_rot = getattr(graph, "fa_rot", None)
             else:
                 # assume point cloud otherwise
                 pos: torch.Tensor = batch.get("pos")
+                # no frame averaging architecture yet for point clouds
+                fa_rot = None
             if pos is None:
                 raise ValueError(
                     f"No atomic positions were found in batch - neither as standalone tensor nor graph."
@@ -1311,11 +1327,11 @@ class ForceRegressionTask(BaseTaskModule):
                 embeddings = batch.get("embeddings")
             else:
                 embeddings = self.encoder(batch)
-            outputs = self.process_embedding(embeddings, pos)
+            outputs = self.process_embedding(embeddings, pos, fa_rot)
         return outputs
 
     def process_embedding(
-        self, embeddings: Embeddings, pos: torch.Tensor
+        self, embeddings: Embeddings, pos: torch.Tensor, fa_rot: Union[None, torch.Tensor] = None
     ) -> Dict[str, torch.Tensor]:
         outputs = {}
         energy = self.output_heads["energy"](embeddings.system_embedding)
@@ -1329,8 +1345,27 @@ class ForceRegressionTask(BaseTaskModule):
                 create_graph=True,
             )[0]
         )
-        outputs["force"] = force
-        outputs["energy"] = energy
+        # check to see if we are frame averaging
+        if isinstance(fa_rot, torch.Tensor):
+            natoms = pos.size(0)
+            all_forces = []
+            # loop over each frame prediction, and transform to guarantee
+            # equivariance of frame averaging method
+            for frame_idx, frame_rot in fa_rot:
+                repeat_rot = torch.repeat_interleave(
+                    frame_rot,
+                    natoms,
+                    dim=0
+                ).to(self.device)
+                rotated_forces = force[:, frame_idx, :].view(-1, 1, 3).bmm(
+                    repeat_rot.transpose(1, 2)
+                )
+                all_forces.append(rotated_forces.view(natoms, 3))
+            # combine all the force data into a single tensor
+            force = torch.stack(all_forces, dim=1)
+        # reduce outputs to what are expected shapes
+        outputs["force"] = reduce(force, "n ... d -> n d", "mean", d=3)
+        outputs["energy"] = reduce(energy, "b ... d -> b d", "mean", d=1)
         return outputs
 
     def _get_targets(
@@ -1453,6 +1488,129 @@ class ForceRegressionTask(BaseTaskModule):
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
         return loss_dict
+
+
+@registry.register_task("GradFreeForceRegressionTask")
+class GradFreeForceRegressionTask(ScalarRegressionTask):
+    def __init__(
+        self,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
+        loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
+        output_kwargs: Dict[str, Any] = {},
+        **kwargs: Any,
+    ) -> None:
+        if "task_keys" in kwargs:
+            warn(
+                f"GradFreeForceRegressionTask does not `task_keys`; "
+                f"ignoring passed keys: {kwargs['task_keys']}"
+            )
+            del kwargs["task_keys"]
+        super().__init__(
+            encoder,
+            encoder_class,
+            encoder_kwargs,
+            loss_func,
+            ["force"],
+            output_kwargs,
+            **kwargs,
+        )
+
+    def _make_output_heads(self) -> nn.ModuleDict:
+        modules = {"force": OutputHead(3, **self.output_kwargs).to(self.device)}
+        return nn.ModuleDict(modules)
+
+    def _get_targets(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Extract out the energy and force targets from a batch.
+
+        The intended behavior is similar to other tasks, however explicit because
+        we actually expect "energy" and "force" keys as opposed to inferring them from a batch.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to evaluate
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing targets to evaluate against
+
+        Raises
+        ------
+        KeyError
+            If either "energy" or "force" keys aren't found in the "targets"
+            dictionary within a batch, we abort the program.
+        """
+        if "force" not in batch["targets"]:
+            raise KeyError(
+                f"Force key missing in batch targets: keys found: {batch['targets'].keys()}"
+            )
+        target_dict = {"force": batch["targets"]["force"]}
+        return target_dict
+
+    def forward(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, torch.Tensor]:
+        if "embeddings" in batch:
+            embedding = batch.get("embeddings")
+        else:
+            embedding = self.encoder(batch)
+        # check for frame averaging
+        if "graph" in batch:
+            graph = batch["graph"]
+            if hasattr(graph, "ndata"):
+                fa_rot = getattr(graph.ndata, "fa_rot", None)
+            else:
+                fa_rot = getattr(graph, "fa_rot", None)
+        outputs = self.process_embedding(embedding, fa_rot)
+        return outputs
+
+    def process_embedding(self, embeddings: Embeddings, fa_rot: Union[None, torch.Tensor] = None) -> Dict[str, torch.Tensor]:
+        """
+        Given point/node-level embeddings, predict forces of each point.
+
+        Parameters
+        ----------
+        embeddings : Embeddings
+            Data structure containing system/graph and point/node-level embeddings.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing a ``force`` key that maps to predicted forces
+            per point/node
+        """
+        results = {}
+        force_head = self.output_heads["force"]
+        forces = force_head(embeddings.point_embedding)
+        if isinstance(fa_rot, torch.Tensor):
+            natoms = forces.size(0)
+            all_forces = []
+            # loop over each frame prediction, and transform to guarantee
+            # equivariance of frame averaging method
+            for frame_idx, frame_rot in fa_rot:
+                repeat_rot = torch.repeat_interleave(
+                    frame_rot,
+                    natoms,
+                    dim=0
+                ).to(self.device)
+                rotated_forces = forces[:, frame_idx, :].view(-1, 1, 3).bmm(
+                    repeat_rot.transpose(1, 2)
+                )
+                all_forces.append(rotated_forces.view(natoms, 3))
+            # combine all the force data into a single tensor
+            forces = torch.stack(all_forces, dim=1)
+        # make sure forces are in the right shape
+        forces = reduce(forces, "n ... d -> n d", "mean", d=3)
+        results["force"] = forces
+        return results
 
 
 @registry.register_task("CrystalSymmetryClassificationTask")

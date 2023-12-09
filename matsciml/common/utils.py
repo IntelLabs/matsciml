@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import ast
 import collections
@@ -25,16 +26,19 @@ import torch
 import yaml
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+from torch_scatter import segment_coo, segment_csr
 
 
 def save_checkpoint(
-    state, checkpoint_dir="checkpoints/", checkpoint_file="checkpoint.pt"
+    state,
+    checkpoint_dir="checkpoints/",
+    checkpoint_file="checkpoint.pt",
 ):
     filename = os.path.join(checkpoint_dir, checkpoint_file)
     torch.save(state, filename)
 
 
-class Complete(object):
+class Complete:
     def __call__(self, data):
         device = data.edge_index.device
 
@@ -73,7 +77,7 @@ def warmup_lr_lambda(current_step, optim_config):
         or "warmup_epochs" in optim_config
     ):
         raise Exception(
-            "ConfigError: please define lr_milestones in steps not epochs and define warmup_steps instead of warmup_epochs"
+            "ConfigError: please define lr_milestones in steps not epochs and define warmup_steps instead of warmup_epochs",
         )
 
     if current_step <= optim_config["warmup_steps"]:
@@ -132,7 +136,7 @@ def plot_histogram(data, xlabel="", ylabel="", title=""):
     canvas.draw()
     image_from_plot = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
     image_from_plot = image_from_plot.reshape(
-        fig.canvas.get_width_height()[::-1] + (3,)
+        fig.canvas.get_width_height()[::-1] + (3,),
     )
 
     return image_from_plot
@@ -165,7 +169,8 @@ def collate(data_list):
     for key in keys:
         if torch.is_tensor(data_list[0][key]):
             data[key] = torch.cat(
-                data[key], dim=data.__cat_dim__(key, data_list[0][key])
+                data[key],
+                dim=data.__cat_dim__(key, data_list[0][key]),
             )
         else:
             data[key] = torch.tensor(data[key])
@@ -243,7 +248,7 @@ def setup_imports():
                 splits = f.split(os.sep)
                 file_name = splits[-1]
                 module_name = file_name[: file_name.find(".py")]
-                importlib.import_module("matsciml.%s.%s" % (key[1:], module_name))
+                importlib.import_module(f"matsciml.{key[1:]}.{module_name}")
 
     experimental_folder = os.path.join(root_folder, "../experimental/")
     if os.path.exists(experimental_folder):
@@ -258,7 +263,8 @@ def setup_imports():
             with open(ignore_file) as f:
                 for line in f.read().splitlines():
                     ignored += glob.glob(
-                        experimental_folder + line + "/**/*py", recursive=True
+                        experimental_folder + line + "/**/*py",
+                        recursive=True,
                     )
             for f in ignored:
                 experimental_files.remove(f)
@@ -311,11 +317,11 @@ def load_config(path: str, previous_includes: list = []):
     path = Path(path)
     if path in previous_includes:
         raise ValueError(
-            f"Cyclic config include detected. {path} included in sequence {previous_includes}."
+            f"Cyclic config include detected. {path} included in sequence {previous_includes}.",
         )
     previous_includes = previous_includes + [path]
 
-    direct_config = yaml.safe_load(open(path, "r"))
+    direct_config = yaml.safe_load(open(path))
 
     # Load config from included files.
     if "includes" in direct_config:
@@ -324,7 +330,7 @@ def load_config(path: str, previous_includes: list = []):
         includes = []
     if not isinstance(includes, list):
         raise AttributeError(
-            "Includes must be a list, '{}' provided".format(type(includes))
+            f"Includes must be a list, '{type(includes)}' provided",
         )
 
     config = {}
@@ -333,7 +339,8 @@ def load_config(path: str, previous_includes: list = []):
 
     for include in includes:
         include_config, inc_dup_warning, inc_dup_error = load_config(
-            include, previous_includes
+            include,
+            previous_includes,
         )
         duplicates_warning += inc_dup_warning
         duplicates_error += inc_dup_error
@@ -354,12 +361,12 @@ def build_config(args, args_override):
     if len(duplicates_warning) > 0:
         logging.warning(
             f"Overwritten config parameters from included configs "
-            f"(non-included parameters take precedence): {duplicates_warning}"
+            f"(non-included parameters take precedence): {duplicates_warning}",
         )
     if len(duplicates_error) > 0:
         raise ValueError(
             f"Conflicting (duplicate) parameters in simultaneously "
-            f"included configs: {duplicates_error}"
+            f"included configs: {duplicates_error}",
         )
 
     # Check for overridden parameters.
@@ -396,7 +403,7 @@ def create_grid(base_config, sweep_file):
         flat_sweeps = []
         for key, value in sweeps.items():
             new_key = root_key + sep + key if root_key else key
-            if isinstance(value, collections.MutableMapping):
+            if isinstance(value, collections.abc.MutableMapping):
                 flat_sweeps.extend(_flatten_sweeps(value, new_key).items())
             else:
                 flat_sweeps.append((new_key, value))
@@ -411,7 +418,7 @@ def create_grid(base_config, sweep_file):
             child_config[key_path[-1]] = value
         return config
 
-    sweeps = yaml.safe_load(open(sweep_file, "r"))
+    sweeps = yaml.safe_load(open(sweep_file))
     flat_sweeps = _flatten_sweeps(sweeps)
     keys = list(flat_sweeps.keys())
     values = list(itertools.product(*flat_sweeps.values()))
@@ -436,7 +443,7 @@ def save_experiment_log(args, jobs, configs):
                         "config": config,
                         "slurm_id": job.job_id,
                         "timestamp": time.strftime("%I:%M:%S%p %Z %b %d, %Y"),
-                    }
+                    },
                 ),
                 file=f,
             )
@@ -500,7 +507,8 @@ def radius_graph_pbc(data, radius, max_num_neighbors_threshold):
 
     index_offset_expand = torch.repeat_interleave(index_offset, num_atoms_per_image_sqr)
     num_atoms_per_image_expand = torch.repeat_interleave(
-        num_atoms_per_image, num_atoms_per_image_sqr
+        num_atoms_per_image,
+        num_atoms_per_image_sqr,
     )
 
     # Compute a tensor containing sequences of numbers that range from 0 to num_atoms_per_image_sqr for each image
@@ -512,7 +520,8 @@ def radius_graph_pbc(data, radius, max_num_neighbors_threshold):
         torch.cumsum(num_atoms_per_image_sqr, dim=0) - num_atoms_per_image_sqr
     )
     index_sqr_offset = torch.repeat_interleave(
-        index_sqr_offset, num_atoms_per_image_sqr
+        index_sqr_offset,
+        num_atoms_per_image_sqr,
     )
     atom_count_sqr = torch.arange(num_atom_pairs, device=device) - index_sqr_offset
 
@@ -567,7 +576,9 @@ def radius_graph_pbc(data, radius, max_num_neighbors_threshold):
     data_cell = torch.transpose(data.cell, 1, 2)
     pbc_offsets = torch.bmm(data_cell, unit_cell_batch)
     pbc_offsets_per_atom = torch.repeat_interleave(
-        pbc_offsets, num_atoms_per_image_sqr, dim=0
+        pbc_offsets,
+        num_atoms_per_image_sqr,
+        dim=0,
     )
 
     # Expand the positions and indices for the 9 cells
@@ -590,7 +601,8 @@ def radius_graph_pbc(data, radius, max_num_neighbors_threshold):
     index1 = torch.masked_select(index1, mask)
     index2 = torch.masked_select(index2, mask)
     unit_cell = torch.masked_select(
-        unit_cell_per_atom.view(-1, 3), mask.view(-1, 1).expand(-1, 3)
+        unit_cell_per_atom.view(-1, 3),
+        mask.view(-1, 1).expand(-1, 3),
     )
     unit_cell = unit_cell.view(-1, 3)
     atom_distance_sqr = torch.masked_select(atom_distance_sqr, mask)
@@ -607,7 +619,8 @@ def radius_graph_pbc(data, radius, max_num_neighbors_threshold):
         index1 = torch.masked_select(index1, mask_num_neighbors)
         index2 = torch.masked_select(index2, mask_num_neighbors)
         unit_cell = torch.masked_select(
-            unit_cell.view(-1, 3), mask_num_neighbors.view(-1, 1).expand(-1, 3)
+            unit_cell.view(-1, 3),
+            mask_num_neighbors.view(-1, 1).expand(-1, 3),
         )
         unit_cell = unit_cell.view(-1, 3)
 
@@ -643,7 +656,7 @@ def get_max_neighbors_mask(natoms, index, atom_distance, max_num_neighbors_thres
         or max_num_neighbors_threshold <= 0
     ):
         mask_num_neighbors = torch.tensor([True], dtype=bool, device=device).expand_as(
-            index
+            index,
         )
         return mask_num_neighbors, num_neighbors_image
 
@@ -655,7 +668,8 @@ def get_max_neighbors_mask(natoms, index, atom_distance, max_num_neighbors_thres
     # index_sort_map assumes index to be sorted
     index_neighbor_offset = torch.cumsum(num_neighbors, dim=0) - num_neighbors
     index_neighbor_offset_expand = torch.repeat_interleave(
-        index_neighbor_offset, num_neighbors
+        index_neighbor_offset,
+        num_neighbors,
     )
     index_sort_map = (
         index * max_num_neighbors
@@ -673,7 +687,8 @@ def get_max_neighbors_mask(natoms, index, atom_distance, max_num_neighbors_thres
 
     # Offset index_sort so that it indexes into index
     index_sort = index_sort + index_neighbor_offset.view(-1, 1).expand(
-        -1, max_num_neighbors_threshold
+        -1,
+        max_num_neighbors_threshold,
     )
     # Remove "unused pairs" with infinite distances
     mask_finite = torch.isfinite(distance_sort)
@@ -787,7 +802,9 @@ def compute_neighbors(data, edge_index):
 
     # Get number of neighbors per image
     image_indptr = torch.zeros(
-        data.natoms.shape[0] + 1, device=data.pos.device, dtype=torch.long
+        data.natoms.shape[0] + 1,
+        device=data.pos.device,
+        dtype=torch.long,
     )
     image_indptr[1:] = torch.cumsum(data.natoms, dim=0)
     neighbors = segment_csr(num_neighbors, image_indptr)

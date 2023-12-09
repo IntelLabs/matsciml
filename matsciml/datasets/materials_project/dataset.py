@@ -1,10 +1,20 @@
+from __future__ import annotations
+
 import pickle
+from collections.abc import Iterable
 from copy import deepcopy
-from functools import cache, cached_property
+from functools import cache
+from functools import cached_property
 from importlib.util import find_spec
 from math import pi
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import torch
@@ -13,14 +23,17 @@ from matgl.ext.pymatgen import Structure2Graph
 from matgl.graph.data import M3GNetDataset
 from pymatgen.analysis import local_env
 from pymatgen.analysis.graphs import StructureGraph
+from pymatgen.core import Lattice
 from pymatgen.core import Structure
 from tqdm import tqdm
 
 from matsciml.common.registry import registry
-from matsciml.common.types import BatchDict, DataDict
+from matsciml.common.types import BatchDict
+from matsciml.common.types import DataDict
 from matsciml.datasets.base import PointCloudDataset
-from matsciml.datasets.utils import (concatenate_keys, element_types,
-                                     point_cloud_featurization)
+from matsciml.datasets.utils import concatenate_keys
+from matsciml.datasets.utils import element_types
+from matsciml.datasets.utils import point_cloud_featurization
 
 _has_pyg = find_spec("torch_geometric") is not None
 
@@ -59,7 +72,7 @@ def item_from_structure(data: Any, *keys: str) -> Any:
 class MaterialsProjectDataset(PointCloudDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
 
-    def index_to_key(self, index: int) -> Tuple[int]:
+    def index_to_key(self, index: int) -> tuple[int]:
         """
         Method that maps a global index value to a pair of indices.
 
@@ -80,7 +93,7 @@ class MaterialsProjectDataset(PointCloudDataset):
         return (0, index)
 
     def _parse_structure(
-        self, data: Dict[str, Any], return_dict: Dict[str, Any]
+        self, data: dict[str, Any], return_dict: dict[str, Any],
     ) -> None:
         """
         Parse the standardized Structure data and format into torch Tensors.
@@ -101,10 +114,10 @@ class MaterialsProjectDataset(PointCloudDataset):
             If `Structure` is not found in the data; currently the workflow
             intends for you to have the data structure in place.
         """
-        structure: Union[None, Structure] = data.get("structure", None)
+        structure: None | Structure = data.get("structure", None)
         if structure is None:
             raise ValueError(
-                "Structure not found in data - workflow needs a structure to use!"
+                "Structure not found in data - workflow needs a structure to use!",
             )
         coords = torch.from_numpy(structure.cart_coords).float()
         system_size = len(coords)
@@ -114,7 +127,7 @@ class MaterialsProjectDataset(PointCloudDataset):
         atom_numbers = torch.LongTensor(structure.atomic_numbers)
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(
-            atom_numbers[src_nodes], atom_numbers[dst_nodes], 100
+            atom_numbers[src_nodes], atom_numbers[dst_nodes], 100,
         )
         # keep atomic numbers for graph featurization
         return_dict["atomic_numbers"] = atom_numbers
@@ -122,14 +135,14 @@ class MaterialsProjectDataset(PointCloudDataset):
         return_dict["sizes"] = system_size
         return_dict.update(**chosen_nodes)
         return_dict["distance_matrix"] = torch.from_numpy(
-            structure.distance_matrix
+            structure.distance_matrix,
         ).float()
         # grab lattice properties
         space_group = structure.get_space_group_info()[-1]
-        # convert lattice angles into radians
+        return_dict['natoms'] = len(atom_numbers)
         lattice_params = torch.FloatTensor(
             structure.lattice.abc
-            + tuple(a * (pi / 180.0) for a in structure.lattice.angles)
+            + tuple(a * (pi / 180.0) for a in structure.lattice.angles),
         )
         lattice_features = {
             "space_group": space_group,
@@ -138,7 +151,7 @@ class MaterialsProjectDataset(PointCloudDataset):
         return_dict["lattice_features"] = lattice_features
 
     def _parse_symmetry(
-        self, data: Dict[str, Any], return_dict: Dict[str, Any]
+        self, data: dict[str, Any], return_dict: dict[str, Any],
     ) -> None:
         """
         Parse out symmetry information from the `SymmetryData` structure.
@@ -151,7 +164,7 @@ class MaterialsProjectDataset(PointCloudDataset):
             Output dictionary that contains the training sample. Mutates
             in place.
         """
-        symmetry: Union[SymmetryData, None] = data.get("symmetry", None)
+        symmetry: SymmetryData | None = data.get("symmetry", None)
         if symmetry is None:
             return
         else:
@@ -163,7 +176,7 @@ class MaterialsProjectDataset(PointCloudDataset):
             return_dict["symmetry"] = symmetry_data
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> dict[str, list[str]]:
         # This returns the standardized dictionary of task_type/key mapping.
         keys = getattr(self, "_target_keys", None)
         if not keys:
@@ -172,7 +185,7 @@ class MaterialsProjectDataset(PointCloudDataset):
         return self._target_keys
 
     @property
-    def target_key_list(self) -> Union[List[str], None]:
+    def target_key_list(self) -> list[str] | None:
         # this returns a flat list of keys, primarily used in the `data_from_key`
         # call. This does not provide the task type/key mapping used to initialize
         # output heads
@@ -186,7 +199,7 @@ class MaterialsProjectDataset(PointCloudDataset):
             return _keys
 
     @target_keys.setter
-    def target_keys(self, values: Dict[str, List[str]]) -> None:
+    def target_keys(self, values: dict[str, list[str]]) -> None:
         remove_keys = []
         copy_dict = deepcopy(values)
         # loop over the keys and remove empty tasks
@@ -198,8 +211,8 @@ class MaterialsProjectDataset(PointCloudDataset):
         self._target_keys = copy_dict
 
     def data_from_key(
-        self, lmdb_index: int, subindex: int
-    ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
+        self, lmdb_index: int, subindex: int,
+    ) -> dict[str, torch.Tensor | dict[str, torch.Tensor]]:
         """
         Extract data out of the PyMatGen data structure and format into PyTorch happy structures.
 
@@ -224,7 +237,7 @@ class MaterialsProjectDataset(PointCloudDataset):
         Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
             A single sample/material from Materials Project.
         """
-        data: Dict[str, Any] = super().data_from_key(lmdb_index, subindex)
+        data: dict[str, Any] = super().data_from_key(lmdb_index, subindex)
         return_dict = {}
         # parse out relevant structure/lattice data
         self._parse_structure(data, return_dict)
@@ -232,7 +245,7 @@ class MaterialsProjectDataset(PointCloudDataset):
         # assume every other key are targets
         not_targets = set(
             ["structure", "symmetry", "fields_not_requested", "formula_pretty"]
-            + data["fields_not_requested"]
+            + data["fields_not_requested"],
         )
         # target_keys = getattr(self, "_target_keys", None)
         target_keys = self.target_key_list
@@ -263,8 +276,8 @@ class MaterialsProjectDataset(PointCloudDataset):
 
     @staticmethod
     def _standardize_values(
-        value: Union[float, Iterable[float]]
-    ) -> Union[torch.Tensor, float]:
+        value: float | Iterable[float],
+    ) -> torch.Tensor | float:
         """
         Standardizes targets to be ingested by a model.
 
@@ -299,7 +312,7 @@ class MaterialsProjectDataset(PointCloudDataset):
             return value
 
     @cached_property
-    def dataset_target_norm(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def dataset_target_norm(self) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Compute the dataset average for targets.
 
@@ -317,7 +330,7 @@ class MaterialsProjectDataset(PointCloudDataset):
         return (targets.mean(0, keepdim=True), targets.std(0, keepdim=True))
 
     @staticmethod
-    def collate_fn(batch: List[DataDict]) -> BatchDict:
+    def collate_fn(batch: list[DataDict]) -> BatchDict:
         # since this class returns point clouds by default, we have to pad
         # the atom-centered point cloud data
         return concatenate_keys(
@@ -331,7 +344,7 @@ if _has_pyg:
     from torch_geometric.data import Batch, Data
 
     CrystalNN = local_env.CrystalNN(
-        distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False
+        distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False,
     )
 
     @registry.register_dataset("PyGMaterialsProjectDataset")
@@ -346,9 +359,9 @@ if _has_pyg:
 
         def __init__(
             self,
-            lmdb_root_path: Union[str, Path],
+            lmdb_root_path: str | Path,
             cutoff_dist: float = 5.0,
-            transforms: Optional[List[Callable]] = None,
+            transforms: list[Callable] | None = None,
         ) -> None:
             """
             Instantiate a `PyGMaterialsProjectDataset` object.
@@ -391,8 +404,8 @@ if _has_pyg:
             self._cutoff_dist = value
 
         def data_from_key(
-            self, lmdb_index: int, subindex: int
-        ) -> Dict[str, Union[torch.Tensor, Data, Dict[str, torch.Tensor]]]:
+            self, lmdb_index: int, subindex: int,
+        ) -> dict[str, torch.Tensor | Data | dict[str, torch.Tensor]]:
             """
             Maps a pair of indices to a specific data sample from LMDB.
 
@@ -441,8 +454,8 @@ if _has_pyg:
 
         @staticmethod
         def collate_fn(
-            batch: List[Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]]
-        ) -> Dict[str, Union[torch.Tensor, Data, Dict[str, torch.Tensor]]]:
+            batch: list[dict[str, torch.Tensor | dict[str, torch.Tensor]]],
+        ) -> dict[str, torch.Tensor | Data | dict[str, torch.Tensor]]:
             """
             Collate function for DGLGraph variant of the Materials Project.
 
@@ -467,9 +480,9 @@ if _has_pyg:
     class PyGCdvaeDataset(PyGMaterialsProjectDataset):
         def __init__(
             self,
-            lmdb_root_path: Union[str, Path],
+            lmdb_root_path: str | Path,
             cutoff_dist: float = 5.0,
-            transforms: Optional[List[Callable]] = None,
+            transforms: list[Callable] | None = None,
             max_atoms: int = 25,
         ) -> None:
             super().__init__(lmdb_root_path, cutoff_dist, transforms)
@@ -479,10 +492,10 @@ if _has_pyg:
             self.scaler = None
 
         def data_from_key(
-            self, lmdb_index: int, subindex: int
-        ) -> Dict[str, Union[torch.Tensor, Data, Dict[str, torch.Tensor]]]:
+            self, lmdb_index: int, subindex: int,
+        ) -> dict[str, torch.Tensor | Data | dict[str, torch.Tensor]]:
             data = super(PyGMaterialsProjectDataset, self).data_from_key(
-                lmdb_index, subindex
+                lmdb_index, subindex,
             )
             num_nodes = len(data["atomic_numbers"])
             if num_nodes > 25:
@@ -515,15 +528,15 @@ if _has_pyg:
             return data
 
         def _parse_structure(
-            self, data: Dict[str, Any], return_dict: Dict[str, Any]
+            self, data: dict[str, Any], return_dict: dict[str, Any],
         ) -> None:
             """
             The same as OG with the addition of jimages field
             """
-            structure: Union[None, Structure] = data.get("structure", None)
+            structure: None | Structure = data.get("structure", None)
             if structure is None:
                 raise ValueError(
-                    "Structure not found in data - workflow needs a structure to use!"
+                    "Structure not found in data - workflow needs a structure to use!",
                 )
             coords = torch.from_numpy(structure.cart_coords).float()
             return_dict["pos"] = coords[None, :] - coords[:, None]
@@ -534,7 +547,7 @@ if _has_pyg:
             # return_dict["pc_features"] = pc_features
             return_dict["num_particles"] = len(atom_numbers)
             return_dict["distance_matrix"] = torch.from_numpy(
-                structure.distance_matrix
+                structure.distance_matrix,
             ).float()
 
             crystal_graph = StructureGraph.with_local_env_strategy(structure, CrystalNN)
@@ -549,8 +562,10 @@ if _has_pyg:
 
             # grab lattice properties
             # SUPER SLOW
+            abc = structure.lattice.abc
+            angles = structure.lattice.angles
             lattice_params = torch.FloatTensor(
-                structure.lattice.abc + tuple(structure.lattice.angles)
+                abc + tuple(angles),
             )
             lattice_features = {
                 "lattice_params": lattice_params,
@@ -558,7 +573,7 @@ if _has_pyg:
             return_dict["lattice_features"] = lattice_features
 
         @cache
-        def _load_keys(self) -> List[Tuple[int, int]]:
+        def _load_keys(self) -> list[tuple[int, int]]:
             """
             Load in all of the indices from each LMDB file. This creates an
             easy lookup of which data point is mapped to which total dataset
@@ -592,9 +607,9 @@ if _has_pyg:
     class CdvaeLMDBDataset(PyGMaterialsProjectDataset):
         def __init__(
             self,
-            lmdb_root_path: Union[str, Path],
+            lmdb_root_path: str | Path,
             cutoff_dist: float = 5.0,
-            transforms: Optional[List[Callable]] = None,
+            transforms: list[Callable] | None = None,
             max_atoms: int = 25,
         ) -> None:
             super().__init__(lmdb_root_path, cutoff_dist, transforms)
@@ -604,20 +619,20 @@ if _has_pyg:
             self.scaler = None
 
         def data_from_key(
-            self, lmdb_index: int, subindex: int
-        ) -> Dict[str, Union[torch.Tensor, Data, Dict[str, torch.Tensor]]]:
+            self, lmdb_index: int, subindex: int,
+        ) -> dict[str, torch.Tensor | Data | dict[str, torch.Tensor]]:
             # The LMDB dataset already has prepared PyG graphs
             data = super(MaterialsProjectDataset, self).data_from_key(
-                lmdb_index, subindex
+                lmdb_index, subindex,
             )
             return data
 
-        def index_to_key(self, index: int) -> Tuple[int]:
+        def index_to_key(self, index: int) -> tuple[int]:
             """Look up the index number in the list of LMDB keys"""
             return self.keys[index]
 
         @cache
-        def _load_keys(self) -> List[Tuple[int, int]]:
+        def _load_keys(self) -> list[tuple[int, int]]:
             indices = []
             for lmdb_index, env in enumerate(self._envs):
                 with env.begin() as txn:
@@ -629,7 +644,7 @@ if _has_pyg:
                     # filter out non-numeric keys
                     subindices = filter(lambda x: x.isnumeric(), lmdb_keys)
                     indices.extend(
-                        [(lmdb_index, int(subindex)) for subindex in subindices]
+                        [(lmdb_index, int(subindex)) for subindex in subindices],
                     )
             return indices
 
@@ -638,11 +653,11 @@ if _has_pyg:
 class M3GMaterialsProjectDataset(MaterialsProjectDataset):
     def __init__(
         self,
-        lmdb_root_path: Union[str, Path],
+        lmdb_root_path: str | Path,
         threebody_cutoff: float = 4.0,
         cutoff_dist: float = 20.0,
-        graph_labels: Union[list[Union[int, float]], None] = None,
-        transforms: Optional[List[Callable[..., Any]]] = None,
+        graph_labels: list[int | float] | None = None,
+        transforms: list[Callable[..., Any]] | None = None,
     ):
         super().__init__(lmdb_root_path, transforms)
         self.threebody_cutoff = threebody_cutoff
@@ -650,13 +665,13 @@ class M3GMaterialsProjectDataset(MaterialsProjectDataset):
         self.cutoff_dist = cutoff_dist
 
     def _parse_structure(
-        self, data: Dict[str, Any], return_dict: Dict[str, Any]
+        self, data: dict[str, Any], return_dict: dict[str, Any],
     ) -> None:
         super()._parse_structure(data, return_dict)
-        structure: Union[None, Structure] = data.get("structure", None)
+        structure: None | Structure = data.get("structure", None)
         self.structures = [structure]
         self.converter = Structure2Graph(
-            element_types=element_types(), cutoff=self.cutoff_dist
+            element_types=element_types(), cutoff=self.cutoff_dist,
         )
         graphs, lg, sa = M3GNetDataset.process(self)
         return_dict["graph"] = graphs[0]
