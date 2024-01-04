@@ -6,6 +6,7 @@ logs
 *.traj
 experimental
 lightning_logs
+*.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

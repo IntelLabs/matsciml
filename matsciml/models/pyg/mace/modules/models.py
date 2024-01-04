@@ -26,7 +26,7 @@ from matsciml.models.pyg.mace.tools import (
     voigt_to_matrix,
 )
 
-from matsciml.common.types import DataDict, BatchDict
+from matsciml.common.types import DataDict, BatchDict , Embeddings
 
 
 from matsciml.common.types import AbstractGraph
@@ -380,9 +380,7 @@ class ScaleShiftMACE(MACE):
             "edge_feats" :edge_feats
         }
 
-
-        
-        return output
+        return Embeddings(output["energy"],output["node_feats"])
     
     def read_batch(self, batch: BatchDict) -> DataDict:
         """
@@ -408,11 +406,14 @@ class ScaleShiftMACE(MACE):
         graph = batch.get("graph")    
         pbc=batch.get('pbc')    
         data={'cell':batch.get('cell'),'energy':batch.get('energy')}
+        
         assert isinstance(
             graph, (pyg.data.Data, pyg.data.Batch)
         ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
+        
         for key in ["ptr","batch","edge_feats", "graph_feats"]:
             data[key] = getattr(graph, key, None)
+        
         data["positions"]=getattr(graph, "pos")
         data["forces"]=getattr(graph, "force")
         # Charges default to 0 instead of None if not found
@@ -420,9 +421,7 @@ class ScaleShiftMACE(MACE):
         
         data["energy_weight"]=torch.ones((data["energy"].shape[0],))
         data["forces_weight"]=torch.ones((data["energy"].shape[0],))
-        
-        
-
+                
         data["stress"]=torch.ones((data["energy"].shape[0],3,3))
         data["stress_weights"]=torch.ones((data["energy"].shape[0],))
         
@@ -435,12 +434,11 @@ class ScaleShiftMACE(MACE):
         z_table=tools.get_atomic_number_table_from_zs(atomic_numbers.numpy())
 
         indices = atomic_numbers_to_indices(atomic_numbers, z_table=z_table)
-        one_hot = to_one_hot(
+        data["node_attrs"] = to_one_hot(
             torch.tensor(indices, dtype=torch.long).unsqueeze(-1),
             num_classes=len(z_table),
         )
 
-        data["node_attrs"]=one_hot
         shifts=[]
         edge_index=[]
         unit_shifts=[]
