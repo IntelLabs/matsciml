@@ -208,9 +208,9 @@ class IrrepOutputBlock(nn.Module):
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         output = self.layers(data)
-        if self.residual:
-            assert output.shape == data.shape
-            output = output + data
+        # if self.residual:
+        #     assert output.shape == data.shape
+        #     output = output + data
         return output
 
     @property

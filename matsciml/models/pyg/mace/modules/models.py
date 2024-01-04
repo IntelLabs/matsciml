@@ -380,7 +380,7 @@ class ScaleShiftMACE(MACE):
             "edge_feats" :edge_feats
         }
 
-        return Embeddings(output["energy"],output["node_feats"])
+        return Embeddings(output["energy"].reshape(-1,1),output["node_feats"])
     
     def read_batch(self, batch: BatchDict) -> DataDict:
         """
