@@ -357,24 +357,24 @@ class ScaleShiftMACE(MACE):
         total_energy = e0 + inter_e
         node_energy = node_e0 + node_inter_es
 
-        forces, virials, stress = get_outputs(
-            energy=inter_e,
-            positions=data["positions"],
-            displacement=displacement,
-            cell=data["cell"],
-            training=training,
-            compute_force=compute_force,
-            compute_virials=compute_virials,
-            compute_stress=compute_stress,
-        )
+        # forces, virials, stress = get_outputs(
+        #     energy=inter_e,
+        #     positions=data["positions"],
+        #     displacement=displacement,
+        #     cell=data["cell"],
+        #     training=training,
+        #     compute_force=compute_force,
+        #     compute_virials=compute_virials,
+        #     compute_stress=compute_stress,
+        # )
 
         output = {
             "energy": total_energy,
             "node_energy": node_energy,
             "interaction_energy": inter_e,
-            "forces": forces,
-            "virials": virials,
-            "stress": stress,
+            # "forces": forces,
+            # "virials": virials,
+            # "stress": stress,
             "displacement": displacement,
             "node_feats" :node_feats,
             "edge_feats" :edge_feats
