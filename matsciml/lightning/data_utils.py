@@ -1,13 +1,20 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from typing import Any, Union, Optional, Type, List, Dict
-from pathlib import Path
 from os import getenv
+from pathlib import Path
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Type
+from typing import Union
 
 import pytorch_lightning as pl
 import torch
-from torch.utils.data import DataLoader, Dataset as TorchDataset
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset as TorchDataset
 from torch.utils.data import random_split
 
 from matsciml.common.registry import registry
@@ -107,7 +114,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         super().__init__()
         # make sure we have something to work with
         assert any(
-            [i for i in [dataset, train_path, val_split, test_split]]
+            [i for i in [dataset, train_path, val_split, test_split]],
         ), f"No splits provided to datamodule."
         # if floats are passed to splits, make sure dataset is provided for inference
         if any([isinstance(i, float) for i in [val_split, test_split]]):
@@ -119,7 +126,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
                 [
                     isinstance(p, (str, Path))
                     for p in [train_path, val_split, test_split]
-                ]
+                ],
             ), "Dataset type passed, but no paths to construct with."
         self.dataset = dataset
         self.dset_kwargs = dset_kwargs
@@ -152,7 +159,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         self._persistent_workers = value
 
     def _make_dataset(
-        self, path: Union[str, Path], dataset: Union[TorchDataset, Type[TorchDataset]]
+        self, path: Union[str, Path], dataset: Union[TorchDataset, Type[TorchDataset]],
     ) -> TorchDataset:
         """
         Convert a string or path specification of a dataset into a concrete dataset object.
@@ -180,7 +187,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             if not dataset:
                 valid_keys = registry.__entries__["datasets"].keys()
                 raise KeyError(
-                    f"Incorrect dataset specification from string: passed {dset_string}, but not found in registry: {valid_keys}."
+                    f"Incorrect dataset specification from string: passed {dset_string}, but not found in registry: {valid_keys}.",
                 )
         if isinstance(dataset, TorchDataset):
             transforms = getattr(dataset, "transforms", None)
@@ -204,7 +211,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             [
                 isinstance(self.hparams[key], float)
                 for key in ["val_split", "test_split"]
-            ]
+            ],
         ):
             # in the case that floats are provided for
             if self.hparams.seed is None:
@@ -229,7 +236,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
                 num_train >= 0
             ), f"More test/validation samples requested than available samples."
             splits_list = random_split(
-                self.dataset, [num_train, num_val, num_test], generator
+                self.dataset, [num_train, num_val, num_test], generator,
             )
             for split, key in zip(splits_list, ["train", "val", "test"]):
                 if split is not None:
@@ -333,7 +340,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         devset_path = getattr(dset, "__devset__", None)
         if not devset_path:
             raise NotImplementedError(
-                f"Dataset {dset.__name__} does not contain a '__devset__' attribute, cannot instantiate from devset."
+                f"Dataset {dset.__name__} does not contain a '__devset__' attribute, cannot instantiate from devset.",
             )
         datamodule = cls(
             dset,
@@ -363,7 +370,7 @@ class MultiDataModule(pl.LightningDataModule):
         persistent_workers: Optional[bool] = None,
     ) -> None:
         r"""
-        Data module specifically for using mutiple different datasets in tandem.
+        Data module specifically for using multiple different datasets in tandem.
 
         Parameters
         ----------
@@ -419,10 +426,10 @@ class MultiDataModule(pl.LightningDataModule):
         super().__init__()
         if not any([train_dataset, val_dataset, test_dataset, predict_dataset]):
             raise ValueError(
-                f"No datasets were passed for training, validation, testing, or predict."
+                f"No datasets were passed for training, validation, testing, or predict.",
             )
         self.save_hyperparameters(
-            ignore=["train_dataset", "val_dataset", "test_dataset", "predict_dataset"]
+            ignore=["train_dataset", "val_dataset", "test_dataset", "predict_dataset"],
         )
         # stash the datasets as an attribute
         self.datasets = {
@@ -463,10 +470,13 @@ class MultiDataModule(pl.LightningDataModule):
     def target_keys(self) -> Dict[str, Dict[str, List[str]]]:
         return self.datasets["train"].target_keys
 
+
+    # Cannot return None for dataloaders
+    # https://github.com/Lightning-AI/pytorch-lightning/issues/15703#issuecomment-1872664346
     def train_dataloader(self) -> Union[DataLoader, None]:
         data = self.datasets.get("train", None)
         if data is None:
-            return None
+            return []
         return DataLoader(
             data,
             self.hparams.batch_size,
@@ -479,7 +489,7 @@ class MultiDataModule(pl.LightningDataModule):
     def val_dataloader(self) -> Union[DataLoader, None]:
         data = self.datasets.get("val", None)
         if data is None:
-            return None
+            return []
         return DataLoader(
             data,
             self.hparams.batch_size,
@@ -491,7 +501,7 @@ class MultiDataModule(pl.LightningDataModule):
     def test_dataloader(self) -> Union[DataLoader, None]:
         data = self.datasets.get("test", None)
         if data is None:
-            return None
+            return []
         return DataLoader(
             data,
             self.hparams.batch_size,
@@ -503,7 +513,7 @@ class MultiDataModule(pl.LightningDataModule):
     def predict_dataloader(self) -> Union[DataLoader, None]:
         data = self.datasets.get("predict", None)
         if data is None:
-            return None
+            return []
         return DataLoader(
             data,
             self.hparams.batch_size,

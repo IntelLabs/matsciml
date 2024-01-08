@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 
+from matsciml.datasets.transforms import DistancesTransform
+from matsciml.datasets.transforms import GraphVariablesTransform
+from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import MEGNet
 from matsciml.models.base import ScalarRegressionTask
-from matsciml.lightning.data_utils import MatSciMLDataModule
-from matsciml.datasets.transforms import DistancesTransform, GraphVariablesTransform
 
 # construct a scalar regression task with SchNet encoder
 task = ScalarRegressionTask(
@@ -21,7 +24,7 @@ task = ScalarRegressionTask(
         "is_classification": False,
         "encoder_only": True,
     },
-    output_kwargs={"lazy": False, "input_dim": 640},
+    output_kwargs={"lazy": False, "input_dim": 640, "hidden_dim": 640},
     task_keys=["energy_relaxed"],
 )
 # MPNN expects edge features corresponding to atom-atom distances

@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from abc import abstractmethod, ABC
-from typing import Any, Union
+from abc import ABC
+from abc import abstractmethod
 from pathlib import Path
+from typing import Any
+from typing import Union
 
 import pytorch_lightning as pl
 import torch
 from torch import nn
 
 from matsciml.common.registry import registry
-from matsciml.common.types import BatchDict, DataDict
+from matsciml.common.types import BatchDict
+from matsciml.common.types import DataDict
 
 
 class BaseInferenceTask(ABC, pl.LightningModule):
@@ -19,7 +22,7 @@ class BaseInferenceTask(ABC, pl.LightningModule):
 
     @abstractmethod
     def predict_step(
-        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0
+        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0 = 0
     ) -> Any:
         ...
 
@@ -103,7 +106,7 @@ class EmbeddingInferenceTask(BaseInferenceTask):
         return self.encoder(batch)
 
     def predict_step(
-        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0
+        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0 = 0
     ) -> DataDict:
         embeddings = self(batch)
         return_dict = {"embedding": embeddings}

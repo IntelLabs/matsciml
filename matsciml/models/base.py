@@ -1,35 +1,41 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from pathlib import Path
-from typing import (
-    Dict,
-    Iterable,
-    Type,
-    Tuple,
-    Optional,
-    Union,
-    ContextManager,
-    List,
-    Any,
-)
-from abc import abstractmethod, ABC
-from contextlib import nullcontext, ExitStack
 import logging
+from abc import ABC
+from abc import abstractmethod
+from contextlib import ExitStack
+from contextlib import nullcontext
+from pathlib import Path
+from typing import Any
+from typing import ContextManager
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Type
+from typing import Union
 from warnings import warn
 
 import pytorch_lightning as pl
 import torch
-from torch import Tensor, nn
-from torch.optim import AdamW, Optimizer
-from torch.optim import lr_scheduler
 from einops import reduce
+from torch import nn
+from torch import Tensor
+from torch.optim import AdamW
+from torch.optim import lr_scheduler
+from torch.optim import Optimizer
 
-from matsciml.modules.normalizer import Normalizer
-from matsciml.models.common import OutputHead
-from matsciml.common.types import DataDict, BatchDict, AbstractGraph, Embeddings
-from matsciml.common.registry import registry
 from matsciml.common import package_registry
+from matsciml.common.registry import registry
+from matsciml.common.types import AbstractGraph
+from matsciml.common.types import BatchDict
+from matsciml.common.types import DataDict
+from matsciml.common.types import Embeddings
+from matsciml.models.common import OutputHead
+from matsciml.modules.normalizer import Normalizer
 
 if package_registry["dgl"]:
     import dgl
@@ -217,7 +223,7 @@ class AbstractTask(ABC, pl.LightningModule):
         super().__init__()
         embedding_kwargs.setdefault("padding_idx", 0)
         self.atom_embedding = nn.Embedding(
-            num_atom_embedding, atom_embedding_dim, **embedding_kwargs
+            num_atom_embedding, atom_embedding_dim, **embedding_kwargs,
         )
         self.save_hyperparameters()
 
@@ -293,7 +299,7 @@ class AbstractTask(ABC, pl.LightningModule):
         # raise an error to help spot models that have not yet been refactored
         if not isinstance(outputs, Embeddings):
             raise ValueError(
-                "Encoder did not return `Embeddings` data structure: please refactor your model!"
+                "Encoder did not return `Embeddings` data structure: please refactor your model!",
             )
         return outputs
 
@@ -329,7 +335,7 @@ class AbstractPointCloudModel(AbstractTask):
         from matsciml.datasets.utils import pad_point_cloud
 
         assert isinstance(
-            batch["pos"], torch.Tensor
+            batch["pos"], torch.Tensor,
         ), f"Expect 'pos' data to be a packed tensor of shape [N, 3]"
         data = {key: batch.get(key) for key in ["pc_features", "pos"]}
         # split the stacked positions into each individual point cloud
@@ -401,7 +407,7 @@ class AbstractPointCloudModel(AbstractTask):
 
     @staticmethod
     def mask_model_output(
-        result: torch.Tensor, mask: torch.Tensor, sizes: List[int], extensive: bool
+        result: torch.Tensor, mask: torch.Tensor, sizes: List[int], extensive: bool,
     ) -> torch.Tensor:
         r"""
         Perform a masked reduction over a point cloud model output.
@@ -460,7 +466,7 @@ class AbstractGraphModel(AbstractTask):
         encoder_only: bool = True,
     ) -> None:
         super().__init__(
-            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only,
         )
 
     def read_batch(self, batch: BatchDict) -> DataDict:
@@ -472,7 +478,7 @@ class AbstractGraphModel(AbstractTask):
 
     @staticmethod
     def join_position_embeddings(
-        pos: torch.Tensor, node_feats: torch.Tensor
+        pos: torch.Tensor, node_feats: torch.Tensor,
     ) -> torch.Tensor:
         """
         This is a method for conveniently embedding both positions and node features
@@ -557,7 +563,7 @@ if package_registry["dgl"]:
             data = super().read_batch(batch)
             graph = data.get("graph")
             assert isinstance(
-                graph, dgl.DGLGraph
+                graph, dgl.DGLGraph,
             ), f"Model {self.__class__.__name__} expects DGL graphs, but data in 'graph' key is type {type(graph)}"
             atomic_numbers = data["graph"].ndata["atomic_numbers"].long()
             node_embeddings = self.atom_embedding(atomic_numbers)
@@ -599,7 +605,7 @@ if package_registry["pyg"]:
             data = super().read_batch(batch)
             graph = data.get("graph")
             assert isinstance(
-                graph, (pyg.data.Data, pyg.data.Batch)
+                graph, (pyg.data.Data, pyg.data.Batch),
             ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
             for key in ["edge_feats", "graph_feats"]:
                 data[key] = getattr(graph, key, None)
@@ -673,14 +679,14 @@ class BaseTaskModule(pl.LightningModule):
         super().__init__()
         if encoder is not None:
             warn(
-                f"Encoder object was passed directly into {self.__class__.__name__}; saved hyperparameters will be incomplete!"
+                f"Encoder object was passed directly into {self.__class__.__name__}; saved hyperparameters will be incomplete!",
             )
         if encoder_class is not None and encoder_kwargs:
             try:
                 encoder = encoder_class(**encoder_kwargs)
             except:
                 raise ValueError(
-                    f"Unable to instantiate encoder {encoder_class} with kwargs: {encoder_kwargs}."
+                    f"Unable to instantiate encoder {encoder_class} with kwargs: {encoder_kwargs}.",
                 )
         if encoder is not None:
             self.encoder = encoder
@@ -748,11 +754,11 @@ class BaseTaskModule(pl.LightningModule):
     @output_heads.setter
     def output_heads(self, heads: nn.ModuleDict) -> None:
         assert isinstance(
-            heads, nn.ModuleDict
+            heads, nn.ModuleDict,
         ), f"Output heads must be an instance of `nn.ModuleDict`."
         assert len(heads) > 0, f"No output heads in {heads}."
         assert all(
-            [key in self.task_keys for key in heads.keys()]
+            [key in self.task_keys for key in heads.keys()],
         ), f"Output head keys {heads.keys()} do not match any in tasks: {self.task_keys}."
         self._output_heads = heads
 
@@ -917,7 +923,7 @@ class BaseTaskModule(pl.LightningModule):
                 scheduler_class = getattr(lr_scheduler, scheduler_name, None)
                 if not scheduler_class:
                     raise NameError(
-                        f"{scheduler_class} was requested for LR scheduling, but is not in 'torch.optim.lr_scheduler'."
+                        f"{scheduler_class} was requested for LR scheduling, but is not in 'torch.optim.lr_scheduler'.",
                     )
                 scheduler = scheduler_class(opt, **params)
                 schedulers.append(scheduler)
@@ -937,7 +943,7 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = self.encoder.read_batch_size(batch)
         except:
             warn(
-                "Unable to parse batch size from data, defaulting to `None` for logging."
+                "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
@@ -957,7 +963,7 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = self.encoder.read_batch_size(batch)
         except:
             warn(
-                "Unable to parse batch size from data, defaulting to `None` for logging."
+                "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
@@ -977,7 +983,7 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = self.encoder.read_batch_size(batch)
         except:
             warn(
-                "Unable to parse batch size from data, defaulting to `None` for logging."
+                "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
@@ -1174,7 +1180,7 @@ class ScalarRegressionTask(BaseTaskModule):
         return status
 
     def on_validation_batch_start(
-        self, batch: any, batch_idx: int, dataloader_idx: int
+        self, batch: any, batch_idx: int, dataloader_idx: int = 0,
     ):
         self.on_train_batch_start(batch, batch_idx)
 
@@ -1250,7 +1256,7 @@ class BinaryClassificationTask(BaseTaskModule):
         return status
 
     def on_validation_batch_start(
-        self, batch: Any, batch_idx: int, dataloader_idx: int
+        self, batch: Any, batch_idx: int, dataloader_idx: int = 0,
     ):
         self.on_train_batch_start(batch, batch_idx)
 
@@ -1313,7 +1319,7 @@ class ForceRegressionTask(BaseTaskModule):
                 fa_rot = None
             if pos is None:
                 raise ValueError(
-                    f"No atomic positions were found in batch - neither as standalone tensor nor graph."
+                    f"No atomic positions were found in batch - neither as standalone tensor nor graph.",
                 )
             if isinstance(pos, torch.Tensor):
                 pos.requires_grad_(True)
@@ -1321,7 +1327,7 @@ class ForceRegressionTask(BaseTaskModule):
                 [p.requires_grad_(True) for p in pos]
             else:
                 raise ValueError(
-                    f"'pos' data is required for force calculation, but isn't a tensor or a list of tensors: {type(pos)}."
+                    f"'pos' data is required for force calculation, but isn't a tensor or a list of tensors: {type(pos)}.",
                 )
             if "embeddings" in batch:
                 embeddings = batch.get("embeddings")
@@ -1331,7 +1337,7 @@ class ForceRegressionTask(BaseTaskModule):
         return outputs
 
     def process_embedding(
-        self, embeddings: Embeddings, pos: torch.Tensor, fa_rot: Union[None, torch.Tensor] = None
+        self, embeddings: Embeddings, pos: torch.Tensor, fa_rot: Union[None, torch.Tensor] = None,
     ) -> Dict[str, torch.Tensor]:
         outputs = {}
         energy = self.output_heads["energy"](embeddings.system_embedding)
@@ -1355,10 +1361,10 @@ class ForceRegressionTask(BaseTaskModule):
                 repeat_rot = torch.repeat_interleave(
                     frame_rot,
                     natoms,
-                    dim=0
+                    dim=0,
                 ).to(self.device)
                 rotated_forces = force[:, frame_idx, :].view(-1, 1, 3).bmm(
-                    repeat_rot.transpose(1, 2)
+                    repeat_rot.transpose(1, 2),
                 )
                 all_forces.append(rotated_forces.view(natoms, 3))
             # combine all the force data into a single tensor
@@ -1400,7 +1406,7 @@ class ForceRegressionTask(BaseTaskModule):
                 target_dict[key] = batch["targets"][key]
             except KeyError as e:
                 raise KeyError(
-                    f"{key} was not found in targets key in batch, which is needed for force regression task."
+                    f"{key} was not found in targets key in batch, which is needed for force regression task.",
                 ) from e
         return target_dict
 
@@ -1483,7 +1489,7 @@ class ForceRegressionTask(BaseTaskModule):
             batch_size = self.encoder.read_batch_size(batch)
         except:
             warn(
-                "Unable to parse batch size from data, defaulting to `None` for logging."
+                "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
@@ -1504,7 +1510,7 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         if "task_keys" in kwargs:
             warn(
                 f"GradFreeForceRegressionTask does not `task_keys`; "
-                f"ignoring passed keys: {kwargs['task_keys']}"
+                f"ignoring passed keys: {kwargs['task_keys']}",
             )
             del kwargs["task_keys"]
         super().__init__(
@@ -1549,7 +1555,7 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         """
         if "force" not in batch["targets"]:
             raise KeyError(
-                f"Force key missing in batch targets: keys found: {batch['targets'].keys()}"
+                f"Force key missing in batch targets: keys found: {batch['targets'].keys()}",
             )
         target_dict = {"force": batch["targets"]["force"]}
         return target_dict
@@ -1599,10 +1605,10 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
                 repeat_rot = torch.repeat_interleave(
                     frame_rot,
                     natoms,
-                    dim=0
+                    dim=0,
                 ).to(self.device)
                 rotated_forces = forces[:, frame_idx, :].view(-1, 1, 3).bmm(
-                    repeat_rot.transpose(1, 2)
+                    repeat_rot.transpose(1, 2),
                 )
                 all_forces.append(rotated_forces.view(natoms, 3))
             # combine all the force data into a single tensor
@@ -1682,7 +1688,7 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         return status
 
     def on_validation_batch_start(
-        self, batch: Any, batch_idx: int, dataloader_idx: int
+        self, batch: Any, batch_idx: int, dataloader_idx: int = 0,
     ):
         self.on_train_batch_start(batch, batch_idx)
 
@@ -1694,12 +1700,12 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         subdict = batch.get("symmetry", None)
         if subdict is None:
             raise ValueError(
-                f"'symmetry' key is missing from batch, which is needed for space group classification."
+                f"'symmetry' key is missing from batch, which is needed for space group classification.",
             )
         labels: torch.Tensor = subdict.get("number", None)
         if labels is None:
             raise ValueError(
-                "Point group numbers missing from symmetry key, which is needed for symmetry classification."
+                "Point group numbers missing from symmetry key, which is needed for symmetry classification.",
             )
         # subtract one for zero-indexing
         labels = labels.long() - 1
@@ -1760,7 +1766,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 "subtask_hparams": subtask_hparams,
                 "task_scaling": task_scaling,
                 "encoder_opt_kwargs": encoder_opt_kwargs,
-            }
+            },
         )
         self.task_map = task_map
         self.dataset_names = dset_names
@@ -1772,7 +1778,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 dataset_name, task_type = pair
                 relevant_keys = task_keys[dataset_name][task_type]
                 self._initialize_subtask_output(
-                    dataset_name, task_type, task_keys=relevant_keys
+                    dataset_name, task_type, task_keys=relevant_keys,
                 )
         self.configure_optimizers()
         self.automatic_optimization = False
@@ -1978,7 +1984,7 @@ class MultiTaskLitModule(pl.LightningModule):
     def _toggle_input_grads(
         self,
         batch: Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
         ],
     ) -> None:
         """
@@ -2054,7 +2060,7 @@ class MultiTaskLitModule(pl.LightningModule):
     def forward(
         self,
         batch: Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
         ],
     ) -> Dict[str, Dict[str, torch.Tensor]]:
         """
@@ -2078,7 +2084,7 @@ class MultiTaskLitModule(pl.LightningModule):
         # iterate over datasets in the batch
         results = {}
         _grads = getattr(
-            self, "needs_dynamic_grads", False
+            self, "needs_dynamic_grads", False,
         )  # default to not needing grads
         with dynamic_gradients_context(_grads, self.has_rnn):
             # this function switches of `requires_grad_` for input tensors that need them
@@ -2204,7 +2210,7 @@ class MultiTaskLitModule(pl.LightningModule):
         task_instance: BaseTaskModule = self.task_map[dataset][task_type]
         if batch is None and task_keys is None:
             raise ValueError(
-                f"Unable to initialize output heads for {dataset}-{task_type}; neither batch nor task keys provided."
+                f"Unable to initialize output heads for {dataset}-{task_type}; neither batch nor task keys provided.",
             )
         if not task_instance.has_initialized:
             # get the task keys from the batch, depends on usage
@@ -2228,7 +2234,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 opt_index = self.optimizer_names.index(ref)
                 # this adds the output head weights to optimizer
                 self.optimizers()[opt_index].add_param_group(
-                    {"params": task_instance.output_heads.parameters()}
+                    {"params": task_instance.output_heads.parameters()},
                 )
 
     def embed(self, *args, **kwargs) -> Any:
@@ -2237,7 +2243,7 @@ class MultiTaskLitModule(pl.LightningModule):
     def _calculate_batch_size(
         self,
         batch: Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
         ],
     ) -> Dict[str, Union[int, Dict[str, int]]]:
         """
@@ -2307,7 +2313,7 @@ class MultiTaskLitModule(pl.LightningModule):
     def training_step(
         self,
         batch: Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
         ],
         batch_idx: int,
     ) -> Dict[str, Dict[str, torch.Tensor]]:
@@ -2347,7 +2353,7 @@ class MultiTaskLitModule(pl.LightningModule):
                     # scale loss values in task
                     scaling = self.task_scaling[opt_index]
                     self.manual_backward(
-                        subtask_loss["loss"] * scaling, retain_graph=not is_last_opt
+                        subtask_loss["loss"] * scaling, retain_graph=not is_last_opt,
                     )
                     self.on_after_backward()
                     prepend_affix(subtask_loss["log"], dataset_name)
@@ -2364,7 +2370,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 # scale loss values in task
                 scaling = self.task_scaling[opt_index]
                 self.manual_backward(
-                    loss["loss"] * scaling, retain_graph=not is_last_opt
+                    loss["loss"] * scaling, retain_graph=not is_last_opt,
                 )
                 self.on_after_backward()
                 loss_logging.update(loss["log"])
@@ -2397,7 +2403,7 @@ class MultiTaskLitModule(pl.LightningModule):
     def validation_step(
         self,
         batch: Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
         ],
         batch_idx: int,
     ) -> Dict[str, Dict[str, torch.Tensor]]:
@@ -2457,7 +2463,7 @@ class MultiTaskLitModule(pl.LightningModule):
         **kwargs: Any,
     ):
         raise NotImplementedError(
-            f"MultiTask should be reloaded using the `matsciml.models.multitask_from_checkpoint` function instead."
+            f"MultiTask should be reloaded using the `matsciml.models.multitask_from_checkpoint` function instead.",
         )
 
     @classmethod
@@ -2535,7 +2541,7 @@ class OpenCatalystInference(ABC, pl.LightningModule):
 
     def _raise_inference_error(self):
         raise NotImplementedError(
-            f"{self.__class__.__name__} is solely used for OpenCatalyst leaderboard submissions; please call 'predict' from trainer."
+            f"{self.__class__.__name__} is solely used for OpenCatalyst leaderboard submissions; please call 'predict' from trainer.",
         )
 
     def training_step(self, *args: Any, **kwargs: Any) -> None:
@@ -2555,10 +2561,10 @@ class OpenCatalystInference(ABC, pl.LightningModule):
 @registry.register_task("IS2REInference")
 class IS2REInference(OpenCatalystInference):
     def __init__(
-        self, pretrained_model: Union[AbstractEnergyModel, ScalarRegressionTask]
+        self, pretrained_model: Union[AbstractEnergyModel, ScalarRegressionTask],
     ) -> None:
         assert isinstance(
-            pretrained_model, (AbstractEnergyModel, ScalarRegressionTask)
+            pretrained_model, (AbstractEnergyModel, ScalarRegressionTask),
         ), f"IS2REInference expects a pretrained energy model or 'ScalarRegressionTask' as input."
         super().__init__(pretrained_model)
 
@@ -2571,7 +2577,7 @@ class IS2REInference(OpenCatalystInference):
 class S2EFInference(OpenCatalystInference):
     def __init__(self, pretrained_model: ForceRegressionTask) -> None:
         assert isinstance(
-            pretrained_model, ForceRegressionTask
+            pretrained_model, ForceRegressionTask,
         ), f"S2EFInference expects a pretrained 'ForceRegressionTask' instance as input."
         super().__init__(pretrained_model)
 
@@ -2620,7 +2626,7 @@ class S2EFInference(OpenCatalystInference):
         return predictions
 
     def on_predict_batch_end(
-        self, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int
+        self, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int = 0,
     ) -> None:
         # reset gradients to ensure no contamination between batches
         self.zero_grad(set_to_none=True)

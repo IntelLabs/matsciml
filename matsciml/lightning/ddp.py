@@ -1,21 +1,24 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from datetime import timedelta
 import os
-from typing import Callable, Optional, Any, List
-
-from lightning_lite.plugins import CheckpointIO
+from datetime import timedelta
+from typing import Any
+from typing import Callable
+from typing import List
+from typing import Optional
 
 import torch
-from lightning_lite.plugins.collectives.torch_collective import default_pg_timeout
-# majority of these imports are just for type hinting!
+from lightning_fabric.plugins.collectives.torch_collective import default_pg_timeout
+from pytorch_lightning.plugins import CheckpointIO
 from pytorch_lightning.plugins.environments import (
     LightningEnvironment,
 )
-from pytorch_lightning.strategies.ddp import DDPStrategy
-from pytorch_lightning.strategies import StrategyRegistry
 from pytorch_lightning.plugins.precision import PrecisionPlugin
+from pytorch_lightning.strategies import StrategyRegistry
+from pytorch_lightning.strategies.ddp import DDPStrategy
+# majority of these imports are just for type hinting!
 
 
 class MPIEnvironment(LightningEnvironment):
