@@ -63,3 +63,6 @@ class MACEDataTransform(AbstractDataTransform):
             graph.virials = torch.ones((3, 3))
         if "virials_weights" not in graph:
             graph.virials_weights = torch.ones((3, 3)) * self.virials_weights
+        # generate one-hot vectors for the atomic numbers
+        atomic_numbers = graph["atomic_numbers"]
+        graph["onehot_atomic_numbers"] = self.atom_table[atomic_numbers]
