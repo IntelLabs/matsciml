@@ -24,12 +24,14 @@ class MACEDataTransform(AbstractDataTransform):
         forces_weights: float = 1.0,
         stress_weights: float | torch.Tensor = 1.0,
         virials_weights: float | torch.Tensor = 1.0,
+        max_atom_number: int = 1000,
     ) -> None:
         super().__init__()
         self.energy_weights = energy_weights
         self.forces_weights = forces_weights
         self.stress_weights = stress_weights
         self.virials_weights = virials_weights
+        self.atom_table = torch.eye(max_atom_number, dtype=torch.long)
 
     def __call__(self, data: DataDict) -> DataDict:
         if "graph" not in data:
