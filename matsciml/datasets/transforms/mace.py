@@ -66,3 +66,37 @@ class MACEDataTransform(AbstractDataTransform):
         # generate one-hot vectors for the atomic numbers
         atomic_numbers = graph["atomic_numbers"]
         graph["onehot_atomic_numbers"] = self.atom_table[atomic_numbers]
+        # now work on structural aspects with periodic boundary conditions
+        if "pbc" in data:
+            pbc = data["pbc"]
+        else:
+            pbc = getattr(graph, "pbc")
+            if pbc is None:
+                raise ValueError("No periodic boundary conditions available in data!")
+        shifts = []
+        edge_index = []
+        unit_shifts = []
+        # TODO code below needs to be reviewed and made functional
+        b_sz = data["ptr"].numel() - 1
+        pos_k = data["positions"].reshape(b_sz, -1, 3)
+        cell_k = data["cell"].reshape(b_sz, 3, 3)
+        for k in range(b_sz):
+            pbc_tensor = pbc[k] == 1
+            pbc_tuple = (
+                pbc_tensor[0].item(),
+                pbc_tensor[1].item(),
+                pbc_tensor[2].item(),
+            )
+            # get_neighborhood is missing from implementation
+            edge_index_k, shifts_k, unit_shifts_k = get_neighborhood(
+                pos_k[k].numpy(),
+                cutoff=self.r_max.item(),
+                pbc=pbc_tuple,
+                cell=cell_k[k],
+            )
+            shifts += [torch.Tensor(shifts_k)]
+            edge_index += [torch.Tensor(edge_index_k).T.to(torch.int64)]
+            unit_shifts += [torch.Tensor(unit_shifts_k)]
+        # since modifications are done in place, just return the original
+        # structure for consistency
+        return data
