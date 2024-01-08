@@ -1479,7 +1479,7 @@ class ForceRegressionTask(BaseTaskModule):
         # sandwich lightning callbacks
         self.manual_backward(loss, retain_graph=True)
         self.manual_backward(loss)
-        self.on_before_optimizer_step(opt, 0)
+        self.on_before_optimizer_step(opt)
         opt.step()
         metrics = {}
         # prepending training flag
@@ -2376,7 +2376,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 loss_logging.update(loss["log"])
         # run before step hooks
         for opt_idx, opt in enumerate(optimizers):
-            self.on_before_optimizer_step(opt, opt_idx)
+            self.on_before_optimizer_step(opt)
             opt.step()
         # compoute the joint loss for logging purposes
         loss_logging["total_loss"] = sum(list(loss_logging.values()))
