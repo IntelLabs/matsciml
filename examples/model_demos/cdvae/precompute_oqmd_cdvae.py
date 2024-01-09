@@ -1,12 +1,13 @@
 from typing import Dict, Union
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-import os, sys, shutil, warnings, pickle
-import lmdb, dgl, torch, numpy, time
+import os, sys, shutil, warnings, pickle, time
+import lmdb, dgl, torch, numpy
 from tqdm import tqdm
 from torch_geometric.data import Data, Batch
-from enum import Enum
 
+from pymatgen.core.structure import Structure
+from pymatgen.core.lattice import Lattice
 from pymatgen.analysis.graphs import StructureGraph
 from pymatgen.analysis import local_env
 
@@ -21,31 +22,48 @@ CrystalNN = local_env.CrystalNN(
     distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False
 )  # , search_cutoff=15.0)
 
+def get_distance_matrix(coords, lattice_vectors):
+    num_sites = len(coords)
+    distance_matrix = numpy.zeros((num_sites, num_sites))
+    for i in range(num_sites):
+        for j in range(i, num_sites):
+            delta = numpy.subtract(coords[i], coords[j])
+            # Apply minimum image convention for periodic boundary conditions
+            # delta -= numpy.round(delta)
+            distance = numpy.linalg.norm(numpy.dot(delta, lattice_vectors))
+            distance_matrix[i, j] = distance
+            distance_matrix[j, i] = distance
+    return distance_matrix
 
 def parse_structure(item) -> None:
     """
     The same as OG with the addition of jimages field
     """
     return_dict = {}
-    structure = item.get("structure", None)
+    structure = item.get("cart_coords", None)
     if structure is None:
         raise ValueError(
             "Structure not found in data - workflow needs a structure to use!"
         )
-    coords = torch.from_numpy(structure.cart_coords).float()
+    cartesian_coords = numpy.array(structure)
+    lattice_vectors = Lattice(numpy.array(item["unit_cell"]))
+    species = [site.split(" ")[0] for site in item["sites"]]
+    frac_coords = lattice_vectors.get_fractional_coords(cart_coords=cartesian_coords)
+    coords = torch.from_numpy(cartesian_coords)
     return_dict["pos"] = coords[None, :] - coords[:, None]
     return_dict["coords"] = coords
-    return_dict["frac_coords"] = structure.frac_coords
-    atom_numbers = torch.LongTensor(structure.atomic_numbers)
+    return_dict["frac_coords"] = frac_coords
     # keep atomic numbers for graph featurization
-    return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
-    return_dict["num_particles"] = len(atom_numbers)
-    return_dict["distance_matrix"] = torch.from_numpy(structure.distance_matrix).float()
+    return_dict["atomic_numbers"] = torch.LongTensor(item["atomic_numbers"])
+    return_dict["num_particles"] = item["natoms"]
+    distance_matrix = get_distance_matrix(cartesian_coords, numpy.array(item["unit_cell"]))
+    return_dict["distance_matrix"] = torch.from_numpy(distance_matrix).float()
     # jimages
+    structure_new = Structure(lattice_vectors, species, frac_coords)
 
     #
     try:
-        crystal_graph = StructureGraph.with_local_env_strategy(structure, CrystalNN)
+        crystal_graph = StructureGraph.with_local_env_strategy(structure_new, CrystalNN)
     except ValueError:
         return None
 
@@ -60,7 +78,7 @@ def parse_structure(item) -> None:
 
     # grab lattice properties
     lattice_params = torch.FloatTensor(
-        structure.lattice.abc + tuple(structure.lattice.angles)
+        lattice_vectors.abc + tuple(lattice_vectors.angles)
     )
     lattice_features = {
         "lattice_params": lattice_params,
@@ -69,9 +87,7 @@ def parse_structure(item) -> None:
 
     edge_index = return_dict["edge_index"]  # torch.LongTensor([[0, 1], [1, 0]])
     lattice_params = return_dict["lattice_features"]["lattice_params"]
-    y = item.get("formation_energy_per_atom")
-    if y is None:
-        y = 1
+    y = item["delta_e"]
     prop = torch.Tensor([y])
 
     # atom_coords are fractional coordinates
@@ -108,11 +124,17 @@ def convert_pyg_to_dgl(pyg_graph) -> Dict[str, Union[dgl.DGLGraph, torch.Tensor]
 
 
 def data_to_cdvae(item):
-    num_atoms = len(item["structure"].atomic_numbers)
-    if num_atoms > MAX_ATOMS:
-        return None 
-    pyg_data = parse_structure(item)
-    return pyg_data
+    # print(item)
+    num_atoms = item["natoms"]
+    if num_atoms is not None:
+        if num_atoms > MAX_ATOMS:
+            return None 
+        pyg_data = parse_structure(item)
+        return pyg_data
+    else:
+        warnings.warn(
+            "One entry is skipped due to missing the number of atoms, which is needed by the workflow!"
+        )
 
 
 def main(args: Namespace):
@@ -134,7 +156,7 @@ def main(args: Namespace):
     # more than one
     for path in db_paths:
         target = output_path / path.name
-        pyg_env = connect_db_read(path)       
+        pyg_env = connect_db_read(path)
         # open the output file for writing
         target_env = lmdb.open(
             str(target),
@@ -145,7 +167,7 @@ def main(args: Namespace):
             # because the final file size will be the same map_size no matter it is needed or not. Thus, 10737418240 = 10 GB is OK.
             # https://github.com/tensorpack/tensorpack/issues/1209
             # https://stackoverflow.com/questions/33508305/lmdb-maximum-size-of-the-database-for-windows
-            map_size=1073741824, # 1073741824 = 1 GB, 104857600 = 100 MB, 1048576 = 1 MB
+            map_size=1048576, # 1099511627776 = 1TB, 1073741824 = 1 GB, 104857600 = 100 MB, 1048576 = 1 MB
             meminit=False,
             map_async=True,
         )
@@ -193,11 +215,10 @@ if __name__ == "__main__":
 
         # Check if the command-line arguments were provided. If not, set default values or read from a configuration file.
     if args.src_lmdb is None:
-         # args.src_lmdb = "matsciml/datasets/materials_project/devset"  # Set default value or read from config file
-        args.src_lmdb = 'matsciml/datasets/materials_project/base/val'
+        args.src_lmdb = "matsciml/datasets/oqmd/devset_2"  # Set default value or read from config file
 
     if args.output_folder is None:
-        # args.output_folder = "matsciml/datasets/materials_project/devset/cdvae"    # Set default value or read from config file
+        # args.output_folder = "matsciml/datasets/oqmd/all/cdvae"    # Set default value or read from config file
         args.output_folder = args.src_lmdb + "/cdvae"
 
     main(args)
