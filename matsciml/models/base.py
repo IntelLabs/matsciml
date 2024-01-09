@@ -847,7 +847,7 @@ class BaseTaskModule(pl.LightningModule):
         target_dict = {}
         assert len(self.task_keys) != 0, f"No target keys were set!"
         for key in self.task_keys:
-            target_dict[key] = batch["targets"][key]
+            target_dict[key] = batch["targets"][key]                
         return target_dict
 
     def _filter_task_keys(

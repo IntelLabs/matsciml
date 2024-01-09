@@ -111,7 +111,7 @@ task = MultiTaskLitModule(
 
 # using manual optimization for multitask, so "grad_clip" args do not work for trainer
 trainer = pl.Trainer(
-    overfit_batches=10,
+    fast_dev_run=10,
     logger=False,
     enable_checkpointing=False,
     callbacks=[cb.GradientCheckCallback()],
