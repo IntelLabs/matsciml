@@ -53,7 +53,58 @@ In your `<new_dataset>` folder, we'll need the following files:
 
 This includes a `tests` folder for your `pytest` unit tests, and a `devset`
 folder which will contain a small `.lmdb` file you'll create later holding
-your development dataset.
+your development dataset. If your dataset involves querying a remote API,
+we recommend creating a separate `api.py` module; see our Materials Project
+or NOMAD implementations for examples there.
+
+### Creating LMDB files
+
+Chances are, your dataset is not contained within LMDB files. The main advantages
+of LMDB are performance (as a binary format) and scalability (both in size and
+distributed settings). While a good understanding of how LMDB works is (hopefully)
+not necessary, we recommend perusing their [documentation][lmdb].
+
+To convert your data into LMDB files, we've provided some functions for reading
+and writing to LMDB - as part of developing the dataset you'll need to write a
+small script to convert the original data format into an LMDB file. As a very
+simple illustrative example, if we had a dataset stored as JSON structures
+contained in a single file, the script might look like this:
+
+```python
+from json import load
+# utils module contains LMDB routines
+from matsciml.datasets import utils
+
+# assume json_data is a list of dicts
+with open("dataset.json", "r"") as read_file:
+  json_data = load(read_file)
+
+# set a target directory that will hold all the LMDB files
+lmdb_target_dir = "<path_to_datasets>/matsciml/new_materials_data/train"
+
+utils.parallel_lmdb_write(lmdb_target_dir, json_data, num_procs=8)
+```
+
+The last line will divide `json_data` amongst `num_procs` workers, each creating an LMDB
+file in `lmdb_target_dir`; in this case, we're working on the training split and will
+create `data.0000-7.lmdb` inside the `train` folder.
+
+If this high level functionality doesn't work, you can manually implement a loop
+over samples and write the data out like so:
+
+```python
+lmdb_file = utils.connect_lmdb_write(lmdb_target_dir + "/data.lmdb")
+
+for index, data in enumerate(json_data):
+  utils.write_lmdb_data(index, data, lmdb_file)
+```
+
+This uses `index` (as with other datasets) as the key to a particular data sample. You can use
+arbitrary key names, such as `metadata` to include extra notes on the dataset as well (e.g.
+when and how it was accessed, etc.), however *only integers will automatically recognized as
+data samples* by methods like `utils.get_lmdb_data_keys` and by extension, `utils.get_lmdb_data_length`
+which is used by the `BaseLMDBDataset` class to determine the number of samples via `__len__`.
+
 
 ## Inheritance
 
