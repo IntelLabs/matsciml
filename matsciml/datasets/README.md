@@ -105,6 +105,53 @@ when and how it was accessed, etc.), however *only integers will automatically r
 data samples* by methods like `utils.get_lmdb_data_keys` and by extension, `utils.get_lmdb_data_length`
 which is used by the `BaseLMDBDataset` class to determine the number of samples via `__len__`.
 
+### Implementing dataset logic
+
+With your data contained in an LMDB file, the real meat of your implementation now will be to
+subclass `matsciml.datasets.base.BaseLMDBDataset` and create your own `NewMaterialsDataset`,
+overriding abstract methods with concrete ones. The point of this is that a lot of common
+functions are implemented just once in `BaseLMDBDataset`, and you don't need to do so again
+for subsequent implementations.
+
+`BaseLMDBDataset` in turn is actually just a subclass of native PyTorch's `Dataset` class;
+if you are familiar with using `Dataset`, the only abstract methods that need to be
+overridden are `__len__` and `__getitem__`, both of which are already implemented by
+`BaseLMDBDataset`. The former will check across all your LMDB files and provide a total
+number of data samples, while the latter does three things:
+
+1. Check if `metadata` exists in LMDB files, and within it, whether a `preprocessed` entry is set to `True`.
+2. If the dataset is preprocessed, read from the LMDB file directly; otherwise, execute `data_from_key` to retrieve a data sample from one of the LMDB files.
+3. Perform any and all transformations on the retrieved data sample.
+
+With that said, at the bare minimum your new dataset *may* require you to implement `data_from_key`,
+if your dataset requires additional logic, such as reshaping tensors, type casting, and so on.
+In that case, the most straightforward way to do so is just to re-use the existing method, and
+append whatever extra things you need to do afterwards assuming you are subclassing `BaseLMDBDataset`:
+
+```python
+from matsciml.common.types import DataDict
+from matsciml.datasets import utils
+
+class NewMaterialsDataset(BaseLMDBDataset):
+    def data_from_key(self, lmdb_index: int, sub_index: int) -> DataDict:
+        data = super().data_from_key(lmdb_index, sub_index)
+        # check to make sure 3D coordinates
+        assert data["pos"].size(-1) == 3
+        # typecast atomic numbers
+        atom_numbers = torch.LongTensor(data["atomic_numbers"])
+        # convert to bespoke +/- combination of one-hot encodings
+        pc_features = utils.point_cloud_featurization(
+            atom_numbers[src_nodes], atom_numbers[dst_nodes], 100
+        )
+        data["pc_features"] = pc_features
+        return data
+```
+
+In this example, the original `data_from_key` is good enough: under the hood, the `super` method
+ultimately calls `utils.get_data_from_index`, which just unpickles data contained at a particular
+`index` value - in other words, whatever you saved in the LMDB conversion under `index` just gets
+regurgitated. We then perform some checks and conversions on the tensors as needed.
+
 
 ## Inheritance
 
@@ -115,3 +162,8 @@ which is used by the `BaseLMDBDataset` class to determine the number of samples 
 | `atomic_numbers` | Atomic numbers of nodes/points |
 | `pos` | Cartesian coordinates of nodes/points |
 | `force` | Force labels for nodes/points |
+| `pc_features` | Per-atom features for point clouds |
+
+## Links
+
+[lmdb]: https://lmdb.readthedocs.io/en/release/
