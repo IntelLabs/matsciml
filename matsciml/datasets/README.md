@@ -53,7 +53,7 @@ In your `<new_dataset>` folder, we'll need the following files:
 
 This includes a `tests` folder for your `pytest` unit tests, and a `devset`
 folder which will contain a small `.lmdb` file you'll create later holding
-your development test.
+your development dataset.
 
 ## Inheritance
 
