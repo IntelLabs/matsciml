@@ -152,6 +152,17 @@ ultimately calls `utils.get_data_from_index`, which just unpickles data containe
 `index` value - in other words, whatever you saved in the LMDB conversion under `index` just gets
 regurgitated. We then perform some checks and conversions on the tensors as needed.
 
+#### Preprocessing
+
+As mentioned earlier, there is some support for adding `preprocessed=True` as metadata. The idea
+behind this is to provide some rudimentary way to do computationally expensive transforms to
+your dataset, and cache the result. There is currently no standardized way of doing so, but
+the recommended approach would be to loop over your `NewMaterialsDataset` with a simple `for`
+loop, write out to an LMDB file as shown [in the earlier section](#creating-lmdb-files), and
+writing an additional `metadata` key with a value of `{preprocessed: True}`. When you use `NewMaterialsDataset`
+and point to the preprocessed LMDB file, it should bypass all of the `data_from_key` logic, allowing you
+to skip intensive portions of data retrieval.
+
 
 ## Inheritance
 
