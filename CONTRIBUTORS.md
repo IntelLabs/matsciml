@@ -9,5 +9,6 @@ Here we list, in alphabetical order, people who have contributed (not just code)
 - Marcel Nassar (@marcel-n)
 - Krzysztof Sadowski (@ksadowski13)
 - Matthew Spellings (@klarh)
+- Bin Mu (@bmuaz)
 
 If you have submitted a pull request with code contributions, please add your name above as part of your PR!
