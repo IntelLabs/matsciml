@@ -123,10 +123,14 @@ def main(args: Namespace):
     if not input_path.exists():
         raise FileNotFoundError(f"{input_path} could not be found.")
     if output_path.exists():
-        warnings.warn(
+        raise ValueError(
             f"{output_path} already exists, please check its contents and remove the folder!"
         )
-        shutil.rmtree(output_path)
+    # if output_path.exists():
+    #     warnings.warn(
+    #         f"{output_path} already exists, please check its contents and remove the folder!"
+    #     )
+    #     shutil.rmtree(output_path)
 
     os.makedirs(output_path, exist_ok=True)
     db_paths = sorted(input_path.glob("*.lmdb"))
