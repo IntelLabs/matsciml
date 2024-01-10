@@ -250,6 +250,34 @@ complicated quickly, so for pull requests, the bar is likely not going to be too
 these dataset unit tests. At a minimum, we ask you to replicate the tests above for your
 dataset, but highly encourage more expansive testing (you can never have too much!).
 
+### Final integration
+
+The last part of integrating your new dataset is using it to train a model! From this
+point onwards it depends entirely on what you want to do with your data, and so we only
+provide a very minimal example.
+
+```python
+import pytorch_lightning as pl
+
+from matsciml.datasets import new_materials_data
+from matsciml.lightning.data_utils import MatSciMLDataModule
+
+# this uses the devset for training
+data_module = MatSciMLDataModule.from_devset(
+    dataset="NewMaterialsDataset",
+    batch_size=8
+)
+# configure your task
+task = ...
+# fast_dev_run performs a minimal training loop with 10 steps
+# without checkpointing, logging, etc.
+trainer = pl.Trainer(fast_dev_run=10)
+trainer.fit(task, datamodule=data_module)
+```
+
+With this, you should be able to test the end-to-end functionality of your dataset;
+here's hoping everything works!
+
 ## Inheritance
 
 ## Common key names for data properties
