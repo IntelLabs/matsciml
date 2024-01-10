@@ -278,8 +278,6 @@ trainer.fit(task, datamodule=data_module)
 With this, you should be able to test the end-to-end functionality of your dataset;
 here's hoping everything works!
 
-## Inheritance
-
 ## Common key names for data properties
 
 | Name | Description |
