@@ -7,13 +7,6 @@ logs
 experimental
 lightning_logs
 
-msl-ptl2-venv
-pyg-venv
-data_explore.py
-faenet_test.py
-lips_splits.py
-matsciml/datasets/materials_project/devset-full/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

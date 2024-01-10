@@ -22,7 +22,7 @@ class BaseInferenceTask(ABC, pl.LightningModule):
 
     @abstractmethod
     def predict_step(
-        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0 = 0
+        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0
     ) -> Any:
         ...
 
@@ -106,7 +106,7 @@ class EmbeddingInferenceTask(BaseInferenceTask):
         return self.encoder(batch)
 
     def predict_step(
-        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0 = 0
+        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0
     ) -> DataDict:
         embeddings = self(batch)
         return_dict = {"embedding": embeddings}

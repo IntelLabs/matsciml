@@ -94,7 +94,6 @@ r = ScalarRegressionTask(
     loss_func=L1Loss,
     output_kwargs=output_kwargs,
     normalize_kwargs=mp_norms,
-    # task_keys=dm.target_keys["regression"],
     task_keys = ["band_gap"]
 )
 c = BinaryClassificationTask(
@@ -102,7 +101,6 @@ c = BinaryClassificationTask(
     encoder_kwargs=model_args,
     lr=1e-3,
     output_kwargs=output_kwargs,
-    # task_keys=dm.target_keys["classification"],
     task_keys = ["is_metal"]
 )
 
