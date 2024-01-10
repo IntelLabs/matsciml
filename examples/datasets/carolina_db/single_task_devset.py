@@ -48,6 +48,7 @@ task = ScalarRegressionTask(
     },
     lr=1e-3,
     task_keys=["energy"],
+    embedding_reduction_type="sum",
 )
 
 # configure materials project from devset
