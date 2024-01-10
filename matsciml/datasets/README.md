@@ -163,6 +163,37 @@ writing an additional `metadata` key with a value of `{preprocessed: True}`. Whe
 and point to the preprocessed LMDB file, it should bypass all of the `data_from_key` logic, allowing you
 to skip intensive portions of data retrieval.
 
+### Adding a development set
+
+We recommend committing a minimal amount of data to the repository as a way to streamline
+debugging and usage across the full Open MatSciML Toolkit pipeline. We won't go into specific
+details on *how* to generate the devset, as it can be as simple as writing only the first
+200 samples as shown in the [LMDB conversion section](#creating-lmdb-files). You can then move the resulting
+folder structure to the `devset` [contained in your submodule](#implementing-a-new-dataset),
+and update the `MANIFEST.in` file contained in the repository root folder (where `pyproject.toml` is),
+which ensures that the `devset` folder will be included in `pip` installs.
+
+`BaseLMDBDataset` implements a class method called `from_devset`, which relies on a private
+attribute for your dataset called `__devset__`. This is basically a hardcoded path to
+your `devset` path; you can see how other datasets implement this, but assuming you have
+the correct folder structure set up, you will just need to add the following to your
+class definition:
+
+```python
+from pathlib import Path
+
+from matsciml.datasets.base import BaseLMDBDataset
+
+class NewMaterialsDataset(BaseLMDBDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("devset")
+
+    ...
+```
+
+As a brief explanation, `__file__` points to the module file, and this pattern is simply
+retrieving the relative path to the `devset` folder assuming it's at the same level
+as the module file. With that, you'll be able to retrieve your development set from anywhere
+with `NewMaterialsDataset.from_devset()`.
 
 ## Inheritance
 
