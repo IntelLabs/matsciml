@@ -280,6 +280,10 @@ here's hoping everything works!
 
 ## Common key names for data properties
 
+This section is kept to try and encourage consistent key naming between datasets.
+
+The intention is to expand and update this as more datasets are integrated.
+
 | Name | Description |
 |---|---|
 | `atomic_numbers` | Atomic numbers of nodes/points |
