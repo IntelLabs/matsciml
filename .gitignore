@@ -7,18 +7,6 @@ logs
 experimental
 lightning_logs
 
-TEMP/
-TESTFILE.py
-data_explore.py
-examples_folder_log.txt
-faenet_test.py
-lips_splits.py
-matsciml/datasets/materials_project/devset-full/
-msl-ptl2-venv/
-pyg-venv/
-replace_substring.py
-run_examples.sh
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
