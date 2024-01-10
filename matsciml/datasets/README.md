@@ -303,6 +303,4 @@ The intention is to expand and update this as more datasets are integrated.
 | `force` | Force labels for nodes/points |
 | `pc_features` | Per-atom features for point clouds |
 
-## Links
-
 [lmdb]: https://lmdb.readthedocs.io/en/release/
