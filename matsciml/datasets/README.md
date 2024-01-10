@@ -198,6 +198,52 @@ retrieving the relative path to the `devset` folder assuming it's at the same le
 as the module file. With that, you'll be able to retrieve your development set from anywhere
 with `NewMaterialsDataset.from_devset()`.
 
+### Writing unit tests
+
+Unit testing is a pretty expansive area, and difficult to standardize and convey *what* and *how*
+to test well. As a foundational basis, the tests should aim to make sure core functions work
+consistently, and check for things that may commonly go wrong such as tensor shapes, missing
+keys, and so on. We encourage you to look at how other datasets implement unit tests with `pytest`,
+and see if you can adopt elements from them.
+
+While it's not strictly perfect, we encourage you to use `devset`s for your unit testing. This
+will allow you to write tests as you develop the dataset interface in an iterative way; as
+a skeleton example, a minimal test suite could look like this:
+
+```python
+from matsciml.datasets.new_materials_data import NewMaterialsDataset
+
+
+def test_devset_init():
+    """Test whether or not the dataset can be created from devset"""
+    dset = NewMaterialsDataset.from_devset()
+
+
+def test_devset_read():
+    """Ensure we can read every entry in the devset"""
+    dset = NewMaterialsDataset.from_devset()
+    num_samples = len(dset)
+    for index in range(num_samples):
+        sample = dset.__getitem__(index)
+
+
+def test_devset_keys():
+    """Ensure the devset contains keys and structure we expect"""
+    dset = NewMaterialsDataset.from_devset()
+    sample = dset.__getitem__(50)
+    for key in ["pos", "atomic_numbers", "force"]:
+        assert key in sample
+    # we know this dataset has regression data
+    assert "regression" in sample["targets"]
+    for key in ["bandgap", "fermi_energy"]:
+        assert key in sample["targets"]["regression"]
+```
+
+You can also encourage re-use with things like `pytest.fixture`s, but things can get pretty
+complicated quickly, so for pull requests, the bar is likely not going to be too high for
+these dataset unit tests. At a minimum, we ask you to replicate the tests above for your
+dataset, but highly encourage more expansive testing (you can never have too much!).
+
 ## Inheritance
 
 ## Common key names for data properties
