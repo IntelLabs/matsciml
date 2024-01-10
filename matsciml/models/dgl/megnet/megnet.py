@@ -1,23 +1,24 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
-
 """
 Implementation of MEGNet model.
 
 Code attributions to https://github.com/materialsvirtuallab/m3gnet-dgl/tree/main/megnet,
 along with contributions and modifications from Marcel Nassar, Santiago Miret, and Kelvin Lee
 """
-from typing import Any, Dict, Optional, List, Union
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Union
 
 import dgl
 import torch
-from torch import nn
 from dgl.nn import Set2Set
+from torch import nn
 from torch.nn import Dropout, Identity, Module, ModuleList, Softplus
 
 from matsciml.common.types import BatchDict, DataDict, Embeddings
-from matsciml.models.dgl.megnet import MLP, MEGNetBlock, EdgeSet2Set
 from matsciml.models.base import AbstractDGLModel
+from matsciml.models.dgl.megnet import MLP, EdgeSet2Set, MEGNetBlock
 
 
 class MEGNet(AbstractDGLModel):
@@ -27,19 +28,19 @@ class MEGNet(AbstractDGLModel):
         node_feat_dim: int,
         graph_feat_dim: int,
         num_blocks: int,
-        hiddens: List[int],
-        conv_hiddens: List[int],
+        hiddens: list[int],
+        conv_hiddens: list[int],
         s2s_num_layers: int,
         s2s_num_iters: int,
-        output_hiddens: List[int],
+        output_hiddens: list[int],
         is_classification: bool = True,
-        node_embed: Optional[nn.Module] = None,
-        edge_embed: Optional[nn.Module] = None,
-        attr_embed: Optional[nn.Module] = None,
-        dropout: Optional[float] = None,
-        atom_embedding_dim: Optional[int] = None,
+        node_embed: nn.Module | None = None,
+        edge_embed: nn.Module | None = None,
+        attr_embed: nn.Module | None = None,
+        dropout: float | None = None,
+        atom_embedding_dim: int | None = None,
         num_atom_embedding: int = 100,
-        embedding_kwargs: Dict[str, Any] = {},
+        embedding_kwargs: dict[str, Any] = {},
         encoder_only: bool = True,
     ) -> None:
         r"""
@@ -77,7 +78,10 @@ class MEGNet(AbstractDGLModel):
             default is 100.
         """
         super().__init__(
-            node_feat_dim, num_atom_embedding, embedding_kwargs, encoder_only
+            node_feat_dim,
+            num_atom_embedding,
+            embedding_kwargs,
+            encoder_only,
         )
         self.edge_embed = edge_embed if edge_embed else Identity()
         # default behavior for node embeddings is to use a lookup table
@@ -85,21 +89,29 @@ class MEGNet(AbstractDGLModel):
         self.attr_embed = attr_embed if attr_embed else Identity()
 
         self.edge_encoder = MLP(
-            [edge_feat_dim] + hiddens, Softplus(), activate_last=True
+            [edge_feat_dim] + hiddens,
+            Softplus(),
+            activate_last=True,
         )
         # in the event we're using an embedding table, skip the input dim because
         # we're using the hidden dimensionality
         if isinstance(self.node_embed, nn.Embedding):
             node_encoder = MLP(
-                [node_feat_dim + 3] + hiddens, Softplus(), activate_last=True
+                [node_feat_dim + 3] + hiddens,
+                Softplus(),
+                activate_last=True,
             )
         else:
             node_encoder = MLP(
-                [node_feat_dim] + hiddens, Softplus(), activate_last=True
+                [node_feat_dim] + hiddens,
+                Softplus(),
+                activate_last=True,
             )
         self.node_encoder = node_encoder
         self.attr_encoder = MLP(
-            [graph_feat_dim] + hiddens, Softplus(), activate_last=True
+            [graph_feat_dim] + hiddens,
+            Softplus(),
+            activate_last=True,
         )
 
         blocks_in_dim = hiddens[-1]
@@ -154,7 +166,8 @@ class MEGNet(AbstractDGLModel):
         graph = data.get("graph")
         # stack atom embeddings from table and positions together
         node_feats = self.join_position_embeddings(
-            graph.ndata["pos"], data["node_feats"]
+            graph.ndata["pos"],
+            data["node_feats"],
         )
         data["node_feats"] = node_feats
         assert (
@@ -177,7 +190,7 @@ class MEGNet(AbstractDGLModel):
         node_feats: torch.Tensor,
         edge_feats: torch.Tensor,
         graph_feats: torch.Tensor,
-        pos: Optional[torch.Tensor] = None,
+        pos: torch.Tensor | None = None,
         **kwargs,
     ) -> Embeddings:
         r"""

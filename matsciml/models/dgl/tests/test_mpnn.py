@@ -1,11 +1,12 @@
+from __future__ import annotations
+
+import dgl
 import pytest
 import torch
 
 from matsciml.datasets import transforms
 from matsciml.datasets.materials_project import MaterialsProjectDataset
 from matsciml.models import MPNN
-
-import dgl
 
 dgl.seed(215106)
 
@@ -16,7 +17,7 @@ def test_batch():
         transforms=[
             transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
             transforms.DistancesTransform(),
-        ]
+        ],
     )
     data = [dset.__getitem__(index) for index in range(2)]
     batch = dset.collate_fn(data)

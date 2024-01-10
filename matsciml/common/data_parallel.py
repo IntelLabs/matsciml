@@ -1,12 +1,12 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
-
 """
 Copyright (c) Facebook, Inc. and its affiliates.
 
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import heapq
 import logging
@@ -45,7 +45,7 @@ class OCPDataParallel(torch.nn.DataParallel):
             self.module = module
 
         else:
-            super(OCPDataParallel, self).__init__(
+            super().__init__(
                 module=module,
                 device_ids=device_ids,
                 output_device=self.src_device,
@@ -64,7 +64,7 @@ class OCPDataParallel(torch.nn.DataParallel):
                     (
                         "Module must have its parameters and buffers on device "
                         "{} but found one of them on device {}."
-                    ).format(self.src_device, t.device)
+                    ).format(self.src_device, t.device),
                 )
 
         inputs = [
@@ -143,7 +143,7 @@ class ParallelCollater_GAANet:
     def __call__(self, data_list):
         if self.num_gpus in [0, 1]:  # adds cpu-only case
             node_feats, positions, true_forces, targets = data_list_collater_gaanet(
-                data_list
+                data_list,
             )
 
             return [node_feats, positions, true_forces, targets]
@@ -221,8 +221,7 @@ class Simple_Distributed_Sampler(Sampler):
         )
 
     def __iter__(self):
-        for batch_idx in self.batch_sampler:
-            yield batch_idx
+        yield from self.batch_sampler
 
 
 class BalancedBatchSampler(Sampler):
@@ -248,7 +247,7 @@ class BalancedBatchSampler(Sampler):
         self.drop_last = drop_last
 
         print(
-            "######################################################################################################"
+            "######################################################################################################",
         )
         print("Rank in B-Sampler: ", rank)
 
@@ -263,14 +262,14 @@ class BalancedBatchSampler(Sampler):
                         f"No metadata file found at '{dataset.metadata_path}'. "
                         "BalancedBatchSampler has to load the data to "
                         "determine batch sizes, which incurs "
-                        "significant overhead!"
+                        "significant overhead!",
                     )
                     self.sizes = None
                 else:
                     logging.warning(
                         f"No metadata file found at '{dataset.metadata_path}'. "
                         "Batches will not be balanced, "
-                        "which can incur significant overhead!"
+                        "which can incur significant overhead!",
                     )
                     self.balance_batches = False
                     self.sizes = None
@@ -281,7 +280,7 @@ class BalancedBatchSampler(Sampler):
                     self.sizes = np.load(dataset.metadata_path)["neighbors"]
                 else:
                     raise NotImplementedError(
-                        f"Unknown load balancing mode: {self.mode}"
+                        f"Unknown load balancing mode: {self.mode}",
                     )
         else:
             self.sizes = None
@@ -317,7 +316,7 @@ class BalancedBatchSampler(Sampler):
                         sizes = [data.edge_index.shape[1] for data in data_list]
                     else:
                         raise NotImplementedError(
-                            f"Unknown load balancing mode: {self.mode}"
+                            f"Unknown load balancing mode: {self.mode}",
                         )
                 else:
                     sizes = [self.sizes[idx] for idx in batch_idx]
@@ -329,7 +328,8 @@ class BalancedBatchSampler(Sampler):
                 sizes_all = idx_sizes_all[1]
 
                 local_idx_balanced = balanced_partition(
-                    sizes_all.numpy(), num_parts=self.num_replicas
+                    sizes_all.numpy(),
+                    num_parts=self.num_replicas,
                 )
                 # Since DistributedSampler pads the last batch
                 # this should always have an entry for each replica.

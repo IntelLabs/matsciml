@@ -1,12 +1,14 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
+import dgl
 import pytest
 import torch
-import dgl
-from matsciml.models import DimeNetPP
+
 from matsciml.datasets import transforms
 from matsciml.datasets.materials_project import MaterialsProjectDataset
+from matsciml.models import DimeNetPP
 
 torch.random.manual_seed(10)
 dgl.random.seed(10)
@@ -18,7 +20,7 @@ def test_batch():
         transforms=[
             transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
             transforms.DistancesTransform(),
-        ]
+        ],
     )
     data = [dset.__getitem__(index) for index in range(2)]
     batch = dset.collate_fn(data)

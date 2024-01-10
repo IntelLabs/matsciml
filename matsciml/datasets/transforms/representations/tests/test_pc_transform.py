@@ -1,17 +1,17 @@
-import pytest
+from __future__ import annotations
 
+import pytest
 import torch
 
-from matsciml.datasets.materials_project import (
-    materialsproject_devset,
-    MaterialsProjectDataset,
-)
-from matsciml.datasets.lips import lips_devset, LiPSDataset
-from matsciml.datasets.symmetry import symmetry_devset, SyntheticPointGroupDataset
-from matsciml.datasets import is2re_devset, IS2REDataset
-from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.common import package_registry
-
+from matsciml.datasets import IS2REDataset, is2re_devset
+from matsciml.datasets.lips import LiPSDataset, lips_devset
+from matsciml.datasets.materials_project import (
+    MaterialsProjectDataset,
+    materialsproject_devset,
+)
+from matsciml.datasets.symmetry import SyntheticPointGroupDataset, symmetry_devset
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 
 if package_registry["dgl"]:
     import dgl
@@ -47,7 +47,7 @@ if package_registry["dgl"]:
         graph = data.get("graph")
         assert all([key in data for key in ["graph", "dataset"]])
         assert all(
-            [key in graph.ndata for key in ["pos", "atomic_numbers", "node_feats"]]
+            [key in graph.ndata for key in ["pos", "atomic_numbers", "node_feats"]],
         )
 
     @pytest.mark.dependency(depends=["test_transform_init"])
@@ -60,7 +60,8 @@ if package_registry["dgl"]:
     @pytest.mark.dependency(depends=["test_transform_init", "test_dgl_create"])
     def test_dgl_materials_project():
         dset = MaterialsProjectDataset(
-            materialsproject_devset, transforms=[PointCloudToGraphTransform("dgl")]
+            materialsproject_devset,
+            transforms=[PointCloudToGraphTransform("dgl")],
         )
         sample = dset.__getitem__(0)
         assert "graph" in sample.keys()
@@ -78,7 +79,8 @@ if package_registry["dgl"]:
     @pytest.mark.dependency(depends=["test_transform_init", "test_dgl_create"])
     def test_dgl_symmetry():
         dset = SyntheticPointGroupDataset(
-            symmetry_devset, transforms=[PointCloudToGraphTransform("dgl")]
+            symmetry_devset,
+            transforms=[PointCloudToGraphTransform("dgl")],
         )
         sample = dset.__getitem__(0)
         assert "graph" in sample.keys()
@@ -89,7 +91,8 @@ if package_registry["dgl"]:
     def test_dgl_is2re_fail():
         # this checks to make sure usage with IS2RE will raise an error
         dset = IS2REDataset(
-            is2re_devset, transforms=[PointCloudToGraphTransform("dgl")]
+            is2re_devset,
+            transforms=[PointCloudToGraphTransform("dgl")],
         )
         with pytest.raises(
             AssertionError,
@@ -110,7 +113,7 @@ if package_registry["pyg"]:
         data = t(pc_data)
         assert all([key in data for key in ["graph", "dataset"]])
         assert all(
-            [getattr(data["graph"], key).sum() for key in ["pos", "atomic_numbers"]]
+            [getattr(data["graph"], key).sum() for key in ["pos", "atomic_numbers"]],
         )
 
     @pytest.mark.dependency(depends=["test_pyg_create"])
@@ -127,7 +130,8 @@ if package_registry["pyg"]:
     @pytest.mark.dependency(depends=["test_transform_pyg_init", "test_pyg_create"])
     def test_pyg_materials_project():
         dset = MaterialsProjectDataset(
-            materialsproject_devset, transforms=[PointCloudToGraphTransform("pyg")]
+            materialsproject_devset,
+            transforms=[PointCloudToGraphTransform("pyg")],
         )
         sample = dset.__getitem__(0)
         assert "graph" in sample.keys()
@@ -148,7 +152,8 @@ if package_registry["pyg"]:
     @pytest.mark.dependency(depends=["test_transform_pyg_init", "test_pyg_create"])
     def test_pyg_symmetry():
         dset = SyntheticPointGroupDataset(
-            symmetry_devset, transforms=[PointCloudToGraphTransform("pyg")]
+            symmetry_devset,
+            transforms=[PointCloudToGraphTransform("pyg")],
         )
         # TODO output sample only contains 'coordinates' and nothing similar to 'atomic numbers'
         sample = dset.__getitem__(0)
@@ -160,7 +165,8 @@ if package_registry["pyg"]:
     def test_pyg_is2re_fail():
         # this checks to make sure usage with IS2RE will raise an error
         dset = IS2REDataset(
-            is2re_devset, transforms=[PointCloudToGraphTransform("pyg")]
+            is2re_devset,
+            transforms=[PointCloudToGraphTransform("pyg")],
         )
         with pytest.raises(
             AssertionError,

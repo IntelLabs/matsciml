@@ -4,12 +4,13 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import math
 
 import torch
 
-from ..initializers import he_orthogonal_init
+from matsciml.models.pyg.gemnet.initializers import he_orthogonal_init
 
 
 class Dense(torch.nn.Module):
@@ -42,7 +43,7 @@ class Dense(torch.nn.Module):
             self._activation = torch.nn.Identity()
         else:
             raise NotImplementedError(
-                "Activation function not implemented for GemNet (yet)."
+                "Activation function not implemented for GemNet (yet).",
             )
 
     def reset_parameters(self, initializer=he_orthogonal_init):
@@ -90,7 +91,11 @@ class ResidualLayer(torch.nn.Module):
     """
 
     def __init__(
-        self, units: int, nLayers: int = 2, layer=Dense, **layer_kwargs
+        self,
+        units: int,
+        nLayers: int = 2,
+        layer=Dense,
+        **layer_kwargs,
     ):
         super().__init__()
         self.dense_mlp = torch.nn.Sequential(
@@ -99,10 +104,10 @@ class ResidualLayer(torch.nn.Module):
                     in_features=units,
                     out_features=units,
                     bias=False,
-                    **layer_kwargs
+                    **layer_kwargs,
                 )
                 for _ in range(nLayers)
-            ]
+            ],
         )
         self.inv_sqrt_2 = 1 / math.sqrt(2)
 

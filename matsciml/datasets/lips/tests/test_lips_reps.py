@@ -1,5 +1,8 @@
-import pytest
+from __future__ import annotations
+
 from itertools import product
+
+import pytest
 
 from matsciml.datasets.lips import LiPSDataset, lips_devset
 from matsciml.datasets.transforms import PointCloudToGraphTransform
@@ -19,7 +22,7 @@ def test_pairwise_pointcloud():
                 "dst_nodes",
                 "force",
             ]
-        ]
+        ],
     )
     feats = sample.get("pc_features")
     pos = sample.get("pos")
@@ -41,7 +44,7 @@ def test_sampled_pointcloud():
                 "dst_nodes",
                 "force",
             ]
-        ]
+        ],
     )
     feats = sample.get("pc_features")
     pos = sample.get("pos")

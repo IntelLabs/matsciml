@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import collections
 import functools
 
 import numpy as np
 
-from matsciml.datasets.symmetry.point_groups import filter_discrete, PointGroup
+from matsciml.datasets.symmetry.point_groups import PointGroup, filter_discrete
 
 """
 Original implementation by Matthew Spellings (Vector Institute) 5/25/2023
@@ -52,19 +54,19 @@ class SubgroupClassMap:
                 "S2",  #'Ci'
             ]
         elif name == "Cn":
-            return ["C{}".format(i) for i in range(1, self.n_max + 1)]
+            return [f"C{i}" for i in range(1, self.n_max + 1)]
         elif name == "Sn" or name == "S2n":
-            return ["S{}".format(2 * i) for i in range(1, self.n_max // 2 + 1)]
+            return [f"S{2 * i}" for i in range(1, self.n_max // 2 + 1)]
         elif name == "Cnh":
-            return ["C{}h".format(i) for i in range(1, self.n_max + 1)]
+            return [f"C{i}h" for i in range(1, self.n_max + 1)]
         elif name == "Cnv":
-            return ["C{}v".format(i) for i in range(1, self.n_max + 1)]
+            return [f"C{i}v" for i in range(1, self.n_max + 1)]
         elif name == "Dn":
-            return ["D{}".format(i) for i in range(1, self.n_max + 1)]
+            return [f"D{i}" for i in range(1, self.n_max + 1)]
         elif name == "Dnd":
-            return ["D{}d".format(i) for i in range(1, self.n_max + 1)]
+            return [f"D{i}d" for i in range(1, self.n_max + 1)]
         elif name == "Dnh":
-            return ["D{}h".format(i) for i in range(1, self.n_max + 1)]
+            return [f"D{i}h" for i in range(1, self.n_max + 1)]
         else:
             result.append(name)
         return result
@@ -100,7 +102,7 @@ class SubgroupClassMap:
         self.column_names = sorted_column_names = list(sorted(column_names))
         self.column_name_map = {name: i for (i, name) in enumerate(sorted_column_names)}
 
-        self.subgroups = subgroups = collections.defaultdict(lambda: set(["C1"]))
+        self.subgroups = subgroups = collections.defaultdict(lambda: {"C1"})
         for name in sorted_column_names:
             subgroups[name].add(name)
 
@@ -119,7 +121,7 @@ class SubgroupClassMap:
         subgroups["D2h"].add("C2")
 
         for n in range(1, n_max + 1):
-            child = "C{}".format(n)
+            child = f"C{n}"
             parents = [
                 name.format(n) for name in ["C{}h", "C{}v", "D{}", "D{}h", "D{}d"]
             ]
@@ -136,28 +138,28 @@ class SubgroupClassMap:
                     base_name = name[:3]
                     subgroups[name.format(mult * n)].add(base_name.format(n))
 
-            subgroups["C{}h".format(n)].add("Cs")
-            subgroups["C{}v".format(n)].add("Cs")
-            subgroups["D{}h".format(n)].add("Cs")
-            subgroups["D{}h".format(n)].add("C{}h".format(n))
-            subgroups["D{}h".format(n)].add("C{}v".format(n))
-            subgroups["D{}h".format(n)].add("D{}".format(n))
-            subgroups["D{}d".format(n)].add("S{}".format(2 * n))
-            subgroups["D{}d".format(n)].add("C{}v".format(n))
-            subgroups["D{}h".format(2 * n)].add("D{}d".format(n))
-            subgroups["S{}".format(2 * n)].add("C{}".format(n))
+            subgroups[f"C{n}h"].add("Cs")
+            subgroups[f"C{n}v"].add("Cs")
+            subgroups[f"D{n}h"].add("Cs")
+            subgroups[f"D{n}h"].add(f"C{n}h")
+            subgroups[f"D{n}h"].add(f"C{n}v")
+            subgroups[f"D{n}h"].add(f"D{n}")
+            subgroups[f"D{n}d"].add(f"S{2 * n}")
+            subgroups[f"D{n}d"].add(f"C{n}v")
+            subgroups[f"D{2 * n}h"].add(f"D{n}d")
+            subgroups[f"S{2 * n}"].add(f"C{n}")
 
         # n even
         for n in range(2, n_max + 1, 2):
             for mult in range(1, n_max + 1):
                 if n * mult > self.n_max:
                     break
-                subgroups["S{}".format(n * mult)].add("S{}".format(n))
-            subgroups["C{}h".format(n)].add("S{}".format(n))
+                subgroups[f"S{n * mult}"].add(f"S{n}")
+            subgroups[f"C{n}h"].add(f"S{n}")
 
         # n odd
         for n in range(1, n_max + 1, 2):
-            subgroups["D{}d".format(n)].add("D{}".format(n))
+            subgroups[f"D{n}d"].add(f"D{n}")
 
         polyhedral_subgroups = {
             "T": ["C3", "C2", "D2"],
@@ -290,12 +292,17 @@ class SubgroupGenerator:
 
             if self.normalize:
                 batch_r /= np.clip(
-                    np.linalg.norm(batch_r, axis=-1, keepdims=True), 1e-7, np.inf
+                    np.linalg.norm(batch_r, axis=-1, keepdims=True),
+                    1e-7,
+                    np.inf,
                 )
             batch_r *= self.lengthscale
 
             batch_source_v = rng.integers(
-                0, self.type_max, (self.batch_size, self.max_size), dtype=np.int64
+                0,
+                self.type_max,
+                (self.batch_size, self.max_size),
+                dtype=np.int64,
             )
 
             yield self.BatchType(

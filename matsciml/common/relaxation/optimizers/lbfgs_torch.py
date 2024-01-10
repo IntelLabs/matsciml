@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import logging
 from collections import deque
@@ -69,12 +70,14 @@ class LBFGS:
         if forces is None:
             return False
         max_forces_ = scatter(
-            (forces**2).sum(axis=1).sqrt(), self.atoms.batch, reduce="max"
+            (forces**2).sum(axis=1).sqrt(),
+            self.atoms.batch,
+            reduce="max",
         )
         max_forces = max_forces_[self.atoms.batch]
         update_mask = torch.logical_and(update_mask, max_forces.ge(force_threshold))
         logging.info(
-            f"{iteration} " + " ".join(f"{x:0.3f}" for x in max_forces_.tolist())
+            f"{iteration} " + " ".join(f"{x:0.3f}" for x in max_forces_.tolist()),
         )
         return update_mask
 
@@ -129,7 +132,8 @@ class LBFGS:
             longest_steps = longest_steps[self.atoms.batch]
             maxstep = longest_steps.new_tensor(self.maxstep)
             scale = (longest_steps + 1e-7).reciprocal() * torch.min(
-                longest_steps, maxstep
+                longest_steps,
+                maxstep,
             )
             dr *= scale.unsqueeze(1)
             return dr * self.damping

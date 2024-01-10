@@ -1,5 +1,6 @@
-import pytest
+from __future__ import annotations
 
+import pytest
 import torch
 from torch.utils.data import DataLoader
 

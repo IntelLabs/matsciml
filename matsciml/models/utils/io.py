@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Union
 
@@ -7,7 +9,7 @@ from matsciml.models import base
 from matsciml.models.base import MultiTaskLitModule
 
 
-def multitask_from_checkpoint(ckpt_path: Union[str, Path]) -> MultiTaskLitModule:
+def multitask_from_checkpoint(ckpt_path: str | Path) -> MultiTaskLitModule:
     """
     Utility function to load a MultiTaskLitModule from a checkpoint.
 

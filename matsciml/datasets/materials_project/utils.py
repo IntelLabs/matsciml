@@ -1,5 +1,8 @@
-import torch
+from __future__ import annotations
+
 from collections import defaultdict
+
+import torch
 
 torch.manual_seed(21510)
 

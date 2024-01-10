@@ -1,33 +1,34 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
-
 """
 Copyright (c) Facebook, Inc. and its affiliates.
 
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
-from typing import Union, Type
 import bisect
 import logging
-import pickle, random
+import pickle
+import random
 from pathlib import Path
+from typing import Type, Union
 
+import dgl
 import lmdb
+import munch
 import numpy as np
-import torch, dgl, munch
+import scipy.sparse as sp
+import torch
+from dgl.convert import graph as dgl_graph
+from dgl.data import DGLDataset
+from dgl.data.dgl_dataset import DGLDataset
+from dgl.nn.pytorch.factory import KNNGraph
 from torch.utils.data import Dataset
 
 # from torch_geometric.data import Batch
-
 # from matsciml.common.utils import pyg2_data_transform
-from dgl.nn.pytorch.factory import KNNGraph
-from dgl.data import DGLDataset
-
-import scipy.sparse as sp
-from dgl.data.dgl_dataset import DGLDataset
-from dgl.convert import graph as dgl_graph
 
 
 def munch_to_dgl(munch_obj: munch.Munch, g: dgl_graph):
@@ -67,7 +68,7 @@ class TrajectoryLmdbDataset(Dataset):
     """
 
     def __init__(self, config, transform=None):
-        super(TrajectoryLmdbDataset, self).__init__()
+        super().__init__()
         self.config = config
 
         srcdir = Path(self.config["src"])
@@ -79,7 +80,7 @@ class TrajectoryLmdbDataset(Dataset):
         self._keys, self.envs = [], []
         for db_path in db_paths:
             self.envs.append(self.connect_db(db_path))
-            length = pickle.loads(self.envs[-1].begin().get("length".encode("ascii")))
+            length = pickle.loads(self.envs[-1].begin().get(b"length"))
             self._keys.append(list(range(length)))
 
         keylens = [len(k) for k in self._keys]
@@ -148,8 +149,8 @@ class TrajectoryLmdbDataset_DGL(DGLDataset):
 
     """
 
-    def __init__(self, root_path: Union[str, Type[Path]], name: str, transform=None):
-        super(TrajectoryLmdbDataset_DGL, self).__init__(name=name)
+    def __init__(self, root_path: str | type[Path], name: str, transform=None):
+        super().__init__(name=name)
 
         srcdir = Path(root_path)
         db_paths = sorted(srcdir.glob("*.lmdb"))
@@ -160,7 +161,7 @@ class TrajectoryLmdbDataset_DGL(DGLDataset):
         self._keys, self.envs = [], []
         for db_path in db_paths:
             self.envs.append(self.connect_db(db_path))
-            length = pickle.loads(self.envs[-1].begin().get("length".encode("ascii")))
+            length = pickle.loads(self.envs[-1].begin().get(b"length"))
             self._keys.append(list(range(length)))
 
         keylens = [len(k) for k in self._keys]
@@ -239,7 +240,7 @@ def data_list_collater(data_list, otf_graph=False):
             batch.neighbors = torch.tensor(n_neighbors)
         except NotImplementedError:
             logging.warning(
-                "LMDB does not contain edge index information, set otf_graph=True"
+                "LMDB does not contain edge index information, set otf_graph=True",
             )
 
     return batch
@@ -291,7 +292,8 @@ def data_list_collater_gaanet(data_list, otf_graph=None, pc_size=6, sample_size=
         substrate_idx = g.nodes()[l2]
 
         substrate_idx_sample_idx = random.sample(
-            range(len(substrate_idx)), min(sample_size, len(substrate_idx))
+            range(len(substrate_idx)),
+            min(sample_size, len(substrate_idx)),
         )
 
         substrate_idx_sample = substrate_idx[substrate_idx_sample_idx]
@@ -339,7 +341,7 @@ def data_list_collater_gaanet(data_list, otf_graph=None, pc_size=6, sample_size=
         true_forces = torch.zeros(len(shape_list), max_feat_size, 3)
 
         for ii, (feats, pos, forces) in enumerate(
-            zip(g_feat_list, g_pos_list, g_force_list)
+            zip(g_feat_list, g_pos_list, g_force_list),
         ):
             node_feats[ii][0 : shape_list[ii]] = feats
             positions[ii][0 : shape_list[ii]] = pos

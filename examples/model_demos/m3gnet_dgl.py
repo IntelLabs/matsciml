@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 
 from matsciml.datasets.utils import element_types
@@ -15,7 +17,9 @@ task = ScalarRegressionTask(
 )
 
 dm = MatSciMLDataModule.from_devset(
-    "M3GNomadDataset", num_workers=0, batch_size=4
+    "M3GNomadDataset",
+    num_workers=0,
+    batch_size=4,
 )
 
 # run a quick training loop

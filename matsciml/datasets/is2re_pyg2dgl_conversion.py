@@ -1,24 +1,25 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from typing import Dict, Union
-from argparse import ArgumentParser, Namespace
-from pathlib import Path
 import os
 import pickle
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
+from typing import Dict, Union
 
-import lmdb
 import dgl
+import lmdb
 import torch
-from tqdm import tqdm
 from torch_geometric.data import Data as PyGData
+from tqdm import tqdm
 
 from matsciml.datasets.generate_subsplit import connect_db_read, write_data
 
 
 def convert_pyg_to_dgl(
     pyg_graph: PyGData,
-) -> Dict[str, Union[dgl.DGLGraph, torch.Tensor]]:
+) -> dict[str, dgl.DGLGraph | torch.Tensor]:
     # bijective mapping from PyG to DGL
     (u, v) = pyg_graph.edge_index
     dgl_graph = dgl.graph((u, v), num_nodes=pyg_graph.natoms)
@@ -40,7 +41,7 @@ def main(args: Namespace):
         raise FileNotFoundError(f"{input_path} could not be found.")
     if output_path.exists():
         raise ValueError(
-            f"{output_path} already exists, please check its contents and remove the folder!"
+            f"{output_path} already exists, please check its contents and remove the folder!",
         )
     os.makedirs(output_path)
     db_paths = sorted(input_path.glob("*.lmdb"))

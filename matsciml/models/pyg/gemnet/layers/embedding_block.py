@@ -4,12 +4,13 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import numpy as np
 import torch
 
-from .base_layers import Dense
 from matsciml.models.diffusion_utils import MAX_ATOMIC_NUM
+from matsciml.models.pyg.gemnet.layers.base_layers import Dense
 
 
 class AtomEmbedding(torch.nn.Module):

@@ -12,10 +12,7 @@ from torch import nn
 from torch.nn import Linear
 
 from matsciml.common.registry import registry
-from matsciml.common.types import AbstractGraph
-from matsciml.common.types import BatchDict
-from matsciml.common.types import DataDict
-from matsciml.common.types import Embeddings
+from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
 from matsciml.common.utils import radius_graph_pbc
 from matsciml.models.base import AbstractPyGModel
 from matsciml.models.pyg.faenet.helper import *

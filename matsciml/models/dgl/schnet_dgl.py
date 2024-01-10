@@ -1,30 +1,31 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from typing import Any, Union, Type, Optional, List, Dict
 from importlib.util import find_spec
+from typing import Any, Dict, List, Optional, Type, Union
 
-from dgllife.model import SchNetGNN
 import dgl
 import torch
-from torch import nn
 from dgl.nn.pytorch import glob
+from dgllife.model import SchNetGNN
+from torch import nn
 
-from matsciml.models.base import AbstractDGLModel
 from matsciml.common.types import BatchDict, DataDict, Embeddings
+from matsciml.models.base import AbstractDGLModel
 
 
 class SchNet(AbstractDGLModel):
     def __init__(
         self,
         atom_embedding_dim: int,
-        hidden_feats: Optional[List[int]] = None,
+        hidden_feats: list[int] | None = None,
         cutoff: float = 30.0,
         gap: float = 0.1,
-        readout: Union[Type[nn.Module], str, nn.Module] = glob.AvgPooling,
-        readout_kwargs: Optional[Dict[str, Any]] = None,
+        readout: type[nn.Module] | str | nn.Module = glob.AvgPooling,
+        readout_kwargs: dict[str, Any] | None = None,
         num_atom_embedding: int = 100,
-        embedding_kwargs: Dict[str, Any] = {},
+        embedding_kwargs: dict[str, Any] = {},
         encoder_only: bool = True,
     ) -> None:
         r"""
@@ -61,20 +62,27 @@ class SchNet(AbstractDGLModel):
 
         """
         super().__init__(
-            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+            atom_embedding_dim,
+            num_atom_embedding,
+            embedding_kwargs,
+            encoder_only,
         )
         self.model = SchNetGNN(
-            atom_embedding_dim, hidden_feats, num_atom_embedding, cutoff, gap
+            atom_embedding_dim,
+            hidden_feats,
+            num_atom_embedding,
+            cutoff,
+            gap,
         )
         # copy over the embedding table to remove redundancy
         self.model.embed = self.atom_embedding
-        if isinstance(readout, (str, Type)):
+        if isinstance(readout, (str, type)):
             # if str, assume it's the name of a class
             if isinstance(readout, str):
                 readout_cls = find_spec(readout, "dgl.nn.pytorch.glob")
                 if readout_cls is None:
                     raise ImportError(
-                        f"Class name passed to `readout`, but not found in `dgl.nn.pytorch.glob`."
+                        f"Class name passed to `readout`, but not found in `dgl.nn.pytorch.glob`.",
                     )
             else:
                 # assume it's generic type
@@ -109,7 +117,8 @@ class SchNet(AbstractDGLModel):
         data = {}
         graph = batch.get("graph")
         assert isinstance(
-            graph, dgl.DGLGraph
+            graph,
+            dgl.DGLGraph,
         ), f"Model {self.__class__.__name__} expects DGL graphs, but data in 'graph' key is type {type(graph)}"
         # SchNet expects atomic numbers as input to the model, so we do not
         # read from the embedding table like other models
@@ -130,8 +139,8 @@ class SchNet(AbstractDGLModel):
         graph: dgl.DGLGraph,
         node_feats: torch.Tensor,
         edge_feats: torch.Tensor,
-        pos: Optional[torch.Tensor] = None,
-        graph_feats: Optional[torch.Tensor] = None,
+        pos: torch.Tensor | None = None,
+        graph_feats: torch.Tensor | None = None,
         **kwargs,
     ) -> Embeddings:
         r"""

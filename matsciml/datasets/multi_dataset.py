@@ -1,11 +1,14 @@
-from typing import Dict, Iterable, List, Union
+from __future__ import annotations
 
-import torch
+from collections.abc import Iterable
+from typing import Dict, List, Union
+
 import dgl
+import torch
 from torch.utils.data import ConcatDataset
 
-from matsciml.datasets.base import BaseLMDBDataset
 from matsciml.common.registry import registry
+from matsciml.datasets.base import BaseLMDBDataset
 
 # quasi-registry of functions for collating based on dataset class name
 collate_registry = {
@@ -30,12 +33,8 @@ class MultiDataset(ConcatDataset):
 
     @staticmethod
     def collate_fn(
-        batch: List[
-            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ],
-    ) -> Dict[
-        str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-    ]:
+        batch: list[dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]]],
+    ) -> dict[str, dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]]]:
         """
         Collate function for multiple datasets.
 
@@ -69,7 +68,7 @@ class MultiDataset(ConcatDataset):
         return all_data
 
     @property
-    def target_keys(self) -> Dict[str, Dict[str, List[str]]]:
+    def target_keys(self) -> dict[str, dict[str, list[str]]]:
         keys = {}
         for dset in self.datasets:
             name = dset.__class__.__name__

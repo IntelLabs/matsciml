@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 
+from matsciml.datasets.transforms import DistancesTransform
+from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import SchNet
 from matsciml.models.base import ScalarRegressionTask
-from matsciml.lightning.data_utils import MatSciMLDataModule
-from matsciml.datasets.transforms import DistancesTransform
-
 
 # construct a scalar regression task with SchNet encoder
 task = ScalarRegressionTask(
@@ -21,7 +22,8 @@ task = ScalarRegressionTask(
 # Use IS2RE devset to test workflow
 # SchNet uses RBFs, and expects edge features corresponding to atom-atom distances
 dm = MatSciMLDataModule.from_devset(
-    "IS2REDataset", dset_kwargs={"transforms": [DistancesTransform()]}
+    "IS2REDataset",
+    dset_kwargs={"transforms": [DistancesTransform()]},
 )
 
 # run a quick training loop

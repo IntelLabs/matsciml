@@ -4,6 +4,8 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
+
 import math
 import time
 from math import pi as PI
@@ -17,11 +19,7 @@ from torch_geometric.nn import MessagePassing, SchNet, radius_graph
 from torch_scatter import scatter
 
 from matsciml.common.transforms import RandomRotate
-from matsciml.common.utils import (
-    conditional_grad,
-    get_pbc_distances,
-    radius_graph_pbc,
-)
+from matsciml.common.utils import conditional_grad, get_pbc_distances, radius_graph_pbc
 from matsciml.models.base import BaseModel
 
 try:
@@ -63,7 +61,7 @@ class spinconv(BaseModel):
         num_rand_rotations=5,
         scale_distances=True,
     ):
-        super(spinconv, self).__init__()
+        super().__init__()
 
         self.num_targets = num_targets
         self.num_random_rotations = num_rand_rotations
@@ -190,7 +188,9 @@ class spinconv(BaseModel):
 
         if self.otf_graph:
             edge_index, cell_offsets, neighbors = radius_graph_pbc(
-                data, self.cutoff, 100
+                data,
+                self.cutoff,
+                100,
             )
             data.edge_index = edge_index
             data.cell_offsets = cell_offsets
@@ -226,7 +226,10 @@ class spinconv(BaseModel):
         )
 
         outputs = self._forward_helper(
-            data, edge_index, edge_distance, edge_distance_vec
+            data,
+            edge_index,
+            edge_distance,
+            edge_distance_vec,
         )
         if self.show_timing_info is True:
             torch.cuda.synchronize()
@@ -235,7 +238,7 @@ class spinconv(BaseModel):
                     len(edge_index[0]),
                     torch.cuda.memory_allocated() / (1000 * len(edge_index[0])),
                     torch.cuda.max_memory_allocated() / 1000000,
-                )
+                ),
             )
 
         return outputs
@@ -357,7 +360,8 @@ class spinconv(BaseModel):
 
         # compute the random rotations
         random_rot_mat = self._random_rot_mat(
-            self.num_atoms * num_random_rotations, device
+            self.num_atoms * num_random_rotations,
+            device,
         )
         random_rot_mat = random_rot_mat.view(num_random_rotations, self.num_atoms, 3, 3)
 
@@ -379,21 +383,27 @@ class spinconv(BaseModel):
                 proj_nodes_delta_x,
                 proj_nodes_src_index_x,
             ) = self._project2D_nodes_init(
-                rot_mat_x_perturb, edge_index, edge_distance_vec
+                rot_mat_x_perturb,
+                edge_index,
+                edge_distance_vec,
             )
             (
                 proj_nodes_index_y,
                 proj_nodes_delta_y,
                 proj_nodes_src_index_y,
             ) = self._project2D_nodes_init(
-                rot_mat_y_perturb, edge_index, edge_distance_vec
+                rot_mat_y_perturb,
+                edge_index,
+                edge_distance_vec,
             )
             (
                 proj_nodes_index_z,
                 proj_nodes_delta_z,
                 proj_nodes_src_index_z,
             ) = self._project2D_nodes_init(
-                rot_mat_z_perturb, edge_index, edge_distance_vec
+                rot_mat_z_perturb,
+                edge_index,
+                edge_distance_vec,
             )
 
             # estimate the force in each perpendicular direction
@@ -422,13 +432,15 @@ class spinconv(BaseModel):
                 proj_nodes_src_index_z,
             )
             forces_perturb = torch.cat(
-                [force_x[:, 0:1], force_y[:, 0:1], force_z[:, 0:1]], dim=1
+                [force_x[:, 0:1], force_y[:, 0:1], force_z[:, 0:1]],
+                dim=1,
             )
 
             # rotate the predicted forces back into the global reference frame
             rot_mat_inv = torch.transpose(rot_mat_x_perturb, 1, 2)
             forces_perturb = torch.bmm(rot_mat_inv, forces_perturb.view(-1, 3, 1)).view(
-                -1, 3
+                -1,
+                3,
             )
 
             forces = forces + forces_perturb
@@ -438,7 +450,11 @@ class spinconv(BaseModel):
         return forces
 
     def _filter_edges(
-        self, edge_index, edge_distance, edge_distance_vec, max_num_neighbors
+        self,
+        edge_index,
+        edge_distance,
+        edge_distance_vec,
+        max_num_neighbors,
     ):
         # Remove edges that aren't within the closest max_num_neighbors from either the target or source atom.
         # This ensures all edges occur in pairs, i.e., if X -> Y exists then Y -> X is included.
@@ -449,7 +465,8 @@ class spinconv(BaseModel):
 
         # Assuming the edges are consecutive based on the target index
         target_node_index, neigh_count = torch.unique_consecutive(
-            edge_index[1], return_counts=True
+            edge_index[1],
+            return_counts=True,
         )
         max_neighbors = torch.max(neigh_count)
 
@@ -467,7 +484,9 @@ class spinconv(BaseModel):
             torch.zeros(self.num_atoms * max_neighbors, device=device) - 1
         ).long()
         target_lookup.index_copy_(
-            0, edge_map_index, torch.arange(length, device=device).long()
+            0,
+            edge_map_index,
+            torch.arange(length, device=device).long(),
         )
 
         # Get the length of each edge
@@ -486,7 +505,9 @@ class spinconv(BaseModel):
         edge_index_hash = edge_index_min * self.num_atoms + edge_index_max
         edge_count_start = torch.zeros(self.num_atoms * self.num_atoms, device=device)
         edge_count_start.index_add_(
-            0, edge_index_hash, torch.ones(len(edge_index_hash), device=device)
+            0,
+            edge_index_hash,
+            torch.ones(len(edge_index_hash), device=device),
         )
 
         # Find index into the original edge_index
@@ -507,7 +528,8 @@ class spinconv(BaseModel):
         target_lookup_below_thres = target_lookup_below_thres.view(-1)
         mask_unused = target_lookup_below_thres.ge(0)
         target_lookup_below_thres = torch.masked_select(
-            target_lookup_below_thres, mask_unused
+            target_lookup_below_thres,
+            mask_unused,
         )
 
         # Find edges that are used at least once and create a mask to keep
@@ -526,7 +548,8 @@ class spinconv(BaseModel):
         edge_distance = torch.masked_select(edge_distance, edge_keep)
         edge_distance_vec_mask = edge_keep.view(-1, 1).repeat(1, 3)
         edge_distance_vec = torch.masked_select(
-            edge_distance_vec, edge_distance_vec_mask
+            edge_distance_vec,
+            edge_distance_vec_mask,
         ).view(-1, 3)
 
         return edge_index, edge_distance, edge_distance_vec
@@ -573,7 +596,7 @@ class spinconv(BaseModel):
 
         if torch.min(edge_vec_0_distance) < 0.0001:
             print(
-                "Error edge_vec_0_distance: {}".format(torch.min(edge_vec_0_distance))
+                f"Error edge_vec_0_distance: {torch.min(edge_vec_0_distance)}",
             )
             (minval, minidx) = torch.min(edge_vec_0_distance, 0)
             print(
@@ -583,13 +606,15 @@ class spinconv(BaseModel):
                     edge_index[1, minidx],
                     data.pos[edge_index[0, minidx]],
                     data.pos[edge_index[1, minidx]],
-                )
+                ),
             )
 
         avg_vector = torch.zeros(num_atoms, 3, device=device)
         weight = 0.5 * (torch.cos(edge_vec_0_distance * PI / self.cutoff) + 1.0)
         avg_vector.index_add_(
-            0, edge_index[1, :], edge_vec_0 * weight.view(-1, 1).expand(-1, 3)
+            0,
+            edge_index[1, :],
+            edge_vec_0 * weight.view(-1, 1).expand(-1, 3),
         )
 
         edge_vec_2 = avg_vector[edge_index[1, :]] + 0.0001
@@ -597,7 +622,7 @@ class spinconv(BaseModel):
 
         if torch.min(edge_vec_2_distance) < 0.000001:
             print(
-                "Error edge_vec_2_distance: {}".format(torch.min(edge_vec_2_distance))
+                f"Error edge_vec_2_distance: {torch.min(edge_vec_2_distance)}",
             )
 
         norm_x = edge_vec_0 / (edge_vec_0_distance.view(-1, 1))
@@ -627,7 +652,8 @@ class spinconv(BaseModel):
 
         # Assuming the edges are consecutive based on the target index
         target_node_index, neigh_count = torch.unique_consecutive(
-            edge_index[1], return_counts=True
+            edge_index[1],
+            return_counts=True,
         )
         max_neighbors = torch.max(neigh_count)
         target_neigh_count = torch.zeros(self.num_atoms, device=device).long()
@@ -666,7 +692,10 @@ class spinconv(BaseModel):
         target_edge = torch.masked_select(target_edge, mask_unused)
 
         return self._project2D_init(
-            source_edge, target_edge, rot_mat, edge_distance_vec
+            source_edge,
+            target_edge,
+            rot_mat,
+            edge_distance_vec,
         )
 
     def _project2D_nodes_init(self, rot_mat, edge_index, edge_distance_vec):
@@ -678,7 +707,10 @@ class spinconv(BaseModel):
         source_edge = torch.arange(length, device=device)
 
         return self._project2D_init(
-            source_edge, target_node, rot_mat, edge_distance_vec
+            source_edge,
+            target_node,
+            rot_mat,
+            edge_distance_vec,
         )
 
     def _project2D_init(self, source_edge, target_edge, rot_mat, edge_distance_vec):
@@ -686,11 +718,13 @@ class spinconv(BaseModel):
         source_edge_offset = edge_distance_norm[source_edge]
 
         source_edge_offset_rot = torch.bmm(
-            rot_mat[target_edge], source_edge_offset.view(-1, 3, 1)
+            rot_mat[target_edge],
+            source_edge_offset.view(-1, 3, 1),
         )
 
         source_edge_X = torch.atan2(
-            source_edge_offset_rot[:, 1], source_edge_offset_rot[:, 2]
+            source_edge_offset_rot[:, 1],
+            source_edge_offset_rot[:, 2],
         ).view(-1)
 
         # source_edge_X ranges from -pi to pi
@@ -790,7 +824,7 @@ class MessageBlock(torch.nn.Module):
         act,
         lmax,
     ):
-        super(MessageBlock, self).__init__()
+        super().__init__()
         self.in_hidden_channels = in_hidden_channels
         self.out_hidden_channels = out_hidden_channels
         self.act = act
@@ -876,7 +910,7 @@ class ForceOutputBlock(torch.nn.Module):
         act,
         lmax,
     ):
-        super(ForceOutputBlock, self).__init__()
+        super().__init__()
         self.in_hidden_channels = in_hidden_channels
         self.out_hidden_channels = out_hidden_channels
         self.act = act
@@ -947,7 +981,7 @@ class SpinConvBlock(torch.nn.Module):
         act,
         lmax,
     ):
-        super(SpinConvBlock, self).__init__()
+        super().__init__()
         self.in_hidden_channels = in_hidden_channels
         self.mid_hidden_channels = mid_hidden_channels
         self.sphere_size_lat = sphere_size_lat
@@ -958,7 +992,8 @@ class SpinConvBlock(torch.nn.Module):
         self.num_groups = self.in_hidden_channels // 8
 
         self.ProjectLatLongSphere = ProjectLatLongSphere(
-            sphere_size_lat, sphere_size_long
+            sphere_size_lat,
+            sphere_size_long,
         )
         assert self.sphere_message in [
             "fullconv",
@@ -966,7 +1001,8 @@ class SpinConvBlock(torch.nn.Module):
         ]
         if self.sphere_message in ["rotspharmwd"]:
             self.sph_froms2grid = FromS2Grid(
-                (self.sphere_size_lat, self.sphere_size_long), self.lmax
+                (self.sphere_size_lat, self.sphere_size_long),
+                self.lmax,
             )
             self.mlp = nn.Linear(
                 self.in_hidden_channels * (self.lmax + 1) ** 2,
@@ -1002,7 +1038,11 @@ class SpinConvBlock(torch.nn.Module):
 
     def forward(self, x, out_size, proj_index, proj_delta, proj_src_index):
         x = self.ProjectLatLongSphere(
-            x, out_size, proj_index, proj_delta, proj_src_index
+            x,
+            out_size,
+            proj_index,
+            proj_delta,
+            proj_src_index,
         )
         if self.sphere_message == "rotspharmwd":
             sph_harm_calc = torch.zeros(
@@ -1016,7 +1056,9 @@ class SpinConvBlock(torch.nn.Module):
                 wD_diag = wD_diag.to(x.device)
                 sph_harm_calc += self.act(self.mlp(sph_harm.reshape(x.shape[0], -1)))
                 wd = wD_diag.view(1, self.sphlength, self.sphlength).expand(
-                    len(x) * self.in_hidden_channels, -1, -1
+                    len(x) * self.in_hidden_channels,
+                    -1,
+                    -1,
                 )
                 sph_harm = torch.bmm(wd, sph_harm)
             x = sph_harm_calc
@@ -1049,7 +1091,7 @@ class EmbeddingBlock(torch.nn.Module):
         max_num_elements,
         act,
     ):
-        super(EmbeddingBlock, self).__init__()
+        super().__init__()
         self.in_hidden_channels = in_hidden_channels
         self.out_hidden_channels = out_hidden_channels
         self.act = act
@@ -1104,7 +1146,7 @@ class DistanceBlock(torch.nn.Module):
         distance_expansion,
         scale_distances,
     ):
-        super(DistanceBlock, self).__init__()
+        super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.max_num_elements = max_num_elements
@@ -1114,10 +1156,12 @@ class DistanceBlock(torch.nn.Module):
 
         if self.scale_distances:
             self.dist_scalar = nn.Embedding(
-                self.max_num_elements * self.max_num_elements, 1
+                self.max_num_elements * self.max_num_elements,
+                1,
             )
             self.dist_offset = nn.Embedding(
-                self.max_num_elements * self.max_num_elements, 1
+                self.max_num_elements * self.max_num_elements,
+                1,
             )
             nn.init.uniform_(self.dist_scalar.weight.data, -0.0001, 0.0001)
             nn.init.uniform_(self.dist_offset.weight.data, -0.0001, 0.0001)
@@ -1146,7 +1190,7 @@ class DistanceBlock(torch.nn.Module):
 
 class ProjectLatLongSphere(torch.nn.Module):
     def __init__(self, sphere_size_lat, sphere_size_long):
-        super(ProjectLatLongSphere, self).__init__()
+        super().__init__()
         self.sphere_size_lat = sphere_size_lat
         self.sphere_size_long = sphere_size_long
 
@@ -1185,7 +1229,7 @@ class ProjectLatLongSphere(torch.nn.Module):
 
 class Swish(torch.nn.Module):
     def __init__(self):
-        super(Swish, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         return x * torch.sigmoid(x)
@@ -1193,7 +1237,7 @@ class Swish(torch.nn.Module):
 
 class GaussianSmearing(torch.nn.Module):
     def __init__(self, start=-5.0, stop=5.0, num_gaussians=50, basis_width_scalar=1.0):
-        super(GaussianSmearing, self).__init__()
+        super().__init__()
         offset = torch.linspace(start, stop, num_gaussians)
         self.coeff = -0.5 / (basis_width_scalar * (offset[1] - offset[0])).item() ** 2
         self.register_buffer("offset", offset)

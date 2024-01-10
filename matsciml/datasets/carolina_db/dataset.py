@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
 from math import pi
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -11,20 +14,24 @@ from pymatgen.core import Lattice, Structure
 from matsciml.common.registry import registry
 from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets.base import PointCloudDataset
-from matsciml.datasets.utils import (atomic_number_map, concatenate_keys,
-                                     element_types, pad_point_cloud,
-                                     point_cloud_featurization)
+from matsciml.datasets.utils import (
+    atomic_number_map,
+    concatenate_keys,
+    element_types,
+    pad_point_cloud,
+    point_cloud_featurization,
+)
 
 
 @registry.register_dataset("CMDataset")
 class CMDataset(PointCloudDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
 
-    def index_to_key(self, index: int) -> Tuple[int]:
+    def index_to_key(self, index: int) -> tuple[int]:
         return (0, index)
 
     @staticmethod
-    def collate_fn(batch: List[DataDict]) -> BatchDict:
+    def collate_fn(batch: list[DataDict]) -> BatchDict:
         return concatenate_keys(
             batch,
             pad_keys=["pc_features"],
@@ -35,8 +42,10 @@ class CMDataset(PointCloudDataset):
         return super().data_from_key(0, idx)
 
     def data_from_key(
-        self, lmdb_index: int, subindex: int
-    ) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
+        self,
+        lmdb_index: int,
+        subindex: int,
+    ) -> dict[str, dict[str, torch.Tensor] | torch.Tensor]:
         """Available keys from Carolina Materials Database:
             _symmetry_space_group_name_H-M
             _cell_length_a
@@ -76,7 +85,9 @@ class CMDataset(PointCloudDataset):
         atom_numbers = torch.LongTensor(data["atomic_numbers"])
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(
-            atom_numbers[src_nodes], atom_numbers[dst_nodes], 100
+            atom_numbers[src_nodes],
+            atom_numbers[dst_nodes],
+            100,
         )
         return_dict["atomic_numbers"] = atom_numbers
         return_dict["pc_features"] = pc_features
@@ -95,7 +106,7 @@ class CMDataset(PointCloudDataset):
         )
 
         lattice_params = torch.FloatTensor(
-            lattice_abc + tuple(a * (pi / 180.0) for a in lattice_angles)
+            lattice_abc + tuple(a * (pi / 180.0) for a in lattice_angles),
         )
         return_dict["lattice_params"] = lattice_params
 
@@ -130,13 +141,13 @@ class CMDataset(PointCloudDataset):
         return return_dict
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> dict[str, list[str]]:
         return {"regression": ["energy"]}
 
     @staticmethod
     def _standardize_values(
-        value: Union[float, Iterable[float]]
-    ) -> Union[torch.Tensor, float]:
+        value: float | Iterable[float],
+    ) -> torch.Tensor | float:
         """
         Standardizes targets to be ingested by a model.
 
@@ -175,11 +186,11 @@ class CMDataset(PointCloudDataset):
 class M3GCMDataset(CMDataset):
     def __init__(
         self,
-        lmdb_root_path: Union[str, Path],
+        lmdb_root_path: str | Path,
         threebody_cutoff: float = 4.0,
         cutoff_dist: float = 20.0,
-        graph_labels: Union[list[Union[int, float]], None] = None,
-        transforms: Optional[List[Callable[..., Any]]] = None,
+        graph_labels: list[int | float] | None = None,
+        transforms: list[Callable[..., Any]] | None = None,
     ):
         super().__init__(lmdb_root_path, transforms)
         self.threebody_cutoff = threebody_cutoff
@@ -190,18 +201,24 @@ class M3GCMDataset(CMDataset):
         return_dict = super().data_from_key(lmdb_index, subindex)
         a, b, c, alpha, beta, gamma = return_dict["lattice_params"]
         num_to_element = dict(
-            zip(atomic_number_map().values(), atomic_number_map().keys())
+            zip(atomic_number_map().values(), atomic_number_map().keys()),
         )
         elements = [
             num_to_element[int(idx.item())] for idx in return_dict["atomic_numbers"]
         ]
         lattice = Lattice.from_parameters(
-            a, b, c, alpha * 180 / pi, beta * 180 / pi, gamma * 180 / pi
+            a,
+            b,
+            c,
+            alpha * 180 / pi,
+            beta * 180 / pi,
+            gamma * 180 / pi,
         )
         structure = Structure(lattice, elements, return_dict["pos"])
         self.structures = [structure]
         self.converter = Structure2Graph(
-            element_types=element_types(), cutoff=self.cutoff_dist
+            element_types=element_types(),
+            cutoff=self.cutoff_dist,
         )
         graphs, lg, sa = M3GNetDataset.process(self)
         return_dict["graph"] = graphs[0]

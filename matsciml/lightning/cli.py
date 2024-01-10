@@ -1,10 +1,11 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
 import pytorch_lightning as pl
 from pytorch_lightning.utilities.cli import (
-    MODEL_REGISTRY,
     DATAMODULE_REGISTRY,
+    MODEL_REGISTRY,
     LightningCLI,
 )
 

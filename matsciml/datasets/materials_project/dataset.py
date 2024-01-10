@@ -3,18 +3,11 @@ from __future__ import annotations
 import pickle
 from collections.abc import Iterable
 from copy import deepcopy
-from functools import cache
-from functools import cached_property
+from functools import cache, cached_property
 from importlib.util import find_spec
 from math import pi
 from pathlib import Path
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -23,17 +16,17 @@ from matgl.ext.pymatgen import Structure2Graph
 from matgl.graph.data import M3GNetDataset
 from pymatgen.analysis import local_env
 from pymatgen.analysis.graphs import StructureGraph
-from pymatgen.core import Lattice
-from pymatgen.core import Structure
+from pymatgen.core import Lattice, Structure
 from tqdm import tqdm
 
 from matsciml.common.registry import registry
-from matsciml.common.types import BatchDict
-from matsciml.common.types import DataDict
+from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets.base import PointCloudDataset
-from matsciml.datasets.utils import concatenate_keys
-from matsciml.datasets.utils import element_types
-from matsciml.datasets.utils import point_cloud_featurization
+from matsciml.datasets.utils import (
+    concatenate_keys,
+    element_types,
+    point_cloud_featurization,
+)
 
 _has_pyg = find_spec("torch_geometric") is not None
 
@@ -93,7 +86,9 @@ class MaterialsProjectDataset(PointCloudDataset):
         return (0, index)
 
     def _parse_structure(
-        self, data: dict[str, Any], return_dict: dict[str, Any],
+        self,
+        data: dict[str, Any],
+        return_dict: dict[str, Any],
     ) -> None:
         """
         Parse the standardized Structure data and format into torch Tensors.
@@ -127,7 +122,9 @@ class MaterialsProjectDataset(PointCloudDataset):
         atom_numbers = torch.LongTensor(structure.atomic_numbers)
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(
-            atom_numbers[src_nodes], atom_numbers[dst_nodes], 100,
+            atom_numbers[src_nodes],
+            atom_numbers[dst_nodes],
+            100,
         )
         # keep atomic numbers for graph featurization
         return_dict["atomic_numbers"] = atom_numbers
@@ -139,7 +136,7 @@ class MaterialsProjectDataset(PointCloudDataset):
         ).float()
         # grab lattice properties
         space_group = structure.get_space_group_info()[-1]
-        return_dict['natoms'] = len(atom_numbers)
+        return_dict["natoms"] = len(atom_numbers)
         lattice_params = torch.FloatTensor(
             structure.lattice.abc
             + tuple(a * (pi / 180.0) for a in structure.lattice.angles),
@@ -151,7 +148,9 @@ class MaterialsProjectDataset(PointCloudDataset):
         return_dict["lattice_features"] = lattice_features
 
     def _parse_symmetry(
-        self, data: dict[str, Any], return_dict: dict[str, Any],
+        self,
+        data: dict[str, Any],
+        return_dict: dict[str, Any],
     ) -> None:
         """
         Parse out symmetry information from the `SymmetryData` structure.
@@ -211,7 +210,9 @@ class MaterialsProjectDataset(PointCloudDataset):
         self._target_keys = copy_dict
 
     def data_from_key(
-        self, lmdb_index: int, subindex: int,
+        self,
+        lmdb_index: int,
+        subindex: int,
     ) -> dict[str, torch.Tensor | dict[str, torch.Tensor]]:
         """
         Extract data out of the PyMatGen data structure and format into PyTorch happy structures.
@@ -344,7 +345,9 @@ if _has_pyg:
     from torch_geometric.data import Batch, Data
 
     CrystalNN = local_env.CrystalNN(
-        distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False,
+        distance_cutoffs=None,
+        x_diff_weight=-1,
+        porous_adjustment=False,
     )
 
     @registry.register_dataset("PyGMaterialsProjectDataset")
@@ -404,7 +407,9 @@ if _has_pyg:
             self._cutoff_dist = value
 
         def data_from_key(
-            self, lmdb_index: int, subindex: int,
+            self,
+            lmdb_index: int,
+            subindex: int,
         ) -> dict[str, torch.Tensor | Data | dict[str, torch.Tensor]]:
             """
             Maps a pair of indices to a specific data sample from LMDB.
@@ -492,10 +497,13 @@ if _has_pyg:
             self.scaler = None
 
         def data_from_key(
-            self, lmdb_index: int, subindex: int,
+            self,
+            lmdb_index: int,
+            subindex: int,
         ) -> dict[str, torch.Tensor | Data | dict[str, torch.Tensor]]:
             data = super(PyGMaterialsProjectDataset, self).data_from_key(
-                lmdb_index, subindex,
+                lmdb_index,
+                subindex,
             )
             num_nodes = len(data["atomic_numbers"])
             if num_nodes > 25:
@@ -528,7 +536,9 @@ if _has_pyg:
             return data
 
         def _parse_structure(
-            self, data: dict[str, Any], return_dict: dict[str, Any],
+            self,
+            data: dict[str, Any],
+            return_dict: dict[str, Any],
         ) -> None:
             """
             The same as OG with the addition of jimages field
@@ -619,11 +629,14 @@ if _has_pyg:
             self.scaler = None
 
         def data_from_key(
-            self, lmdb_index: int, subindex: int,
+            self,
+            lmdb_index: int,
+            subindex: int,
         ) -> dict[str, torch.Tensor | Data | dict[str, torch.Tensor]]:
             # The LMDB dataset already has prepared PyG graphs
             data = super(MaterialsProjectDataset, self).data_from_key(
-                lmdb_index, subindex,
+                lmdb_index,
+                subindex,
             )
             return data
 
@@ -665,13 +678,16 @@ class M3GMaterialsProjectDataset(MaterialsProjectDataset):
         self.cutoff_dist = cutoff_dist
 
     def _parse_structure(
-        self, data: dict[str, Any], return_dict: dict[str, Any],
+        self,
+        data: dict[str, Any],
+        return_dict: dict[str, Any],
     ) -> None:
         super()._parse_structure(data, return_dict)
         structure: None | Structure = data.get("structure", None)
         self.structures = [structure]
         self.converter = Structure2Graph(
-            element_types=element_types(), cutoff=self.cutoff_dist,
+            element_types=element_types(),
+            cutoff=self.cutoff_dist,
         )
         graphs, lg, sa = M3GNetDataset.process(self)
         return_dict["graph"] = graphs[0]

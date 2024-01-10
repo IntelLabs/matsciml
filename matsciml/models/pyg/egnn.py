@@ -1,16 +1,16 @@
 # Copyright (C) 2023 Intel Corporation
 # SPDX-License-Identifier: MIT License
-
 from __future__ import annotations
 
 import torch
 from einops import reduce
-from matsciml.common.types import AbstractGraph, Embeddings
-from matsciml.models.base import AbstractPyGModel
 from torch import nn
 from torch_geometric.nn import LayerNorm, MessagePassing
 from torch_geometric.nn.pool import global_add_pool
 from torch_geometric.typing import Size
+
+from matsciml.common.types import AbstractGraph, Embeddings
+from matsciml.models.base import AbstractPyGModel
 
 """
 Some inspiration from https://github.com/lucidrains/egnn-pytorch but
@@ -222,7 +222,8 @@ class EGNN(AbstractPyGModel):
         else:
             pool_norm = pool_norm(hidden_dim)
         self.output = nn.Sequential(
-            pool_norm, nn.Linear(hidden_dim, output_dim, bias=False)
+            pool_norm,
+            nn.Linear(hidden_dim, output_dim, bias=False),
         )
 
     def _forward(

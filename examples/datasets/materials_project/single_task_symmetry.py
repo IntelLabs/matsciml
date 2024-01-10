@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 from torch.nn import LayerNorm, SiLU
 
-from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.datasets.transforms import PointCloudToGraphTransform
+from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import GraphConvModel
 from matsciml.models.base import CrystalSymmetryClassificationTask
 
@@ -25,13 +27,15 @@ task = CrystalSymmetryClassificationTask(
 # the base set is required because the devset does not contain symmetry labels
 dm = MatSciMLDataModule(
     dataset="MaterialsProjectDataset",
-    train_path='./mp-project/base/train',
+    train_path="./mp-project/base/train",
     dset_kwargs={
         "transforms": [
             PointCloudToGraphTransform(
-                "dgl", cutoff_dist=20.0, node_keys=["pos", "atomic_numbers"]
-            )
-        ]
+                "dgl",
+                cutoff_dist=20.0,
+                node_keys=["pos", "atomic_numbers"],
+            ),
+        ],
     },
     val_split=0.2,
     batch_size=16,

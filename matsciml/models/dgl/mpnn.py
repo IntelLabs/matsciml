@@ -1,14 +1,15 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from typing import Any, Union, Type, Optional, List, Dict
 from importlib.util import find_spec
+from typing import Any, Dict, List, Optional, Type, Union
 
-from dgllife.model import MPNNGNN
 import dgl
 import torch
-from torch import nn
 from dgl.nn.pytorch import glob
+from dgllife.model import MPNNGNN
+from torch import nn
 
 from matsciml.common.types import BatchDict, DataDict, Embeddings
 from matsciml.models.base import AbstractDGLModel
@@ -23,9 +24,9 @@ class MPNN(AbstractDGLModel):
         edge_out_dim: int = 128,
         num_step_message_passing: int = 3,
         num_atom_embedding: int = 100,
-        embedding_kwargs: Dict[str, Any] = {},
-        readout: Union[Type[nn.Module], str, nn.Module] = glob.AvgPooling,
-        readout_kwargs: Optional[Dict[str, Any]] = None,
+        embedding_kwargs: dict[str, Any] = {},
+        readout: type[nn.Module] | str | nn.Module = glob.AvgPooling,
+        readout_kwargs: dict[str, Any] | None = None,
         encoder_only: bool = True,
     ) -> None:
         r"""
@@ -56,7 +57,10 @@ class MPNN(AbstractDGLModel):
             If True, bypasses the output projection layer, by default True
         """
         super().__init__(
-            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+            atom_embedding_dim,
+            num_atom_embedding,
+            embedding_kwargs,
+            encoder_only,
         )
         self.model = MPNNGNN(
             atom_embedding_dim + 3,
@@ -65,13 +69,13 @@ class MPNN(AbstractDGLModel):
             edge_out_dim,
             num_step_message_passing,
         )
-        if isinstance(readout, (str, Type)):
+        if isinstance(readout, (str, type)):
             # if str, assume it's the name of a class
             if isinstance(readout, str):
                 readout_cls = find_spec(readout, "dgl.nn.pytorch.glob")
                 if readout_cls is None:
                     raise ImportError(
-                        f"Class name passed to `readout`, but not found in `dgl.nn.pytorch.glob`."
+                        f"Class name passed to `readout`, but not found in `dgl.nn.pytorch.glob`.",
                     )
             else:
                 # assume it's generic type
@@ -112,7 +116,7 @@ class MPNN(AbstractDGLModel):
         node_feats: torch.Tensor,
         pos: torch.Tensor,
         edge_feats: torch.Tensor,
-        graph_feats: Optional[torch.Tensor] = None,
+        graph_feats: torch.Tensor | None = None,
         **kwargs,
     ) -> Embeddings:
         r"""

@@ -1,18 +1,25 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from typing import Callable, List, Optional, Dict, Any, Union
+import math
+from typing import Any, Callable, Dict, List, Optional, Union
 
-import torch, math
-import torch.nn as nn
-import numpy as np
-from matsciml.models.base import AbstractPointCloudModel
-from dgl.nn.pytorch.factory import KNNGraph
 import dgl
-
-from .gaanet_model import MLP, MomentumNorm, LayerNorm, TiedMultivectorAttention
 import geometric_algebra_attention.pytorch as gala
+import numpy as np
+import torch
+import torch.nn as nn
+from dgl.nn.pytorch.factory import KNNGraph
+
 from matsciml.common.types import Embeddings
+from matsciml.models.base import AbstractPointCloudModel
+from matsciml.models.dgl.gaanet.gaanet_model import (
+    MLP,
+    LayerNorm,
+    MomentumNorm,
+    TiedMultivectorAttention,
+)
 
 
 class GalaPotential(AbstractPointCloudModel):
@@ -36,14 +43,14 @@ class GalaPotential(AbstractPointCloudModel):
         covariant_mode: str = "full",
         include_normalized_products: bool = False,
         rank: int = 2,
-        invar_value_normalization: Optional[str] = None,
-        eqvar_value_normalization: Optional[str] = None,
-        value_normalization: Optional[str] = None,
-        score_normalization: Optional[str] = None,
-        block_normalization: Optional[str] = None,
+        invar_value_normalization: str | None = None,
+        eqvar_value_normalization: str | None = None,
+        value_normalization: str | None = None,
+        score_normalization: str | None = None,
+        block_normalization: str | None = None,
         equivariant_attention: bool = True,
         tied_attention: bool = False,
-        encoder_only: Optional[bool] = True,
+        encoder_only: bool | None = True,
         extensive: bool = True,
     ) -> None:
         # pass superficial values into the base class
@@ -93,15 +100,16 @@ class GalaPotential(AbstractPointCloudModel):
                 [
                     self.make_value_net(self.hidden_dim, within_network=False)
                     for _ in range(self.depth + 1)
-                ]
+                ],
             )
 
         self.block_norm_layers = torch.nn.ModuleList([])
         for _ in range(self.depth + 1):
             self.block_norm_layers.extend(
                 self._get_normalization_layers(
-                    self.block_normalization, self.hidden_dim
-                )
+                    self.block_normalization,
+                    self.hidden_dim,
+                ),
             )
 
         self.eqvar_norm_layers = torch.nn.ModuleList([])
@@ -109,8 +117,9 @@ class GalaPotential(AbstractPointCloudModel):
             for _ in range(self.depth):
                 self.eqvar_norm_layers.extend(
                     self._get_normalization_layers(
-                        self.eqvar_value_normalization, self.hidden_dim
-                    )
+                        self.eqvar_value_normalization,
+                        self.hidden_dim,
+                    ),
                 )
         self.save_hyperparameters()
 
@@ -137,8 +146,8 @@ class GalaPotential(AbstractPointCloudModel):
                             self.rank,
                             self.invariant_mode,
                             include_normalized_products=self.include_normalized_products,
-                        )
-                    )
+                        ),
+                    ),
                 )
                 self.scale_nets.append(self.make_score_net())
                 if self.equivariant_attention:
@@ -151,7 +160,7 @@ class GalaPotential(AbstractPointCloudModel):
                             reduce=False,
                             rank=rank,
                             **self.GAANet_kwargs,
-                        )
+                        ),
                     )
 
             # rotation-invariant (node value-producing) networks
@@ -162,8 +171,8 @@ class GalaPotential(AbstractPointCloudModel):
                         self.rank,
                         self.invariant_mode,
                         include_normalized_products=self.include_normalized_products,
-                    )
-                )
+                    ),
+                ),
             )
             if self.tied_attention:
                 self.tied_att_nets.append(
@@ -175,7 +184,7 @@ class GalaPotential(AbstractPointCloudModel):
                         reduce=reduce,
                         rank=rank,
                         **self.GAANet_kwargs,
-                    )
+                    ),
                 )
             else:
                 self.invar_att_nets.append(
@@ -186,7 +195,7 @@ class GalaPotential(AbstractPointCloudModel):
                         reduce=reduce,
                         rank=rank,
                         **self.GAANet_kwargs,
-                    )
+                    ),
                 )
 
     def _get_normalization_layers(self, norm: str, n_dim: int) -> torch.nn.Module:
@@ -213,14 +222,14 @@ class GalaPotential(AbstractPointCloudModel):
             [
                 torch.nn.SiLU(),
                 torch.nn.Linear(big_D, 1),
-            ]
+            ],
         )
         return torch.nn.Sequential(*layers)
 
     def make_value_net(
         self,
         D_in: int,
-        D_out: Optional[Union[int, None]] = None,
+        D_out: int | None | None = None,
         within_network: bool = True,
     ):
         D_out = D_out or self.hidden_dim
@@ -229,7 +238,7 @@ class GalaPotential(AbstractPointCloudModel):
 
         if within_network:
             layers.extend(
-                self._get_normalization_layers(self.invar_value_normalization, D_in)
+                self._get_normalization_layers(self.invar_value_normalization, D_in),
             )
 
         layers.append(torch.nn.Linear(D_in, big_D))
@@ -240,7 +249,7 @@ class GalaPotential(AbstractPointCloudModel):
             [
                 torch.nn.SiLU(),
                 torch.nn.Linear(big_D, D_out),
-            ]
+            ],
         )
         return torch.nn.Sequential(*layers)
 
@@ -248,8 +257,8 @@ class GalaPotential(AbstractPointCloudModel):
         self,
         pc_pos: torch.Tensor,
         pc_features: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
-        sizes: Optional[List[int]] = None,
+        mask: torch.Tensor | None = None,
+        sizes: list[int] | None = None,
         **kwargs,
     ) -> Embeddings:
         r"""

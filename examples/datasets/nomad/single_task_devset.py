@@ -1,13 +1,12 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 from torch.nn import LayerNorm, SiLU
 
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import PLEGNNBackbone
-from matsciml.models.base import (
-    ScalarRegressionTask,
-)
-from matsciml.datasets.transforms import PointCloudToGraphTransform
-
+from matsciml.models.base import ScalarRegressionTask
 
 # configure a simple model for testing
 model_args = {
@@ -59,9 +58,11 @@ dm = MatSciMLDataModule.from_devset(
     dset_kwargs={
         "transforms": [
             PointCloudToGraphTransform(
-                "dgl", cutoff_dist=20.0, node_keys=["pos", "atomic_numbers"]
-            )
-        ]
+                "dgl",
+                cutoff_dist=20.0,
+                node_keys=["pos", "atomic_numbers"],
+            ),
+        ],
     },
 )
 

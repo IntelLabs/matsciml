@@ -1,11 +1,14 @@
+from __future__ import annotations
+
+import gc
 import json
 import os
-import gc
+from collections.abc import Sequence
 from datetime import datetime
-from logging import getLogger, DEBUG
+from logging import DEBUG, getLogger
 from pathlib import Path
 from time import time
-from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
 import pytorch_lightning as pl
@@ -31,7 +34,7 @@ class LeaderboardWriter(BasePredictionWriter):
     of your choosing, nested as {task}/{model_name}/{datetime}.npz
     """
 
-    def __init__(self, output_path: Union[str, Path]) -> None:
+    def __init__(self, output_path: str | Path) -> None:
         super().__init__(write_interval="epoch")
         self.output_path = output_path
 
@@ -40,7 +43,7 @@ class LeaderboardWriter(BasePredictionWriter):
         return self._output_path
 
     @output_path.setter
-    def output_path(self, value: Union[str, Path]) -> None:
+    def output_path(self, value: str | Path) -> None:
         if isinstance(value, str):
             value = Path(value)
         os.makedirs(value, exist_ok=True)
@@ -53,10 +56,10 @@ class LeaderboardWriter(BasePredictionWriter):
 
     def write_on_epoch_end(
         self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
-        predictions: Sequence[Dict[str, torch.Tensor]],
-        batch_indices: Optional[Sequence[Any]],
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
+        predictions: Sequence[dict[str, torch.Tensor]],
+        batch_indices: Sequence[Any] | None,
     ) -> None:
         task_name = pl_module.__class__.__name__
         # TODO refactor this to use model attr instead of gnn
@@ -92,7 +95,7 @@ class LeaderboardWriter(BasePredictionWriter):
             print(f"\nSaved NPZ log file to: {target}\n")
 
 
-def deep_tensor_trawling(input_data: Tuple[Dict[str, Any]]):
+def deep_tensor_trawling(input_data: tuple[dict[str, Any]]):
     if len(input_data) == 1:
         input_data = input_data[0]
     results = {}
@@ -141,7 +144,10 @@ class GradientCheckCallback(Callback):
     """
 
     def __init__(
-        self, thres: float = 1e-2, num_steps: int = -1, verbose: bool = False
+        self,
+        thres: float = 1e-2,
+        num_steps: int = -1,
+        verbose: bool = False,
     ) -> None:
         super().__init__()
         self.thres = thres
@@ -152,8 +158,8 @@ class GradientCheckCallback(Callback):
 
     def on_before_optimizer_step(
         self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
         optimizer: Optimizer,
         opt_idx: int,
     ) -> None:
@@ -171,7 +177,7 @@ class GradientCheckCallback(Callback):
                         else:
                             node_name = ""
                         self.logger.debug(
-                            f"Step number {step_number} has NaN gradients for parameter {name}{node_name}. Zeroing!"
+                            f"Step number {step_number} has NaN gradients for parameter {name}{node_name}. Zeroing!",
                         )
                         # zero out gradients
                         param.grad.zero_()
@@ -190,15 +196,15 @@ class GradientCheckCallback(Callback):
 class UnusedParametersCallback(Callback):
     def on_before_optimizer_step(
         self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
         optimizer: Optimizer,
         opt_idx: int,
     ) -> None:
         for name, parameter in pl_module.named_parameters():
             if parameter.grad is None:
                 print(
-                    f"{name} has no gradients and is not part of the computational graph."
+                    f"{name} has no gradients and is not part of the computational graph.",
                 )
 
 
@@ -220,7 +226,7 @@ class ThroughputCallback(Callback):
         return self._log_dir
 
     @log_dir.setter
-    def log_dir(self, path: Union[str, Path]) -> None:
+    def log_dir(self, path: str | Path) -> None:
         if isinstance(path, str):
             path = Path(path)
         if not path.exists():
@@ -254,8 +260,8 @@ class ThroughputCallback(Callback):
     @rank_zero_only
     def on_train_batch_start(
         self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
         batch: Any,
         batch_idx: int,
     ) -> None:
@@ -265,8 +271,8 @@ class ThroughputCallback(Callback):
     @rank_zero_only
     def on_train_batch_end(
         self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
         outputs,
         batch: Any,
         batch_idx: int,
@@ -276,7 +282,7 @@ class ThroughputCallback(Callback):
         self.record.append(self.formatted_result)
 
     @property
-    def formatted_result(self) -> Dict[str, Union[int, float]]:
+    def formatted_result(self) -> dict[str, int | float]:
         result = {
             "elapsed": self.elapsed,
             "throughput": self.throughput,
@@ -287,7 +293,9 @@ class ThroughputCallback(Callback):
 
     @rank_zero_only
     def on_fit_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
     ) -> None:
         epoch = trainer.current_epoch
         target = self.log_dir.joinpath(f"epoch{epoch}_throughput_measurement.json")
@@ -296,7 +304,7 @@ class ThroughputCallback(Callback):
 
 
 class ForwardNaNDetection(Callback):
-    def __init__(self, output_path: Union[str, Path]) -> None:
+    def __init__(self, output_path: str | Path) -> None:
         super().__init__()
         if isinstance(output_path, str):
             output_path = Path(output_path)
@@ -308,15 +316,17 @@ class ForwardNaNDetection(Callback):
         return self.output_path.joinpath(f"forward_nan_check_step{self.step_num}.log")
 
     def on_fit_start(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
     ) -> None:
         for child in pl_module.children():
             child.register_forward_hook(forward_nan_hook)
 
     def on_train_batch_end(
         self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
         outputs,
         batch: Any,
         batch_idx: int,
@@ -335,14 +345,18 @@ class ForwardNaNDetection(Callback):
             with open(self.target_file, "w+") as write_file:
                 for entry in all_data:
                     write_file.write(
-                        " ".join([f"{key}: {value}" for key, value in entry.items()])
+                        " ".join([f"{key}: {value}" for key, value in entry.items()]),
                     )
                 write_file.write("\n")
 
 
 class ManualGradientClip(Callback):
     def __init__(
-        self, value: float, algorithm: str = "norm", verbose: bool = False, **kwargs
+        self,
+        value: float,
+        algorithm: str = "norm",
+        verbose: bool = False,
+        **kwargs,
     ) -> None:
         super().__init__()
         self.value = value
@@ -364,8 +378,8 @@ class ManualGradientClip(Callback):
 
     def on_before_optimizer_step(
         self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
         optimizer: Optimizer,
         opt_idx: int,
     ) -> None:
@@ -385,7 +399,10 @@ class MonitorGradients(Callback):
     """
 
     def __init__(
-        self, step_frequency: int, verbose: bool = False, eps: float = 1e-10
+        self,
+        step_frequency: int,
+        verbose: bool = False,
+        eps: float = 1e-10,
     ) -> None:
         super().__init__()
         self.step_frequency = step_frequency
@@ -394,8 +411,8 @@ class MonitorGradients(Callback):
 
     def on_before_optimizer_step(
         self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
         optimizer: Optimizer,
         opt_idx: int,
     ) -> None:
@@ -416,7 +433,9 @@ class MonitorGradients(Callback):
             torch.save(joint_state, f"step{step}_opt{opt_idx}_grads.pt")
 
     def on_after_backward(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
     ) -> None:
         encoder = pl_module.encoder
         tensors = []
@@ -434,7 +453,7 @@ class MonitorGradients(Callback):
         self.last_state = joint_state
         if self.verbose:
             print(
-                f"Step: {trainer.global_step} - Grads: {joint_state[:50]} - Equal? {is_close} - Zero grads: {no_grads}\n"
+                f"Step: {trainer.global_step} - Grads: {joint_state[:50]} - Equal? {is_close} - Zero grads: {no_grads}\n",
             )
 
 
@@ -444,7 +463,9 @@ class GarbageCallback(Callback):
         self.frequency = frequency
 
     def on_batch_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
     ) -> None:
         """
         Run garbage collection at the end of a batch.
@@ -465,7 +486,7 @@ class GarbageCallback(Callback):
 
 
 class InferenceWriter(BasePredictionWriter):
-    def __init__(self, output_dir: Union[str, Path]) -> None:
+    def __init__(self, output_dir: str | Path) -> None:
         """
         Set up the ``InferenceWriter`` callback.
 
@@ -496,7 +517,7 @@ class InferenceWriter(BasePredictionWriter):
         return self._output_dir
 
     @output_dir.setter
-    def output_dir(self, value: Union[str, Path]) -> None:
+    def output_dir(self, value: str | Path) -> None:
         if isinstance(value, str):
             value = Path(value)
         os.makedirs(value, exist_ok=True)
@@ -507,7 +528,7 @@ class InferenceWriter(BasePredictionWriter):
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
         predictions: Sequence[Any],
-        batch_indices: Union[Sequence[Any], None],
+        batch_indices: Sequence[Any] | None,
     ) -> None:
         predictions = concatenate_keys(predictions[0])
         # downcast to float16 to save some space

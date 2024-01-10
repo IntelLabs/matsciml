@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 import numpy as np
@@ -33,7 +35,7 @@ def npz_convert(npz_id, npz_ood_cat, npz_ood_ads, npz_ood_both):
         ]
         try:
             full_dict[f"{dataset_name}_chunk_idx"] = np.cumsum(
-                [item.astype(int).item() for item in [*dataset["chunk_ids"]]]
+                [item.astype(int).item() for item in [*dataset["chunk_ids"]]],
             ).astype(int)
         except Exception:
             pass
@@ -42,9 +44,9 @@ def npz_convert(npz_id, npz_ood_cat, npz_ood_ads, npz_ood_both):
 
 def parse_npz_for_nans(file):
     data = np.load(file)
-    if np.isnan(data['energy']).any():
+    if np.isnan(data["energy"]).any():
         print("Found nans in energy!")
-    elif np.isnan(data['forces']).any():
+    elif np.isnan(data["forces"]).any():
         print("Found nans in forces!")
     else:
         print("No nans found")
@@ -65,20 +67,27 @@ if __name__ == "__main__":
 
     argparser = ArgumentParser()
     argparser.add_argument(
-        "--npz-file", type=str, default="", help="npz log file to parse"
+        "--npz-file",
+        type=str,
+        default="",
+        help="npz log file to parse",
     )
     argparser.add_argument("--submission", action="store_true")
     argparser.add_argument(
-        "--id", help="Path to ID results. Required for OC20 and OC22."
+        "--id",
+        help="Path to ID results. Required for OC20 and OC22.",
     )
     argparser.add_argument(
-        "--ood-ads", help="Path to OOD-Ads results. Required only for OC20."
+        "--ood-ads",
+        help="Path to OOD-Ads results. Required only for OC20.",
     )
     argparser.add_argument(
-        "--ood-cat", help="Path to OOD-Cat results. Required only for OC20."
+        "--ood-cat",
+        help="Path to OOD-Cat results. Required only for OC20.",
     )
     argparser.add_argument(
-        "--ood-both", help="Path to OOD-Both results. Required only for OC20."
+        "--ood-both",
+        help="Path to OOD-Both results. Required only for OC20.",
     )
     argparser.add_argument("--out-path", default="submission_file.npz")
     args = argparser.parse_args()
@@ -86,5 +95,3 @@ if __name__ == "__main__":
         make_submission_file(args)
     else:
         parse_npz_for_nans(args.npz_file)
-
-

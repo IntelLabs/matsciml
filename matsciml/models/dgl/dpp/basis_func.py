@@ -1,10 +1,11 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
 import numpy as np
 import sympy as sym
-from scipy.optimize import brentq
 from scipy import special as sp
+from scipy.optimize import brentq
 
 """
 Credit for original code: xnuohz; https://github.com/xnuohz/DimeNet-dgl
@@ -97,9 +98,8 @@ def bessel_basis(n, k):
         for i in range(k):
             bess_basis_tmp += [
                 sym.simplify(
-                    normalizer[order][i]
-                    * f[order].subs(x, zeros[order, i] * x)
-                )
+                    normalizer[order][i] * f[order].subs(x, zeros[order, i] * x),
+                ),
             ]
         bess_basis += [bess_basis_tmp]
     return bess_basis
@@ -138,8 +138,7 @@ def associated_legendre_polynomials(l, zero_m_only=True):
 
         for j in range(2, l):
             P_l_m[j][0] = sym.simplify(
-                ((2 * j - 1) * z * P_l_m[j - 1][0] - (j - 1) * P_l_m[j - 2][0])
-                / j
+                ((2 * j - 1) * z * P_l_m[j - 1][0] - (j - 1) * P_l_m[j - 2][0]) / j,
             )
 
         if not zero_m_only:
@@ -147,7 +146,7 @@ def associated_legendre_polynomials(l, zero_m_only=True):
                 P_l_m[i][i] = sym.simplify((1 - 2 * i) * P_l_m[i - 1][i - 1])
                 if i + 1 < l:
                     P_l_m[i + 1][i] = sym.simplify(
-                        (2 * i + 1) * z * P_l_m[i][i]
+                        (2 * i + 1) * z * P_l_m[i][i],
                     )
                 for j in range(i + 2, l):
                     P_l_m[j][i] = sym.simplify(
@@ -155,7 +154,7 @@ def associated_legendre_polynomials(l, zero_m_only=True):
                             (2 * j - 1) * z * P_l_m[j - 1][i]
                             - (i + j - 1) * P_l_m[j - 2][i]
                         )
-                        / (j - i)
+                        / (j - i),
                     )
 
     return P_l_m
@@ -211,12 +210,12 @@ def real_sph_harm(l, zero_m_only=True, spherical_coordinates=True):
         for i in range(1, l):
             for j in range(1, i + 1):
                 Y_func_l_m[i][j] = sym.simplify(
-                    2 ** 0.5 * sph_harm_prefactor(i, j) * C_m[j] * P_l_m[i][j]
+                    2**0.5 * sph_harm_prefactor(i, j) * C_m[j] * P_l_m[i][j],
                 )
         for i in range(1, l):
             for j in range(1, i + 1):
                 Y_func_l_m[i][-j] = sym.simplify(
-                    2 ** 0.5 * sph_harm_prefactor(i, -j) * S_m[j] * P_l_m[i][j]
+                    2**0.5 * sph_harm_prefactor(i, -j) * S_m[j] * P_l_m[i][j],
                 )
 
     return Y_func_l_m

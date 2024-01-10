@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 
 Original CGCNN k-hot elemental embeddings.
 """
+from __future__ import annotations
 
 KHOT_EMBEDDINGS = {
     1: [

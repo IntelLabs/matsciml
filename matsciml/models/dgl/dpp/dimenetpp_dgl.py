@@ -1,13 +1,15 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
 from typing import Any, Dict, Optional
+
+import dgl
 import torch
 import torch.nn as nn
-import dgl
 
-from matsciml.models.dgl.dpp import dimenet_utils as du
 from matsciml.models.base import AbstractDGLModel
+from matsciml.models.dgl.dpp import dimenet_utils as du
 
 """
 Credit for original code: xnuohz; https://github.com/xnuohz/DimeNet-dgl
@@ -55,29 +57,29 @@ class DimeNetPP(AbstractDGLModel):
 
     def __init__(
         self,
-        emb_size: Optional[int] = 128,
-        out_emb_size: Optional[int] = 256,
-        int_emb_size: Optional[int] = 64,
-        basis_emb_size: Optional[int] = 8,
-        num_blocks: Optional[int] = 4,
-        num_spherical: Optional[int] = 7,
-        num_radial: Optional[int] = 6,
-        cutoff: Optional[float] = 5.0,
-        envelope_exponent: Optional[float] = 5.0,
-        num_before_skip: Optional[int] = 1,
-        num_after_skip: Optional[int] = 2,
-        num_dense_output: Optional[int] = 3,
-        activation: Optional[nn.Module] = nn.SiLU,
-        extensive: Optional[bool] = True,
+        emb_size: int | None = 128,
+        out_emb_size: int | None = 256,
+        int_emb_size: int | None = 64,
+        basis_emb_size: int | None = 8,
+        num_blocks: int | None = 4,
+        num_spherical: int | None = 7,
+        num_radial: int | None = 6,
+        cutoff: float | None = 5.0,
+        envelope_exponent: float | None = 5.0,
+        num_before_skip: int | None = 1,
+        num_after_skip: int | None = 2,
+        num_dense_output: int | None = 3,
+        activation: nn.Module | None = nn.SiLU,
+        extensive: bool | None = True,
         num_atom_embedding: int = 100,
-        atom_embedding_dim: Optional[int] = None,
-        embedding_kwargs: Dict[str, Any] = {},
-        num_targets: Optional[int] = None,
+        atom_embedding_dim: int | None = None,
+        embedding_kwargs: dict[str, Any] = {},
+        num_targets: int | None = None,
         encoder_only: bool = True,
     ) -> None:
         if atom_embedding_dim:
             raise ValueError(
-                f"'atom_embedding_dim' should not be specified; please pass 'emb_size' instead."
+                f"'atom_embedding_dim' should not be specified; please pass 'emb_size' instead.",
             )
         super().__init__(emb_size, num_atom_embedding, embedding_kwargs, encoder_only)
         self.num_blocks = num_blocks
@@ -123,7 +125,7 @@ class DimeNetPP(AbstractDGLModel):
                     encoder_only=encoder_only,
                 )
                 for _ in range(num_blocks + 1)
-            }
+            },
         )
 
         # interaction block
@@ -140,7 +142,7 @@ class DimeNetPP(AbstractDGLModel):
                     activation=activation,
                 )
                 for _ in range(num_blocks)
-            }
+            },
         )
         self.save_hyperparameters()
 
@@ -172,8 +174,9 @@ class DimeNetPP(AbstractDGLModel):
 
     @staticmethod
     def edge_distance(
-        graph: dgl.DGLGraph, pos: torch.Tensor
-    ) -> Dict[str, torch.Tensor]:
+        graph: dgl.DGLGraph,
+        pos: torch.Tensor,
+    ) -> dict[str, torch.Tensor]:
         """
         Compute edge distances on the fly; applies a lambda function
         that computes the Euclidean distance between two atoms, and
@@ -196,8 +199,8 @@ class DimeNetPP(AbstractDGLModel):
         graph: dgl.DGLGraph,
         node_feats: torch.Tensor,
         pos: torch.Tensor,
-        edge_feats: Optional[torch.Tensor] = None,
-        graph_feats: Optional[torch.Tensor] = None,
+        edge_feats: torch.Tensor | None = None,
+        graph_feats: torch.Tensor | None = None,
         **kwargs,
     ) -> torch.Tensor:
         r"""

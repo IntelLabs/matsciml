@@ -1,13 +1,16 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
+
+from copy import deepcopy
 
 import dgl
 import torch
 import torch.nn as nn
-from .nets import EGNN, MLP
 from dgl.nn.pytorch.glob import AvgPooling, SumPooling, WeightAndSum
 from munch import Munch
-from copy import deepcopy
+
+from matsciml.models.dgl.egnn.egnn_model.nets import EGNN, MLP
 
 
 # TODO (marcel): what needs to be done with pos when doing a node project
@@ -41,17 +44,15 @@ class EGNNBackbone(nn.Module):
 
 
 def get_backbone(config_orig: Munch) -> nn.Module:
-
     config = deepcopy(config_orig)
 
     activations = {
-        'gelu': nn.GELU(),
-        'leaky_relu': nn.LeakyReLU(),
-        'relu': nn.ReLU(),
-        'silu': nn.SiLU(),
+        "gelu": nn.GELU(),
+        "leaky_relu": nn.LeakyReLU(),
+        "relu": nn.ReLU(),
+        "silu": nn.SiLU(),
     }
-    attention_norms = {'sigmoid': nn.Sigmoid(), 'softmax': nn.Softmax(dim=-2)}
-
+    attention_norms = {"sigmoid": nn.Sigmoid(), "softmax": nn.Softmax(dim=-2)}
 
     config.embed.activation = activations[config.embed.activation]
 
@@ -66,8 +67,9 @@ def get_backbone(config_orig: Munch) -> nn.Module:
     node_projection_depth = config.node_projection.depth
 
     node_projection_dims = [config.embed.hidden_dim]
-    node_projection_dims.extend([node_projection_hidden_dim
-                                 for _ in range(node_projection_depth)])
+    node_projection_dims.extend(
+        [node_projection_hidden_dim for _ in range(node_projection_depth)],
+    )
 
     node_projection_activation = activations[config.node_projection.activation]
 
@@ -83,8 +85,7 @@ def get_backbone(config_orig: Munch) -> nn.Module:
     prediction_depth = config.prediction.depth
 
     prediction_dims = [node_projection_dims[-1]]
-    prediction_dims.extend([prediction_hidden_dim
-                            for _ in range(prediction_depth - 1)])
+    prediction_dims.extend([prediction_hidden_dim for _ in range(prediction_depth - 1)])
     prediction_dims.append(prediction_out_dim)
 
     prediction_activation = activations[config.prediction.activation]
@@ -96,11 +97,11 @@ def get_backbone(config_orig: Munch) -> nn.Module:
         k_linears=k_linears,
     )
 
-    if config.readout == 'avg_pooling':
+    if config.readout == "avg_pooling":
         readout = AvgPooling()
-    elif config.readout == 'sum_pooling':
+    elif config.readout == "sum_pooling":
         readout = SumPooling()
-    elif config.readout == 'weight_and_sum':
+    elif config.readout == "weight_and_sum":
         readout = WeightAndSum(node_projection_dims[-1])
 
     backbone = EGNNBackbone(egnn, node_projection, readout, prediction)
