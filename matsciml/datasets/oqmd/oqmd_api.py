@@ -206,7 +206,7 @@ class OQMDRequest:
                         data["data"][n]["atomic_numbers"],
                         data["data"][n]["cart_coords"],
                     ) = self.parse_sites(data["data"][n]["sites"])
-                    data["data"][n].pop("sites")
+                    # data["data"][n].pop("sites")
                 if data["meta"]["more_data_available"]:
                     has_more_data = True
                 else:
@@ -256,7 +256,7 @@ class OQMDRequest:
         """Process json files to be saved into Open MatSciML format (lmdb files). A
         set of required keys are defined to ensure all data have the same contents.
         """
-        files = os.listdir(self.data_dir)
+        files = [file for file in os.listdir(self.data_dir) if file.endswith('.json')]
         required_keys = set(
             [
                 "name",
@@ -273,6 +273,7 @@ class OQMDRequest:
                 "ntypes",
                 "natoms",
                 "unit_cell",
+                "sites",
                 "band_gap",
                 "delta_e",
                 "stability",
@@ -338,7 +339,7 @@ class OQMDRequest:
         target_env = lmdb.open(
             os.path.join(lmdb_path, "data.lmdb"),
             subdir=False,
-            map_size=1099511627776 * 2,
+            map_size=1048576, # 1099511627776 = 1TB, 1073741824 = 1 GB, 104857600 = 100 MB, 1048576 = 1 MB
             meminit=False,
             map_async=True,
         )
@@ -361,14 +362,19 @@ class OQMDRequest:
             "limit": 1,
         }
         oqmd = cls(**kwargs)
-        oqmd.data_dir = "devset"
+        oqmd.data_dir = "devset_2"
         oqmd.oqmd_request()
         oqmd.process_json()
         oqmd.to_lmdb(oqmd.data_dir)
 
 
 if __name__ == "__main__":
+    start_time = time()
     OQMDRequest.make_devset()
+    end_time = time()
+    running_time = end_time - start_time
+    minutes, seconds = divmod(running_time, 60)
+    print(f"Done! Program executed in {int(minutes)} minutes and {int(seconds)} seconds")
     # oqmd = OQMDRequest(
     #     base_data_dir="./matsciml/datasets/oqmd", limit=100, num_workers=1
     # )
