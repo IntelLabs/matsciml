@@ -31,6 +31,13 @@ The following is a checklist to help guide you through the implementation of a n
 - [ ] Implemented unit tests for new dataset class
 - [ ] Test in minimal training loop
 
+If you think your implementation will benefit the community (hint: almost definitely), we encourage
+you to add the following steps as well:
+
+- [ ] A dataset `README.md`, briefly describing the data, how and where it was sourced, and any implementation details you deem important
+- [ ] Make sure the dataset is publicly available: Zenodo, Harvard Dataverse, etc. are repositories with version control and DOI generation
+  - You can choose to upload the raw data, or in LMDB format. The former allows others to use the dataset without needing Open MatSciML Toolkit, but we'll ask you to make sure a preprocessing script is available to convert the data into LMDB after retrieval.
+
 ## Implementing a new dataset
 
 The first step in contributing a new dataset is reading the [contribution guide](../../CONTRIBUTING.md) to configure your environment and such. At a high level,
