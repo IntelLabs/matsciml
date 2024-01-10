@@ -133,8 +133,10 @@ append whatever extra things you need to do afterwards assuming you are subclass
 
 ```python
 from matsciml.common.types import DataDict
+from matsciml.common.registry import registry
 from matsciml.datasets import utils
 
+@registry.register_dataset("NewMaterialsDataset")
 class NewMaterialsDataset(BaseLMDBDataset):
     def data_from_key(self, lmdb_index: int, sub_index: int) -> DataDict:
         data = super().data_from_key(lmdb_index, sub_index)
@@ -153,7 +155,9 @@ class NewMaterialsDataset(BaseLMDBDataset):
 In this example, the original `data_from_key` is good enough: under the hood, the `super` method
 ultimately calls `utils.get_data_from_index`, which just unpickles data contained at a particular
 `index` value - in other words, whatever you saved in the LMDB conversion under `index` just gets
-regurgitated. We then perform some checks and conversions on the tensors as needed.
+regurgitated. We then perform some checks and conversions on the tensors as needed. The `registry`
+is also used here to decorate the class, which allows the rest of Open MatSciML Toolkit to recall
+the class simply from a string (e.g. in the Lightning modules).
 
 #### Preprocessing
 
@@ -185,8 +189,10 @@ class definition:
 ```python
 from pathlib import Path
 
+from matsciml.common.registry import registry
 from matsciml.datasets.base import BaseLMDBDataset
 
+@registry.register_dataset("NewMaterialsDataset")
 class NewMaterialsDataset(BaseLMDBDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
 
