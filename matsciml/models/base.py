@@ -666,6 +666,7 @@ class BaseTaskModule(pl.LightningModule):
         output_kwargs: Dict[str, Any] = {},
         lr: float = 1e-4,
         weight_decay: float = 0.0,
+        embedding_reduction_type: str = "mean",
         normalize_kwargs: Optional[Dict[str, float]] = None,
         scheduler_kwargs: Optional[Dict[str, Dict[str, Any]]] = None,
         **kwargs,
@@ -694,6 +695,7 @@ class BaseTaskModule(pl.LightningModule):
         self.output_kwargs = default_heads
         self.normalize_kwargs = normalize_kwargs
         self.task_keys = task_keys
+        self.embedding_reduction_type = embedding_reduction_type
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     @property
@@ -812,7 +814,7 @@ class BaseTaskModule(pl.LightningModule):
             # in the event that we get multiple embeddings, we average
             # every dimension execpt the batch and dimensionality
             output = head(embeddings.system_embedding)
-            output = reduce(output, "b ... d -> b d", reduction="mean")
+            output = reduce(output, "b ... d -> b d", reduction=self.embedding_reduction_type)
             results[key] = output
         return results
 
@@ -1364,8 +1366,8 @@ class ForceRegressionTask(BaseTaskModule):
             # combine all the force data into a single tensor
             force = torch.stack(all_forces, dim=1)
         # reduce outputs to what are expected shapes
-        outputs["force"] = reduce(force, "n ... d -> n d", "mean", d=3)
-        outputs["energy"] = reduce(energy, "b ... d -> b d", "mean", d=1)
+        outputs["force"] = reduce(force, "n ... d -> n d", self.embedding_reduction_type, d=3)
+        outputs["energy"] = reduce(energy, "b ... d -> b d", self.embedding_reduction_type, d=1)
         return outputs
 
     def _get_targets(
@@ -1608,7 +1610,7 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
             # combine all the force data into a single tensor
             forces = torch.stack(all_forces, dim=1)
         # make sure forces are in the right shape
-        forces = reduce(forces, "n ... d -> n d", "mean", d=3)
+        forces = reduce(forces, "n ... d -> n d", self.embedding_reduction_type, d=3)
         results["force"] = forces
         return results
 
