@@ -25,15 +25,6 @@ if package_registry["dgl"]:
 ModelingTypes = tuple(representations)
 GraphTypes = tuple(graph_types)
 
-DataType = Union[ModelingTypes]
-AbstractGraph = Union[GraphTypes]
-
-# for a dictionary look up of data
-DataDict = dict[str, Union[float, DataType]]
-
-# for a dictionary of batched data
-BatchDict = dict[str, Union[float, DataType, DataDict]]
-
 
 @dataclass
 class Embeddings:
