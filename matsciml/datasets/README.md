@@ -6,6 +6,9 @@ both for the sake of maintenance as well as to serve as a reference for subseque
 
 ## Design philosophy
 
+Here is a quick check overview of key elements of designing a dataset in the Open MatSciML Toolkit. For
+more detailed descriptions, please read the later sections!
+
 - Inheritance/object-oriented programming is used to maximize code reuse.
 - Dataset methods should operate on *single* data samples, and are expected to return a `DataDict`, which is simply a dictionary consisting of string keys and various data formats (e.g. `float`, `torch.Tensor`).
 - If possible, return a point cloud sample as it does not require specific graph backends like PyG or DGL. Transforms are written to convert between representations.
