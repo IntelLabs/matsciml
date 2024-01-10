@@ -19,6 +19,18 @@ more detailed descriptions, please read the later sections!
 - Commit a "development set" amount of data samples to the repository. This is typically around ~200 samples, and provides a straightforward way to test various stages of the pipeline, develop models offline, etc.
 - Develop unit tests as you go, testing individual dataset functionality as you develop it.
 
+## Integration checklist
+
+The following is a checklist to help guide you through the implementation of a new dataset.
+
+- [ ] Created submodule folder structure within `matsciml.datasets`
+- [ ] Converted existing data to LMDB format
+- [ ] Created minimal devset
+- [ ] Added devset path to `MANIFEST.in`
+- [ ] Created new dataset interface by subclassing `matsciml.datasets.base.BaseLMDBDataset`
+- [ ] Implemented unit tests for new dataset class
+- [ ] Test in minimal training loop
+
 ## Implementing a new dataset
 
 The first step in contributing a new dataset is reading the [contribution guide](../../CONTRIBUTING.md) to configure your environment and such. At a high level,
