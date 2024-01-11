@@ -30,6 +30,7 @@ The following is a checklist to help guide you through the implementation of a n
 - [ ] Created new dataset interface by subclassing `matsciml.datasets.base.BaseLMDBDataset`
 - [ ] Implemented unit tests for new dataset class
 - [ ] Test in minimal training loop
+- [ ] Add your dataset import to `matsciml/datasets/__init__.py`
 
 If you think your implementation will benefit the community (hint: almost definitely), we encourage
 you to add the following steps as well:
