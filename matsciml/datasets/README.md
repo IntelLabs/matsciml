@@ -35,7 +35,7 @@ The following is a checklist to help guide you through the implementation of a n
 If you think your implementation will benefit the community (hint: almost definitely), we encourage
 you to add the following steps as well:
 
-- [ ] A dataset `README.md`, briefly describing the data, how and where it was sourced, and any implementation details you deem important
+- [ ] A dataset description added [`DATASETS.md]`](./DATASETS.md), briefly describing the dataset, details regarding its licensing, how and where it was sourced, and any implementation details you deem important
 - [ ] Make sure the dataset is publicly available: Zenodo, Harvard Dataverse, etc. are repositories with version control and DOI generation
   - You can choose to upload the raw data, or in LMDB format. The former allows others to use the dataset without needing Open MatSciML Toolkit, but we'll ask you to make sure a preprocessing script is available to convert the data into LMDB after retrieval.
 
