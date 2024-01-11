@@ -305,6 +305,7 @@ When contributing a new dataset, please add the following details to [`DATASETS.
 - General description: its nominal purpose, how the data was generated, and its distribution license (e.g. MIT)
 - How to download the data from a public repository, and if applicable, how to preprocess it locally
 - Relevant citations for the dataset: arXiv, DOIs, paper references
+- Data keys and descriptions of each key/value mapping. If appropriate, *please include physical units*.
 
 ## Common key names for data properties
 
