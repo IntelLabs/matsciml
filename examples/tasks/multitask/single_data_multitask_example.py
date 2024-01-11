@@ -1,19 +1,20 @@
-import pytorch_lightning as pl
-from torch.nn import L1Loss
-from torch.nn import LayerNorm, SiLU
+from __future__ import annotations
 
-from matsciml.lightning import MatSciMLDataModule
+import pytorch_lightning as pl
+from torch.nn import L1Loss, LayerNorm, SiLU
+
 from matsciml.datasets import MaterialsProjectDataset
+from matsciml.datasets.transforms import (
+    COMShift,
+    CoordinateScaling,
+    PointCloudToGraphTransform,
+)
+from matsciml.lightning import MatSciMLDataModule
+from matsciml.models import PLEGNNBackbone
 from matsciml.models.base import (
+    BinaryClassificationTask,
     MultiTaskLitModule,
     ScalarRegressionTask,
-    BinaryClassificationTask,
-)
-from matsciml.models import PLEGNNBackbone
-from matsciml.datasets.transforms import (
-    CoordinateScaling,
-    COMShift,
-    PointCloudToGraphTransform,
 )
 
 pl.seed_everything(1616)
@@ -28,7 +29,7 @@ dm = MatSciMLDataModule(
             PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
             COMShift(),
             CoordinateScaling(0.1),
-        ]
+        ],
     },
     batch_size=32,
 )
@@ -94,14 +95,14 @@ r = ScalarRegressionTask(
     loss_func=L1Loss,
     output_kwargs=output_kwargs,
     normalize_kwargs=mp_norms,
-    task_keys = ["band_gap"]
+    task_keys=["band_gap"],
 )
 c = BinaryClassificationTask(
     encoder_class=PLEGNNBackbone,
     encoder_kwargs=model_args,
     lr=1e-3,
     output_kwargs=output_kwargs,
-    task_keys = ["is_metal"]
+    task_keys=["is_metal"],
 )
 
 # initialize multitask with regression and classification on materials project

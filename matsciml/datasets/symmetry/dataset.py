@@ -1,13 +1,15 @@
-from typing import Any, List, Tuple, Union, Dict, Optional, Callable
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import IterableDataset
 
-from matsciml.datasets.base import BaseLMDBDataset
 from matsciml.common.registry import registry
-from matsciml.datasets.utils import point_cloud_featurization, concatenate_keys
+from matsciml.datasets.base import BaseLMDBDataset
+from matsciml.datasets.utils import concatenate_keys, point_cloud_featurization
 
 
 class OTFPointGroupDataset(IterableDataset):
@@ -22,16 +24,18 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
 
     def __init__(
         self,
-        lmdb_root_path: Union[str, Path],
-        transforms: Optional[List[Callable]] = None,
+        lmdb_root_path: str | Path,
+        transforms: list[Callable] | None = None,
         max_types: int = 200,
     ) -> None:
         super().__init__(lmdb_root_path, transforms)
         self.max_types = max_types
 
     def data_from_key(
-        self, lmdb_index: int, subindex: int
-    ) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
+        self,
+        lmdb_index: int,
+        subindex: int,
+    ) -> dict[str, dict[str, torch.Tensor] | torch.Tensor]:
         sample = super().data_from_key(lmdb_index, subindex)
         # remap to the same keys as other datasets
         sample["pos"] = sample["coordinates"]
@@ -40,7 +44,9 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         # point group seemed to match best w.r.t coordinates and atom types
         # this way, while source_types look random
         sample["pc_features"] = point_cloud_featurization(
-            sample["dest_types"], sample["source_types"], self.max_types
+            sample["dest_types"],
+            sample["source_types"],
+            self.max_types,
         )
         sample["symmetry"] = {"number": sample["label"].item()}
         # this is consistently sweapped as with the featurization
@@ -62,10 +68,12 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
 
     @staticmethod
     def collate_fn(
-        batch: List[Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]]
+        batch: list[dict[str, dict[str, torch.Tensor] | torch.Tensor]],
     ):
         pad_keys = ["pc_features"]
         batched_data = concatenate_keys(
-            batch, pad_keys, unpacked_keys=["sizes", "num_centers", "num_neighbors"]
+            batch,
+            pad_keys,
+            unpacked_keys=["sizes", "num_centers", "num_neighbors"],
         )
         return batched_data

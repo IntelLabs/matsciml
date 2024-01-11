@@ -6,22 +6,13 @@ import functools
 from abc import abstractmethod
 from pathlib import Path
 from random import sample
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 
-from matsciml.common.types import BatchDict
-from matsciml.common.types import DataDict
+from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets import utils
-
 
 # this provides some backwards compatiability to Python ~3.7
 if hasattr(functools, "cache"):

@@ -1,23 +1,26 @@
+from __future__ import annotations
+
 from typing import Union
 
 import dgl
 import torch
-from matgl.models import M3GNet
-from matgl.models._megnet import *
-from matsciml.common.types import Embeddings
-
-from matgl.utils.cutoff import polynomial_cutoff
 from matgl.graph.compute import (
     compute_pair_vector_and_distance,
     compute_theta_and_phi,
     create_line_graph,
 )
+from matgl.models import M3GNet
+from matgl.models._megnet import *
+from matgl.utils.cutoff import polynomial_cutoff
+
+from matsciml.common.types import Embeddings
+
 
 def forward(
     self,
     g: dgl.DGLGraph,
-    state_attr: Union[torch.Tensor, None] = None,
-    l_g: Union[dgl.DGLGraph, None] = None,
+    state_attr: torch.Tensor | None = None,
+    l_g: dgl.DGLGraph | None = None,
 ):
     """Performs message passing and updates node representations.
 
@@ -57,7 +60,9 @@ def forward(
     three_body_basis = self.basis_expansion(l_g)
     three_body_cutoff = polynomial_cutoff(g.edata["bond_dist"], self.threebody_cutoff)
     node_feat, edge_feat, state_feat = self.embedding(
-        node_types, g.edata["rbf"], state_attr
+        node_types,
+        g.edata["rbf"],
+        state_attr,
     )
     for i in range(self.n_blocks):
         edge_feat = self.three_body_interactions[i](
@@ -69,7 +74,10 @@ def forward(
             edge_feat,
         )
         edge_feat, node_feat, state_feat = self.graph_layers[i](
-            g, edge_feat, node_feat, state_feat
+            g,
+            edge_feat,
+            node_feat,
+            state_feat,
         )
     g.ndata["node_feat"] = node_feat
     g.edata["edge_feat"] = edge_feat

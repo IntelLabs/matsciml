@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import pickle
+from collections.abc import Generator
 from functools import lru_cache, partial
 from os import makedirs
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import lmdb
 import torch
@@ -23,7 +26,9 @@ if package_registry["pyg"]:
 
 
 def concatenate_keys(
-    batch: List[DataDict], pad_keys: List[str] = [], unpacked_keys: List[str] = []
+    batch: list[DataDict],
+    pad_keys: list[str] = [],
+    unpacked_keys: list[str] = [],
 ) -> BatchDict:
     """
     Function for concatenating data along keys within a dictionary.
@@ -73,10 +78,11 @@ def concatenate_keys(
                                 else:
                                     # for other tensors, pad
                                     max_size = max(
-                                        [max(t.shape[:-1]) for t in elements]
+                                        [max(t.shape[:-1]) for t in elements],
                                     )
                                 result, mask = pad_point_cloud(
-                                    elements, max_size=max_size
+                                    elements,
+                                    max_size=max_size,
                                 )
                                 batched_data["mask"] = mask
                             else:
@@ -88,16 +94,18 @@ def concatenate_keys(
                         # for graph types, descend into framework specific method
                         elif isinstance(value, GraphTypes):
                             if package_registry["dgl"] and isinstance(
-                                value, dgl.DGLGraph
+                                value,
+                                dgl.DGLGraph,
                             ):
                                 result = dgl.batch(elements)
                             elif package_registry["pyg"] and isinstance(
-                                value, PyGGraph
+                                value,
+                                PyGGraph,
                             ):
                                 result = PyGBatch.from_data_list(elements)
                             else:
                                 raise ValueError(
-                                    f"Graph type unsupported: {type(value)}"
+                                    f"Graph type unsupported: {type(value)}",
                                 )
                     except RuntimeError:
                         result = elements
@@ -112,8 +120,9 @@ def concatenate_keys(
 
 
 def pad_point_cloud(
-    data: List[torch.Tensor], max_size: int
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    data: list[torch.Tensor],
+    max_size: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Pads a point cloud to the maximum size within a batch.
 
@@ -157,7 +166,9 @@ def pad_point_cloud(
 
 
 def point_cloud_featurization(
-    src_types: torch.Tensor, dst_types: torch.Tensor, max_types: int = 100
+    src_types: torch.Tensor,
+    dst_types: torch.Tensor,
+    max_types: int = 100,
 ) -> torch.Tensor:
     """
     Featurizes an atom-centered point cloud, given source and destination node types.
@@ -187,7 +198,7 @@ def point_cloud_featurization(
     return feat_tensor
 
 
-def connect_db_read(lmdb_path: Union[str, Path], **kwargs) -> lmdb.Environment:
+def connect_db_read(lmdb_path: str | Path, **kwargs) -> lmdb.Environment:
     """
     Open an LMDB file for reading.
 
@@ -222,7 +233,8 @@ def connect_db_read(lmdb_path: Union[str, Path], **kwargs) -> lmdb.Environment:
 
 
 def connect_lmdb_write(
-    lmdb_target_file: Union[str, Path], **kwargs
+    lmdb_target_file: str | Path,
+    **kwargs,
 ) -> lmdb.Environment:
     """
     Open an LMDB environment for writing.
@@ -257,9 +269,9 @@ def connect_lmdb_write(
 
 def get_lmdb_keys(
     env: lmdb.Environment,
-    ignore_keys: Optional[List[str]] = None,
-    _lambda: Optional[Callable] = None,
-) -> List[str]:
+    ignore_keys: list[str] | None = None,
+    _lambda: Callable | None = None,
+) -> list[str]:
     """
     Utility function to get keys from an LMDB file.
 
@@ -287,7 +299,7 @@ def get_lmdb_keys(
         keys = [key.decode("utf-8") for key in txn.cursor().iternext(values=False)]
     if ignore_keys and _lambda:
         raise ValueError(
-            f"Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive."
+            f"Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive.",
         )
     if ignore_keys:
         _lambda = lambda x: x not in ignore_keys
@@ -302,11 +314,13 @@ def get_lmdb_keys(
 
 # this provides a quick way to get only data keys from an LMDB
 get_lmdb_data_keys = partial(
-    get_lmdb_keys, _lambda=lambda x: x.isnumeric(), ignore_keys=None
+    get_lmdb_keys,
+    _lambda=lambda x: x.isnumeric(),
+    ignore_keys=None,
 )
 
 
-def get_lmdb_data_length(lmdb_path: Union[str, Path]) -> int:
+def get_lmdb_data_length(lmdb_path: str | Path) -> int:
     """
     Retrieve the number of data entries within a LMDB file.
 
@@ -332,8 +346,10 @@ def get_lmdb_data_length(lmdb_path: Union[str, Path]) -> int:
 
 
 def get_data_from_index(
-    db_index: int, data_index: int, envs: List[lmdb.Environment]
-) -> Dict[str, Any]:
+    db_index: int,
+    data_index: int,
+    envs: list[lmdb.Environment],
+) -> dict[str, Any]:
     """
     Given a pair of indices, retrieve a data sample.
 
@@ -358,18 +374,18 @@ def get_data_from_index(
         env = envs[db_index]
     except IndexError as error:
         error(
-            f"Tried to retrieve LMDB file {db_index}, but only {len(envs)} are loaded."
+            f"Tried to retrieve LMDB file {db_index}, but only {len(envs)} are loaded.",
         )
     with env.begin() as txn:
         data = pickle.loads(txn.get(f"{data_index}".encode("ascii")))
         if not data:
             raise ValueError(
-                f"Data sample at index {data_index} for file {env.path()} missing."
+                f"Data sample at index {data_index} for file {env.path()} missing.",
             )
     return data
 
 
-def get_lmdb_metadata(target_lmdb: lmdb.Environment) -> Union[Dict[str, Any], None]:
+def get_lmdb_metadata(target_lmdb: lmdb.Environment) -> dict[str, Any] | None:
     """
     Load in metadata associated with a specific LMDB file.
 
@@ -386,7 +402,7 @@ def get_lmdb_metadata(target_lmdb: lmdb.Environment) -> Union[Dict[str, Any], No
         None if no metadata present, otherwise the metadata dictionary.
     """
     with target_lmdb.begin() as txn:
-        metadata = txn.get("metadata".encode("ascii"))
+        metadata = txn.get(b"metadata")
     if metadata:
         return pickle.loads(metadata)
     else:
@@ -415,10 +431,10 @@ def write_lmdb_data(key: Any, data: Any, target_lmdb: lmdb.Environment) -> None:
 
 
 def parallel_lmdb_write(
-    target_dir: Union[str, Path],
-    data: List[Any],
+    target_dir: str | Path,
+    data: list[Any],
     num_procs: int,
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
 ) -> None:
     r"""
     Writes a set of data out to LMDB file, parallelized over ``num_procs`` workers.
@@ -448,10 +464,10 @@ def parallel_lmdb_write(
     assert target_dir.is_dir(), f"Target to write LMDB data to is not a directory."
 
     def write_chunk(
-        chunk: List[Any],
+        chunk: list[Any],
         target_dir: Path,
         index: int,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         r"""
         Write a chunk of data to a correspond LMDB environment.
@@ -476,15 +492,16 @@ def parallel_lmdb_write(
                 position=index,
                 total=len(chunk),
                 desc=f"Writing LMDB data to file {lmdb_env.path()}",
-            )
+            ),
         ):
             write_lmdb_data(subindex, _data, lmdb_env)
         if metadata:
             write_lmdb_data("metadata", metadata, lmdb_env)
 
     def divide_data_chunks(
-        all_data: List[Any], num_chunks: int
-    ) -> Generator[List[Any], None, None]:
+        all_data: list[Any],
+        num_chunks: int,
+    ) -> Generator[list[Any], None, None]:
         r"""
         Split data into a specified number of chunks.
 
@@ -510,7 +527,7 @@ def parallel_lmdb_write(
     lengths = [len(chunk) for chunk in chunks]
     lmdb_indices = list(range(num_procs))
     assert all(
-        [length != 0 for length in lengths]
+        [length != 0 for length in lengths],
     ), f"Too many processes specified and not enough data to split over multiple LMDB files. Decrease `num_procs!`"
     p = Parallel(num_procs)(
         delayed(write_chunk)(chunk, target_dir, index, metadata)
@@ -518,7 +535,7 @@ def parallel_lmdb_write(
     )
 
 
-def retrieve_pointcloud_node_types(pc_feats: torch.Tensor) -> Tuple[torch.Tensor]:
+def retrieve_pointcloud_node_types(pc_feats: torch.Tensor) -> tuple[torch.Tensor]:
     r"""
     Attempt to reproduce the original node types from the
     molecule-centered point cloud featurization.
@@ -547,31 +564,33 @@ def retrieve_pointcloud_node_types(pc_feats: torch.Tensor) -> Tuple[torch.Tensor
 
 
 @lru_cache(maxsize=1)
-def atomic_number_map() -> Dict[str, int]:
+def atomic_number_map() -> dict[str, int]:
     """List of element symbols and their atomic numbers.
 
     Returns:
         Dict[str, int]: _description_
     """
     # fmt: off
-    an_map = {'H': 1, 'He': 2, 'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8, 
-            'F': 9, 'Ne': 10, 'Na': 11, 'Mg': 12, 'Al': 13, 'Si': 14, 'P': 15, 
-            'S': 16, 'Cl': 17, 'Ar': 18, 'K': 19, 'Ca': 20, 'Sc': 21, 'Ti': 22, 
-            'V': 23, 'Cr': 24, 'Mn': 25, 'Fe': 26, 'Co': 27, 'Ni': 28, 'Cu': 29, 
-            'Zn': 30, 'Ga': 31, 'Ge': 32, 'As': 33, 'Se': 34, 'Br': 35, 'Kr': 36, 
-            'Rb': 37, 'Sr': 38, 'Y': 39, 'Zr': 40, 'Nb': 41, 'Mo': 42, 'Tc': 43, 
-            'Ru': 44, 'Rh': 45, 'Pd': 46, 'Ag': 47, 'Cd': 48, 'In': 49, 'Sn': 50, 
-            'Sb': 51, 'Te': 52, 'I': 53, 'Xe': 54, 'Cs': 55, 'Ba': 56, 'La': 57, 
-            'Ce': 58, 'Pr': 59, 'Nd': 60, 'Pm': 61, 'Sm': 62, 'Eu': 63, 'Gd': 64, 
-            'Tb': 65, 'Dy': 66, 'Ho': 67, 'Er': 68, 'Tm': 69, 'Yb': 70, 'Lu': 71, 
-            'Hf': 72, 'Ta': 73, 'W': 74, 'Re': 75, 'Os': 76, 'Ir': 77, 'Pt': 78, 
-            'Au': 79, 'Hg': 80, 'Tl': 81, 'Pb': 82, 'Bi': 83, 'Po': 84, 'At': 85, 
-            'Rn': 86, 'Fr': 87, 'Ra': 88, 'Ac': 89, 'Th': 90, 'Pa': 91, 'U': 92, 
-            'Np': 93, 'Pu': 94, 'Am': 95, 'Cm': 96, 'Bk': 97, 'Cf': 98, 'Es': 99, 
-            'Fm': 100, 'Md': 101, 'No': 102, 'Lr': 103, 'Rf': 104, 'Db': 105, 
-            'Sg': 106, 'Bh': 107, 'Hs': 108, 'Mt': 109, 'Ds': 110, 'Rg': 111, 
-            'Cn': 112, 'Nh': 113, 'Fl': 114, 'Mc': 115, 'Lv': 116, 'Ts': 117, 
-            'Og': 118}
+    an_map = {
+        'H': 1, 'He': 2, 'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8,
+        'F': 9, 'Ne': 10, 'Na': 11, 'Mg': 12, 'Al': 13, 'Si': 14, 'P': 15,
+        'S': 16, 'Cl': 17, 'Ar': 18, 'K': 19, 'Ca': 20, 'Sc': 21, 'Ti': 22,
+        'V': 23, 'Cr': 24, 'Mn': 25, 'Fe': 26, 'Co': 27, 'Ni': 28, 'Cu': 29,
+        'Zn': 30, 'Ga': 31, 'Ge': 32, 'As': 33, 'Se': 34, 'Br': 35, 'Kr': 36,
+        'Rb': 37, 'Sr': 38, 'Y': 39, 'Zr': 40, 'Nb': 41, 'Mo': 42, 'Tc': 43,
+        'Ru': 44, 'Rh': 45, 'Pd': 46, 'Ag': 47, 'Cd': 48, 'In': 49, 'Sn': 50,
+        'Sb': 51, 'Te': 52, 'I': 53, 'Xe': 54, 'Cs': 55, 'Ba': 56, 'La': 57,
+        'Ce': 58, 'Pr': 59, 'Nd': 60, 'Pm': 61, 'Sm': 62, 'Eu': 63, 'Gd': 64,
+        'Tb': 65, 'Dy': 66, 'Ho': 67, 'Er': 68, 'Tm': 69, 'Yb': 70, 'Lu': 71,
+        'Hf': 72, 'Ta': 73, 'W': 74, 'Re': 75, 'Os': 76, 'Ir': 77, 'Pt': 78,
+        'Au': 79, 'Hg': 80, 'Tl': 81, 'Pb': 82, 'Bi': 83, 'Po': 84, 'At': 85,
+        'Rn': 86, 'Fr': 87, 'Ra': 88, 'Ac': 89, 'Th': 90, 'Pa': 91, 'U': 92,
+        'Np': 93, 'Pu': 94, 'Am': 95, 'Cm': 96, 'Bk': 97, 'Cf': 98, 'Es': 99,
+        'Fm': 100, 'Md': 101, 'No': 102, 'Lr': 103, 'Rf': 104, 'Db': 105,
+        'Sg': 106, 'Bh': 107, 'Hs': 108, 'Mt': 109, 'Ds': 110, 'Rg': 111,
+        'Cn': 112, 'Nh': 113, 'Fl': 114, 'Mc': 115, 'Lv': 116, 'Ts': 117,
+        'Og': 118,
+    }
     # fmt: on
     return an_map
 

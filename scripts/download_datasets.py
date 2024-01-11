@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
 
@@ -43,7 +45,7 @@ def main(args):
                     "formation_energy_per_atom",
                     "uncorrected_energy_per_atom",
                     "energy_per_atom",
-                ]
+                ],
             }
             api_kwargs = {
                 "num_sites": (2, 10000),
@@ -56,12 +58,14 @@ def main(args):
                 "../matsciml/datasets/materials_project/val.yml",
             ]
             for file in split_files:
-                with open(file, "r") as f:
+                with open(file) as f:
                     data = yaml.safe_load(f)
                     split, ids = next(iter(data.keys())), next(iter(data.values()))
 
                 mp = MaterialsProjectRequest(
-                    material_ids=ids, **parameters, **api_kwargs
+                    material_ids=ids,
+                    **parameters,
+                    **api_kwargs,
                 )
                 mp.retrieve_data()
                 name = base_data_dir.joinpath(split)

@@ -7,7 +7,6 @@ from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import GraphConvModel
 from matsciml.models.base import ScalarRegressionTask
 
-
 # configure a simple model for testing
 model = GraphConvModel(100, 128, encoder_only=True)
 task = ScalarRegressionTask(model, task_keys=["band_gap"])

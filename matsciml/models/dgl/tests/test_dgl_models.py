@@ -29,7 +29,10 @@ if package_registry["dgl"]:
     @pytest.mark.dependency()
     def test_gcn_conv(graph):
         model = GraphConvModel(
-            atom_embedding_dim=128, out_dim=64, num_blocks=3, encoder_only=True,
+            atom_embedding_dim=128,
+            out_dim=64,
+            num_blocks=3,
+            encoder_only=True,
         )
         # test without grads
         with torch.no_grad():
@@ -156,23 +159,28 @@ def test_m3gnet_dgl(graph):
     import numpy as np
     from matgl.graph.compute import compute_pair_vector_and_distance
 
-    graph['graph'].ndata["node_type"] = graph['graph'].ndata['atomic_numbers']
-    graph['graph'].ndata['num_nodes'] = torch.Tensor(len(graph['graph'].ndata["node_type"]))
-    images = np.zeros((len(graph['graph'].edges()[0]), 3))
+    graph["graph"].ndata["node_type"] = graph["graph"].ndata["atomic_numbers"]
+    graph["graph"].ndata["num_nodes"] = torch.Tensor(
+        len(graph["graph"].ndata["node_type"]),
+    )
+    images = np.zeros((len(graph["graph"].edges()[0]), 3))
     lattice_matrix = np.zeros((1, 3, 3))
     pbc_offset = torch.tensor(images, dtype=torch.float64)
-    graph['graph'].edata["pbc_offset"] = pbc_offset.to(torch.int32)
-    graph['graph'].edata["pbc_offshift"] = torch.matmul(
-        pbc_offset, torch.tensor(lattice_matrix[0]),
+    graph["graph"].edata["pbc_offset"] = pbc_offset.to(torch.int32)
+    graph["graph"].edata["pbc_offshift"] = torch.matmul(
+        pbc_offset,
+        torch.tensor(lattice_matrix[0]),
     )
-    graph['graph'].edata["lattice"] = torch.tensor(
-        np.repeat(lattice_matrix, graph['graph'].num_edges(), axis=0), dtype=torch.float32,
+    graph["graph"].edata["lattice"] = torch.tensor(
+        np.repeat(lattice_matrix, graph["graph"].num_edges(), axis=0),
+        dtype=torch.float32,
     )
     ######
 
-    bond_vec, bond_dist = compute_pair_vector_and_distance(graph['graph'])
-    graph['graph'].edata["bond_vec"] = bond_vec
-    graph['graph'].edata["bond_dist"] = bond_dist
+    bond_vec, bond_dist = compute_pair_vector_and_distance(graph["graph"])
+    graph["graph"].edata["bond_vec"] = bond_vec
+    graph["graph"].edata["bond_dist"] = bond_dist
+    # fmt: off
     element_types = [
         'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na',
         'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc',
@@ -187,6 +195,7 @@ def test_m3gnet_dgl(graph):
         'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg',
         'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og',
     ]
+    # fmt: on
 
     model = M3GNet(element_types=element_types)
     with torch.no_grad():

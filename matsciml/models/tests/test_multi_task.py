@@ -1,17 +1,17 @@
-import pytest
+from __future__ import annotations
 
+import pytest
 import pytorch_lightning as pl
 
+from matsciml.datasets import IS2REDataset, S2EFDataset, is2re_devset, s2ef_devset
 from matsciml.datasets.multi_dataset import MultiDataset
-from matsciml.datasets import IS2REDataset, is2re_devset, S2EFDataset, s2ef_devset
 from matsciml.lightning.data_utils import MultiDataModule
-
+from matsciml.models import PLEGNNBackbone
 from matsciml.models.base import (
-    MultiTaskLitModule,
     ForceRegressionTask,
+    MultiTaskLitModule,
     ScalarRegressionTask,
 )
-from matsciml.models import PLEGNNBackbone
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ def model_def():
 def is2re_s2ef() -> MultiDataModule:
     dm = MultiDataModule(
         train_dataset=MultiDataset(
-            [IS2REDataset(is2re_devset), S2EFDataset(s2ef_devset)]
+            [IS2REDataset(is2re_devset), S2EFDataset(s2ef_devset)],
         ),
         batch_size=16,
     )
@@ -78,7 +78,9 @@ def test_multitask_init(is2re_s2ef, model_def):
 
     # pass task keys to make sure output heads are created
     task = MultiTaskLitModule(
-        ("IS2REDataset", is2re), ("S2EFDataset", s2ef), task_keys=dm.target_keys
+        ("IS2REDataset", is2re),
+        ("S2EFDataset", s2ef),
+        task_keys=dm.target_keys,
     )
     # make sure we have output heads
     assert hasattr(is2re, "output_heads")

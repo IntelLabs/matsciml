@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
-from typing import Union
+from typing import Any, Union
 
 import pytorch_lightning as pl
 import torch
 from torch import nn
 
 from matsciml.common.registry import registry
-from matsciml.common.types import BatchDict
-from matsciml.common.types import DataDict
+from matsciml.common.types import BatchDict, DataDict
 
 
 class BaseInferenceTask(ABC, pl.LightningModule):
@@ -22,13 +19,17 @@ class BaseInferenceTask(ABC, pl.LightningModule):
 
     @abstractmethod
     def predict_step(
-        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0
+        self,
+        batch: BatchDict,
+        batch_idx: int,
+        dataloader_idx: int = 0,
     ) -> Any:
         ...
 
     @classmethod
     def from_pretrained_checkpoint(
-        cls, task_ckpt_path: Union[str, Path]
+        cls,
+        task_ckpt_path: str | Path,
     ) -> BaseInferenceTask:
         """
         Instantiate a ``BaseInferenceTask`` from an existing Lightning checkpoint
@@ -106,7 +107,10 @@ class EmbeddingInferenceTask(BaseInferenceTask):
         return self.encoder(batch)
 
     def predict_step(
-        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0
+        self,
+        batch: BatchDict,
+        batch_idx: int,
+        dataloader_idx: int = 0,
     ) -> DataDict:
         embeddings = self(batch)
         return_dict = {"embedding": embeddings}

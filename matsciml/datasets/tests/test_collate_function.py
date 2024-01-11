@@ -1,17 +1,19 @@
+from __future__ import annotations
+
 import pytest
 import torch
 
-from matsciml.datasets.utils import concatenate_keys
-from matsciml.datasets.materials_project import (
-    materialsproject_devset,
-    MaterialsProjectDataset,
-)
-from matsciml.datasets import is2re_devset, IS2REDataset
-from matsciml.datasets.transforms import (
-    PointCloudToGraphTransform,
-    OCPGraphToPointCloudTransform,
-)
 from matsciml.common import package_registry
+from matsciml.datasets import IS2REDataset, is2re_devset
+from matsciml.datasets.materials_project import (
+    MaterialsProjectDataset,
+    materialsproject_devset,
+)
+from matsciml.datasets.transforms import (
+    OCPGraphToPointCloudTransform,
+    PointCloudToGraphTransform,
+)
+from matsciml.datasets.utils import concatenate_keys
 
 
 @pytest.mark.dependency()
@@ -38,7 +40,8 @@ if package_registry["pyg"]:
     def test_collate_mp_pyg():
         # uses graphs instead
         dset = MaterialsProjectDataset(
-            materialsproject_devset, transforms=[PointCloudToGraphTransform("pyg")]
+            materialsproject_devset,
+            transforms=[PointCloudToGraphTransform("pyg")],
         )
         samples = [dset.__getitem__(i) for i in range(4)]
         # no keys needed to be padded
@@ -56,7 +59,8 @@ if package_registry["dgl"]:
     def test_collate_mp_dgl():
         # uses graphs instead
         dset = MaterialsProjectDataset(
-            materialsproject_devset, transforms=[PointCloudToGraphTransform("dgl")]
+            materialsproject_devset,
+            transforms=[PointCloudToGraphTransform("dgl")],
         )
         samples = [dset.__getitem__(i) for i in range(4)]
         # no keys needed to be padded
@@ -68,7 +72,8 @@ if package_registry["dgl"]:
         # now try and collate with the class method
         new_batch = dset.collate_fn(samples)
         assert torch.allclose(
-            new_batch["graph"].ndata["atomic_numbers"], graph.ndata["atomic_numbers"]
+            new_batch["graph"].ndata["atomic_numbers"],
+            graph.ndata["atomic_numbers"],
         )
         assert torch.allclose(new_batch["graph"].ndata["pos"], graph.ndata["pos"])
 
@@ -93,6 +98,6 @@ def test_collate_is2re_pc():
         [
             key in batch
             for key in ["pos", "pc_features", "mask", "targets", "target_types"]
-        ]
+        ],
     )
     assert sorted(batch.keys())

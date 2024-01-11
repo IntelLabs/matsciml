@@ -1,27 +1,28 @@
 from __future__ import annotations
-from typing import List, Optional, Union, Any, Dict
+
+import os
+from datetime import datetime
 from functools import cached_property
 from pathlib import Path
-from datetime import datetime
-import os
+from typing import Any, Dict, List, Optional, Union
+
+import lmdb
 import numpy as np
 import yaml
-
 from emmet.core.summary import SummaryDoc
 from mp_api.client import MPRester
 from tqdm import tqdm
-import lmdb
 
-from matsciml.datasets.utils import write_lmdb_data
 from matsciml.datasets.materials_project.utils import get_split_map
+from matsciml.datasets.utils import write_lmdb_data
 
 
 class MaterialsProjectRequest:
     def __init__(
         self,
-        fields: List[str],
-        api_key: Optional[str] = None,
-        material_ids: Optional[List[str]] = None,
+        fields: list[str],
+        api_key: str | None = None,
+        material_ids: list[str] | None = None,
         **api_kwargs,
     ):
         api_kwargs.setdefault("chunk_size", 1000)
@@ -34,11 +35,11 @@ class MaterialsProjectRequest:
         self.api_kwargs = api_kwargs
 
     @property
-    def material_ids(self) -> Union[List[str], None]:
+    def material_ids(self) -> list[str] | None:
         return self._material_ids
 
     @material_ids.setter
-    def material_ids(self, values: Union[List[str], None]) -> None:
+    def material_ids(self, values: list[str] | None) -> None:
         self._material_ids = values
 
     @property
@@ -46,7 +47,7 @@ class MaterialsProjectRequest:
         return self._api_key
 
     @api_key.setter
-    def api_key(self, value: Optional[str] = None) -> None:
+    def api_key(self, value: str | None = None) -> None:
         """
         Sets the Materials Project API key.
 
@@ -69,16 +70,16 @@ class MaterialsProjectRequest:
             value = os.getenv("MP_API_KEY", None)
         if not value:
             raise ValueError(
-                f"No Materials Project API key provided or found in environment variable MP_API_KEY."
+                f"No Materials Project API key provided or found in environment variable MP_API_KEY.",
             )
         self._api_key = value
 
     @property
-    def fields(self) -> List[str]:
+    def fields(self) -> list[str]:
         return list(self._fields)
 
     @fields.setter
-    def fields(self, values: Union[List[str], None] = None) -> None:
+    def fields(self, values: list[str] | None = None) -> None:
         """
         Method for setting which fields to query.
 
@@ -119,7 +120,7 @@ class MaterialsProjectRequest:
         return MPRester(self.api_key)
 
     @cached_property
-    def available_fields(self) -> List[str]:
+    def available_fields(self) -> list[str]:
         """
         Queries and caches a list of available fields from Materials project.
 
@@ -134,7 +135,7 @@ class MaterialsProjectRequest:
         with self._api_context() as mpr:
             return mpr.summary.available_fields
 
-    def retrieve_data(self) -> Union[List[SummaryDoc], List[Dict[Any, Any]]]:
+    def retrieve_data(self) -> list[SummaryDoc] | list[dict[Any, Any]]:
         """
         Execute the API requests.
 
@@ -149,22 +150,24 @@ class MaterialsProjectRequest:
         with self._api_context() as mpr:
             # todo allow material ids to be specified
             docs = mpr.summary.search(
-                fields=self.fields, material_ids=self.material_ids, **self.api_kwargs
+                fields=self.fields,
+                material_ids=self.material_ids,
+                **self.api_kwargs,
             )
         self.data = docs
         self.retrieved = str(datetime.now())
         return docs
 
     @property
-    def data(self) -> Union[List[SummaryDoc], List[Dict[Any, Any]], None]:
+    def data(self) -> list[SummaryDoc] | list[dict[Any, Any]] | None:
         return getattr(self, "_data")
 
     @data.setter
-    def data(self, values: Union[List[SummaryDoc], List[Dict[Any, Any]]]) -> None:
+    def data(self, values: list[SummaryDoc] | list[dict[Any, Any]]) -> None:
         self._data = values
 
     @classmethod
-    def devset(cls, api_key: Optional[str] = None) -> MaterialsProjectRequest:
+    def devset(cls, api_key: str | None = None) -> MaterialsProjectRequest:
         kwargs = {
             "num_elements": (1, 2),
             "num_chunks": 2,
@@ -177,7 +180,7 @@ class MaterialsProjectRequest:
         self,
         data_dir: str,
         split_value: str = "crystal_class",
-        split_percents: Dict[str, float] = {"train": 0.7, "val": 0.2, "test": 0.1},
+        split_percents: dict[str, float] = {"train": 0.7, "val": 0.2, "test": 0.1},
     ):
         """Make data splits for train, test and validation
 
@@ -214,7 +217,7 @@ class MaterialsProjectRequest:
                 yaml.dump({split_name: id_list}, f, sort_keys=False)
             self.to_lmdb(os.path.join(data_dir, split_name))
 
-    def to_lmdb(self, lmdb_path: Union[str, Path]) -> None:
+    def to_lmdb(self, lmdb_path: str | Path) -> None:
         """
         Save the retrieved documents to an LMDB file.
 
@@ -245,15 +248,17 @@ class MaterialsProjectRequest:
         )
         if self.data is not None:
             for index, entry in tqdm(
-                enumerate(self.data), desc="Entries processed", total=len(self.data)
+                enumerate(self.data),
+                desc="Entries processed",
+                total=len(self.data),
             ):
                 write_lmdb_data(index, entry.__dict__, target_env)
         else:
             raise ValueError(
-                f"No data was available for serializing - did you run `retrieve_data`?"
+                f"No data was available for serializing - did you run `retrieve_data`?",
             )
 
-    def to_dict(self) -> Dict[str, Union[str, List[str]]]:
+    def to_dict(self) -> dict[str, str | list[str]]:
         """
         Export a summary of the request into a JSON serializable format.
 

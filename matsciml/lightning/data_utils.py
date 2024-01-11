@@ -4,12 +4,7 @@ from __future__ import annotations
 
 from os import getenv
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Type
-from typing import Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import pytorch_lightning as pl
 import torch
@@ -101,15 +96,15 @@ class MatSciMLDataModule(pl.LightningDataModule):
 
     def __init__(
         self,
-        dataset: Optional[Union[str, Type[TorchDataset], TorchDataset]] = None,
-        train_path: Optional[Union[str, Path]] = None,
+        dataset: str | type[TorchDataset] | TorchDataset | None = None,
+        train_path: str | Path | None = None,
         batch_size: int = 32,
         num_workers: int = 0,
-        val_split: Optional[Union[str, Path, float]] = 0.0,
-        test_split: Optional[Union[str, Path, float]] = 0.0,
-        seed: Optional[int] = None,
-        dset_kwargs: Optional[Dict[str, Any]] = None,
-        persistent_workers: Optional[bool] = None,
+        val_split: str | Path | float | None = 0.0,
+        test_split: str | Path | float | None = 0.0,
+        seed: int | None = None,
+        dset_kwargs: dict[str, Any] | None = None,
+        persistent_workers: bool | None = None,
     ):
         super().__init__()
         # make sure we have something to work with
@@ -121,7 +116,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             assert (
                 dataset is not None
             ), f"Float passed to split, but no dataset provided to split."
-        if isinstance(dataset, Type):
+        if isinstance(dataset, type):
             assert any(
                 [
                     isinstance(p, (str, Path))
@@ -155,11 +150,13 @@ class MatSciMLDataModule(pl.LightningDataModule):
             return is_persist
 
     @persistent_workers.setter
-    def persistent_workers(self, value: Union[None, bool]) -> None:
+    def persistent_workers(self, value: None | bool) -> None:
         self._persistent_workers = value
 
     def _make_dataset(
-        self, path: Union[str, Path], dataset: Union[TorchDataset, Type[TorchDataset]],
+        self,
+        path: str | Path,
+        dataset: TorchDataset | type[TorchDataset],
     ) -> TorchDataset:
         """
         Convert a string or path specification of a dataset into a concrete dataset object.
@@ -198,7 +195,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             new_dset = dataset(path, **dset_kwargs)
         return new_dset
 
-    def setup(self, stage: Optional[str] = None) -> None:
+    def setup(self, stage: str | None = None) -> None:
         splits = {}
         # set up the training split, if provided
         if getattr(self.hparams, "train_path", None) is not None:
@@ -236,7 +233,9 @@ class MatSciMLDataModule(pl.LightningDataModule):
                 num_train >= 0
             ), f"More test/validation samples requested than available samples."
             splits_list = random_split(
-                self.dataset, [num_train, num_val, num_test], generator,
+                self.dataset,
+                [num_train, num_val, num_test],
+                generator,
             )
             for split, key in zip(splits_list, ["train", "val", "test"]):
                 if split is not None:
@@ -303,7 +302,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
     def from_devset(
         cls,
         dataset: str,
-        dset_kwargs: Dict[str, Any] = {},
+        dset_kwargs: dict[str, Any] = {},
         **kwargs,
     ):
         r"""
@@ -353,7 +352,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         return datamodule
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> dict[str, list[str]]:
         return self.dataset.target_keys
 
 
@@ -363,11 +362,11 @@ class MultiDataModule(pl.LightningDataModule):
         self,
         batch_size: int = 32,
         num_workers: int = 0,
-        train_dataset: Optional[MultiDataset] = None,
-        val_dataset: Optional[MultiDataset] = None,
-        test_dataset: Optional[MultiDataset] = None,
-        predict_dataset: Optional[MultiDataset] = None,
-        persistent_workers: Optional[bool] = None,
+        train_dataset: MultiDataset | None = None,
+        val_dataset: MultiDataset | None = None,
+        test_dataset: MultiDataset | None = None,
+        predict_dataset: MultiDataset | None = None,
+        persistent_workers: bool | None = None,
     ) -> None:
         r"""
         Data module specifically for using multiple different datasets in tandem.
@@ -463,17 +462,16 @@ class MultiDataModule(pl.LightningDataModule):
             return is_persist
 
     @persistent_workers.setter
-    def persistent_workers(self, value: Union[None, bool]) -> None:
+    def persistent_workers(self, value: None | bool) -> None:
         self._persistent_workers = value
 
     @property
-    def target_keys(self) -> Dict[str, Dict[str, List[str]]]:
+    def target_keys(self) -> dict[str, dict[str, list[str]]]:
         return self.datasets["train"].target_keys
-
 
     # Cannot return None for dataloaders
     # https://github.com/Lightning-AI/pytorch-lightning/issues/15703#issuecomment-1872664346
-    def train_dataloader(self) -> Union[DataLoader, None]:
+    def train_dataloader(self) -> DataLoader | None:
         data = self.datasets.get("train", None)
         if data is None:
             return []
@@ -486,7 +484,7 @@ class MultiDataModule(pl.LightningDataModule):
             persistent_workers=self.persistent_workers,
         )
 
-    def val_dataloader(self) -> Union[DataLoader, None]:
+    def val_dataloader(self) -> DataLoader | None:
         data = self.datasets.get("val", None)
         if data is None:
             return []
@@ -498,7 +496,7 @@ class MultiDataModule(pl.LightningDataModule):
             persistent_workers=self.persistent_workers,
         )
 
-    def test_dataloader(self) -> Union[DataLoader, None]:
+    def test_dataloader(self) -> DataLoader | None:
         data = self.datasets.get("test", None)
         if data is None:
             return []
@@ -510,7 +508,7 @@ class MultiDataModule(pl.LightningDataModule):
             persistent_workers=self.persistent_workers,
         )
 
-    def predict_dataloader(self) -> Union[DataLoader, None]:
+    def predict_dataloader(self) -> DataLoader | None:
         data = self.datasets.get("predict", None)
         if data is None:
             return []

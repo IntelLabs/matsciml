@@ -4,8 +4,7 @@ from itertools import product
 
 import pytest
 
-from matsciml.datasets.lips import lips_devset
-from matsciml.datasets.lips import LiPSDataset
+from matsciml.datasets.lips import LiPSDataset, lips_devset
 from matsciml.datasets.transforms import PointCloudToGraphTransform
 
 

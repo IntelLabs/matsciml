@@ -1,5 +1,6 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
 from typing import Callable, List, Tuple
 
@@ -7,13 +8,13 @@ import dgl
 import torch
 import torch.nn as nn
 
-from .layers import EquiCoordGraphConv, KLinears
+from matsciml.models.dgl.egnn.egnn_model.layers import EquiCoordGraphConv, KLinears
 
 
 class MLP(nn.Module):
     def __init__(
         self,
-        dims: List[int],
+        dims: list[int],
         activation: Callable[[torch.Tensor], torch.Tensor] = None,
         activate_last: bool = False,
         bias_last: bool = True,
@@ -35,14 +36,14 @@ class MLP(nn.Module):
         for i, (in_dim, out_dim) in enumerate(zip(dims[:-1], dims[1:])):
             if i < self._depth - 1:
                 self.layers.append(
-                    self.linear(in_dim, out_dim, bias=True, **self._linear_kwargs)
+                    self.linear(in_dim, out_dim, bias=True, **self._linear_kwargs),
                 )
 
                 if activation is not None:
                     self.layers.append(activation)
             else:
                 self.layers.append(
-                    self.linear(in_dim, out_dim, bias=bias_last, **self._linear_kwargs)
+                    self.linear(in_dim, out_dim, bias=bias_last, **self._linear_kwargs),
                 )
 
                 if activation is not None and activate_last:
@@ -99,9 +100,9 @@ class EGNN(nn.Module):
         hidden_dim: int,
         out_dim: int,
         depth: int,
-        feat_dims: List[int],
-        message_dims: List[int],
-        position_dims: List[int],
+        feat_dims: list[int],
+        message_dims: list[int],
+        position_dims: list[int],
         edge_attributes_dim: int,
         activation: Callable[[torch.Tensor], torch.Tensor],
         residual: bool,
@@ -110,7 +111,7 @@ class EGNN(nn.Module):
         activate_last: bool = False,
         k_linears: int = 1,
         use_attention: bool = False,
-        attention_dims: List[int] = None,
+        attention_dims: list[int] = None,
         attention_norm: Callable[[torch.Tensor], torch.Tensor] = None,
         num_atoms_embedding: int = 100,
     ) -> nn.Module:
@@ -188,7 +189,7 @@ class EGNN(nn.Module):
                     residual=residual,
                     normalize=normalize,
                     tanh=tanh,
-                )
+                ),
             )
 
             if i < depth - 1 or activate_last:
@@ -204,7 +205,7 @@ class EGNN(nn.Module):
         node_feats: torch.Tensor,
         positions: torch.Tensor,
         edge_attributes: torch.Tensor = None,
-    ) -> Tuple[torch.Tensor]:
+    ) -> tuple[torch.Tensor]:
         pos = positions
         edge_attrs = edge_attributes
 
@@ -213,7 +214,8 @@ class EGNN(nn.Module):
 
             if edge_attrs is not None:
                 edge_attrs = torch.stack(
-                    [edge_attrs for _ in range(self._k_linears)], dim=1
+                    [edge_attrs for _ in range(self._k_linears)],
+                    dim=1,
                 )
         embeddings = self.atom_embedding(node_feats)
         feats = self.in_embed(embeddings)

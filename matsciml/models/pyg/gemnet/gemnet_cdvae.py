@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 from typing import Optional
 
@@ -13,32 +14,37 @@ import torch.nn as nn
 from torch_scatter import scatter
 from torch_sparse import SparseTensor
 
-# from matsciml.common.utils import (
-#     get_pbc_distances,
-#     radius_graph_pbc,
-# )
 from matsciml.models.diffusion_utils.data_utils import (
     frac_to_cart_coords,
     get_pbc_distances,
     radius_graph_pbc,
 )
-
-from .layers.atom_update_block import OutputBlock
-from .layers.base_layers import Dense
-from .layers.efficient import EfficientInteractionDownProjection
-from .layers.embedding_block import AtomEmbedding, EdgeEmbedding
-from .layers.interaction_block import (
+from matsciml.models.pyg.gemnet.layers.atom_update_block import OutputBlock
+from matsciml.models.pyg.gemnet.layers.base_layers import Dense
+from matsciml.models.pyg.gemnet.layers.efficient import (
+    EfficientInteractionDownProjection,
+)
+from matsciml.models.pyg.gemnet.layers.embedding_block import (
+    AtomEmbedding,
+    EdgeEmbedding,
+)
+from matsciml.models.pyg.gemnet.layers.interaction_block import (
     InteractionBlockTripletsOnly,
 )
-from .layers.radial_basis import RadialBasis
-from .layers.scaling import AutomaticFit
-from .layers.spherical_basis import CircularBasisLayer
-from .utils import (
+from matsciml.models.pyg.gemnet.layers.radial_basis import RadialBasis
+from matsciml.models.pyg.gemnet.layers.scaling import AutomaticFit
+from matsciml.models.pyg.gemnet.layers.spherical_basis import CircularBasisLayer
+from matsciml.models.pyg.gemnet.utils import (
     inner_product_normalized,
     mask_neighbors,
     ragged_range,
     repeat_blocks,
 )
+
+# from matsciml.common.utils import (
+#     get_pbc_distances,
+#     radius_graph_pbc,
+# )
 
 
 class GemNetT(torch.nn.Module):
@@ -129,7 +135,7 @@ class GemNetT(torch.nn.Module):
         otf_graph: bool = False,
         output_init: str = "HeOrthogonal",
         activation: str = "swish",
-        scale_file: Optional[str] = None,
+        scale_file: str | None = None,
     ):
         super().__init__()
         self.num_targets = num_targets
@@ -178,7 +184,9 @@ class GemNetT(torch.nn.Module):
             bias=False,
         )
         self.mlp_cbf3 = EfficientInteractionDownProjection(
-            num_spherical, num_radial, emb_size_cbf
+            num_spherical,
+            num_radial,
+            emb_size_cbf,
         )
 
         # Share the dense Layer of the atom embedding block accross the interaction blocks
@@ -200,7 +208,10 @@ class GemNetT(torch.nn.Module):
         self.atom_emb = AtomEmbedding(emb_size_atom)
         self.atom_latent_emb = nn.Linear(emb_size_atom + latent_dim, emb_size_atom)
         self.edge_emb = EdgeEmbedding(
-            emb_size_atom, num_radial, emb_size_edge, activation=activation
+            emb_size_atom,
+            num_radial,
+            emb_size_edge,
+            activation=activation,
         )
 
         out_blocks = []
@@ -224,7 +235,7 @@ class GemNetT(torch.nn.Module):
                     activation=activation,
                     scale_file=scale_file,
                     name=f"IntBlock_{i+1}",
-                )
+                ),
             )
 
         for i in range(num_blocks + 1):
@@ -240,7 +251,7 @@ class GemNetT(torch.nn.Module):
                     direct_forces=True,
                     scale_file=scale_file,
                     name=f"OutBlock_{i}",
-                )
+                ),
             )
 
         self.out_blocks = torch.nn.ModuleList(out_blocks)
@@ -307,7 +318,12 @@ class GemNetT(torch.nn.Module):
         return tensor_ordered
 
     def reorder_symmetric_edges(
-        self, edge_index, cell_offsets, neighbors, edge_dist, edge_vector
+        self,
+        edge_index,
+        cell_offsets,
+        neighbors,
+        edge_dist,
+        edge_vector,
     ):
         """
         Reorder edges to make finding counter-directional edges easier.
@@ -368,13 +384,22 @@ class GemNetT(torch.nn.Module):
         # Reorder everything so the edges of every image are consecutive
         edge_index_new = edge_index_cat[:, edge_reorder_idx]
         cell_offsets_new = self.select_symmetric_edges(
-            cell_offsets, mask, edge_reorder_idx, True
+            cell_offsets,
+            mask,
+            edge_reorder_idx,
+            True,
         )
         edge_dist_new = self.select_symmetric_edges(
-            edge_dist, mask, edge_reorder_idx, False
+            edge_dist,
+            mask,
+            edge_reorder_idx,
+            False,
         )
         edge_vector_new = self.select_symmetric_edges(
-            edge_vector, mask, edge_reorder_idx, True
+            edge_vector,
+            mask,
+            edge_reorder_idx,
+            True,
         )
 
         return (
@@ -405,9 +430,7 @@ class GemNetT(torch.nn.Module):
 
         empty_image = neighbors == 0
         if torch.any(empty_image):
-            import pdb
-
-            pdb.set_trace()
+            pass
             # raise ValueError(
             #     f"An image has no neighbors: id={data.id[empty_image]}, "
             #     f"sid={data.sid[empty_image]}, fid={data.fid[empty_image]}"
@@ -415,7 +438,14 @@ class GemNetT(torch.nn.Module):
         return edge_index, cell_offsets, neighbors, edge_dist, edge_vector
 
     def generate_interaction_graph(
-        self, cart_coords, lengths, angles, num_atoms, edge_index, to_jimages, num_bonds
+        self,
+        cart_coords,
+        lengths,
+        angles,
+        num_atoms,
+        edge_index,
+        to_jimages,
+        num_bonds,
     ):
         if self.otf_graph:
             edge_index, to_jimages, num_bonds = radius_graph_pbc(
@@ -528,7 +558,8 @@ class GemNetT(torch.nn.Module):
         """
         pos = frac_to_cart_coords(frac_coords, lengths, angles, num_atoms)
         batch = torch.arange(
-            num_atoms.size(0), device=num_atoms.device
+            num_atoms.size(0),
+            device=num_atoms.device,
         ).repeat_interleave(num_atoms, dim=0)
         atomic_numbers = atom_types
 
@@ -542,7 +573,13 @@ class GemNetT(torch.nn.Module):
             id3_ca,
             id3_ragged_idx,
         ) = self.generate_interaction_graph(
-            pos, lengths, angles, num_atoms, edge_index, to_jimages, num_bonds
+            pos,
+            lengths,
+            angles,
+            num_atoms,
+            edge_index,
+            to_jimages,
+            num_bonds,
         )
         idx_s, idx_t = edge_index
 
@@ -596,7 +633,11 @@ class GemNetT(torch.nn.Module):
 
         # always use mean aggregation
         E_t = scatter(
-            E_t, batch, dim=0, dim_size=nMolecules, reduce="mean"
+            E_t,
+            batch,
+            dim=0,
+            dim_size=nMolecules,
+            reduce="mean",
         )  # (nMolecules, num_targets)
 
         if self.regress_forces:

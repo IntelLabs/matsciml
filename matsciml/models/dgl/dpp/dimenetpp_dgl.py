@@ -2,9 +2,7 @@
 # SPDX-License-Identifier: MIT License
 from __future__ import annotations
 
-from typing import Any
-from typing import Dict
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import dgl
 import torch
@@ -177,7 +175,8 @@ class DimeNetPP(AbstractDGLModel):
 
     @staticmethod
     def edge_distance(
-        graph: dgl.DGLGraph, pos: torch.Tensor,
+        graph: dgl.DGLGraph,
+        pos: torch.Tensor,
     ) -> dict[str, torch.Tensor]:
         """
         Compute edge distances on the fly; applies a lambda function

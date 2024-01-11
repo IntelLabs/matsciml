@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import pytorch_lightning as pl
 
-from matsciml.datasets.transforms import DistancesTransform
-from matsciml.datasets.transforms import GraphVariablesTransform
+from matsciml.datasets.transforms import DistancesTransform, GraphVariablesTransform
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import MEGNet
 from matsciml.models.base import ScalarRegressionTask

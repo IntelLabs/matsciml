@@ -7,7 +7,7 @@ FROM nvidia/cuda:$CUDA_VERSION
 
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 # Avoids some interactive prompts during apt-get install
-ARG DEBIAN_FRONTEND=noninteractive 
+ARG DEBIAN_FRONTEND=noninteractive
 
 # clean up and refresh apt-get index
 RUN apt-get update && \
@@ -33,7 +33,7 @@ RUN apt-get update --fix-missing && \
     sudo \
     software-properties-common \
     python3.9 \
-    python3-pip \ 
+    python3-pip \
     virtualenv && \
     apt-get clean && rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 

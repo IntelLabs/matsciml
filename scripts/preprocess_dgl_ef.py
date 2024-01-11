@@ -1,10 +1,10 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
-
 """
 Creates LMDB files with extracted graph features from provided *.extxyz files
 for the S2EF task.
 """
+from __future__ import annotations
 
 import argparse
 import glob
@@ -21,7 +21,7 @@ import torch
 from tqdm import tqdm
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append("{}/../".format(dir_path))
+sys.path.append(f"{dir_path}/../")
 
 from matsciml.preprocessing import AtomsToDGL
 
@@ -44,7 +44,7 @@ def write_images_to_lmdb(mp_arg):
     )
 
     for sample in samples:
-        traj_logs = open(sample, "r").read().splitlines()
+        traj_logs = open(sample).read().splitlines()
         xyz_idx = os.path.splitext(os.path.basename(sample))[0]
         traj_path = os.path.join(args.data_path, f"{xyz_idx}.extxyz")
         traj_frames = ase.io.read(traj_path, ":")
@@ -78,7 +78,7 @@ def write_images_to_lmdb(mp_arg):
 
     # Save count of objects in lmdb.
     txn = db.begin(write=True)
-    txn.put("length".encode("ascii"), pickle.dumps(idx, protocol=-1))
+    txn.put(b"length", pickle.dumps(idx, protocol=-1))
     txn.commit()
 
     db.sync()
@@ -180,7 +180,9 @@ def get_parser():
         help="No. of feature-extracting processes or no. of dataset chunks",
     )
     parser.add_argument(
-        "--ref-energy", action="store_true", help="Subtract reference energies"
+        "--ref-energy",
+        action="store_true",
+        help="Subtract reference energies",
     )
     parser.add_argument(
         "--test-data",

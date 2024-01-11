@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from matsciml.datasets.symmetry import symmetry_devset
 from matsciml.datasets.symmetry.dataset import SyntheticPointGroupDataset
 from matsciml.datasets.transforms import PointCloudToGraphTransform

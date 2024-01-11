@@ -1,17 +1,12 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
+from typing import Any, Dict, List, Optional, Union
 
 import torch
 from pymatgen.core import Lattice
 
-from matsciml.common import DataDict
-from matsciml.common import package_registry
+from matsciml.common import DataDict, package_registry
 from matsciml.common.types import DataDict
 from matsciml.datasets.transforms.base import AbstractDataTransform
 
@@ -86,7 +81,8 @@ class GraphVariablesTransform(AbstractDataTransform):
 
     @staticmethod
     def _get_atomic_charge(
-        graph: dgl.DGLGraph, mol_mask: torch.Tensor,
+        graph: dgl.DGLGraph,
+        mol_mask: torch.Tensor,
     ) -> list[torch.Tensor]:
         # extract out nodes that belong to the molecule
         surf_mask = ~mol_mask
@@ -98,7 +94,8 @@ class GraphVariablesTransform(AbstractDataTransform):
 
     @staticmethod
     def _get_distance_features(
-        graph: dgl.DGLGraph, mol_mask: torch.Tensor,
+        graph: dgl.DGLGraph,
+        mol_mask: torch.Tensor,
     ) -> list[torch.Tensor]:
         """
         Compute spatial features for the graph level variables.
@@ -200,7 +197,8 @@ class GraphSuperNodes(AbstractDataTransform):
         supernode_data = {
             "tags": torch.as_tensor([3], dtype=graph.ndata["tags"].dtype),
             "atomic_numbers": torch.as_tensor(
-                [self.supernode_index], dtype=graph.ndata["atomic_numbers"].dtype,
+                [self.supernode_index],
+                dtype=graph.ndata["atomic_numbers"].dtype,
             ),
             "fixed": torch.as_tensor([1], dtype=graph.ndata["fixed"].dtype),
         }
@@ -308,7 +306,9 @@ class AtomicSuperNodes(AbstractDataTransform):
             # add edges joining the supernode to existing connections
             new_node_index = graph.num_nodes() - 1
             graph = dgl.add_edges(
-                graph, [new_node_index for _ in range(num_edges)], joint,
+                graph,
+                [new_node_index for _ in range(num_edges)],
+                joint,
             )
         data["graph"] = graph
         return data
@@ -323,7 +323,10 @@ class GraphReordering(AbstractDataTransform):
     """
 
     def __init__(
-        self, node_algo: str | None = None, edge_algo: str = "src", **sort_kwargs,
+        self,
+        node_algo: str | None = None,
+        edge_algo: str = "src",
+        **sort_kwargs,
     ) -> None:
         super().__init__()
         self.node_algo = node_algo
@@ -333,7 +336,10 @@ class GraphReordering(AbstractDataTransform):
     def __call__(self, data: DataDict) -> DataDict:
         graph = data.get("graph")
         graph = dgl.reorder_graph(
-            graph, self.node_algo, self.edge_algo, permute_config=self.sort_kwargs,
+            graph,
+            self.node_algo,
+            self.edge_algo,
+            permute_config=self.sort_kwargs,
         )
         data["graph"] = graph
         return data
@@ -396,7 +402,9 @@ class COMShift(AbstractDataTransform):
 
 class ScaleRegressionTargets(AbstractDataTransform):
     def __init__(
-        self, value: float | None = None, values: dict[str, float] | None = None,
+        self,
+        value: float | None = None,
+        values: dict[str, float] | None = None,
     ) -> None:
         if value is None and values is None:
             raise ValueError(
@@ -417,7 +425,6 @@ class ScaleRegressionTargets(AbstractDataTransform):
 
 
 class UnitCellCalculator(AbstractDataTransform):
-
     def __call__(self, data: DataDict) -> DataDict:
         lattice_features = data.get("lattice_features", None)
         if lattice_features is None:

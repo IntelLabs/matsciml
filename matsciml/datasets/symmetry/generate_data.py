@@ -3,21 +3,21 @@ Original implementation by Matthew Spellings (Vector Institute) 5/25/2023
 
 Modifications by Kelvin Lee to integrate into matsciml
 """
+from __future__ import annotations
 
 import argparse
 import itertools
 import os
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
 
-import torch
 import numpy as np
+import torch
+from joblib import Parallel, delayed
 from tqdm import tqdm
-from joblib import delayed, Parallel
 
 from matsciml.datasets.symmetry.subgroup_classes import SubgroupGenerator
-from matsciml.datasets.utils import write_lmdb_data, connect_lmdb_write
-
+from matsciml.datasets.utils import connect_lmdb_write, write_lmdb_data
 
 devset_kwargs = {
     "lmdb_path": "./devset",
@@ -76,7 +76,11 @@ parser.add_argument(
     help="Number of point clouds to place in a batch",
 )
 parser.add_argument(
-    "-n", "--number", type=int, default=128, help="Number of point clouds to generate"
+    "-n",
+    "--number",
+    type=int,
+    default=128,
+    help="Number of point clouds to generate",
 )
 parser.add_argument(
     "-i",
@@ -86,7 +90,11 @@ parser.add_argument(
     help="Maximum axial symmetry degree to consider",
 )
 parser.add_argument(
-    "-t", "--max-types", type=int, default=1, help="Maximum number of types to generate"
+    "-t",
+    "--max-types",
+    type=int,
+    default=1,
+    help="Maximum number of types to generate",
 )
 parser.add_argument(
     "-m",
@@ -96,7 +104,11 @@ parser.add_argument(
     help="If True, use multilabel variant (group-subgroup relations)",
 )
 parser.add_argument(
-    "-z", "--max-size", type=int, default=120, help="Maximum point cloud size"
+    "-z",
+    "--max-size",
+    type=int,
+    default=120,
+    help="Maximum point cloud size",
 )
 parser.add_argument(
     "-u",
@@ -127,7 +139,9 @@ parser.add_argument(
     help="Distance to use for deduplicating symmetrized points",
 )
 parser.add_argument(
-    "--devset", action="store_true", help="Override settings to generate the devset."
+    "--devset",
+    action="store_true",
+    help="Override settings to generate the devset.",
 )
 parser.add_argument(
     "--train_set",
@@ -168,7 +182,7 @@ def generate_subgroup_data(index: int, lmdb_root: Path, **gen_kwargs) -> None:
     seed = config["seed"] + index  # offset each worker by index
     del config["seed"]
     target_env = connect_lmdb_write(
-        Path(lmdb_root).joinpath(f"data.{str(index).zfill(4)}.lmdb")
+        Path(lmdb_root).joinpath(f"data.{str(index).zfill(4)}.lmdb"),
     )
     # instantiate generator
     dataset = SubgroupGenerator(**config)

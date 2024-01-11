@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from matsciml.datasets.materials_project import (
@@ -14,7 +16,7 @@ def test_pairwise_pointcloud():
         [
             key in sample
             for key in ["pos", "pc_features", "sizes", "src_nodes", "dst_nodes"]
-        ]
+        ],
     )
     # for a pairwise point cloud sizes should be equal
     feats = sample["pc_features"]
@@ -29,7 +31,7 @@ def test_sampled_pointcloud():
         [
             key in sample
             for key in ["pos", "pc_features", "sizes", "src_nodes", "dst_nodes"]
-        ]
+        ],
     )
     # for a pairwise point cloud sizes should be equal
     feats = sample["pc_features"]
