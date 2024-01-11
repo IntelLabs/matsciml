@@ -298,6 +298,14 @@ trainer.fit(task, datamodule=data_module)
 With this, you should be able to test the end-to-end functionality of your dataset;
 here's hoping everything works!
 
+## Documenting new datasets
+
+When contributing a new dataset, please add the following details to [`DATASETS.md`](./DATASETS.md):
+
+- General description: its nominal purpose, how the data was generated, and its distribution license (e.g. MIT)
+- How to download the data from a public repository, and if applicable, how to preprocess it locally
+- Relevant citations for the dataset: arXiv, DOIs, paper references
+
 ## Common key names for data properties
 
 This section is kept to try and encourage consistent key naming between datasets.
