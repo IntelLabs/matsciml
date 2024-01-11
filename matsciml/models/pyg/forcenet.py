@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import os
 from math import pi as PI
@@ -23,7 +24,7 @@ from matsciml.models.utils.basis import Basis, SphericalSmearing
 
 class FNDecoder(nn.Module):
     def __init__(self, decoder_type, decoder_activation_str, output_dim):
-        super(FNDecoder, self).__init__()
+        super().__init__()
         self.decoder_type = decoder_type
         self.decoder_activation = Act(decoder_activation_str)
         self.output_dim = output_dim
@@ -63,7 +64,7 @@ class InteractionBlock(MessagePassing):
         activation_str="ssp",
         ablation="none",
     ):
-        super(InteractionBlock, self).__init__(aggr="add")
+        super().__init__(aggr="add")
 
         self.activation = Act(activation_str)
         self.ablation = ablation
@@ -240,7 +241,7 @@ class ForceNet(BaseModel):
         training=True,
         otf_graph=False,
     ):
-        super(ForceNet, self).__init__()
+        super().__init__()
         self.training = training
         self.ablation = ablation
         if self.ablation not in [
@@ -309,7 +310,8 @@ class ForceNet(BaseModel):
         self.pbc_sph = None
         if self.pbc_apply_sph_harm:
             self.pbc_sph = SphericalSmearing(
-                max_n=self.max_n, option=self.pbc_sph_option
+                max_n=self.max_n,
+                option=self.pbc_sph_option,
             )
 
         # self.feat can be "simple" or "full"
@@ -347,7 +349,8 @@ class ForceNet(BaseModel):
                 act=self.activation_str,
             )
             self.embedding = torch.nn.Sequential(
-                basis, torch.nn.Linear(basis.out_dim, hidden_channels)
+                basis,
+                torch.nn.Linear(basis.out_dim, hidden_channels),
             )
 
         else:
@@ -366,7 +369,7 @@ class ForceNet(BaseModel):
             # if basis_type is spherical harmonics, then reduce to powersine
             if "sph" in self.basis_type:
                 logging.info(
-                    "Under onlydist ablation, spherical basis is reduced to powersine basis."
+                    "Under onlydist ablation, spherical basis is reduced to powersine basis.",
                 )
                 self.basis_type = "powersine"
                 self.pbc_sph = None
@@ -419,7 +422,9 @@ class ForceNet(BaseModel):
 
         if self.otf_graph:
             edge_index, cell_offsets, neighbors = radius_graph_pbc(
-                data, self.cutoff, 50
+                data,
+                self.cutoff,
+                50,
             )
             data.edge_index = edge_index
             data.cell_offsets = cell_offsets
@@ -459,7 +464,7 @@ class ForceNet(BaseModel):
                     edge_dist
                     - self.atom_radii[z[edge_index[0]]]
                     - self.atom_radii[z[edge_index[1]]],
-                ]
+                ],
             ).transpose(0, 1)
             / self.cutoff
         )

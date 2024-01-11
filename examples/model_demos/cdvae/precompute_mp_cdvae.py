@@ -1,28 +1,32 @@
-from typing import Dict, Union
-from argparse import ArgumentParser, Namespace
-from pathlib import Path
+from __future__ import annotations
+
 import os
 import pickle
-import sys, os
-import lmdb
-import dgl
-import torch
-from tqdm import tqdm
-from torch_geometric.data import Data, Batch
+import sys
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
+from typing import Dict, Union
 
-from pymatgen.core import Structure
-from pymatgen.analysis.graphs import StructureGraph
+import dgl
+import lmdb
+import torch
 from pymatgen.analysis import local_env
+from pymatgen.analysis.graphs import StructureGraph
+from pymatgen.core import Structure
+from torch_geometric.data import Batch, Data
+from tqdm import tqdm
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append("{}/../".format(dir_path))
+sys.path.append(f"{dir_path}/../")
 
 from matsciml.datasets.generate_subsplit import connect_db_read, write_data
 
 MAX_ATOMS = 25
 
 CrystalNN = local_env.CrystalNN(
-    distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False
+    distance_cutoffs=None,
+    x_diff_weight=-1,
+    porous_adjustment=False,
 )  # , search_cutoff=15.0)
 
 
@@ -34,7 +38,7 @@ def parse_structure(item) -> None:
     structure = item.get("structure", None)
     if structure is None:
         raise ValueError(
-            "Structure not found in data - workflow needs a structure to use!"
+            "Structure not found in data - workflow needs a structure to use!",
         )
     coords = torch.from_numpy(structure.cart_coords).float()
     return_dict["pos"] = coords[None, :] - coords[:, None]
@@ -64,7 +68,7 @@ def parse_structure(item) -> None:
 
     # grab lattice properties
     lattice_params = torch.FloatTensor(
-        structure.lattice.abc + tuple(structure.lattice.angles)
+        structure.lattice.abc + tuple(structure.lattice.angles),
     )
     lattice_features = {
         "lattice_params": lattice_params,
@@ -89,14 +93,14 @@ def parse_structure(item) -> None:
         num_atoms=len(return_dict["atomic_numbers"]),
         num_bonds=edge_index.shape[1],
         num_nodes=len(
-            return_dict["atomic_numbers"]
+            return_dict["atomic_numbers"],
         ),  # special attribute used for batching in pytorch geometric
         y=prop.view(1, -1),
     )
     return data
 
 
-def convert_pyg_to_dgl(pyg_graph) -> Dict[str, Union[dgl.DGLGraph, torch.Tensor]]:
+def convert_pyg_to_dgl(pyg_graph) -> dict[str, dgl.DGLGraph | torch.Tensor]:
     # bijective mapping from PyG to DGL
     (u, v) = pyg_graph.edge_index
     dgl_graph = dgl.graph((u, v), num_nodes=pyg_graph.natoms)
@@ -128,7 +132,7 @@ def main(args: Namespace):
         raise FileNotFoundError(f"{input_path} could not be found.")
     if output_path.exists():
         raise ValueError(
-            f"{output_path} already exists, please check its contents and remove the folder!"
+            f"{output_path} already exists, please check its contents and remove the folder!",
         )
     os.makedirs(output_path)
     db_paths = sorted(input_path.glob("*.lmdb"))

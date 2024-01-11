@@ -10,11 +10,6 @@ repos:
     rev: v2.4.0
     hooks:
     -   id: setup-cfg-fmt
--   repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.10.0
-    hooks:
-    -   id: reorder-python-imports
-        args: [--py38-plus, --add-import, 'from __future__ import annotations']
 -   repo: https://github.com/asottile/add-trailing-comma
     rev: v3.0.1
     hooks:
@@ -24,24 +19,12 @@ repos:
     hooks:
     -   id: pyupgrade
         args: [--py39-plus]
--   repo: https://github.com/PyCQA/flake8
-    rev: 6.1.0
-    hooks:
-    -   id: flake8
-        additional_dependencies: [
-          flake8-bandit,
-          flake8-black,
-          flake8-debugger,
-          flake8-print,
-          flake8-use-fstring,
-          flake8-pyproject,
-        ]
-        args: [--max-line-length=88, --ignore=S101]
 -   repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
       - id: isort
         name: isort (python)
+        args: [--profile=black, -a from __future__ import annotations, --append-only *.py]
 -   repo: https://github.com/psf/black
     rev: 23.7.0
     hooks:
@@ -56,13 +39,3 @@ repos:
     rev: v0.3.1
     hooks:
     -   id: absolufy-imports
--   repo: https://github.com/PyCQA/bandit
-    rev: 1.7.5
-    hooks:
-      - id: bandit
-        name: bandit
-        language: python
-        language_version: python3
-        types: [python]
-        require_serial: true
-        args: [--skip, "B101", --recursive]

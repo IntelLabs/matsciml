@@ -1,19 +1,21 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
-
 """
 Copyright (c) Facebook, Inc. and its affiliates.
 
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import errno
-import pickle, os, sys
+import os
+import pickle
+import sys
 from pathlib import Path
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append("{}/../../".format(dir_path))
+sys.path.append(f"{dir_path}/../../")
 
 import lmdb
 from torch.utils.data import Dataset
@@ -34,14 +36,16 @@ class SinglePointLmdbDataset(Dataset):
     """
 
     def __init__(self, config, transform=None):
-        super(SinglePointLmdbDataset, self).__init__()
+        super().__init__()
 
         self.config = config
 
         self.db_path = Path(self.config["src"])
         if not self.db_path.is_file():
             raise FileNotFoundError(
-                errno.ENOENT, "LMDB file not found", str(self.db_path)
+                errno.ENOENT,
+                "LMDB file not found",
+                str(self.db_path),
             )
 
         self.metadata_path = self.db_path.parent / "metadata.npz"

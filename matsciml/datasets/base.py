@@ -1,18 +1,18 @@
 # Copyright (C) 2022-2023 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from typing import Union, List, Any, Tuple, Callable, Optional, Dict
-from pathlib import Path
-from abc import abstractmethod
-from random import sample
 import functools
+from abc import abstractmethod
+from pathlib import Path
+from random import sample
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 
-from matsciml.common.types import DataDict, BatchDict
+from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets import utils
-
 
 # this provides some backwards compatiability to Python ~3.7
 if hasattr(functools, "cache"):
@@ -33,8 +33,8 @@ class BaseLMDBDataset(Dataset):
 
     def __init__(
         self,
-        lmdb_root_path: Union[str, Path],
-        transforms: Optional[List[Callable]] = None,
+        lmdb_root_path: str | Path,
+        transforms: list[Callable] | None = None,
     ) -> None:
         super().__init__()
         if isinstance(lmdb_root_path, str):
@@ -50,11 +50,11 @@ class BaseLMDBDataset(Dataset):
         self.transforms = transforms
 
     @property
-    def transforms(self) -> List[Callable]:
+    def transforms(self) -> list[Callable]:
         return self._transforms
 
     @transforms.setter
-    def transforms(self, values: Union[List[Callable], None]) -> None:
+    def transforms(self, values: list[Callable] | None) -> None:
         # if transforms are passed, this gives an opportunity for
         # each transform to modify the state of this dataset
         if values:
@@ -67,11 +67,11 @@ class BaseLMDBDataset(Dataset):
     @abstractmethod
     def data_loader(self) -> DataLoader:
         raise NotImplementedError(
-            f"No data loader specified for {self.__class__.__name__}."
+            f"No data loader specified for {self.__class__.__name__}.",
         )
 
     @cache
-    def _load_keys(self) -> List[Tuple[int, int]]:
+    def _load_keys(self) -> list[tuple[int, int]]:
         """
         Load in all of the indices from each LMDB file. This creates an
         easy lookup of which data point is mapped to which total dataset
@@ -117,7 +117,7 @@ class BaseLMDBDataset(Dataset):
         preprocessed_flags = [m.get("preprocessed", None) for m in metadata]
         return all(preprocessed_flags)
 
-    def index_to_key(self, index: int) -> Tuple[int]:
+    def index_to_key(self, index: int) -> tuple[int]:
         """For trajectory dataset, just grab the 2-tuple of LMDB index and subindex"""
         return self.keys[index]
 
@@ -143,7 +143,7 @@ class BaseLMDBDataset(Dataset):
 
     @property
     # @cache
-    def keys(self) -> List[Tuple[int, int]]:
+    def keys(self) -> list[tuple[int, int]]:
         return self._load_keys()
 
     def __getitem__(self, index: int) -> DataDict:
@@ -198,10 +198,10 @@ class BaseLMDBDataset(Dataset):
             env.close()
 
     @staticmethod
-    def collate_fn(batch: List[DataDict]) -> BatchDict:
+    def collate_fn(batch: list[DataDict]) -> BatchDict:
         return utils.concatenate_keys(batch)
 
-    def sample(self, num_samples: int) -> List[Any]:
+    def sample(self, num_samples: int) -> list[Any]:
         """
         Produce a set of random samples from this dataset.
 
@@ -225,7 +225,7 @@ class BaseLMDBDataset(Dataset):
 
     @property
     @abstractmethod
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> dict[str, list[str]]:
         """
         Indicates what the expected keys are for targets.
 
@@ -253,16 +253,16 @@ class BaseLMDBDataset(Dataset):
         self._representation = value
 
     @property
-    def pad_keys(self) -> List[str]:
+    def pad_keys(self) -> list[str]:
         ...
 
     @pad_keys.setter
     @abstractmethod
-    def pad_keys(self, keys: List[str]) -> None:
+    def pad_keys(self, keys: list[str]) -> None:
         ...
 
     @classmethod
-    def from_devset(cls, transforms: Optional[List[Callable]] = None, **kwargs):
+    def from_devset(cls, transforms: list[Callable] | None = None, **kwargs):
         """
         Instantiate an instance of this dataset conveniently from the builtin
         devset.
@@ -279,9 +279,9 @@ class BaseLMDBDataset(Dataset):
 
     def save_preprocessed_data(
         self,
-        target_dir: Union[str, Path],
+        target_dir: str | Path,
         num_procs: int,
-        data: Optional[List[Any]] = None,
+        data: list[Any] | None = None,
         **metadata,
     ) -> None:
         """
@@ -319,8 +319,8 @@ class BaseLMDBDataset(Dataset):
 class PointCloudDataset(BaseLMDBDataset):
     def __init__(
         self,
-        lmdb_root_path: Union[str, Path],
-        transforms: Optional[List[Callable[..., Any]]] = None,
+        lmdb_root_path: str | Path,
+        transforms: list[Callable[..., Any]] | None = None,
         full_pairwise: bool = True,
     ) -> None:
         super().__init__(lmdb_root_path, transforms)
@@ -328,7 +328,7 @@ class PointCloudDataset(BaseLMDBDataset):
         self.representation = "point_cloud"
 
     @staticmethod
-    def choose_dst_nodes(size: int, full_pairwise: bool) -> Dict[str, torch.Tensor]:
+    def choose_dst_nodes(size: int, full_pairwise: bool) -> dict[str, torch.Tensor]:
         r"""
         Generate indices for nodes to construct a point cloud with. If ``full_pairwise``
         is ``True``, the point cloud will be symmetric with shape ``[max_size, max_size]``,

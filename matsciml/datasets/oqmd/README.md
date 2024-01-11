@@ -30,7 +30,7 @@ The endpoint `http://oqmd.org/oqmdapi/formationenergy?&limit={}&offset={}` is us
 
 and their descriptions may be found [here](https://static.oqmd.org/static/docs/restful.html#:~:text=Available%20keywords%20for%20fields%20and%20filter%C2%B6)
 
-A simple python script may be used to query, save and process the data into an lmdb file: 
+A simple python script may be used to query, save and process the data into an lmdb file:
 
 ```python
 from matsciml.datasets.oqmd import OQMDRequest
@@ -44,7 +44,7 @@ oqmd.process_json()
 oqmd.to_lmdb(oqmd.data_dir)
 ```
 
-The raw data takes a while to download, mainly limited by the OQMD API itself. Once finished, json files with the offset included in their names will be saved to the `base_data_dir`. An LMDB file will also be generated and saved to the same location. 
+The raw data takes a while to download, mainly limited by the OQMD API itself. Once finished, json files with the offset included in their names will be saved to the `base_data_dir`. An LMDB file will also be generated and saved to the same location.
 
 The ID's may the be used to query the data associated with each material:
 ```python
@@ -70,6 +70,3 @@ oqmd.to_lmdb(oqmd.data_dir)
 where in this example, LMDB files would be saved to `./base/mini_split`.
 
 If you use OQMD, please refer to [this link](https://oqmd.org/documentation/publications) for how to cite the work.
-
-
-

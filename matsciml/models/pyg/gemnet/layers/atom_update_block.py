@@ -4,13 +4,14 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import torch
 from torch_scatter import scatter
 
-from ..initializers import he_orthogonal_init
-from .base_layers import Dense, ResidualLayer
-from .scaling import ScalingFactor
+from matsciml.models.pyg.gemnet.initializers import he_orthogonal_init
+from matsciml.models.pyg.gemnet.layers.base_layers import Dense, ResidualLayer
+from matsciml.models.pyg.gemnet.layers.scaling import ScalingFactor
 
 
 class AtomUpdateBlock(torch.nn.Module):
@@ -45,14 +46,21 @@ class AtomUpdateBlock(torch.nn.Module):
         self.name = name
 
         self.dense_rbf = Dense(
-            emb_size_rbf, emb_size_edge, activation=None, bias=False
+            emb_size_rbf,
+            emb_size_edge,
+            activation=None,
+            bias=False,
         )
         self.scale_sum = ScalingFactor(
-            scale_file=scale_file, name=name + "_sum"
+            scale_file=scale_file,
+            name=name + "_sum",
         )
 
         self.layers = self.get_mlp(
-            emb_size_edge, emb_size_atom, nHidden, activation
+            emb_size_edge,
+            emb_size_atom,
+            nHidden,
+            activation,
         )
 
     def get_mlp(self, units_in, units, nHidden, activation):
@@ -125,7 +133,6 @@ class OutputBlock(AtomUpdateBlock):
         name: str = "output",
         **kwargs,
     ):
-
         super().__init__(
             name=name,
             emb_size_atom=emb_size_atom,
@@ -143,21 +150,34 @@ class OutputBlock(AtomUpdateBlock):
 
         self.seq_energy = self.layers  # inherited from parent class
         self.out_energy = Dense(
-            emb_size_atom, num_targets, bias=False, activation=None
+            emb_size_atom,
+            num_targets,
+            bias=False,
+            activation=None,
         )
 
         if self.direct_forces:
             self.scale_rbf_F = ScalingFactor(
-                scale_file=scale_file, name=name + "_had"
+                scale_file=scale_file,
+                name=name + "_had",
             )
             self.seq_forces = self.get_mlp(
-                emb_size_edge, emb_size_edge, nHidden, activation
+                emb_size_edge,
+                emb_size_edge,
+                nHidden,
+                activation,
             )
             self.out_forces = Dense(
-                emb_size_edge, num_targets, bias=False, activation=None
+                emb_size_edge,
+                num_targets,
+                bias=False,
+                activation=None,
             )
             self.dense_rbf_F = Dense(
-                emb_size_rbf, emb_size_edge, activation=None, bias=False
+                emb_size_rbf,
+                emb_size_edge,
+                activation=None,
+                bias=False,
             )
 
         self.reset_parameters()

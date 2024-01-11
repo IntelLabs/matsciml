@@ -1,46 +1,37 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from typing import (
-    Dict,
-    Iterable,
-    Type,
-    Tuple,
-    Optional,
-    Union,
-    ContextManager,
-    List,
-    Any,
-)
-from abc import abstractmethod
-from contextlib import nullcontext, ExitStack
 import logging
+from abc import abstractmethod
+from collections.abc import Iterable
+from contextlib import ExitStack, nullcontext
+from typing import Any, ContextManager, Dict, List, Optional, Tuple, Type, Union
 from warnings import warn
-from dgl.utils import data
 
-import pytorch_lightning as pl
-import torch.nn.functional as F
-import torch
-from torch import Tensor, nn
 import dgl
 import numpy as np
+import pytorch_lightning as pl
+import torch
+import torch.nn.functional as F
+from dgl.utils import data
+from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
 from torch_scatter import scatter
 from tqdm import tqdm
 
-from matsciml.modules.normalizer import Normalizer
-from matsciml.models.common import OutputHead
 from matsciml.models.base import BaseTaskModule
-
-from matsciml.models.diffusion_utils import MAX_ATOMIC_NUM, KHOT_EMBEDDINGS
+from matsciml.models.common import OutputHead
+from matsciml.models.diffusion_utils import KHOT_EMBEDDINGS, MAX_ATOMIC_NUM
 from matsciml.models.diffusion_utils.data_utils import (
     EPSILON,
     cart_to_frac_coords,
     frac_to_cart_coords,
-    mard,
     lengths_angles_to_volume,
+    mard,
     min_distance_sqr_pbc,
 )
+from matsciml.modules.normalizer import Normalizer
 
 
 def build_mlp(in_dim, hidden_dim, fc_num_layers, out_dim):
@@ -63,13 +54,13 @@ class GenerationTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: Optional[nn.Module] = None,
-        encoder_class: Optional[Type[nn.Module]] = None,
-        encoder_kwargs: Optional[Dict[str, Any]] = None,
-        decoder: Optional[nn.Module] = None,
-        loss_func: Union[Type[nn.Module], nn.Module] = nn.BCEWithLogitsLoss,
-        task_keys: Optional[List[str]] = None,
-        output_kwargs: Dict[str, Any] = {},
+        encoder: nn.Module | None = None,
+        encoder_class: type[nn.Module] | None = None,
+        encoder_kwargs: dict[str, Any] | None = None,
+        decoder: nn.Module | None = None,
+        loss_func: type[nn.Module] | nn.Module = nn.BCEWithLogitsLoss,
+        task_keys: list[str] | None = None,
+        output_kwargs: dict[str, Any] = {},
         **kwargs,
     ) -> None:
         super().__init__(
@@ -126,7 +117,7 @@ class GenerationTask(BaseTaskModule):
                     np.log(self.hparams.sigma_begin),
                     np.log(self.hparams.sigma_end),
                     self.hparams.num_noise_level,
-                )
+                ),
             ),
             dtype=torch.float32,
         )
@@ -139,7 +130,7 @@ class GenerationTask(BaseTaskModule):
                     np.log(self.hparams.type_sigma_begin),
                     np.log(self.hparams.type_sigma_end),
                     self.hparams.num_noise_level,
-                )
+                ),
             ),
             dtype=torch.float32,
         )
@@ -167,8 +158,9 @@ class GenerationTask(BaseTaskModule):
         return eps * std + mu
 
     def encode(
-        self, embedding: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        self,
+        embedding: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         turn the embedding to a distribution with the reparameterization trick
         """
@@ -228,7 +220,9 @@ class GenerationTask(BaseTaskModule):
 
         # obtain key stats.
         num_atoms, _, lengths, angles, composition_per_atom = self.decode_stats(
-            z, gt_num_atoms, debug=True
+            z,
+            gt_num_atoms,
+            debug=True,
         )
 
         # TODO: ugly hack for debugging when model can predict 0 atoms in a lattice
@@ -248,7 +242,9 @@ class GenerationTask(BaseTaskModule):
 
         # annealed langevin dynamics.
         for sigma in tqdm(
-            self.sigmas, total=self.sigmas.size(0), disable=ld_kwargs.disable_bar
+            self.sigmas,
+            total=self.sigmas.size(0),
+            disable=ld_kwargs.disable_bar,
         ):
             if sigma < ld_kwargs.min_sigma:
                 break
@@ -256,20 +252,31 @@ class GenerationTask(BaseTaskModule):
 
             for step in range(ld_kwargs.n_step_each):
                 noise_cart = torch.randn_like(cur_frac_coords) * torch.sqrt(
-                    step_size * 2
+                    step_size * 2,
                 )
                 pred_cart_coord_diff, pred_atom_types = self.decoder(
-                    z, cur_frac_coords, cur_atom_types, num_atoms, lengths, angles
+                    z,
+                    cur_frac_coords,
+                    cur_atom_types,
+                    num_atoms,
+                    lengths,
+                    angles,
                 )
                 cur_cart_coords = frac_to_cart_coords(
-                    cur_frac_coords, lengths, angles, num_atoms
+                    cur_frac_coords,
+                    lengths,
+                    angles,
+                    num_atoms,
                 )
                 pred_cart_coord_diff = pred_cart_coord_diff / sigma
                 cur_cart_coords = (
                     cur_cart_coords + step_size * pred_cart_coord_diff + noise_cart
                 )
                 cur_frac_coords = cart_to_frac_coords(
-                    cur_cart_coords, lengths, angles, num_atoms
+                    cur_cart_coords,
+                    lengths,
+                    angles,
+                    num_atoms,
                 )
 
                 if gt_atom_types is None:
@@ -296,11 +303,12 @@ class GenerationTask(BaseTaskModule):
                     all_frac_coords=torch.stack(all_frac_coords, dim=0),
                     all_atom_types=torch.stack(all_atom_types, dim=0),
                     all_pred_cart_coord_diff=torch.stack(
-                        all_pred_cart_coord_diff, dim=0
+                        all_pred_cart_coord_diff,
+                        dim=0,
                     ),
                     all_noise_cart=torch.stack(all_noise_cart, dim=0),
                     is_traj=True,
-                )
+                ),
             )
 
         return output_dict
@@ -312,9 +320,9 @@ class GenerationTask(BaseTaskModule):
 
     def forward(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         teacher_forcing: bool,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         embedding = self.encoder(batch)
 
         # VAE stuff
@@ -338,14 +346,21 @@ class GenerationTask(BaseTaskModule):
         # Diffusion stuff
         # sample noise levels.
         noise_level = torch.randint(
-            0, self.sigmas.size(0), (batch.num_atoms.size(0),), device=self.device
+            0,
+            self.sigmas.size(0),
+            (batch.num_atoms.size(0),),
+            device=self.device,
         )
         used_sigmas_per_atom = self.sigmas[noise_level].repeat_interleave(
-            batch.num_atoms, dim=0
+            batch.num_atoms,
+            dim=0,
         )
 
         type_noise_level = torch.randint(
-            0, self.type_sigmas.size(0), (batch.num_atoms.size(0),), device=self.device
+            0,
+            self.type_sigmas.size(0),
+            (batch.num_atoms.size(0),),
+            device=self.device,
         )
         used_type_sigmas_per_atom = self.type_sigmas[
             type_noise_level
@@ -366,11 +381,17 @@ class GenerationTask(BaseTaskModule):
             torch.randn_like(batch.frac_coords) * used_sigmas_per_atom[:, None]
         )
         cart_coords = frac_to_cart_coords(
-            batch.frac_coords, pred_lengths, pred_angles, batch.num_atoms
+            batch.frac_coords,
+            pred_lengths,
+            pred_angles,
+            batch.num_atoms,
         )
         cart_coords = cart_coords + cart_noises_per_atom
         noisy_frac_coords = cart_to_frac_coords(
-            cart_coords, pred_lengths, pred_angles, batch.num_atoms
+            cart_coords,
+            pred_lengths,
+            pred_angles,
+            batch.num_atoms,
         )
 
         pred_cart_coord_diff, pred_atom_types = self.decoder(
@@ -386,13 +407,21 @@ class GenerationTask(BaseTaskModule):
         num_atom_loss = self.num_atom_loss(pred_num_atoms, batch)
         lattice_loss = self.lattice_loss(pred_lengths_and_angles, batch)
         composition_loss = self.composition_loss(
-            pred_composition_per_atom, batch.atom_types, batch
+            pred_composition_per_atom,
+            batch.atom_types,
+            batch,
         )
         coord_loss = self.coord_loss(
-            pred_cart_coord_diff, noisy_frac_coords, used_sigmas_per_atom, batch
+            pred_cart_coord_diff,
+            noisy_frac_coords,
+            used_sigmas_per_atom,
+            batch,
         )
         type_loss = self.type_loss(
-            pred_atom_types, batch.atom_types, used_type_sigmas_per_atom, batch
+            pred_atom_types,
+            batch.atom_types,
+            used_type_sigmas_per_atom,
+            batch,
         )
 
         kld_loss = self.kld_loss(mu, log_var)
@@ -426,7 +455,7 @@ class GenerationTask(BaseTaskModule):
 
     def training_step(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         batch_idx: int,
     ):
         teacher_forcing = self.current_epoch <= self.hparams.teacher_forcing_max_epoch
@@ -442,7 +471,7 @@ class GenerationTask(BaseTaskModule):
 
     def validation_step(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         batch_idx: int,
     ):
         loss_dict = self._compute_losses(batch)
@@ -456,9 +485,9 @@ class GenerationTask(BaseTaskModule):
 
     def _compute_losses(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         teacher_forcing: bool = False,
-    ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
+    ) -> dict[str, torch.Tensor | dict[str, torch.Tensor]]:
         """
         Compute pred versus target for every target, then weighted sum.
 
@@ -494,7 +523,12 @@ class GenerationTask(BaseTaskModule):
         return nn.ModuleDict(modules)
 
     def generate_rand_init(
-        self, pred_composition_per_atom, pred_lengths, pred_angles, num_atoms, batch
+        self,
+        pred_composition_per_atom,
+        pred_lengths,
+        pred_angles,
+        num_atoms,
+        batch,
     ):
         rand_frac_coords = torch.rand(num_atoms.sum(), 3, device=num_atoms.device)
         pred_composition_per_atom = F.softmax(pred_composition_per_atom, dim=-1)
@@ -506,7 +540,7 @@ class GenerationTask(BaseTaskModule):
         Samples composition such that it exactly satisfies composition_prob
         """
         batch = torch.arange(len(num_atoms), device=num_atoms.device).repeat_interleave(
-            num_atoms
+            num_atoms,
         )
         assert composition_prob.size(0) == num_atoms.sum() == batch.size(0)
         composition_prob = scatter(composition_prob, index=batch, dim=0, reduce="mean")
@@ -528,7 +562,9 @@ class GenerationTask(BaseTaskModule):
 
                 left_comp_prob[left_comp_prob < 0.0] = 0.0
                 left_comp = torch.multinomial(
-                    left_comp_prob, num_samples=left_atom_num, replacement=True
+                    left_comp_prob,
+                    num_samples=left_atom_num,
+                    replacement=True,
                 )
                 # convert to atomic number
                 left_comp = left_comp + 1
@@ -576,25 +612,37 @@ class GenerationTask(BaseTaskModule):
             )
         target_lengths_and_angles = torch.cat([target_lengths, batch.angles], dim=-1)
         target_lengths_and_angles = self.lattice_scaler.transform(
-            target_lengths_and_angles
+            target_lengths_and_angles,
         )
         return F.mse_loss(pred_lengths_and_angles, target_lengths_and_angles)
 
     def composition_loss(self, pred_composition_per_atom, target_atom_types, batch):
         target_atom_types = target_atom_types - 1
         loss = F.cross_entropy(
-            pred_composition_per_atom, target_atom_types, reduction="none"
+            pred_composition_per_atom,
+            target_atom_types,
+            reduction="none",
         )
         return scatter(loss, batch.batch, reduce="mean").mean()
 
     def coord_loss(
-        self, pred_cart_coord_diff, noisy_frac_coords, used_sigmas_per_atom, batch
+        self,
+        pred_cart_coord_diff,
+        noisy_frac_coords,
+        used_sigmas_per_atom,
+        batch,
     ):
         noisy_cart_coords = frac_to_cart_coords(
-            noisy_frac_coords, batch.lengths, batch.angles, batch.num_atoms
+            noisy_frac_coords,
+            batch.lengths,
+            batch.angles,
+            batch.num_atoms,
         )
         target_cart_coords = frac_to_cart_coords(
-            batch.frac_coords, batch.lengths, batch.angles, batch.num_atoms
+            batch.frac_coords,
+            batch.lengths,
+            batch.angles,
+            batch.num_atoms,
         )
         _, target_cart_coord_diff = min_distance_sqr_pbc(
             target_cart_coords,
@@ -612,14 +660,19 @@ class GenerationTask(BaseTaskModule):
         pred_cart_coord_diff = pred_cart_coord_diff / used_sigmas_per_atom[:, None]
 
         loss_per_atom = torch.sum(
-            (target_cart_coord_diff - pred_cart_coord_diff) ** 2, dim=1
+            (target_cart_coord_diff - pred_cart_coord_diff) ** 2,
+            dim=1,
         )
 
         loss_per_atom = 0.5 * loss_per_atom * used_sigmas_per_atom**2
         return scatter(loss_per_atom, batch.batch, reduce="mean").mean()
 
     def type_loss(
-        self, pred_atom_types, target_atom_types, used_type_sigmas_per_atom, batch
+        self,
+        pred_atom_types,
+        target_atom_types,
+        used_type_sigmas_per_atom,
+        batch,
     ):
         target_atom_types = target_atom_types - 1
         loss = F.cross_entropy(pred_atom_types, target_atom_types, reduction="none")
@@ -629,7 +682,8 @@ class GenerationTask(BaseTaskModule):
 
     def kld_loss(self, mu, log_var):
         kld_loss = torch.mean(
-            -0.5 * torch.sum(1 + log_var - mu**2 - log_var.exp(), dim=1), dim=0
+            -0.5 * torch.sum(1 + log_var - mu**2 - log_var.exp(), dim=1),
+            dim=0,
         )
         return kld_loss
 
@@ -681,7 +735,7 @@ class GenerationTask(BaseTaskModule):
             # evalute lattice prediction.
             pred_lengths_and_angles = outputs["pred_lengths_and_angles"]
             scaled_preds = self.lattice_scaler.inverse_transform(
-                pred_lengths_and_angles
+                pred_lengths_and_angles,
             )
             pred_lengths = scaled_preds[:, :3]
             pred_angles = scaled_preds[:, 3:]
@@ -702,7 +756,10 @@ class GenerationTask(BaseTaskModule):
             target_atom_types = outputs["target_atom_types"]
             type_accuracy = pred_atom_types.argmax(dim=-1) == (target_atom_types - 1)
             type_accuracy = scatter(
-                type_accuracy.float(), batch.batch, dim=0, reduce="mean"
+                type_accuracy.float(),
+                batch.batch,
+                dim=0,
+                reduce="mean",
             ).mean()
 
             log_dict.update(
@@ -714,7 +771,7 @@ class GenerationTask(BaseTaskModule):
                     f"angles_mae": angles_mae,
                     f"volumes_mard": volumes_mard,
                     f"type_accuracy": type_accuracy,
-                }
+                },
             )
 
         return log_dict, loss

@@ -1,13 +1,14 @@
-import torch
+from __future__ import annotations
 
-from matsciml.models.pyg.dimenet_plus_plus import DimeNetPlusPlus
+import torch
+from torch_scatter import scatter
+
 from matsciml.models.diffusion_utils.data_utils import (
-    get_pbc_distances,
     frac_to_cart_coords,
+    get_pbc_distances,
     radius_graph_pbc_wrapper,
 )
-
-from torch_scatter import scatter
+from matsciml.models.pyg.dimenet_plus_plus import DimeNetPlusPlus
 
 
 class DimeNetPlusPlusWrap(DimeNetPlusPlus):
@@ -37,7 +38,7 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
 
         self.readout = readout
 
-        super(DimeNetPlusPlusWrap, self).__init__(
+        super().__init__(
             hidden_channels=hidden_channels,
             out_channels=num_targets,
             num_blocks=num_blocks,
@@ -58,14 +59,20 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
 
         if self.otf_graph:
             edge_index, cell_offsets, neighbors = radius_graph_pbc_wrapper(
-                data, self.cutoff, self.max_num_neighbors, data.num_atoms.device
+                data,
+                self.cutoff,
+                self.max_num_neighbors,
+                data.num_atoms.device,
             )
             data.edge_index = edge_index
             data.to_jimages = cell_offsets
             data.num_bonds = neighbors
 
         pos = frac_to_cart_coords(
-            data.frac_coords, data.lengths, data.angles, data.num_atoms
+            data.frac_coords,
+            data.lengths,
+            data.angles,
+            data.num_atoms,
         )
 
         out = get_pbc_distances(
@@ -86,7 +93,8 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
         j, i = edge_index
 
         _, _, idx_i, idx_j, idx_k, idx_kj, idx_ji = self.triplets(
-            edge_index, num_nodes=data.atom_types.size(0)
+            edge_index,
+            num_nodes=data.atom_types.size(0),
         )
 
         # Calculate angles.
@@ -110,7 +118,8 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
 
         # Interaction blocks.
         for interaction_block, output_block in zip(
-            self.interaction_blocks, self.output_blocks[1:]
+            self.interaction_blocks,
+            self.output_blocks[1:],
         ):
             x = interaction_block(x, rbf, sbf, idx_kj, idx_ji)
             P += output_block(x, rbf, i, num_nodes=pos.size(0))
@@ -122,9 +131,6 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
             elif self.readout == "sum":
                 energy = P.sum(dim=0)
             elif self.readout == "cat":
-                import pdb
-
-                pdb.set_trace()
                 energy = torch.cat([P.sum(dim=0), P.mean(dim=0)])
             else:
                 raise NotImplementedError

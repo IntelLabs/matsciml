@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import json
 
@@ -16,7 +17,7 @@ def read_json(path):
     if not path.endswith(".json"):
         raise UserWarning(f"Path {path} is not a json-path.")
 
-    with open(path, "r") as f:
+    with open(path) as f:
         content = json.load(f)
     return content
 
@@ -151,7 +152,8 @@ def repeat_blocks(
 
     # Get repeats for each group using group lengths/sizes
     r1 = torch.repeat_interleave(
-        torch.arange(len(sizes), device=sizes.device), repeats
+        torch.arange(len(sizes), device=sizes.device),
+        repeats,
     )
 
     # Get total size of output array, as needed to initialize output indexing array
@@ -177,7 +179,9 @@ def repeat_blocks(
         # Add block increments
         if isinstance(block_inc, torch.Tensor):
             insert_val += segment_csr(
-                block_inc[: r1[-1]], indptr, reduce="sum"
+                block_inc[: r1[-1]],
+                indptr,
+                reduce="sum",
             )
         else:
             insert_val += block_inc * (indptr[1:] - indptr[:-1])
@@ -259,7 +263,7 @@ def calculate_interatomic_vectors(R, id_s, id_t, offsets_st):
         V_st = Rt - Rs  # s -> t
     else:
         V_st = Rt - Rs + offsets_st  # s -> t
-    D_st = torch.sqrt(torch.sum(V_st ** 2, dim=1))
+    D_st = torch.sqrt(torch.sum(V_st**2, dim=1))
     V_st = V_st / D_st[..., None]
     return D_st, V_st
 

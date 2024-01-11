@@ -1,23 +1,25 @@
-import pytest
+from __future__ import annotations
+
 from itertools import product
 
-from matsciml.lightning.data_utils import MatSciMLDataModule
-from matsciml.common.registry import registry
+import pytest
+
 from matsciml.common import package_registry
+from matsciml.common.registry import registry
 from matsciml.datasets import __all__
 from matsciml.datasets.transforms import (
-    PointCloudToGraphTransform,
     GraphToPointCloudTransform,
+    PointCloudToGraphTransform,
 )
-
+from matsciml.lightning.data_utils import MatSciMLDataModule
 
 dset_names = list(
     sorted(
         filter(
             lambda x: "Dataset" in x and "Multi" not in x and "Synthetic" not in x,
             __all__,
-        )
-    )
+        ),
+    ),
 )
 
 not_ocp = list(filter(lambda x: "IS2RE" not in x and "S2EF" not in x, dset_names))
@@ -55,7 +57,10 @@ def test_datamodule_manual_trainonly(dset_classname):
 def test_datamodule_manual_splits(dset_classname):
     dset = registry.get_dataset_class(dset_classname)
     datamodule = MatSciMLDataModule(
-        dataset=dset_classname, train_path=dset.__devset__, batch_size=8, val_split=0.2
+        dataset=dset_classname,
+        train_path=dset.__devset__,
+        batch_size=8,
+        val_split=0.2,
     )
     datamodule.setup()
     assert next(iter(datamodule.train_dataloader()))
@@ -63,13 +68,15 @@ def test_datamodule_manual_splits(dset_classname):
 
 
 @pytest.mark.parametrize(
-    "dset_classname, backend", list(product(not_ocp, ["dgl", "pyg"]))
+    "dset_classname, backend",
+    list(product(not_ocp, ["dgl", "pyg"])),
 )
 def test_datamodule_graph_transforms(dset_classname, backend):
     if package_registry[backend]:
         t = PointCloudToGraphTransform(backend)
         datamodule = MatSciMLDataModule.from_devset(
-            dset_classname, dset_kwargs={"transforms": [t]}
+            dset_classname,
+            dset_kwargs={"transforms": [t]},
         )
         datamodule.setup()
         check_keys = ["pos", "atomic_numbers"]
@@ -88,7 +95,8 @@ def test_datamodule_graph_transforms(dset_classname, backend):
 def test_ocp_pc_transforms(dset_classname):
     t = GraphToPointCloudTransform("dgl")
     datamodule = MatSciMLDataModule.from_devset(
-        dset_classname, dset_kwargs={"transforms": [t]}
+        dset_classname,
+        dset_kwargs={"transforms": [t]},
     )
     datamodule.setup()
     for split in ["train", "val", "test"]:
@@ -101,7 +109,9 @@ def test_ocp_pc_transforms(dset_classname):
 def test_bad_dataset():
     # this makes sure that any willy nilly dataset will fail
     datamodule = MatSciMLDataModule(
-        dataset="BadDataset", train_path="/not/a/path", batch_size=8
+        dataset="BadDataset",
+        train_path="/not/a/path",
+        batch_size=8,
     )
     with pytest.raises(KeyError):
         datamodule.setup()

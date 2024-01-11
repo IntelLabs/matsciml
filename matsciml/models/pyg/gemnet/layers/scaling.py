@@ -4,12 +4,13 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import logging
 
 import torch
 
-from ..utils import read_value_json, update_json
+from matsciml.models.pyg.gemnet.utils import read_value_json, update_json
 
 
 class AutomaticFit:
@@ -31,7 +32,6 @@ class AutomaticFit:
 
         # first instance created
         if AutomaticFit.fitting_mode and not self._fitted:
-
             # if first layer set to active
             if AutomaticFit.activeVar is None:
                 AutomaticFit.activeVar = self
@@ -57,7 +57,7 @@ class AutomaticFit:
         for var in AutomaticFit.queue:
             if self._name == var._name:
                 raise ValueError(
-                    f"Variable with the same name ({self._name}) was already added to queue!"
+                    f"Variable with the same name ({self._name}) was already added to queue!",
                 )
         AutomaticFit.queue += [self]
 
@@ -80,7 +80,7 @@ class AutomaticFit:
         value = read_value_json(self.scale_file, self._name)
         if value is None:
             logging.debug(
-                f"Initialize variable {self._name}' to {self.variable.numpy():.3f}"
+                f"Initialize variable {self._name}' to {self.variable.numpy():.3f}",
             )
         else:
             self._fitted = True
@@ -125,12 +125,10 @@ class AutoScaleFit(AutomaticFit):
         if AutomaticFit.activeVar == self:
             nSamples = y.shape[0]
             self.variance_in += (
-                torch.mean(torch.var(x, dim=0)).to(dtype=torch.float32)
-                * nSamples
+                torch.mean(torch.var(x, dim=0)).to(dtype=torch.float32) * nSamples
             )
             self.variance_out += (
-                torch.mean(torch.var(y, dim=0)).to(dtype=torch.float32)
-                * nSamples
+                torch.mean(torch.var(y, dim=0)).to(dtype=torch.float32) * nSamples
             )
             self.nSamples += nSamples
 
@@ -142,7 +140,7 @@ class AutoScaleFit(AutomaticFit):
         if AutomaticFit.activeVar == self:
             if self.variance_in == 0:
                 raise ValueError(
-                    f"Did not track the variable {self._name}. Add observe calls to track the variance before and after."
+                    f"Did not track the variable {self._name}. Add observe calls to track the variance before and after.",
                 )
 
             # calculate variance preserving scaling factor
@@ -155,13 +153,14 @@ class AutoScaleFit(AutomaticFit):
                 f"Variable: {self._name}, "
                 f"Var_in: {self.variance_in.item():.3f}, "
                 f"Var_out: {self.variance_out.item():.3f}, "
-                f"Ratio: {ratio:.3f} => Scaling factor: {value:.3f}"
+                f"Ratio: {ratio:.3f} => Scaling factor: {value:.3f}",
             )
 
             # set variable to calculated value
             self.variable.copy_(self.variable * value)
             update_json(
-                self.scale_file, {self._name: float(self.variable.item())}
+                self.scale_file,
+                {self._name: float(self.variable.item())},
             )
             self.set_next_active()  # set next variable in queue to active
 
@@ -182,7 +181,8 @@ class ScalingFactor(torch.nn.Module):
         super().__init__()
 
         self.scale_factor = torch.nn.Parameter(
-            torch.tensor(1.0, device=device), requires_grad=False
+            torch.tensor(1.0, device=device),
+            requires_grad=False,
         )
         self.autofit = AutoScaleFit(self.scale_factor, scale_file, name)
 

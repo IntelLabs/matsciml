@@ -4,14 +4,14 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 from pathlib import Path
 
 import torch
 
 from matsciml.common.registry import registry
-
-from .optimizers.lbfgs_torch import LBFGS, TorchCalc
+from matsciml.common.relaxation.optimizers.lbfgs_torch import LBFGS, TorchCalc
 
 
 def ml_relax(

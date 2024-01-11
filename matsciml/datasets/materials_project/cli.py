@@ -1,6 +1,9 @@
-from json import loads, dump
+from __future__ import annotations
+
 from argparse import ArgumentParser
+from json import dump, loads
 from pathlib import Path
+
 import yaml
 
 from matsciml.datasets.materials_project import MaterialsProjectRequest
@@ -113,11 +116,13 @@ if __name__ == "__main__":
         api_kwargs.update(user_kwargs)
         if split_files:
             for file in split_files:
-                with open(file, "r") as f:
+                with open(file) as f:
                     data = yaml.safe_load(f)
                     split, ids = next(iter(data.keys())), next(iter(data.values()))
                 client = MaterialsProjectRequest(
-                    material_ids=ids, **parameters, **api_kwargs
+                    material_ids=ids,
+                    **parameters,
+                    **api_kwargs,
                 )
                 data = client.retrieve_data()
                 # if we have a predefined task the name is just the "split"

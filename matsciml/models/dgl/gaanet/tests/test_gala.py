@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 import torch
 
@@ -36,7 +38,7 @@ def data():
                 torch.rand(3, 3, requires_grad=True),
                 torch.rand(3, 3, requires_grad=True),
                 torch.rand(4, 3, requires_grad=True),
-            ]
+            ],
         ),
         # this should be 3 point clouds
         "pc_features": torch.rand(3, 4, 4, 200),

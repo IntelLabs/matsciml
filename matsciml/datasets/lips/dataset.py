@@ -1,13 +1,15 @@
-from typing import Tuple, Dict, List, Union, Any, Optional, Callable
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import torch
 import numpy as np
-from matsciml.common.types import BatchDict, DataDict
+import torch
 
+from matsciml.common.registry import registry
+from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets.base import PointCloudDataset
 from matsciml.datasets.utils import concatenate_keys, point_cloud_featurization
-from matsciml.common.registry import registry
 
 
 def item_from_structure(data: Any, *keys: str) -> Any:
@@ -44,11 +46,11 @@ def item_from_structure(data: Any, *keys: str) -> Any:
 class LiPSDataset(PointCloudDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
 
-    def index_to_key(self, index: int) -> Tuple[int]:
+    def index_to_key(self, index: int) -> tuple[int]:
         return (0, index)
 
     @staticmethod
-    def collate_fn(batch: List[DataDict]) -> BatchDict:
+    def collate_fn(batch: list[DataDict]) -> BatchDict:
         return concatenate_keys(
             batch,
             pad_keys=["pc_features"],
@@ -56,8 +58,10 @@ class LiPSDataset(PointCloudDataset):
         )
 
     def data_from_key(
-        self, lmdb_index: int, subindex: int
-    ) -> Dict[str, Union[float, torch.Tensor, Dict[str, torch.Tensor]]]:
+        self,
+        lmdb_index: int,
+        subindex: int,
+    ) -> dict[str, float | torch.Tensor | dict[str, torch.Tensor]]:
         """
         Retrieve a sample from the LMDB file.
 
@@ -86,7 +90,9 @@ class LiPSDataset(PointCloudDataset):
         atom_numbers = torch.LongTensor(data["atomic_numbers"])
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(
-            atom_numbers[src_nodes], atom_numbers[dst_nodes], 100
+            atom_numbers[src_nodes],
+            atom_numbers[dst_nodes],
+            100,
         )
         # keep atomic numbers for graph featurization
         data["atomic_numbers"] = atom_numbers
@@ -102,5 +108,5 @@ class LiPSDataset(PointCloudDataset):
         return data
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> dict[str, list[str]]:
         return {"regression": ["energy", "force"]}

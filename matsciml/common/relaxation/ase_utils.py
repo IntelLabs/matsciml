@@ -9,6 +9,8 @@ LICENSE file in the root directory of this source tree.
 Utilities to interface OCP models/trainers with the Atomic Simulation
 Environment (ASE)
 """
+from __future__ import annotations
+
 import copy
 import logging
 import os
@@ -21,11 +23,7 @@ from ase.calculators.singlepoint import SinglePointCalculator as sp
 from ase.constraints import FixAtoms
 
 from matsciml.common.registry import registry
-from matsciml.common.utils import (
-    radius_graph_pbc,
-    setup_imports,
-    setup_logging,
-)
+from matsciml.common.utils import radius_graph_pbc, setup_imports, setup_logging
 from matsciml.datasets.trajectory_lmdb import data_list_collater
 from matsciml.preprocessing import AtomsToGraphs
 
@@ -88,13 +86,13 @@ class OCPCalculator(Calculator):
 
         if config_yml is not None:
             if isinstance(config_yml, str):
-                config = yaml.safe_load(open(config_yml, "r"))
+                config = yaml.safe_load(open(config_yml))
 
                 if "includes" in config:
                     for include in config["includes"]:
                         # Change the path based on absolute path of config_yml
                         path = os.path.join(config_yml.split("configs")[0], include)
-                        include_config = yaml.safe_load(open(path, "r"))
+                        include_config = yaml.safe_load(open(path))
                         config.update(include_config)
             else:
                 config = config_yml

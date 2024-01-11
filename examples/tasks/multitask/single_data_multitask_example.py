@@ -1,19 +1,20 @@
-import pytorch_lightning as pl
-from torch.nn import L1Loss
-from torch.nn import LayerNorm, SiLU
+from __future__ import annotations
 
-from matsciml.lightning import MatSciMLDataModule
+import pytorch_lightning as pl
+from torch.nn import L1Loss, LayerNorm, SiLU
+
 from matsciml.datasets import MaterialsProjectDataset
+from matsciml.datasets.transforms import (
+    COMShift,
+    CoordinateScaling,
+    PointCloudToGraphTransform,
+)
+from matsciml.lightning import MatSciMLDataModule
+from matsciml.models import PLEGNNBackbone
 from matsciml.models.base import (
+    BinaryClassificationTask,
     MultiTaskLitModule,
     ScalarRegressionTask,
-    BinaryClassificationTask,
-)
-from matsciml.models import PLEGNNBackbone
-from matsciml.datasets.transforms import (
-    CoordinateScaling,
-    COMShift,
-    PointCloudToGraphTransform,
 )
 
 pl.seed_everything(1616)

@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 
-# import the callback responsible for aggregating and formatting
-# prediction results
 from matsciml.lightning.callbacks import LeaderboardWriter
 from matsciml.lightning.data_utils import IS2REDGLDataModule, is2re_devset
 from matsciml.models import GraphConvModel, IS2RELitModule
+
+# import the callback responsible for aggregating and formatting
+# prediction results
 
 """
 This example walks through the bare minimum example to generate a leaderboard
@@ -24,7 +27,8 @@ dm = IS2REDGLDataModule(predict_path=is2re_devset, batch_size=8)
 
 # limit to 5 prediction batches to demonstrate pipeline
 trainer = pl.Trainer(
-    limit_predict_batches=5, callbacks=[LeaderboardWriter("inference_results")]
+    limit_predict_batches=5,
+    callbacks=[LeaderboardWriter("inference_results")],
 )
 # run the prediction loop
 trainer.predict(model, datamodule=dm)

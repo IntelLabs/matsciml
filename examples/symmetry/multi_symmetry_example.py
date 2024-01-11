@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 
-from matsciml.lightning.data_utils import MultiDataModule
-from matsciml.datasets.symmetry import SyntheticPointGroupDataset, symmetry_devset
 from matsciml.datasets.materials_project import (
     MaterialsProjectDataset,
     materialsproject_devset,
 )
-from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.datasets.multi_dataset import MultiDataset
+from matsciml.datasets.symmetry import SyntheticPointGroupDataset, symmetry_devset
+from matsciml.datasets.transforms import PointCloudToGraphTransform
+from matsciml.lightning.data_utils import MultiDataModule
 from matsciml.models import GraphConvModel
 from matsciml.models.base import (
     CrystalSymmetryClassificationTask,
@@ -26,7 +28,7 @@ dm = MultiDataModule(
                 materialsproject_devset,
                 transforms=[PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
             ),
-        ]
+        ],
     ),
     batch_size=16,
 )

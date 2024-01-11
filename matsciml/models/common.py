@@ -191,7 +191,7 @@ class IrrepOutputBlock(nn.Module):
             if len(activation) != len(output_dim):
                 raise ValueError(
                     "Number of activations passed not equal to number of representations; "
-                    f"got {len(activation)}, expected {len(output_dim)}"
+                    f"got {len(activation)}, expected {len(output_dim)}",
                 )
             # if we haven't converted the activation functions into the e3.nn wrapper,
             # do so now

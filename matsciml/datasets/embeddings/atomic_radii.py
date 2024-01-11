@@ -4,12 +4,13 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
-
 """
 Atomic radii in picometers
 
 NaN stored for unavailable parameters.
 """
+from __future__ import annotations
+
 ATOMIC_RADII = {
     0: float("NaN"),
     1: 25.0,

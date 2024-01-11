@@ -1,18 +1,19 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
-
 """
 Copyright (c) Facebook, Inc. and its affiliates.
 
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import ase.db.sqlite
 import ase.io.trajectory
+import dgl
+import munch
 import numpy as np
-import torch, dgl, munch
-
+import torch
 
 try:
     from pymatgen.io.ase import AseAtomsAdaptor
@@ -84,7 +85,9 @@ class AtomsToDGL:
         and cell offsets"""
         struct = AseAtomsAdaptor.get_structure(atoms)
         _c_index, _n_index, _offsets, n_distance = struct.get_neighbor_list(
-            r=self.radius, numerical_tol=0, exclude_self=True
+            r=self.radius,
+            numerical_tol=0,
+            exclude_self=True,
         )
 
         _nonmax_idx = []
@@ -155,7 +158,7 @@ class AtomsToDGL:
             # run internal functions to get padded indices and distances
             split_idx_dist = self._get_neighbors_pymatgen(atoms)
             edge_index, edge_distances, cell_offsets = self._reshape_features(
-                *split_idx_dist
+                *split_idx_dist,
             )
 
             data.edge_index = edge_index
@@ -208,7 +211,8 @@ class AtomsToDGL:
         elif isinstance(atoms_collection, ase.db.sqlite.SQLite3Database):
             atoms_iter = atoms_collection.select()
         elif isinstance(
-            atoms_collection, ase.io.trajectory.SlicedTrajectory
+            atoms_collection,
+            ase.io.trajectory.SlicedTrajectory,
         ) or isinstance(atoms_collection, ase.io.trajectory.TrajectoryReader):
             atoms_iter = atoms_collection
         else:
@@ -235,6 +239,7 @@ class AtomsToDGL:
 
 try:
     from torch_geometric.data import Data
+
     from matsciml.common.utils import collate
 
     class AtomsToGraphs:
@@ -292,7 +297,9 @@ try:
             and cell offsets"""
             struct = AseAtomsAdaptor.get_structure(atoms)
             _c_index, _n_index, _offsets, n_distance = struct.get_neighbor_list(
-                r=self.radius, numerical_tol=0, exclude_self=True
+                r=self.radius,
+                numerical_tol=0,
+                exclude_self=True,
             )
 
             _nonmax_idx = []
@@ -361,7 +368,7 @@ try:
                 # run internal functions to get padded indices and distances
                 split_idx_dist = self._get_neighbors_pymatgen(atoms)
                 edge_index, edge_distances, cell_offsets = self._reshape_features(
-                    *split_idx_dist
+                    *split_idx_dist,
                 )
 
                 data.edge_index = edge_index
@@ -414,7 +421,8 @@ try:
             elif isinstance(atoms_collection, ase.db.sqlite.SQLite3Database):
                 atoms_iter = atoms_collection.select()
             elif isinstance(
-                atoms_collection, ase.io.trajectory.SlicedTrajectory
+                atoms_collection,
+                ase.io.trajectory.SlicedTrajectory,
             ) or isinstance(atoms_collection, ase.io.trajectory.TrajectoryReader):
                 atoms_iter = atoms_collection
             else:

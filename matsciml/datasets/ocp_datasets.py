@@ -1,17 +1,17 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-
-from typing import Dict, Union, Optional, List, Callable
 from pathlib import Path
+from typing import Callable, Dict, List, Optional, Union
 
-import torch
 import dgl
+import torch
 from dgl.dataloading import GraphDataLoader
 from munch import Munch
 
-from matsciml.datasets.base import BaseLMDBDataset
 from matsciml.common.registry import registry
+from matsciml.datasets.base import BaseLMDBDataset
 
 
 class OpenCatalystDataset(BaseLMDBDataset):
@@ -29,7 +29,7 @@ class OpenCatalystDataset(BaseLMDBDataset):
         self._representation = value
 
     @property
-    def pad_keys(self) -> List:
+    def pad_keys(self) -> list:
         # in the event this i
         return ["pc_features"]
 
@@ -43,8 +43,10 @@ class S2EFDataset(OpenCatalystDataset):
     __devset__ = Path(__file__).parents[0].joinpath("dev-s2ef-dgl")
 
     def data_from_key(
-        self, lmdb_index: int, subindex: int
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+        self,
+        lmdb_index: int,
+        subindex: int,
+    ) -> dict[str, torch.Tensor | dgl.DGLGraph]:
         """
         Overrides the `BaseOCPDataset.data_from_key` function, as there are
         some nuances with unpacking the S2EF data regarding `Munch`, and
@@ -103,7 +105,7 @@ class S2EFDataset(OpenCatalystDataset):
         return output_data
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> dict[str, list[str]]:
         return {"regression": ["energy", "force"]}
 
 
@@ -123,14 +125,16 @@ class IS2REDataset(OpenCatalystDataset):
 
     def __init__(
         self,
-        lmdb_root_path: Union[str, Path],
-        transforms: Optional[List[Callable]] = None,
+        lmdb_root_path: str | Path,
+        transforms: list[Callable] | None = None,
     ) -> None:
         super().__init__(lmdb_root_path, transforms)
 
     def data_from_key(
-        self, lmdb_index: int, subindex: int
-    ) -> Dict[str, Union[torch.Tensor, dgl.DGLGraph]]:
+        self,
+        lmdb_index: int,
+        subindex: int,
+    ) -> dict[str, torch.Tensor | dgl.DGLGraph]:
         data = super().data_from_key(lmdb_index, subindex)
         # make graph bidirectional if it isn't already
         data["graph"] = dgl.to_bidirected(data["graph"], copy_ndata=True)
@@ -143,5 +147,5 @@ class IS2REDataset(OpenCatalystDataset):
         return data
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> dict[str, list[str]]:
         return {"regression": ["energy_init", "energy_relaxed"]}

@@ -4,18 +4,17 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import math
 
 import torch
 
-from .atom_update_block import AtomUpdateBlock
-from .base_layers import Dense, ResidualLayer
-from .efficient import (
-    EfficientInteractionBilinear,
-)
-from .embedding_block import EdgeEmbedding
-from .scaling import ScalingFactor
+from matsciml.models.pyg.gemnet.layers.atom_update_block import AtomUpdateBlock
+from matsciml.models.pyg.gemnet.layers.base_layers import Dense, ResidualLayer
+from matsciml.models.pyg.gemnet.layers.efficient import EfficientInteractionBilinear
+from matsciml.models.pyg.gemnet.layers.embedding_block import EdgeEmbedding
+from matsciml.models.pyg.gemnet.layers.scaling import ScalingFactor
 
 
 class InteractionBlockTripletsOnly(torch.nn.Module):
@@ -103,7 +102,7 @@ class InteractionBlockTripletsOnly(torch.nn.Module):
                     activation=activation,
                 )
                 for i in range(num_before_skip)
-            ]
+            ],
         )
 
         # Residual layers after skip connection
@@ -114,7 +113,7 @@ class InteractionBlockTripletsOnly(torch.nn.Module):
                     activation=activation,
                 )
                 for i in range(num_after_skip)
-            ]
+            ],
         )
 
         ## ---------------------------------------- Update Atom Embeddings ---------------------------------------- ##
@@ -139,7 +138,7 @@ class InteractionBlockTripletsOnly(torch.nn.Module):
             [
                 ResidualLayer(emb_size_edge, activation=activation)
                 for _ in range(num_concat)
-            ]
+            ],
         )
 
         self.inv_sqrt_2 = 1 / math.sqrt(2.0)
@@ -270,14 +269,18 @@ class TripletInteraction(torch.nn.Module):
             bias=False,
         )
         self.scale_rbf = ScalingFactor(
-            scale_file=scale_file, name=name + "_had_rbf"
+            scale_file=scale_file,
+            name=name + "_had_rbf",
         )
 
         self.mlp_cbf = EfficientInteractionBilinear(
-            emb_size_trip, emb_size_cbf, emb_size_bilinear
+            emb_size_trip,
+            emb_size_cbf,
+            emb_size_bilinear,
         )
         self.scale_cbf_sum = ScalingFactor(
-            scale_file=scale_file, name=name + "_sum_cbf"
+            scale_file=scale_file,
+            name=name + "_sum_cbf",
         )  # combines scaling for bilinear layer and summation
 
         # Down and up projections

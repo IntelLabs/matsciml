@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import shutil
 
 import pytest
@@ -59,7 +61,7 @@ def test_dataset_load(devset_dir):
             [
                 key in data.keys()
                 for key in ["pos", "atomic_numbers", "pc_features", "dataset"]
-            ]
+            ],
         )
 
 

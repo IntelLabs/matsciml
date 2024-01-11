@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
-from typing import Tuple
+from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -63,7 +62,9 @@ def get_pbc_distances(
 
 
 def base_preprocess(
-    data, cutoff: int = 6.0, max_num_neighbors: int = 40,
+    data,
+    cutoff: int = 6.0,
+    max_num_neighbors: int = 40,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Preprocess datapoint: create a cutoff graph,
         compute distances and relative positions.
@@ -100,7 +101,9 @@ def base_preprocess(
 
 
 def pbc_preprocess(
-    data, cutoff: int = 6.0, max_num_neighbors: int = 40,
+    data,
+    cutoff: int = 6.0,
+    max_num_neighbors: int = 40,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Preprocess datapoint using periodic boundary conditions
         to improve the existing graph.

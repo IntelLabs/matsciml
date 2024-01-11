@@ -4,11 +4,12 @@ Implementations of multi-layer perceptron (MLP) and other helper classes.
 Code attributions to https://github.com/materialsvirtuallab/m3gnet-dgl/tree/main/megnet,
 along with contributions and modifications from Marcel Nassar, Santiago Miret, and Kelvin Lee
 """
+from __future__ import annotations
 
-from typing import Callable, Optional, List
+from typing import Callable, List, Optional
 
 import torch
-from dgl import broadcast_edges, softmax_edges, sum_edges, DGLGraph
+from dgl import DGLGraph, broadcast_edges, softmax_edges, sum_edges
 from torch.nn import LSTM, Linear, Module, ModuleList
 
 
@@ -19,8 +20,8 @@ class MLP(Module):
 
     def __init__(
         self,
-        dims: List[int],
-        activation: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
+        dims: list[int],
+        activation: Callable[[torch.Tensor], torch.Tensor] | None = None,
         activate_last: bool = False,
         bias_last: bool = True,
     ) -> None:

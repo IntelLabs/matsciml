@@ -4,17 +4,14 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
 from torch_geometric.nn import MessagePassing, global_mean_pool, radius_graph
 from torch_geometric.nn.models.schnet import GaussianSmearing
 
-from matsciml.common.utils import (
-    conditional_grad,
-    get_pbc_distances,
-    radius_graph_pbc,
-)
+from matsciml.common.utils import conditional_grad, get_pbc_distances, radius_graph_pbc
 from matsciml.datasets.embeddings import KHOT_EMBEDDINGS, QMOF_KHOT_EMBEDDINGS
 from matsciml.models.base import BaseModel
 
@@ -66,7 +63,7 @@ class CGCNN(BaseModel):
         num_gaussians=50,
         embeddings="khot",
     ):
-        super(CGCNN, self).__init__(num_atoms, bond_feat_dim, num_targets)
+        super().__init__(num_atoms, bond_feat_dim, num_targets)
         self.regress_forces = regress_forces
         self.use_pbc = use_pbc
         self.cutoff = cutoff
@@ -79,7 +76,7 @@ class CGCNN(BaseModel):
             embeddings = QMOF_KHOT_EMBEDDINGS
         else:
             raise ValueError(
-                'embedding mnust be either "khot" for original CGCNN K-hot elemental embeddings or "qmof" for QMOF K-hot elemental embeddings'
+                'embedding mnust be either "khot" for original CGCNN K-hot elemental embeddings or "qmof" for QMOF K-hot elemental embeddings',
             )
         self.embedding = torch.zeros(100, len(embeddings[1]))
         for i in range(100):
@@ -94,11 +91,12 @@ class CGCNN(BaseModel):
                     cutoff=cutoff,
                 )
                 for _ in range(num_graph_conv_layers)
-            ]
+            ],
         )
 
         self.conv_to_fc = nn.Sequential(
-            nn.Linear(atom_embedding_size, fc_feat_size), nn.Softplus()
+            nn.Linear(atom_embedding_size, fc_feat_size),
+            nn.Softplus(),
         )
 
         if num_fc_layers > 1:
@@ -123,7 +121,9 @@ class CGCNN(BaseModel):
 
         if self.otf_graph:
             edge_index, cell_offsets, neighbors = radius_graph_pbc(
-                data, self.cutoff, 50
+                data,
+                self.cutoff,
+                50,
             )
             data.edge_index = edge_index
             data.cell_offsets = cell_offsets
@@ -193,7 +193,7 @@ class CGCNNConv(MessagePassing):
     """
 
     def __init__(self, node_dim, edge_dim, cutoff=6.0, **kwargs):
-        super(CGCNNConv, self).__init__(aggr="add")
+        super().__init__(aggr="add")
         self.node_feat_size = node_dim
         self.edge_feat_size = edge_dim
         self.cutoff = cutoff
@@ -223,7 +223,10 @@ class CGCNNConv(MessagePassing):
             edge_attr is [num_edges, edge_feat_size]
         """
         out = self.propagate(
-            edge_index, x=x, edge_attr=edge_attr, size=(x.size(0), x.size(0))
+            edge_index,
+            x=x,
+            edge_attr=edge_attr,
+            size=(x.size(0), x.size(0)),
         )
         out = nn.Softplus()(self.ln1(out) + x)
         return out

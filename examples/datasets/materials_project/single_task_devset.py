@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import GraphConvModel
 from matsciml.models.base import ScalarRegressionTask
-from matsciml.datasets.transforms import PointCloudToGraphTransform
-
 
 # configure a simple model for testing
 model = GraphConvModel(100, 1, encoder_only=True)

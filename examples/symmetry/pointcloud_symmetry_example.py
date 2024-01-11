@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import GalaPotential
 from matsciml.models.base import CrystalSymmetryClassificationTask
-
 
 dm = MatSciMLDataModule.from_devset(
     "SyntheticPointGroupDataset",

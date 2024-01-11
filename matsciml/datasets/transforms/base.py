@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from abc import abstractmethod
 
 from matsciml.common import DataDict
 from matsciml.datasets.base import BaseLMDBDataset
 
 
-class AbstractDataTransform(object):
+class AbstractDataTransform:
     def setup_transform(self, dataset: BaseLMDBDataset) -> None:
         return None
 

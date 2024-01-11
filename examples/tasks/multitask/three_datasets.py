@@ -1,25 +1,25 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
 from torch.nn import LayerNorm, SiLU
 
-
-from matsciml.datasets import LiPSDataset, IS2REDataset, S2EFDataset
-from matsciml.datasets.transforms import PointCloudToGraphTransform
-
+from matsciml.datasets import IS2REDataset, LiPSDataset, S2EFDataset
 from matsciml.datasets.multi_dataset import MultiDataset
+from matsciml.datasets.transforms import PointCloudToGraphTransform
+from matsciml.lightning import callbacks as cb
 from matsciml.lightning.data_utils import MultiDataModule
+from matsciml.models import PLEGNNBackbone
 from matsciml.models.base import (
+    ForceRegressionTask,
     MultiTaskLitModule,
     ScalarRegressionTask,
-    ForceRegressionTask,
 )
-from matsciml.models import PLEGNNBackbone
-from matsciml.lightning import callbacks as cb
 
 pl.seed_everything(1616)
 
 # LiPS data are saved as point clouds, and need to be converted to graphs
 lips_dset = LiPSDataset.from_devset(
-    transforms=[PointCloudToGraphTransform(backend="dgl", cutoff_dist=10.0)]
+    transforms=[PointCloudToGraphTransform(backend="dgl", cutoff_dist=10.0)],
 )
 # OCP datasets are saved as DGL graphs
 is2re_dset = IS2REDataset.from_devset()
@@ -61,7 +61,7 @@ model_args = {
 
 model = PLEGNNBackbone(**model_args)
 # shared output head arguments.
-output_kwargs={
+output_kwargs = {
     "norm": LayerNorm(128),
     "num_hidden": 2,
     "dropout": 0.2,
@@ -106,7 +106,9 @@ r_lips = ForceRegressionTask(
 
 # initialize multitask with regression and classification on materials project and OCP
 task = MultiTaskLitModule(
-    ("IS2REDataset", r_is2re), ("S2EFDataset", r_s2ef), ("LiPSDataset", r_lips)
+    ("IS2REDataset", r_is2re),
+    ("S2EFDataset", r_s2ef),
+    ("LiPSDataset", r_lips),
 )
 
 # using manual optimization for multitask, so "grad_clip" args do not work for trainer

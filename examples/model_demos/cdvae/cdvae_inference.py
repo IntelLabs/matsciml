@@ -1,41 +1,50 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
-import sys, os
-import pytorch_lightning as pl
-from functools import partial
-import time
-import argparse
-import torch
+from __future__ import annotations
 
-from tqdm import tqdm
-from torch.optim import Adam
+import argparse
+import os
+import sys
+import time
+from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
+
+import pytorch_lightning as pl
+import torch
+from torch.optim import Adam
 from torch_geometric.data import Batch
+from tqdm import tqdm
 
 try:
-    from matsciml.models.diffusion_pipeline import GenerationTask
-    from matsciml.models.pyg.gemnet.decoder import GemNetTDecoder
-    from matsciml.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from matsciml.lightning.data_utils import MatSciMLDataModule
-    from matsciml.datasets.materials_project import CdvaeLMDBDataset
     from examples.model_demos.cdvae.cdvae import get_scalers
     from examples.model_demos.cdvae.cdvae_configs import (
-        enc_config, dec_config, cdvae_config, mp_config
+        cdvae_config,
+        dec_config,
+        enc_config,
+        mp_config,
     )
+    from matsciml.datasets.materials_project import CdvaeLMDBDataset
+    from matsciml.lightning.data_utils import MatSciMLDataModule
+    from matsciml.models.diffusion_pipeline import GenerationTask
+    from matsciml.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
+    from matsciml.models.pyg.gemnet.decoder import GemNetTDecoder
 
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    sys.path.append("{}/../".format(dir_path))
-    from matsciml.models.diffusion_pipeline import GenerationTask
-    from matsciml.models.pyg.gemnet.decoder import GemNetTDecoder
-    from matsciml.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from matsciml.lightning.data_utils import MatSciMLDataModule
-    from matsciml.datasets.materials_project import CdvaeLMDBDataset
+    sys.path.append(f"{dir_path}/../")
     from examples.model_demos.cdvae.cdvae import get_scalers
     from examples.model_demos.cdvae.cdvae_configs import (
-        enc_config, dec_config, cdvae_config, mp_config
-    )   
+        cdvae_config,
+        dec_config,
+        enc_config,
+        mp_config,
+    )
+    from matsciml.datasets.materials_project import CdvaeLMDBDataset
+    from matsciml.lightning.data_utils import MatSciMLDataModule
+    from matsciml.models.diffusion_pipeline import GenerationTask
+    from matsciml.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
+    from matsciml.models.pyg.gemnet.decoder import GemNetTDecoder
 
 
 def load_model(model_path, data_path, load_data, bs=256):
@@ -131,10 +140,10 @@ def reconstructon(
             batch_angles.append(outputs["angles"].detach().cpu())
             if ld_kwargs.save_traj:
                 batch_all_frac_coords.append(
-                    outputs["all_frac_coords"][::down_sample_traj_step].detach().cpu()
+                    outputs["all_frac_coords"][::down_sample_traj_step].detach().cpu(),
                 )
                 batch_all_atom_types.append(
-                    outputs["all_atom_types"][::down_sample_traj_step].detach().cpu()
+                    outputs["all_atom_types"][::down_sample_traj_step].detach().cpu(),
                 )
         # collect sampled crystals for this z.
         frac_coords.append(torch.stack(batch_frac_coords, dim=0))
@@ -205,10 +214,10 @@ def generation(
             batch_angles.append(samples["angles"].detach().cpu())
             if ld_kwargs.save_traj:
                 batch_all_frac_coords.append(
-                    samples["all_frac_coords"][::down_sample_traj_step].detach().cpu()
+                    samples["all_frac_coords"][::down_sample_traj_step].detach().cpu(),
                 )
                 batch_all_atom_types.append(
-                    samples["all_atom_types"][::down_sample_traj_step].detach().cpu()
+                    samples["all_atom_types"][::down_sample_traj_step].detach().cpu(),
                 )
 
         # collect sampled crystals for this z.
@@ -258,7 +267,9 @@ def optimization(
         z.requires_grad = True
     else:
         z = torch.randn(
-            num_starting_points, model.hparams.hidden_dim, device=model.device
+            num_starting_points,
+            model.hparams.hidden_dim,
+            device=model.device,
         )
         z.requires_grad = True
 
@@ -401,7 +412,7 @@ def main(args):
             loader = None
         optimized_crystals = optimization(model, ld_kwargs, loader)
         optimized_crystals.update(
-            {"eval_setting": args, "time": time.time() - start_time}
+            {"eval_setting": args, "time": time.time() - start_time},
         )
 
         if args.label == "":

@@ -1,12 +1,14 @@
-from typing import List, Union, Optional, Tuple
+from __future__ import annotations
+
 from logging import getLogger
+from typing import List, Optional, Tuple, Union
 from warnings import warn
 
-import torch
 import numpy as np
+import torch
 
 from matsciml.common import DataDict, package_registry
-from matsciml.common.types import DataDict, GraphTypes, AbstractGraph
+from matsciml.common.types import AbstractGraph, DataDict, GraphTypes
 from matsciml.datasets.transforms.representations import RepresentationTransform
 from matsciml.datasets.utils import retrieve_pointcloud_node_types
 
@@ -33,8 +35,8 @@ class PointCloudToGraphTransform(RepresentationTransform):
         self,
         backend: str,
         cutoff_dist: float = 7.0,
-        node_keys: List[str] = ["atomic_numbers", "force"],
-        edge_keys: Optional[List[str]] = None,
+        node_keys: list[str] = ["atomic_numbers", "force"],
+        edge_keys: list[str] | None = None,
     ) -> None:
         super().__init__(backend=backend)
         self.cutoff_dist = cutoff_dist
@@ -42,17 +44,18 @@ class PointCloudToGraphTransform(RepresentationTransform):
         self.edge_keys = edge_keys
 
     @property
-    def node_keys(self) -> List[str]:
+    def node_keys(self) -> list[str]:
         return self._node_keys
 
     @node_keys.setter
-    def node_keys(self, values: List[str]) -> None:
+    def node_keys(self, values: list[str]) -> None:
         values = set(values)
         self._node_keys = list(values)
 
     def prologue(self, data: DataDict) -> None:
         assert not self._check_for_type(
-            data, GraphTypes
+            data,
+            GraphTypes,
         ), "Data structure already contains a graph: transform shouldn't be required."
         # check for keys needed to construct the graph
         assert "pos" in data, f"No atomic positions 'pos' key present in data sample."
@@ -96,18 +99,20 @@ class PointCloudToGraphTransform(RepresentationTransform):
         elif "pc_features" in data:
             (src_types, dst_types) = retrieve_pointcloud_node_types(data["pc_features"])
             assert src_types.size(0) == data["pos"].size(
-                0
+                0,
             ), f"Number of source nodes != number of atom positions!"
             return src_types
         else:
             raise KeyError(
-                f"No suitable atom types to read from; expect either 'atomic_numbers' or 'pc_features' to read from a data sample."
+                f"No suitable atom types to read from; expect either 'atomic_numbers' or 'pc_features' to read from a data sample.",
             )
 
     @staticmethod
     def _apply_mask(
-        atomic_numbers: torch.Tensor, pos: torch.Tensor, data: DataDict
-    ) -> Tuple[torch.Tensor]:
+        atomic_numbers: torch.Tensor,
+        pos: torch.Tensor,
+        data: DataDict,
+    ) -> tuple[torch.Tensor]:
         """
         Applies a mask to the data used to construct the graph.
 
@@ -145,8 +150,9 @@ class PointCloudToGraphTransform(RepresentationTransform):
 
     @staticmethod
     def edges_from_dist(
-        dist_mat: Union[np.ndarray, torch.Tensor], cutoff: float
-    ) -> List[List[int]]:
+        dist_mat: np.ndarray | torch.Tensor,
+        cutoff: float,
+    ) -> list[list[int]]:
         if isinstance(dist_mat, np.ndarray):
             dist_mat = torch.from_numpy(dist_mat)
         lower_tri = torch.tril(dist_mat)
@@ -164,7 +170,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                     graph.ndata[key] = data[key]
                 except KeyError:
                     warn(
-                        f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}"
+                        f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}",
                     )
 
         def _copy_edge_keys_dgl(self, data: DataDict, graph: DGLGraph) -> None:
@@ -176,7 +182,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                         graph.edata[key] = data[key]
                     except KeyError:
                         warn(
-                            f"Expected edge data {key} but was not found in data sample: {list(data.keys())}"
+                            f"Expected edge data {key} but was not found in data sample: {list(data.keys())}",
                         )
 
         def _convert_dgl(self, data: DataDict) -> None:
@@ -204,7 +210,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                     setattr(graph, key, data[key])
                 except KeyError:
                     warn(
-                        f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}"
+                        f"Expected node data '{key}' but was not found in data sample: {list(data.keys())}",
                     )
 
         def _copy_edge_keys_pyg(self, data: DataDict, graph: PyGGraph) -> None:
@@ -215,7 +221,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                         setattr(graph, key, data[key])
                     except KeyError:
                         warn(
-                            f"Expected edge data '{key}' but was not found in data sample: {list(data.keys())}"
+                            f"Expected edge data '{key}' but was not found in data sample: {list(data.keys())}",
                         )
 
         def _convert_pyg(self, data: DataDict) -> None:
@@ -238,7 +244,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 dist_mat = data.get("distance_matrix")
             # convert ensure edges are in the right format for PyG
             edge_index = torch.LongTensor(
-                self.edges_from_dist(dist_mat, self.cutoff_dist)
+                self.edges_from_dist(dist_mat, self.cutoff_dist),
             )
             # if not in the expected shape, transpose and reformat layout
             if edge_index.size(0) != 2 and edge_index.size(1) == 2:
@@ -314,7 +320,7 @@ if package_registry["pyg"]:
         def convert(self, data: DataDict) -> None:
             if not self._check_for_type(data, GraphTypes):
                 raise KeyError(
-                    f"GraphToGraphTransform requires an existing graph within the data. Found keys: {data.keys()}"
+                    f"GraphToGraphTransform requires an existing graph within the data. Found keys: {data.keys()}",
                 )
             # remember this is _target_backend_, i.e. what you want to convert to
             if self.backend == "pyg":
@@ -326,7 +332,8 @@ if package_registry["pyg"]:
             # implements the logic for going from DGL to PyG
             graph = data["graph"]
             assert isinstance(
-                graph, dgl.DGLGraph
+                graph,
+                dgl.DGLGraph,
             ), f"Incoming graph is not a `DGLGraph`, but {type(graph)}.."
             all_keys = {}
             for key, tensor in graph.ndata.items():
@@ -353,7 +360,8 @@ if package_registry["pyg"]:
             # to map correctly
             graph = data["graph"]
             assert isinstance(
-                graph, PyGGraph
+                graph,
+                PyGGraph,
             ), f"Incoming graph is not a `PyG` structure, but {type(graph)}."
             num_nodes = graph.num_nodes
             num_edges = graph.num_edges
@@ -377,7 +385,7 @@ if package_registry["pyg"]:
                         dgl_graph.edata[key] = value
                     else:
                         raise KeyError(
-                            f"Passed graph key {key} but first dimension does not match neither nodes nor edges."
+                            f"Passed graph key {key} but first dimension does not match neither nodes nor edges.",
                         )
             # make sure graph is "undirected" for DGL
             data["graph"] = dgl.to_bidirected(dgl_graph, copy_ndata=True)

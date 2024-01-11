@@ -1,35 +1,26 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from pathlib import Path
-from typing import (
-    Dict,
-    Iterable,
-    Type,
-    Tuple,
-    Optional,
-    Union,
-    ContextManager,
-    List,
-    Any,
-)
-from abc import abstractmethod, ABC
-from contextlib import nullcontext, ExitStack
 import logging
+from abc import ABC, abstractmethod
+from collections.abc import Iterable
+from contextlib import ExitStack, nullcontext
+from pathlib import Path
+from typing import Any, ContextManager, Dict, List, Optional, Tuple, Type, Union
 from warnings import warn
 
 import pytorch_lightning as pl
 import torch
-from torch import Tensor, nn
-from torch.optim import AdamW, Optimizer
-from torch.optim import lr_scheduler
 from einops import reduce
+from torch import Tensor, nn
+from torch.optim import AdamW, Optimizer, lr_scheduler
 
-from matsciml.modules.normalizer import Normalizer
-from matsciml.models.common import OutputHead
-from matsciml.common.types import DataDict, BatchDict, AbstractGraph, Embeddings
-from matsciml.common.registry import registry
 from matsciml.common import package_registry
+from matsciml.common.registry import registry
+from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
+from matsciml.models.common import OutputHead
+from matsciml.modules.normalizer import Normalizer
 
 if package_registry["dgl"]:
     import dgl
@@ -170,7 +161,7 @@ def lit_conditional_grad(regress_forces: bool):
     return decorator
 
 
-def prepend_affix(metrics: Dict[str, torch.Tensor], affix: str) -> None:
+def prepend_affix(metrics: dict[str, torch.Tensor], affix: str) -> None:
     """
     Mutate a dictionary in place, prepending an affix to keys.
 
@@ -192,7 +183,7 @@ def prepend_affix(metrics: Dict[str, torch.Tensor], affix: str) -> None:
 
 class BaseModel(nn.Module):
     def __init__(self, num_atoms=None, bond_feat_dim=None, num_targets=None):
-        super(BaseModel, self).__init__()
+        super().__init__()
         self.num_atoms = num_atoms
         self.bond_feat_dim = bond_feat_dim
         self.num_targets = num_targets
@@ -211,13 +202,15 @@ class AbstractTask(ABC, pl.LightningModule):
         self,
         atom_embedding_dim: int,
         num_atom_embedding: int = 100,
-        embedding_kwargs: Dict[str, Any] = {},
+        embedding_kwargs: dict[str, Any] = {},
         encoder_only: bool = True,
     ) -> None:
         super().__init__()
         embedding_kwargs.setdefault("padding_idx", 0)
         self.atom_embedding = nn.Embedding(
-            num_atom_embedding, atom_embedding_dim, **embedding_kwargs
+            num_atom_embedding,
+            atom_embedding_dim,
+            **embedding_kwargs,
         )
         self.save_hyperparameters()
 
@@ -254,7 +247,7 @@ class AbstractTask(ABC, pl.LightningModule):
         ...
 
     @abstractmethod
-    def read_batch_size(self, batch: BatchDict) -> Union[int, None]:
+    def read_batch_size(self, batch: BatchDict) -> int | None:
         ...
 
     @abstractmethod
@@ -293,7 +286,7 @@ class AbstractTask(ABC, pl.LightningModule):
         # raise an error to help spot models that have not yet been refactored
         if not isinstance(outputs, Embeddings):
             raise ValueError(
-                "Encoder did not return `Embeddings` data structure: please refactor your model!"
+                "Encoder did not return `Embeddings` data structure: please refactor your model!",
             )
         return outputs
 
@@ -329,7 +322,8 @@ class AbstractPointCloudModel(AbstractTask):
         from matsciml.datasets.utils import pad_point_cloud
 
         assert isinstance(
-            batch["pos"], torch.Tensor
+            batch["pos"],
+            torch.Tensor,
         ), f"Expect 'pos' data to be a packed tensor of shape [N, 3]"
         data = {key: batch.get(key) for key in ["pc_features", "pos"]}
         # split the stacked positions into each individual point cloud
@@ -364,8 +358,8 @@ class AbstractPointCloudModel(AbstractTask):
         self,
         pc_pos: torch.Tensor,
         pc_features: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
-        sizes: Optional[List[int]] = None,
+        mask: torch.Tensor | None = None,
+        sizes: list[int] | None = None,
         **kwargs,
     ) -> Embeddings:
         """
@@ -401,7 +395,10 @@ class AbstractPointCloudModel(AbstractTask):
 
     @staticmethod
     def mask_model_output(
-        result: torch.Tensor, mask: torch.Tensor, sizes: List[int], extensive: bool
+        result: torch.Tensor,
+        mask: torch.Tensor,
+        sizes: list[int],
+        extensive: bool,
     ) -> torch.Tensor:
         r"""
         Perform a masked reduction over a point cloud model output.
@@ -456,11 +453,14 @@ class AbstractGraphModel(AbstractTask):
         self,
         atom_embedding_dim: int,
         num_atom_embedding: int = 100,
-        embedding_kwargs: Dict[str, Any] = {},
+        embedding_kwargs: dict[str, Any] = {},
         encoder_only: bool = True,
     ) -> None:
         super().__init__(
-            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+            atom_embedding_dim,
+            num_atom_embedding,
+            embedding_kwargs,
+            encoder_only,
         )
 
     def read_batch(self, batch: BatchDict) -> DataDict:
@@ -472,7 +472,8 @@ class AbstractGraphModel(AbstractTask):
 
     @staticmethod
     def join_position_embeddings(
-        pos: torch.Tensor, node_feats: torch.Tensor
+        pos: torch.Tensor,
+        node_feats: torch.Tensor,
     ) -> torch.Tensor:
         """
         This is a method for conveniently embedding both positions and node features
@@ -499,9 +500,9 @@ class AbstractGraphModel(AbstractTask):
         self,
         graph: AbstractGraph,
         node_feats: torch.Tensor,
-        pos: Optional[torch.Tensor] = None,
-        edge_feats: Optional[torch.Tensor] = None,
-        graph_feats: Optional[torch.Tensor] = None,
+        pos: torch.Tensor | None = None,
+        edge_feats: torch.Tensor | None = None,
+        graph_feats: torch.Tensor | None = None,
         **kwargs,
     ) -> Embeddings:
         """
@@ -557,7 +558,8 @@ if package_registry["dgl"]:
             data = super().read_batch(batch)
             graph = data.get("graph")
             assert isinstance(
-                graph, dgl.DGLGraph
+                graph,
+                dgl.DGLGraph,
             ), f"Model {self.__class__.__name__} expects DGL graphs, but data in 'graph' key is type {type(graph)}"
             atomic_numbers = data["graph"].ndata["atomic_numbers"].long()
             node_embeddings = self.atom_embedding(atomic_numbers)
@@ -599,7 +601,8 @@ if package_registry["pyg"]:
             data = super().read_batch(batch)
             graph = data.get("graph")
             assert isinstance(
-                graph, (pyg.data.Data, pyg.data.Batch)
+                graph,
+                (pyg.data.Data, pyg.data.Batch),
             ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
             for key in ["edge_feats", "graph_feats"]:
                 data[key] = getattr(graph, key, None)
@@ -658,36 +661,36 @@ class BaseTaskModule(pl.LightningModule):
 
     def __init__(
         self,
-        encoder: Optional[nn.Module] = None,
-        encoder_class: Optional[Type[nn.Module]] = None,
-        encoder_kwargs: Optional[Dict[str, Any]] = None,
-        loss_func: Optional[Union[Type[nn.Module], nn.Module]] = None,
-        task_keys: Optional[List[str]] = None,
-        output_kwargs: Dict[str, Any] = {},
+        encoder: nn.Module | None = None,
+        encoder_class: type[nn.Module] | None = None,
+        encoder_kwargs: dict[str, Any] | None = None,
+        loss_func: type[nn.Module] | nn.Module | None = None,
+        task_keys: list[str] | None = None,
+        output_kwargs: dict[str, Any] = {},
         lr: float = 1e-4,
         weight_decay: float = 0.0,
         embedding_reduction_type: str = "mean",
-        normalize_kwargs: Optional[Dict[str, float]] = None,
-        scheduler_kwargs: Optional[Dict[str, Dict[str, Any]]] = None,
+        normalize_kwargs: dict[str, float] | None = None,
+        scheduler_kwargs: dict[str, dict[str, Any]] | None = None,
         **kwargs,
     ) -> None:
         super().__init__()
         if encoder is not None:
             warn(
-                f"Encoder object was passed directly into {self.__class__.__name__}; saved hyperparameters will be incomplete!"
+                f"Encoder object was passed directly into {self.__class__.__name__}; saved hyperparameters will be incomplete!",
             )
         if encoder_class is not None and encoder_kwargs:
             try:
                 encoder = encoder_class(**encoder_kwargs)
             except:
                 raise ValueError(
-                    f"Unable to instantiate encoder {encoder_class} with kwargs: {encoder_kwargs}."
+                    f"Unable to instantiate encoder {encoder_class} with kwargs: {encoder_kwargs}.",
                 )
         if encoder is not None:
             self.encoder = encoder
         else:
             raise ValueError(f"No valid encoder passed.")
-        if isinstance(loss_func, Type):
+        if isinstance(loss_func, type):
             loss_func = loss_func()
         self.loss_func = loss_func
         default_heads = {"act_last": None, "hidden_dim": 128}
@@ -699,11 +702,11 @@ class BaseTaskModule(pl.LightningModule):
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     @property
-    def task_keys(self) -> List[str]:
+    def task_keys(self) -> list[str]:
         return self._task_keys
 
     @task_keys.setter
-    def task_keys(self, values: Union[set, List[str], None]) -> None:
+    def task_keys(self, values: set | list[str] | None) -> None:
         """
         Ensures that the task keys are unique.
 
@@ -750,11 +753,12 @@ class BaseTaskModule(pl.LightningModule):
     @output_heads.setter
     def output_heads(self, heads: nn.ModuleDict) -> None:
         assert isinstance(
-            heads, nn.ModuleDict
+            heads,
+            nn.ModuleDict,
         ), f"Output heads must be an instance of `nn.ModuleDict`."
         assert len(heads) > 0, f"No output heads in {heads}."
         assert all(
-            [key in self.task_keys for key in heads.keys()]
+            [key in self.task_keys for key in heads.keys()],
         ), f"Output head keys {heads.keys()} do not match any in tasks: {self.task_keys}."
         self._output_heads = heads
 
@@ -786,8 +790,8 @@ class BaseTaskModule(pl.LightningModule):
 
     def forward(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-    ) -> Dict[str, torch.Tensor]:
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> dict[str, torch.Tensor]:
         if "embeddings" in batch:
             embedding = batch.get("embeddings")
         else:
@@ -795,7 +799,7 @@ class BaseTaskModule(pl.LightningModule):
         outputs = self.process_embedding(embedding)
         return outputs
 
-    def process_embedding(self, embeddings: Embeddings) -> Dict[str, torch.Tensor]:
+    def process_embedding(self, embeddings: Embeddings) -> dict[str, torch.Tensor]:
         """
         Given a set of embeddings, output predictions for each head.
 
@@ -814,14 +818,18 @@ class BaseTaskModule(pl.LightningModule):
             # in the event that we get multiple embeddings, we average
             # every dimension execpt the batch and dimensionality
             output = head(embeddings.system_embedding)
-            output = reduce(output, "b ... d -> b d", reduction=self.embedding_reduction_type)
+            output = reduce(
+                output,
+                "b ... d -> b d",
+                reduction=self.embedding_reduction_type,
+            )
             results[key] = output
         return results
 
     def _get_targets(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-    ) -> Dict[str, torch.Tensor]:
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> dict[str, torch.Tensor]:
         """
         Method for extracting targets out of a batch.
 
@@ -848,9 +856,9 @@ class BaseTaskModule(pl.LightningModule):
 
     def _filter_task_keys(
         self,
-        keys: List[str],
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-    ) -> List[str]:
+        keys: list[str],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> list[str]:
         """
         Implement a mechanism for filtering out keys for targets.
 
@@ -872,8 +880,8 @@ class BaseTaskModule(pl.LightningModule):
 
     def _compute_losses(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-    ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> dict[str, torch.Tensor | dict[str, torch.Tensor]]:
         """
         Compute pred versus target for every target, then sum.
 
@@ -919,7 +927,7 @@ class BaseTaskModule(pl.LightningModule):
                 scheduler_class = getattr(lr_scheduler, scheduler_name, None)
                 if not scheduler_class:
                     raise NameError(
-                        f"{scheduler_class} was requested for LR scheduling, but is not in 'torch.optim.lr_scheduler'."
+                        f"{scheduler_class} was requested for LR scheduling, but is not in 'torch.optim.lr_scheduler'.",
                     )
                 scheduler = scheduler_class(opt, **params)
                 schedulers.append(scheduler)
@@ -927,7 +935,7 @@ class BaseTaskModule(pl.LightningModule):
 
     def training_step(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         batch_idx: int,
     ):
         loss_dict = self._compute_losses(batch)
@@ -939,7 +947,7 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = self.encoder.read_batch_size(batch)
         except:
             warn(
-                "Unable to parse batch size from data, defaulting to `None` for logging."
+                "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
@@ -947,7 +955,7 @@ class BaseTaskModule(pl.LightningModule):
 
     def validation_step(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         batch_idx: int,
     ):
         loss_dict = self._compute_losses(batch)
@@ -959,7 +967,7 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = self.encoder.read_batch_size(batch)
         except:
             warn(
-                "Unable to parse batch size from data, defaulting to `None` for logging."
+                "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
@@ -967,7 +975,7 @@ class BaseTaskModule(pl.LightningModule):
 
     def test_step(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         batch_idx: int,
     ):
         loss_dict = self._compute_losses(batch)
@@ -979,13 +987,13 @@ class BaseTaskModule(pl.LightningModule):
             batch_size = self.encoder.read_batch_size(batch)
         except:
             warn(
-                "Unable to parse batch size from data, defaulting to `None` for logging."
+                "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
         return loss_dict
 
-    def _make_normalizers(self) -> Dict[str, Normalizer]:
+    def _make_normalizers(self) -> dict[str, Normalizer]:
         """
         Instantiate a set of normalizers for targets associated with this task.
 
@@ -1009,7 +1017,7 @@ class BaseTaskModule(pl.LightningModule):
         return normalizers
 
     @classmethod
-    def from_pretrained_encoder(cls, task_ckpt_path: Union[str, Path], **kwargs):
+    def from_pretrained_encoder(cls, task_ckpt_path: str | Path, **kwargs):
         """
         Attempts to instantiate a new task, adopting a previously trained encoder model.
 
@@ -1080,12 +1088,12 @@ class ScalarRegressionTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: Optional[nn.Module] = None,
-        encoder_class: Optional[Type[nn.Module]] = None,
-        encoder_kwargs: Optional[Dict[str, Any]] = None,
-        loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
-        task_keys: Optional[List[str]] = None,
-        output_kwargs: Dict[str, Any] = {},
+        encoder: nn.Module | None = None,
+        encoder_class: type[nn.Module] | None = None,
+        encoder_kwargs: dict[str, Any] | None = None,
+        loss_func: type[nn.Module] | nn.Module = nn.MSELoss,
+        task_keys: list[str] | None = None,
+        output_kwargs: dict[str, Any] = {},
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -1107,9 +1115,9 @@ class ScalarRegressionTask(BaseTaskModule):
 
     def _filter_task_keys(
         self,
-        keys: List[str],
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-    ) -> List[str]:
+        keys: list[str],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> list[str]:
         """
         Filters out task keys for scalar regression.
 
@@ -1142,7 +1150,7 @@ class ScalarRegressionTask(BaseTaskModule):
         keys = list(filter(checker, keys))
         return keys
 
-    def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> int | None:
         """
         PyTorch Lightning hook to check OutputHeads are created.
 
@@ -1176,7 +1184,10 @@ class ScalarRegressionTask(BaseTaskModule):
         return status
 
     def on_validation_batch_start(
-        self, batch: any, batch_idx: int, dataloader_idx: int
+        self,
+        batch: any,
+        batch_idx: int,
+        dataloader_idx: int,
     ):
         self.on_train_batch_start(batch, batch_idx)
 
@@ -1195,12 +1206,12 @@ class BinaryClassificationTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: Optional[nn.Module] = None,
-        encoder_class: Optional[Type[nn.Module]] = None,
-        encoder_kwargs: Optional[Dict[str, Any]] = None,
-        loss_func: Union[Type[nn.Module], nn.Module] = nn.BCEWithLogitsLoss,
-        task_keys: Optional[List[str]] = None,
-        output_kwargs: Dict[str, Any] = {},
+        encoder: nn.Module | None = None,
+        encoder_class: type[nn.Module] | None = None,
+        encoder_kwargs: dict[str, Any] | None = None,
+        loss_func: type[nn.Module] | nn.Module = nn.BCEWithLogitsLoss,
+        task_keys: list[str] | None = None,
+        output_kwargs: dict[str, Any] = {},
         **kwargs,
     ) -> None:
         super().__init__(
@@ -1220,7 +1231,7 @@ class BinaryClassificationTask(BaseTaskModule):
             modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
         return nn.ModuleDict(modules)
 
-    def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> int | None:
         """
         PyTorch Lightning hook to check OutputHeads are created.
 
@@ -1252,7 +1263,10 @@ class BinaryClassificationTask(BaseTaskModule):
         return status
 
     def on_validation_batch_start(
-        self, batch: Any, batch_idx: int, dataloader_idx: int
+        self,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int,
     ):
         self.on_train_batch_start(batch, batch_idx)
 
@@ -1264,12 +1278,12 @@ class ForceRegressionTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: Optional[nn.Module] = None,
-        encoder_class: Optional[Type[nn.Module]] = None,
-        encoder_kwargs: Optional[Dict[str, Any]] = None,
-        loss_func: Union[Type[nn.Module], nn.Module] = nn.L1Loss,
-        task_keys: Optional[List[str]] = None,
-        output_kwargs: Dict[str, Any] = {},
+        encoder: nn.Module | None = None,
+        encoder_class: type[nn.Module] | None = None,
+        encoder_kwargs: dict[str, Any] | None = None,
+        loss_func: type[nn.Module] | nn.Module = nn.L1Loss,
+        task_keys: list[str] | None = None,
+        output_kwargs: dict[str, Any] = {},
         **kwargs,
     ) -> None:
         super().__init__(
@@ -1292,8 +1306,8 @@ class ForceRegressionTask(BaseTaskModule):
 
     def forward(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-    ) -> Dict[str, torch.Tensor]:
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> dict[str, torch.Tensor]:
         # for ease of use, this task will always compute forces
         with dynamic_gradients_context(True, self.has_rnn):
             # first ensure that positions tensor is backprop ready
@@ -1315,7 +1329,7 @@ class ForceRegressionTask(BaseTaskModule):
                 fa_rot = None
             if pos is None:
                 raise ValueError(
-                    f"No atomic positions were found in batch - neither as standalone tensor nor graph."
+                    f"No atomic positions were found in batch - neither as standalone tensor nor graph.",
                 )
             if isinstance(pos, torch.Tensor):
                 pos.requires_grad_(True)
@@ -1323,7 +1337,7 @@ class ForceRegressionTask(BaseTaskModule):
                 [p.requires_grad_(True) for p in pos]
             else:
                 raise ValueError(
-                    f"'pos' data is required for force calculation, but isn't a tensor or a list of tensors: {type(pos)}."
+                    f"'pos' data is required for force calculation, but isn't a tensor or a list of tensors: {type(pos)}.",
                 )
             if "embeddings" in batch:
                 embeddings = batch.get("embeddings")
@@ -1333,8 +1347,11 @@ class ForceRegressionTask(BaseTaskModule):
         return outputs
 
     def process_embedding(
-        self, embeddings: Embeddings, pos: torch.Tensor, fa_rot: Union[None, torch.Tensor] = None
-    ) -> Dict[str, torch.Tensor]:
+        self,
+        embeddings: Embeddings,
+        pos: torch.Tensor,
+        fa_rot: None | torch.Tensor = None,
+    ) -> dict[str, torch.Tensor]:
         outputs = {}
         energy = self.output_heads["energy"](embeddings.system_embedding)
         # now use autograd for force calculation
@@ -1357,23 +1374,37 @@ class ForceRegressionTask(BaseTaskModule):
                 repeat_rot = torch.repeat_interleave(
                     frame_rot,
                     natoms,
-                    dim=0
+                    dim=0,
                 ).to(self.device)
-                rotated_forces = force[:, frame_idx, :].view(-1, 1, 3).bmm(
-                    repeat_rot.transpose(1, 2)
+                rotated_forces = (
+                    force[:, frame_idx, :]
+                    .view(-1, 1, 3)
+                    .bmm(
+                        repeat_rot.transpose(1, 2),
+                    )
                 )
                 all_forces.append(rotated_forces.view(natoms, 3))
             # combine all the force data into a single tensor
             force = torch.stack(all_forces, dim=1)
         # reduce outputs to what are expected shapes
-        outputs["force"] = reduce(force, "n ... d -> n d", self.embedding_reduction_type, d=3)
-        outputs["energy"] = reduce(energy, "b ... d -> b d", self.embedding_reduction_type, d=1)
+        outputs["force"] = reduce(
+            force,
+            "n ... d -> n d",
+            self.embedding_reduction_type,
+            d=3,
+        )
+        outputs["energy"] = reduce(
+            energy,
+            "b ... d -> b d",
+            self.embedding_reduction_type,
+            d=1,
+        )
         return outputs
 
     def _get_targets(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-    ) -> Dict[str, torch.Tensor]:
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> dict[str, torch.Tensor]:
         """
         Extract out the energy and force targets from a batch.
 
@@ -1402,11 +1433,11 @@ class ForceRegressionTask(BaseTaskModule):
                 target_dict[key] = batch["targets"][key]
             except KeyError as e:
                 raise KeyError(
-                    f"{key} was not found in targets key in batch, which is needed for force regression task."
+                    f"{key} was not found in targets key in batch, which is needed for force regression task.",
                 ) from e
         return target_dict
 
-    def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> int | None:
         """
         PyTorch Lightning hook to check OutputHeads are created.
 
@@ -1445,7 +1476,7 @@ class ForceRegressionTask(BaseTaskModule):
 
     def training_step(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         batch_idx: int,
     ):
         """
@@ -1485,7 +1516,7 @@ class ForceRegressionTask(BaseTaskModule):
             batch_size = self.encoder.read_batch_size(batch)
         except:
             warn(
-                "Unable to parse batch size from data, defaulting to `None` for logging."
+                "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
@@ -1496,17 +1527,17 @@ class ForceRegressionTask(BaseTaskModule):
 class GradFreeForceRegressionTask(ScalarRegressionTask):
     def __init__(
         self,
-        encoder: Optional[nn.Module] = None,
-        encoder_class: Optional[Type[nn.Module]] = None,
-        encoder_kwargs: Optional[Dict[str, Any]] = None,
-        loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
-        output_kwargs: Dict[str, Any] = {},
+        encoder: nn.Module | None = None,
+        encoder_class: type[nn.Module] | None = None,
+        encoder_kwargs: dict[str, Any] | None = None,
+        loss_func: type[nn.Module] | nn.Module = nn.MSELoss,
+        output_kwargs: dict[str, Any] = {},
         **kwargs: Any,
     ) -> None:
         if "task_keys" in kwargs:
             warn(
                 f"GradFreeForceRegressionTask does not `task_keys`; "
-                f"ignoring passed keys: {kwargs['task_keys']}"
+                f"ignoring passed keys: {kwargs['task_keys']}",
             )
             del kwargs["task_keys"]
         super().__init__(
@@ -1525,8 +1556,8 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
 
     def _get_targets(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-    ) -> Dict[str, torch.Tensor]:
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> dict[str, torch.Tensor]:
         """
         Extract out the energy and force targets from a batch.
 
@@ -1551,15 +1582,15 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         """
         if "force" not in batch["targets"]:
             raise KeyError(
-                f"Force key missing in batch targets: keys found: {batch['targets'].keys()}"
+                f"Force key missing in batch targets: keys found: {batch['targets'].keys()}",
             )
         target_dict = {"force": batch["targets"]["force"]}
         return target_dict
 
     def forward(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-    ) -> Dict[str, torch.Tensor]:
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> dict[str, torch.Tensor]:
         if "embeddings" in batch:
             embedding = batch.get("embeddings")
         else:
@@ -1574,7 +1605,11 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         outputs = self.process_embedding(embedding, fa_rot)
         return outputs
 
-    def process_embedding(self, embeddings: Embeddings, fa_rot: Union[None, torch.Tensor] = None) -> Dict[str, torch.Tensor]:
+    def process_embedding(
+        self,
+        embeddings: Embeddings,
+        fa_rot: None | torch.Tensor = None,
+    ) -> dict[str, torch.Tensor]:
         """
         Given point/node-level embeddings, predict forces of each point.
 
@@ -1601,10 +1636,14 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
                 repeat_rot = torch.repeat_interleave(
                     frame_rot,
                     natoms,
-                    dim=0
+                    dim=0,
                 ).to(self.device)
-                rotated_forces = forces[:, frame_idx, :].view(-1, 1, 3).bmm(
-                    repeat_rot.transpose(1, 2)
+                rotated_forces = (
+                    forces[:, frame_idx, :]
+                    .view(-1, 1, 3)
+                    .bmm(
+                        repeat_rot.transpose(1, 2),
+                    )
                 )
                 all_forces.append(rotated_forces.view(natoms, 3))
             # combine all the force data into a single tensor
@@ -1621,12 +1660,12 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
 
     def __init__(
         self,
-        encoder: Optional[nn.Module] = None,
-        encoder_class: Optional[Type[nn.Module]] = None,
-        encoder_kwargs: Optional[Dict[str, Any]] = None,
-        loss_func: Union[Type[nn.Module], nn.Module] = nn.CrossEntropyLoss,
-        output_kwargs: Dict[str, Any] = {},
-        normalize_kwargs: Optional[Dict[str, float]] = None,
+        encoder: nn.Module | None = None,
+        encoder_class: type[nn.Module] | None = None,
+        encoder_kwargs: dict[str, Any] | None = None,
+        loss_func: type[nn.Module] | nn.Module = nn.CrossEntropyLoss,
+        output_kwargs: dict[str, Any] = {},
+        normalize_kwargs: dict[str, float] | None = None,
         freeze_embedding: bool = False,
         **kwargs,
     ) -> None:
@@ -1651,7 +1690,7 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         modules = {"spacegroup": OutputHead(230, **self.output_kwargs).to(self.device)}
         return nn.ModuleDict(modules)
 
-    def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> int | None:
         """
         PyTorch Lightning hook to check OutputHeads are created.
 
@@ -1684,24 +1723,27 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         return status
 
     def on_validation_batch_start(
-        self, batch: Any, batch_idx: int, dataloader_idx: int
+        self,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int,
     ):
         self.on_train_batch_start(batch, batch_idx)
 
     def _get_targets(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
-    ) -> Dict[str, torch.Tensor]:
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> dict[str, torch.Tensor]:
         target_dict = {}
         subdict = batch.get("symmetry", None)
         if subdict is None:
             raise ValueError(
-                f"'symmetry' key is missing from batch, which is needed for space group classification."
+                f"'symmetry' key is missing from batch, which is needed for space group classification.",
             )
         labels: torch.Tensor = subdict.get("number", None)
         if labels is None:
             raise ValueError(
-                "Point group numbers missing from symmetry key, which is needed for symmetry classification."
+                "Point group numbers missing from symmetry key, which is needed for symmetry classification.",
             )
         # subtract one for zero-indexing
         labels = labels.long() - 1
@@ -1716,9 +1758,9 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
 class MultiTaskLitModule(pl.LightningModule):
     def __init__(
         self,
-        *tasks: Tuple[str, BaseTaskModule],
-        task_scaling: Optional[Iterable[float]] = None,
-        task_keys: Optional[Dict[str, List[str]]] = None,
+        *tasks: tuple[str, BaseTaskModule],
+        task_scaling: Iterable[float] | None = None,
+        task_keys: dict[str, list[str]] | None = None,
         **encoder_opt_kwargs,
     ) -> None:
         """
@@ -1762,7 +1804,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 "subtask_hparams": subtask_hparams,
                 "task_scaling": task_scaling,
                 "encoder_opt_kwargs": encoder_opt_kwargs,
-            }
+            },
         )
         self.task_map = task_map
         self.dataset_names = dset_names
@@ -1774,13 +1816,15 @@ class MultiTaskLitModule(pl.LightningModule):
                 dataset_name, task_type = pair
                 relevant_keys = task_keys[dataset_name][task_type]
                 self._initialize_subtask_output(
-                    dataset_name, task_type, task_keys=relevant_keys
+                    dataset_name,
+                    task_type,
+                    task_keys=relevant_keys,
                 )
         self.configure_optimizers()
         self.automatic_optimization = False
 
     @property
-    def task_list(self) -> List[BaseTaskModule]:
+    def task_list(self) -> list[BaseTaskModule]:
         # return a flat list of tasks to iterate over
         modules = []
         for task_group in self.task_map.values():
@@ -1789,7 +1833,7 @@ class MultiTaskLitModule(pl.LightningModule):
         return modules
 
     @property
-    def dataset_task_pairs(self) -> List[Tuple[str, str]]:
+    def dataset_task_pairs(self) -> list[tuple[str, str]]:
         # Return a list of 2-tuples corresponding to (dataset name, task type)
         pairs = []
         for dataset in self.dataset_names:
@@ -1798,7 +1842,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 pairs.append((dataset, task_type))
         return pairs
 
-    def configure_optimizers(self) -> List[Optimizer]:
+    def configure_optimizers(self) -> list[Optimizer]:
         """
         Configure subtask optimizers, as well as the joint encoder optimizer.
 
@@ -1853,17 +1897,17 @@ class MultiTaskLitModule(pl.LightningModule):
         return optimizers
 
     @property
-    def dataset_names(self) -> List[str]:
+    def dataset_names(self) -> list[str]:
         return self._dataset_names
 
     @dataset_names.setter
-    def dataset_names(self, values: Union[set, List[str]]) -> None:
+    def dataset_names(self, values: set | list[str]) -> None:
         if isinstance(values, set):
             values = list(values)
         self._dataset_names = values
 
     @property
-    def task_scaling(self) -> List[float]:
+    def task_scaling(self) -> list[float]:
         """
         Returns a list of scaling factors used task importance.
 
@@ -1877,7 +1921,7 @@ class MultiTaskLitModule(pl.LightningModule):
         return self._task_scaling
 
     @task_scaling.setter
-    def task_scaling(self, values: Union[Iterable[float], None]) -> None:
+    def task_scaling(self, values: Iterable[float] | None) -> None:
         if values is None:
             values = [1.0 for _ in range(self.num_tasks)]
         assert (
@@ -1923,7 +1967,7 @@ class MultiTaskLitModule(pl.LightningModule):
         return all([task.has_initialized for task in self.task_list])
 
     @property
-    def input_grad_keys(self) -> Dict[str, List[str]]:
+    def input_grad_keys(self) -> dict[str, list[str]]:
         """
         Property to returns a list of keys for inputs that need gradient tracking.
 
@@ -1979,8 +2023,9 @@ class MultiTaskLitModule(pl.LightningModule):
 
     def _toggle_input_grads(
         self,
-        batch: Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        batch: dict[
+            str,
+            dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         ],
     ) -> None:
         """
@@ -2055,10 +2100,11 @@ class MultiTaskLitModule(pl.LightningModule):
 
     def forward(
         self,
-        batch: Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        batch: dict[
+            str,
+            dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         ],
-    ) -> Dict[str, Dict[str, torch.Tensor]]:
+    ) -> dict[str, dict[str, torch.Tensor]]:
         """
         Forward method for `MultiTaskLitModule`.
 
@@ -2080,7 +2126,9 @@ class MultiTaskLitModule(pl.LightningModule):
         # iterate over datasets in the batch
         results = {}
         _grads = getattr(
-            self, "needs_dynamic_grads", False
+            self,
+            "needs_dynamic_grads",
+            False,
         )  # default to not needing grads
         with dynamic_gradients_context(_grads, self.has_rnn):
             # this function switches of `requires_grad_` for input tensors that need them
@@ -2143,7 +2191,7 @@ class MultiTaskLitModule(pl.LightningModule):
 
     def _compute_losses(
         self,
-        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
     ):
         """
         Function for computing the losses over a batch.
@@ -2176,13 +2224,14 @@ class MultiTaskLitModule(pl.LightningModule):
         self,
         dataset: str,
         task_type: str,
-        batch: Optional[
-            Dict[
+        batch: None
+        | (
+            dict[
                 str,
-                Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+                dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
             ]
-        ] = None,
-        task_keys: Optional[List[str]] = None,
+        ) = None,
+        task_keys: list[str] | None = None,
     ):
         """
         For a given dataset and task type, this function will check and initialize corresponding
@@ -2206,7 +2255,7 @@ class MultiTaskLitModule(pl.LightningModule):
         task_instance: BaseTaskModule = self.task_map[dataset][task_type]
         if batch is None and task_keys is None:
             raise ValueError(
-                f"Unable to initialize output heads for {dataset}-{task_type}; neither batch nor task keys provided."
+                f"Unable to initialize output heads for {dataset}-{task_type}; neither batch nor task keys provided.",
             )
         if not task_instance.has_initialized:
             # get the task keys from the batch, depends on usage
@@ -2230,7 +2279,7 @@ class MultiTaskLitModule(pl.LightningModule):
                 opt_index = self.optimizer_names.index(ref)
                 # this adds the output head weights to optimizer
                 self.optimizers()[opt_index].add_param_group(
-                    {"params": task_instance.output_heads.parameters()}
+                    {"params": task_instance.output_heads.parameters()},
                 )
 
     def embed(self, *args, **kwargs) -> Any:
@@ -2238,10 +2287,11 @@ class MultiTaskLitModule(pl.LightningModule):
 
     def _calculate_batch_size(
         self,
-        batch: Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        batch: dict[
+            str,
+            dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         ],
-    ) -> Dict[str, Union[int, Dict[str, int]]]:
+    ) -> dict[str, int | dict[str, int]]:
         """
         Compute the size of a given batch.
 
@@ -2308,11 +2358,12 @@ class MultiTaskLitModule(pl.LightningModule):
 
     def training_step(
         self,
-        batch: Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        batch: dict[
+            str,
+            dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         ],
         batch_idx: int,
-    ) -> Dict[str, Dict[str, torch.Tensor]]:
+    ) -> dict[str, dict[str, torch.Tensor]]:
         """
         Manual training logic for multi tasks.
 
@@ -2349,7 +2400,8 @@ class MultiTaskLitModule(pl.LightningModule):
                     # scale loss values in task
                     scaling = self.task_scaling[opt_index]
                     self.manual_backward(
-                        subtask_loss["loss"] * scaling, retain_graph=not is_last_opt
+                        subtask_loss["loss"] * scaling,
+                        retain_graph=not is_last_opt,
                     )
                     self.on_after_backward()
                     prepend_affix(subtask_loss["log"], dataset_name)
@@ -2366,7 +2418,8 @@ class MultiTaskLitModule(pl.LightningModule):
                 # scale loss values in task
                 scaling = self.task_scaling[opt_index]
                 self.manual_backward(
-                    loss["loss"] * scaling, retain_graph=not is_last_opt
+                    loss["loss"] * scaling,
+                    retain_graph=not is_last_opt,
                 )
                 self.on_after_backward()
                 loss_logging.update(loss["log"])
@@ -2398,11 +2451,12 @@ class MultiTaskLitModule(pl.LightningModule):
 
     def validation_step(
         self,
-        batch: Dict[
-            str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+        batch: dict[
+            str,
+            dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         ],
         batch_idx: int,
-    ) -> Dict[str, Dict[str, torch.Tensor]]:
+    ) -> dict[str, dict[str, torch.Tensor]]:
         """
         Manual training logic for multi tasks.
         We sequentially step through each loss returned, and perform
@@ -2459,11 +2513,11 @@ class MultiTaskLitModule(pl.LightningModule):
         **kwargs: Any,
     ):
         raise NotImplementedError(
-            f"MultiTask should be reloaded using the `matsciml.models.multitask_from_checkpoint` function instead."
+            f"MultiTask should be reloaded using the `matsciml.models.multitask_from_checkpoint` function instead.",
         )
 
     @classmethod
-    def from_pretrained_encoder(cls, task_ckpt_path: Union[str, Path], **kwargs):
+    def from_pretrained_encoder(cls, task_ckpt_path: str | Path, **kwargs):
         """
         Attempts to instantiate a new task, adopting a previously trained encoder model.
 
@@ -2537,7 +2591,7 @@ class OpenCatalystInference(ABC, pl.LightningModule):
 
     def _raise_inference_error(self):
         raise NotImplementedError(
-            f"{self.__class__.__name__} is solely used for OpenCatalyst leaderboard submissions; please call 'predict' from trainer."
+            f"{self.__class__.__name__} is solely used for OpenCatalyst leaderboard submissions; please call 'predict' from trainer.",
         )
 
     def training_step(self, *args: Any, **kwargs: Any) -> None:
@@ -2557,10 +2611,12 @@ class OpenCatalystInference(ABC, pl.LightningModule):
 @registry.register_task("IS2REInference")
 class IS2REInference(OpenCatalystInference):
     def __init__(
-        self, pretrained_model: Union[AbstractEnergyModel, ScalarRegressionTask]
+        self,
+        pretrained_model: AbstractEnergyModel | ScalarRegressionTask,
     ) -> None:
         assert isinstance(
-            pretrained_model, (AbstractEnergyModel, ScalarRegressionTask)
+            pretrained_model,
+            (AbstractEnergyModel, ScalarRegressionTask),
         ), f"IS2REInference expects a pretrained energy model or 'ScalarRegressionTask' as input."
         super().__init__(pretrained_model)
 
@@ -2573,7 +2629,8 @@ class IS2REInference(OpenCatalystInference):
 class S2EFInference(OpenCatalystInference):
     def __init__(self, pretrained_model: ForceRegressionTask) -> None:
         assert isinstance(
-            pretrained_model, ForceRegressionTask
+            pretrained_model,
+            ForceRegressionTask,
         ), f"S2EFInference expects a pretrained 'ForceRegressionTask' instance as input."
         super().__init__(pretrained_model)
 
@@ -2622,7 +2679,11 @@ class S2EFInference(OpenCatalystInference):
         return predictions
 
     def on_predict_batch_end(
-        self, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int
+        self,
+        outputs: Any,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int,
     ) -> None:
         # reset gradients to ensure no contamination between batches
         self.zero_grad(set_to_none=True)

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import pytest
 
-from matsciml.datasets import S2EFDataset, IS2REDataset, s2ef_devset, is2re_devset
+from matsciml.datasets import IS2REDataset, S2EFDataset, is2re_devset, s2ef_devset
 from matsciml.datasets.materials_project import (
     MaterialsProjectDataset,
     materialsproject_devset,
@@ -16,7 +18,7 @@ def datamodule():
             S2EFDataset(s2ef_devset),
             IS2REDataset(is2re_devset),
             MaterialsProjectDataset(materialsproject_devset),
-        ]
+        ],
     )
     dm = MultiDataModule(train_dataset=dset, batch_size=8)
     return dm

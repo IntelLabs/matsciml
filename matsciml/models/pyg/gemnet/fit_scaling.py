@@ -12,6 +12,7 @@ read in at model initialization.
 This only needs to be run if the hyperparameters or model change
 in places were it would affect the activation scales.
 """
+from __future__ import annotations
 
 import logging
 import os
@@ -56,7 +57,7 @@ if __name__ == "__main__":
         logging.warning(f"Already found existing file: {scale_file}")
         flag = input(
             "Do you want to continue and overwrite the file (1), "
-            "only fit the variables not fitted yet (2), or exit (3)? "
+            "only fit the variables not fitted yet (2), or exit (3)? ",
         )
         if str(flag) == "1":
             logging.info("Overwriting the current file.")

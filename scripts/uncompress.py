@@ -4,11 +4,11 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
-
 """
 Uncompresses downloaded S2EF datasets to be used by the LMDB preprocessing
 script - preprocess_ef.py
 """
+from __future__ import annotations
 
 import argparse
 import glob
@@ -34,13 +34,19 @@ def decompress_list_of_files(ip_op_pair):
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--ipdir", type=str, help="Path to compressed dataset directory"
+        "--ipdir",
+        type=str,
+        help="Path to compressed dataset directory",
     )
     parser.add_argument(
-        "--opdir", type=str, help="Directory path to uncompress files to"
+        "--opdir",
+        type=str,
+        help="Directory path to uncompress files to",
     )
     parser.add_argument(
-        "--num-workers", type=int, help="# of processes to parallelize across"
+        "--num-workers",
+        type=int,
+        help="# of processes to parallelize across",
     )
     return parser
 
@@ -49,7 +55,7 @@ def main(args):
     os.makedirs(args.opdir, exist_ok=True)
 
     filelist = glob.glob(os.path.join(args.ipdir, "*txt.xz")) + glob.glob(
-        os.path.join(args.ipdir, "*extxyz.xz")
+        os.path.join(args.ipdir, "*extxyz.xz"),
     )
     ip_op_pairs = []
     for i in filelist:
@@ -62,7 +68,7 @@ def main(args):
             pool.imap(decompress_list_of_files, ip_op_pairs),
             total=len(ip_op_pairs),
             desc=f"Uncompressing {args.ipdir}",
-        )
+        ),
     )
 
 
