@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Copyright (c) Facebook, Inc. and its affiliates.
 
@@ -9,7 +11,6 @@ Atomic radii in picometers
 
 NaN stored for unavailable parameters.
 """
-from __future__ import annotations
 
 ATOMIC_RADII = {
     0: float("NaN"),

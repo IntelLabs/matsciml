@@ -10,11 +10,13 @@ from torch.utils.data import ConcatDataset
 from matsciml.common.registry import registry
 from matsciml.datasets.base import BaseLMDBDataset
 
+
 # quasi-registry of functions for collating based on dataset class name
-collate_registry = {
-    dset_name: dset_class.collate_fn
-    for dset_name, dset_class in registry.__entries__["datasets"].items()
-}
+def collate_registry() -> dict[str]:
+    return {
+        dset_name: dset_class.collate_fn
+        for dset_name, dset_class in registry.__entries__["datasets"].items()
+    }
 
 
 @registry.register_dataset("MultiDataset")
@@ -64,7 +66,7 @@ class MultiDataset(ConcatDataset):
             all_data[origin].append(entry)
         # convert the samples into batched data
         for key in all_data.keys():
-            all_data[key] = collate_registry[key](all_data[key])
+            all_data[key] = collate_registry()[key](all_data[key])
         return all_data
 
     @property

@@ -201,10 +201,10 @@ def test_m3gnet_dgl(graph):
     with torch.no_grad():
         g_z = model(graph)
     # Scalar output right now
-    assert g_z.shape == torch.Size([])
+    assert g_z.system_embedding.shape == torch.Size([1, 64])
 
     # test with grads
     g_z = model(graph)
-    assert hasattr(g_z, "grad_fn")
+    assert hasattr(g_z.system_embedding, "grad_fn")
     # make sure every element is finite
-    assert torch.isfinite(g_z).all()
+    assert torch.isfinite(g_z.system_embedding).all()
