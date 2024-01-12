@@ -179,6 +179,67 @@ regurgitated. We then perform some checks and conversions on the tensors as need
 is also used here to decorate the class, which allows the rest of Open MatSciML Toolkit to recall
 the class simply from a string (e.g. in the Lightning modules).
 
+#### A note on data packing
+
+We are looking at standardizing a data sample, but in the mean time the `DataDict` annotation
+roughly describes the expected structure; a nested dictionary. The general packing strategy
+(subject to improvement) is the following:
+
+- For graph structures, pack node/edge attributes into a `DGLGraph` or `PyGGraph` structure, which ensures they are batched correctly.
+  - Graph level attributes and features can be left at the top level of `DataDict`
+- For point cloud structures, update the `collate_fn` method to include additional `pad_keys` to denote which key/tensors need to be padded for batching. See `LiPSDataset` as an example of this.
+- See [this table](#common-key-names-for-data-properties) to standardize naming; e.g. atomic coordinates as `pos`
+- Pack tensors intended as labels inside a `targets` dictionary
+- For every key packed into `targets`, add them to the `target_keys` class *property* under the appropriate category. These classifications are used by the training pipeline for metric evaluation.
+
+Below is an example of what is returned from `MaterialsProjectDataset.from_devset()`,
+a point cloud representation used to illustrate what the structure can look like:
+
+```python
+>>> from matsciml.datasets import MaterialsProjectDataset
+>>> dset = MaterialsProjectDataset.from_devset()
+>>> sample = dset.__getitem__(0)
+>>> for key, value in sample.items():
+...     print(key, type(value))
+...
+pos <class 'torch.Tensor'>
+atomic_numbers <class 'torch.Tensor'>
+pc_features <class 'torch.Tensor'>
+sizes <class 'int'>
+src_nodes <class 'torch.Tensor'>
+dst_nodes <class 'torch.Tensor'>
+distance_matrix <class 'torch.Tensor'>
+natoms <class 'int'>
+lattice_features <class 'dict'>
+targets <class 'dict'>
+target_types <class 'dict'>
+dataset <class 'str'>
+```
+
+Here, `pos`, `atomic_numbers` are standard features of a material structure. Additional
+properties that might help downstream development include `natoms` (so it's unambiguous),
+and `distance_matrix`. `targets` is a dictionary of key/value pairs:
+
+```python
+sample["targets"] = {"band_gap": 2.1}
+```
+
+And `target_keys` is nested dictionary:
+
+```python
+```
+
+Note, you should not write `target_keys` inside the `data_from_key`, and instead update
+the class property:
+
+```python
+class NewMaterialsDataset:
+    @property
+    def target_keys(self) -> dict[str, list[str]]:
+        # can also add a classification dict, holding binary label keys
+        return {"regression": ["energy", "band_gap"]}
+```
+
 #### Preprocessing
 
 As mentioned earlier, there is some support for adding `preprocessed=True` as metadata. The idea
