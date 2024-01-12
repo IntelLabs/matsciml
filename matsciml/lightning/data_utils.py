@@ -493,7 +493,6 @@ class MultiDataModule(pl.LightningDataModule):
                 data,
                 self.hparams.batch_size,
                 num_workers=self.hparams.num_workers,
-                shuffle=True,
                 collate_fn=data.collate_fn,
                 persistent_workers=self.persistent_workers,
             )
@@ -507,7 +506,6 @@ class MultiDataModule(pl.LightningDataModule):
                 data,
                 self.hparams.batch_size,
                 num_workers=self.hparams.num_workers,
-                shuffle=True,
                 collate_fn=data.collate_fn,
                 persistent_workers=self.persistent_workers,
             )
@@ -521,8 +519,8 @@ class MultiDataModule(pl.LightningDataModule):
                 data,
                 self.hparams.batch_size,
                 num_workers=self.hparams.num_workers,
-                shuffle=True,
                 collate_fn=data.collate_fn,
                 persistent_workers=self.persistent_workers,
             )
         return loader
+
