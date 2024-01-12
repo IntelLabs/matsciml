@@ -471,7 +471,7 @@ class MultiDataModule(pl.LightningDataModule):
 
     # Cannot return None for dataloader
     # https://github.com/Lightning-AI/pytorch-lightning/issues/15703#issuecomment-1872664346
-    def train_dataloader(self) -> list(DataLoader):
+    def train_dataloader(self) -> list | DataLoader:
         loader = []
         data = self.datasets.get("train", None)
         if data:
@@ -485,7 +485,7 @@ class MultiDataModule(pl.LightningDataModule):
             )
         return loader
 
-    def val_dataloader(self) -> list(DataLoader):
+    def val_dataloader(self) -> list | DataLoader:
         loader = []
         data = self.datasets.get("val", None)
         if data:
@@ -499,7 +499,7 @@ class MultiDataModule(pl.LightningDataModule):
             )
         return loader
 
-    def test_dataloader(self) -> list(DataLoader):
+    def test_dataloader(self) -> list | DataLoader:
         loader = []
         data = self.datasets.get("test", None)
         if data:
@@ -513,7 +513,7 @@ class MultiDataModule(pl.LightningDataModule):
             )
         return loader
 
-    def predict_dataloader(self) -> list(DataLoader):
+    def predict_dataloader(self) -> list | DataLoader:
         loader = []
         data = self.datasets.get("predict", None)
         if data:
