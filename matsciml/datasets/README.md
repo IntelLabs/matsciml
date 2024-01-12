@@ -227,6 +227,7 @@ sample["targets"] = {"band_gap": 2.1}
 And `target_keys` is nested dictionary:
 
 ```python
+{"regression": ["band_gap"]}
 ```
 
 Note, you should not write `target_keys` inside the `data_from_key`, and instead update
@@ -237,7 +238,7 @@ class NewMaterialsDataset:
     @property
     def target_keys(self) -> dict[str, list[str]]:
         # can also add a classification dict, holding binary label keys
-        return {"regression": ["energy", "band_gap"]}
+        return {"regression": ["energy", "band_gap", "other_continuous_label"]}
 ```
 
 #### Preprocessing
