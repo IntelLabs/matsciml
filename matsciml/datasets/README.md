@@ -241,6 +241,11 @@ class NewMaterialsDataset:
         return {"regression": ["energy", "band_gap", "other_continuous_label"]}
 ```
 
+You might also be wondering about what the `dataset` key refers to: this is automatically
+appended by the `BaseLMDBDataset` method, which stores the classname of the dataset.
+This is used during multidataset training to differentiate between samples, and correctly
+map tasks with datasets.
+
 #### Preprocessing
 
 As mentioned earlier, there is some support for adding `preprocessed=True` as metadata. The idea
