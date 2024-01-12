@@ -469,53 +469,60 @@ class MultiDataModule(pl.LightningDataModule):
     def target_keys(self) -> dict[str, dict[str, list[str]]]:
         return self.datasets["train"].target_keys
 
-    # Cannot return None for dataloaders
+    # Cannot return None for dataloader
     # https://github.com/Lightning-AI/pytorch-lightning/issues/15703#issuecomment-1872664346
-    def train_dataloader(self) -> DataLoader | None:
+    def train_dataloader(self) -> list(DataLoader):
+        loader = []
         data = self.datasets.get("train", None)
-        if data is None:
-            return []
-        return DataLoader(
-            data,
-            self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
-            shuffle=True,
-            collate_fn=data.collate_fn,
-            persistent_workers=self.persistent_workers,
-        )
+        if data:
+            loader = DataLoader(
+                data,
+                self.hparams.batch_size,
+                num_workers=self.hparams.num_workers,
+                shuffle=True,
+                collate_fn=data.collate_fn,
+                persistent_workers=self.persistent_workers,
+            )
+        return loader
 
-    def val_dataloader(self) -> DataLoader | None:
+    def val_dataloader(self) -> list(DataLoader):
+        loader = []
         data = self.datasets.get("val", None)
-        if data is None:
-            return []
-        return DataLoader(
-            data,
-            self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
-            collate_fn=data.collate_fn,
-            persistent_workers=self.persistent_workers,
-        )
+        if data:
+            loader = DataLoader(
+                data,
+                self.hparams.batch_size,
+                num_workers=self.hparams.num_workers,
+                shuffle=True,
+                collate_fn=data.collate_fn,
+                persistent_workers=self.persistent_workers,
+            )
+        return loader
 
-    def test_dataloader(self) -> DataLoader | None:
+    def test_dataloader(self) -> list(DataLoader):
+        loader = []
         data = self.datasets.get("test", None)
-        if data is None:
-            return []
-        return DataLoader(
-            data,
-            self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
-            collate_fn=data.collate_fn,
-            persistent_workers=self.persistent_workers,
-        )
+        if data:
+            loader = DataLoader(
+                data,
+                self.hparams.batch_size,
+                num_workers=self.hparams.num_workers,
+                shuffle=True,
+                collate_fn=data.collate_fn,
+                persistent_workers=self.persistent_workers,
+            )
+        return loader
 
-    def predict_dataloader(self) -> DataLoader | None:
+    def predict_dataloader(self) -> list(DataLoader):
+        loader = []
         data = self.datasets.get("predict", None)
-        if data is None:
-            return []
-        return DataLoader(
-            data,
-            self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
-            collate_fn=data.collate_fn,
-            persistent_workers=self.persistent_workers,
-        )
+        if data:
+            loader = DataLoader(
+                data,
+                self.hparams.batch_size,
+                num_workers=self.hparams.num_workers,
+                shuffle=True,
+                collate_fn=data.collate_fn,
+                persistent_workers=self.persistent_workers,
+            )
+        return loader
