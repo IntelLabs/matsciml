@@ -13,6 +13,16 @@ from matsciml.datasets.base import BaseLMDBDataset
 
 # quasi-registry of functions for collating based on dataset class name
 def collate_registry() -> dict[str]:
+    """
+    This is a function because of strange behavior where the registry only captures some
+    of the datasets available. Believed to be caused by the order of imports. Running
+    this as a function inside of collate_fn ensures everything is loaded and the
+    collate_registry functions as expected.
+    Returns
+    -------
+    dict[str]
+        names of datasets available
+    """
     return {
         dset_name: dset_class.collate_fn
         for dset_name, dset_class in registry.__entries__["datasets"].items()
