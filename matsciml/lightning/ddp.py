@@ -7,8 +7,8 @@ from datetime import timedelta
 from typing import Any, Callable, List, Optional
 
 import torch
-from lightning_lite.plugins import CheckpointIO
-from lightning_lite.plugins.collectives.torch_collective import default_pg_timeout
+from lightning_fabric.plugins.collectives.torch_collective import default_pg_timeout
+from pytorch_lightning.plugins import CheckpointIO
 from pytorch_lightning.plugins.environments import LightningEnvironment
 from pytorch_lightning.plugins.precision import PrecisionPlugin
 from pytorch_lightning.strategies import StrategyRegistry

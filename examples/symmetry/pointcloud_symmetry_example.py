@@ -14,6 +14,7 @@ dm = MatSciMLDataModule.from_devset(
 task = CrystalSymmetryClassificationTask(
     encoder_class=GalaPotential,
     encoder_kwargs={"D_in": 200, "encoder_only": True, "depth": 2, "hidden_dim": 16},
+    output_kwargs={"lazy": False, "input_dim": 16, "hidden_dim": 16},
 )
 
 trainer = pl.Trainer(fast_dev_run=10)

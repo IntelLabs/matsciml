@@ -32,5 +32,5 @@ def test_dimenet_pp_single(test_batch):
     # use the default settings
     model = DimeNetPP(out_emb_size=256)
     output = model(test_batch)
-    assert torch.isfinite(output).all()
-    assert output.shape == (2, 256)
+    assert torch.isfinite(output.system_embedding).all()
+    assert output.system_embedding.shape == (2, 256)

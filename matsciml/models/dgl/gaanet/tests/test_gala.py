@@ -87,7 +87,7 @@ def test_gala_config_no_grad(config, shape, request):
     data = request.getfixturevalue("data")
     with torch.no_grad():
         output = model(data)
-    assert output.shape == shape
+    assert output.system_embedding.shape == shape
 
 
 @pytest.mark.parametrize(
@@ -110,9 +110,9 @@ def test_gala_config_grad(config, shape, request):
     # run a fake training step
     opt.zero_grad()
     output = model(data)
-    assert output.shape == shape
-    fake_target = torch.rand_like(output)
-    loss = torch.nn.functional.mse_loss(output, fake_target)
+    assert output.system_embedding.shape == shape
+    fake_target = torch.rand_like(output.system_embedding)
+    loss = torch.nn.functional.mse_loss(output.system_embedding, fake_target)
     assert torch.isfinite(loss)
     loss.backward()
     opt.step()
@@ -123,14 +123,14 @@ def test_gala_force_no_backprop(gala_kwargs, data):
     gala_kwargs["encoder_only"] = False
     model = GalaPotential(**gala_kwargs)
     output = model(data)
-    assert output.shape == (3, 1)
-    assert hasattr(output, "grad_fn")
+    assert output.system_embedding.shape == (3, 1)
+    assert hasattr(output.system_embedding, "grad_fn")
     force = (
         -1
         * torch.autograd.grad(
-            output,
+            output.system_embedding,
             data["pos"],
-            grad_outputs=torch.ones_like(output),
+            grad_outputs=torch.ones_like(output.system_embedding),
             create_graph=True,
         )[0]
     )
@@ -145,14 +145,14 @@ def test_gala_force_backprop(gala_kwargs, data):
     opt = torch.optim.SGD(model.parameters(), lr=1e-3)
     opt.zero_grad()
     output = model(data)
-    assert output.shape == (3, 1)
-    assert hasattr(output, "grad_fn")
+    assert output.system_embedding.shape == (3, 1)
+    assert hasattr(output.system_embedding, "grad_fn")
     force = (
         -1
         * torch.autograd.grad(
-            output,
+            output.system_embedding,
             data["pos"],
-            grad_outputs=torch.ones_like(output),
+            grad_outputs=torch.ones_like(output.system_embedding),
             create_graph=True,
         )[0]
     )

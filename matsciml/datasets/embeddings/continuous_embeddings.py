@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Copyright (c) Facebook, Inc. and its affiliates.
 
@@ -20,7 +22,6 @@ Properties:
 
 NaN stored for unavaialable parameters.
 """
-from __future__ import annotations
 
 CONTINUOUS_EMBEDDINGS = {
     0: [

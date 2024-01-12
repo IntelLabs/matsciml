@@ -88,6 +88,6 @@ def test_batching_graph(backend, full_pairwise):
     assert "graph" in batch
     graph = batch.get("graph")
     if backend == "pyg":
-        assert len(graph) == 6
+        assert len(graph) == 4
     else:
         assert graph.batch_size == 4

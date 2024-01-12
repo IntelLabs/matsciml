@@ -29,4 +29,4 @@ def test_mpnn_forward(test_batch):
     with torch.no_grad():
         g_z = model(test_batch)
     # 2 graphs, node_out_dim
-    assert g_z.shape == (2, 32)
+    assert g_z.system_embedding.shape == (2, 32)

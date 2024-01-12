@@ -13,6 +13,7 @@ task = ScalarRegressionTask(
     encoder_kwargs={
         "element_types": element_types(),
     },
+    output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
     task_keys=["energy_total"],
 )
 

@@ -36,11 +36,13 @@ dm = MultiDataModule(
 sym_task = CrystalSymmetryClassificationTask(
     encoder_class=GraphConvModel,
     encoder_kwargs={"atom_embedding_dim": 200, "out_dim": 1, "encoder_only": True},
+    output_kwargs={"lazy": False, "input_dim": 1, "hidden_dim": 1},
 )
 reg_task = ScalarRegressionTask(
     encoder_class=GraphConvModel,
     encoder_kwargs={"atom_embedding_dim": 200, "out_dim": 1, "encoder_only": True},
     task_keys=["band_gap"],
+    output_kwargs={"lazy": False, "input_dim": 1, "hidden_dim": 1},
 )
 
 task = MultiTaskLitModule(

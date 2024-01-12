@@ -11,7 +11,7 @@ from matsciml.models.base import ScalarRegressionTask
 pl.seed_everything(21616)
 
 
-model = GraphConvModel(100, 1, encoder_only=True)
+model = GraphConvModel(100, 128, encoder_only=True)
 task = ScalarRegressionTask(
     model,
     output_kwargs={
@@ -19,7 +19,7 @@ task = ScalarRegressionTask(
         "hidden_dim": 128,
         "activation": SiLU,
         "lazy": False,
-        "input_dim": 1,
+        "input_dim": 128,
     },
     lr=1e-3,
     task_keys=["band_gap"],
@@ -33,6 +33,6 @@ dm = MatSciMLDataModule(
     val_split=0.2,
 )
 
-trainer = pl.Trainer(max_epochs=10, enable_checkpointing=False)
+trainer = pl.Trainer(fast_dev_run=10, enable_checkpointing=False)
 
 trainer.fit(task, datamodule=dm)

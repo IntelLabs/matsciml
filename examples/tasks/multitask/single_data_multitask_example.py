@@ -22,14 +22,15 @@ pl.seed_everything(1616)
 # configure a materials project data module, include transforms to
 # DGL graphs, shift to center of mass, and rescale coordinate magnitudes
 dm = MatSciMLDataModule(
-    dataset=MaterialsProjectDataset(
-        "./mp-project/base/train",
-        transforms=[
+    "MaterialsProjectDataset",
+    train_path="./matsciml/datasets/materials_project/devset-full",
+    dset_kwargs={
+        "transforms": [
             PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
             COMShift(),
             CoordinateScaling(0.1),
         ],
-    ),
+    },
     batch_size=32,
 )
 
@@ -94,14 +95,14 @@ r = ScalarRegressionTask(
     loss_func=L1Loss,
     output_kwargs=output_kwargs,
     normalize_kwargs=mp_norms,
-    task_keys=dm.target_keys["regression"],
+    task_keys=["band_gap"],
 )
 c = BinaryClassificationTask(
     encoder_class=PLEGNNBackbone,
     encoder_kwargs=model_args,
     lr=1e-3,
     output_kwargs=output_kwargs,
-    task_keys=dm.target_keys["classification"],
+    task_keys=["is_metal"],
 )
 
 # initialize multitask with regression and classification on materials project

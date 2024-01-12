@@ -275,7 +275,7 @@ class BaseLMDBDataset(Dataset):
         transforms : Optional[List[Callable]], optional
             List of transforms, by default None
         """
-        return cls(cls.__devset__, transforms, **kwargs)
+        return cls(cls.__devset__, transforms=transforms, **kwargs)
 
     def save_preprocessed_data(
         self,

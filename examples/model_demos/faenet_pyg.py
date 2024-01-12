@@ -24,10 +24,10 @@ task = ScalarRegressionTask(
         "average_frame_embeddings": True,
         "pred_as_dict": False,
         "hidden_dim": 128,
-        "output_dim": 64,
+        "out_dim": 64,
         "tag_hidden_channels": 0,
     },
-    # output_kwargs={"lazy": False, "input_dim": 64},
+    output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
     task_keys=["energy_relaxed"],
 )
 
@@ -60,8 +60,9 @@ task = ScalarRegressionTask(
         "hidden_dim": 128,
         "output_dim": 64,
         "tag_hidden_channels": 0,
+        "input_dim": 128,
     },
-    # output_kwargs={"lazy": False, "input_dim": 64},
+    output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
     task_keys=["band_gap"],
 )
 

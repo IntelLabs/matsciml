@@ -30,6 +30,7 @@ def cmd_module(devset_dir):
 @pytest.mark.carolina_api
 def test_download_data(cmd_module):
     request_status = cmd_module.cmd_request()
+    assert request_status != {}
     assert all(request_status.values())
 
 

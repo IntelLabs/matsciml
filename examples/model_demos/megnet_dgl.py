@@ -23,7 +23,7 @@ task = ScalarRegressionTask(
         "is_classification": False,
         "encoder_only": True,
     },
-    output_kwargs={"lazy": False, "input_dim": 640},
+    output_kwargs={"lazy": False, "input_dim": 640, "hidden_dim": 640},
     task_keys=["energy_relaxed"],
 )
 # MPNN expects edge features corresponding to atom-atom distances

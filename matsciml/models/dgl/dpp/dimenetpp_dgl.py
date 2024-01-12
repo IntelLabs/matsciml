@@ -8,6 +8,7 @@ import dgl
 import torch
 import torch.nn as nn
 
+from matsciml.common.types import Embeddings
 from matsciml.models.base import AbstractDGLModel
 from matsciml.models.dgl.dpp import dimenet_utils as du
 
@@ -202,7 +203,7 @@ class DimeNetPP(AbstractDGLModel):
         edge_feats: torch.Tensor | None = None,
         graph_feats: torch.Tensor | None = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Embeddings:
         r"""
         Implement the forward method, which computes the energy of
         a molecular graph.
@@ -250,4 +251,4 @@ class DimeNetPP(AbstractDGLModel):
             for i in range(self.num_blocks):
                 graph = self.interaction_blocks[i](graph, l_g)
                 P += self.output_blocks[i + 1](graph)
-        return P
+        return Embeddings(P)

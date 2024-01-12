@@ -161,7 +161,6 @@ class GradientCheckCallback(Callback):
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
         optimizer: Optimizer,
-        opt_idx: int,
     ) -> None:
         step_number = trainer.global_step
         # this checks to make sure we're still running the nan check

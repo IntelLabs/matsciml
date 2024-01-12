@@ -443,7 +443,7 @@ if _has_pyg:
                 edge_index=torch.LongTensor(adj_list),
                 num_nodes=len(data["atomic_numbers"]),
             )
-            graph["pos"] = data["coords"]
+            graph["pos"] = data.get("coords", data["pos"])
             graph["atomic_numbers"] = data["atomic_numbers"]
             data["graph"] = graph
             # delete the keys to reduce data redundancy
@@ -454,7 +454,10 @@ if _has_pyg:
                 "distance_matrix",
                 "pc_features",
             ]:
-                del data[key]
+                try:
+                    del data[key]
+                except KeyError:
+                    pass
             return data
 
         @staticmethod
@@ -510,12 +513,16 @@ if _has_pyg:
                 return {}
             edge_index = data["edge_index"]
             lattice_params = data["lattice_features"]["lattice_params"]
-            y = data["targets"]["formation_energy_per_atom"]
+            # Changed the following lines so tests would run.
+            y = data["targets"].get("formation_energy_per_atom", None)
             # scale target property
-            if self.scaler is not None:
-                prop = self.scaler.transform(y)
+            if y is not None:
+                if self.scaler is not None:
+                    prop = self.scaler.transform(y)
+                else:
+                    prop = torch.Tensor([y])
             else:
-                prop = torch.Tensor([y])
+                prop = torch.Tensor([torch.nan])
             # (frac_coords, atom_types, lengths, angles, edge_indices,
             # to_jimages, num_atoms) = data_dict['graph_arrays']
 

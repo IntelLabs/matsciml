@@ -115,7 +115,9 @@ class OutputBlock(nn.Module):
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         output = self.layers(data)
         if self.residual:
-            assert output.shape == data.shape
+            assert (
+                output.shape == data.shape
+            ), f"OutputBlock output shape {output.shape} does not match data shape {data.shape}. Module Info: {self.layers}"
             output = output + data
         return output
 

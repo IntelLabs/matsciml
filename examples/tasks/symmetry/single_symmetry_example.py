@@ -19,7 +19,8 @@ dm = MatSciMLDataModule.from_devset(
 task = CrystalSymmetryClassificationTask(
     encoder_class=GraphConvModel,
     encoder_kwargs={"atom_embedding_dim": 128, "out_dim": 1, "encoder_only": True},
+    output_kwargs={"lazy": False, "input_dim": 1, "hidden_dim": 1},
 )
 
-trainer = pl.Trainer(fast_dev_run=1000)
+trainer = pl.Trainer(fast_dev_run=10)
 trainer.fit(task, datamodule=dm)

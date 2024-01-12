@@ -37,39 +37,38 @@ if package_registry["dgl"]:
         # test without grads
         with torch.no_grad():
             g_z = model(graph)
-        assert g_z.shape == (1, 64)
-
+        assert g_z.system_embedding.shape == (1, 64)
         # test with grads
         g_z = model(graph)
-        assert hasattr(g_z, "grad_fn")
+        assert hasattr(g_z.system_embedding, "grad_fn")
         # make sure every element is finite
-        assert torch.isfinite(g_z).all()
+        assert torch.isfinite(g_z.system_embedding).all()
 
     @pytest.mark.dependency()
     def test_mpnn(graph):
         model = MPNN(atom_embedding_dim=128, node_out_dim=16, encoder_only=True)
         with torch.no_grad():
             g_z = model(graph)
-        assert g_z.shape == (1, 16)
+        assert g_z.system_embedding.shape == (1, 16)
 
         # test with grads
         g_z = model(graph)
-        assert hasattr(g_z, "grad_fn")
+        assert hasattr(g_z.system_embedding, "grad_fn")
         # make sure every element is finite
-        assert torch.isfinite(g_z).all()
+        assert torch.isfinite(g_z.system_embedding).all()
 
     @pytest.mark.dependency()
     def test_schnet_dgl(graph):
         model = SchNet(atom_embedding_dim=128, encoder_only=True)
         with torch.no_grad():
             g_z = model(graph)
-        assert g_z.shape == (1, 128)
+        assert g_z.system_embedding.shape == (1, 128)
 
         # test with grads
         g_z = model(graph)
-        assert hasattr(g_z, "grad_fn")
+        assert hasattr(g_z.system_embedding, "grad_fn")
         # make sure every element is finite
-        assert torch.isfinite(g_z).all()
+        assert torch.isfinite(g_z.system_embedding).all()
 
     @pytest.mark.dependency()
     def test_egnn_dgl(graph):
@@ -105,13 +104,13 @@ if package_registry["dgl"]:
         with torch.no_grad():
             g_z = model(graph)
         # should match embed_out_dim
-        assert g_z.shape == (1, 128)
+        assert g_z.system_embedding.shape == (1, 128)
 
         # test with grads
         g_z = model(graph)
-        assert hasattr(g_z, "grad_fn")
+        assert hasattr(g_z.system_embedding, "grad_fn")
         # make sure every element is finite
-        assert torch.isfinite(g_z).all()
+        assert torch.isfinite(g_z.system_embedding).all()
 
     @pytest.mark.dependency()
     def test_megnet_dgl(graph):
@@ -132,13 +131,13 @@ if package_registry["dgl"]:
         with torch.no_grad():
             g_z = model(graph)
         # should match 128 + 128 + 64
-        assert g_z.shape == (1, 320)
+        assert g_z.system_embedding.shape == (1, 320)
 
         # test with grads
         g_z = model(graph)
-        assert hasattr(g_z, "grad_fn")
+        assert hasattr(g_z.system_embedding, "grad_fn")
         # make sure every element is finite
-        assert torch.isfinite(g_z).all()
+        assert torch.isfinite(g_z.system_embedding).all()
 
     @pytest.mark.dependency()
     def test_dpp_dgl(graph):
@@ -146,13 +145,13 @@ if package_registry["dgl"]:
         with torch.no_grad():
             g_z = model(graph)
         # should match the 'out_emb_size' argument
-        assert g_z.shape == (1, 256)
+        assert g_z.system_embedding.shape == (1, 256)
 
         # test with grads
         g_z = model(graph)
-        assert hasattr(g_z, "grad_fn")
+        assert hasattr(g_z.system_embedding, "grad_fn")
         # make sure every element is finite
-        assert torch.isfinite(g_z).all()
+        assert torch.isfinite(g_z.system_embedding).all()
 
 
 @pytest.mark.dependency()
@@ -181,135 +180,31 @@ def test_m3gnet_dgl(graph):
     bond_vec, bond_dist = compute_pair_vector_and_distance(graph["graph"])
     graph["graph"].edata["bond_vec"] = bond_vec
     graph["graph"].edata["bond_dist"] = bond_dist
+    # fmt: off
     element_types = [
-        "H",
-        "He",
-        "Li",
-        "Be",
-        "B",
-        "C",
-        "N",
-        "O",
-        "F",
-        "Ne",
-        "Na",
-        "Mg",
-        "Al",
-        "Si",
-        "P",
-        "S",
-        "Cl",
-        "Ar",
-        "K",
-        "Ca",
-        "Sc",
-        "Ti",
-        "V",
-        "Cr",
-        "Mn",
-        "Fe",
-        "Co",
-        "Ni",
-        "Cu",
-        "Zn",
-        "Ga",
-        "Ge",
-        "As",
-        "Se",
-        "Br",
-        "Kr",
-        "Rb",
-        "Sr",
-        "Y",
-        "Zr",
-        "Nb",
-        "Mo",
-        "Tc",
-        "Ru",
-        "Rh",
-        "Pd",
-        "Ag",
-        "Cd",
-        "In",
-        "Sn",
-        "Sb",
-        "Te",
-        "I",
-        "Xe",
-        "Cs",
-        "Ba",
-        "La",
-        "Ce",
-        "Pr",
-        "Nd",
-        "Pm",
-        "Sm",
-        "Eu",
-        "Gd",
-        "Tb",
-        "Dy",
-        "Ho",
-        "Er",
-        "Tm",
-        "Yb",
-        "Lu",
-        "Hf",
-        "Ta",
-        "W",
-        "Re",
-        "Os",
-        "Ir",
-        "Pt",
-        "Au",
-        "Hg",
-        "Tl",
-        "Pb",
-        "Bi",
-        "Po",
-        "At",
-        "Rn",
-        "Fr",
-        "Ra",
-        "Ac",
-        "Th",
-        "Pa",
-        "U",
-        "Np",
-        "Pu",
-        "Am",
-        "Cm",
-        "Bk",
-        "Cf",
-        "Es",
-        "Fm",
-        "Md",
-        "No",
-        "Lr",
-        "Rf",
-        "Db",
-        "Sg",
-        "Bh",
-        "Hs",
-        "Mt",
-        "Ds",
-        "Rg",
-        "Cn",
-        "Nh",
-        "Fl",
-        "Mc",
-        "Lv",
-        "Ts",
-        "Og",
+        'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na',
+        'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc',
+        'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga',
+        'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y', 'Zr', 'Nb',
+        'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb',
+        'Te', 'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm',
+        'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu',
+        'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl',
+        'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra', 'Ac', 'Th', 'Pa',
+        'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md',
+        'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg',
+        'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og',
     ]
+    # fmt: on
 
     model = M3GNet(element_types=element_types)
     with torch.no_grad():
         g_z = model(graph)
     # Scalar output right now
-    assert g_z.shape == torch.Size([])
+    assert g_z.system_embedding.shape == torch.Size([1, 64])
 
     # test with grads
     g_z = model(graph)
-    assert hasattr(g_z, "grad_fn")
+    assert hasattr(g_z.system_embedding, "grad_fn")
     # make sure every element is finite
-    assert torch.isfinite(g_z).all()
+    assert torch.isfinite(g_z.system_embedding).all()

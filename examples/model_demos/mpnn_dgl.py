@@ -16,6 +16,7 @@ task = ScalarRegressionTask(
         "node_out_dim": 16,
     },
     task_keys=["energy_relaxed"],
+    output_kwargs={"lazy": False, "input_dim": 16, "hidden_dim": 16},
 )
 # MPNN expects edge features corresponding to atom-atom distances
 dm = MatSciMLDataModule.from_devset(

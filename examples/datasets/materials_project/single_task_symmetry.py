@@ -27,7 +27,7 @@ task = CrystalSymmetryClassificationTask(
 # the base set is required because the devset does not contain symmetry labels
 dm = MatSciMLDataModule(
     dataset="MaterialsProjectDataset",
-    train_path="./mp-project/base/train",
+    train_path="./matsciml/datasets/materials_project/devset",
     dset_kwargs={
         "transforms": [
             PointCloudToGraphTransform(
@@ -42,6 +42,6 @@ dm = MatSciMLDataModule(
     num_workers=0,
 )
 
-trainer = pl.Trainer(max_epochs=10, enable_checkpointing=False)
+trainer = pl.Trainer(fast_dev_run=10, enable_checkpointing=False)
 
 trainer.fit(task, datamodule=dm)
