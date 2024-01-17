@@ -197,7 +197,6 @@ class OQMDRequest:
                 data = requests.get(url=oqmd_url.format(self.limit, index * self.limit))
                 sleep(60)
                 retry += 1
-
             if data.status_code == 200:
                 data = data.json()
                 request_status[index] = True
@@ -206,7 +205,6 @@ class OQMDRequest:
                         data["data"][n]["atomic_numbers"],
                         data["data"][n]["cart_coords"],
                     ) = self.parse_sites(data["data"][n]["sites"])
-                    # data["data"][n].pop("sites")
                 if data["meta"]["more_data_available"]:
                     has_more_data = True
                 else:
@@ -339,7 +337,7 @@ class OQMDRequest:
         target_env = lmdb.open(
             os.path.join(lmdb_path, "data.lmdb"),
             subdir=False,
-            map_size=1048576, # 1099511627776 = 1TB, 1073741824 = 1 GB, 104857600 = 100 MB, 1048576 = 1 MB
+            map_size=1099511627776 * 2, # 1099511627776 = 1TB, 1073741824 = 1 GB, 104857600 = 100 MB, 1048576 = 1 MB
             meminit=False,
             map_async=True,
         )
@@ -362,7 +360,7 @@ class OQMDRequest:
             "limit": 1,
         }
         oqmd = cls(**kwargs)
-        oqmd.data_dir = "devset_2"
+        oqmd.data_dir = "devset"
         oqmd.oqmd_request()
         oqmd.process_json()
         oqmd.to_lmdb(oqmd.data_dir)
@@ -375,10 +373,3 @@ if __name__ == "__main__":
     running_time = end_time - start_time
     minutes, seconds = divmod(running_time, 60)
     print(f"Done! Program executed in {int(minutes)} minutes and {int(seconds)} seconds")
-    # oqmd = OQMDRequest(
-    #     base_data_dir="./matsciml/datasets/oqmd", limit=100, num_workers=1
-    # )
-    # oqmd.download_data()
-    # oqmd.base_data_dir = "./"
-    # oqmd.data_dir = "query_files"
-    # oqmd.process_json()

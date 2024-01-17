@@ -24,47 +24,6 @@ CrystalNN = local_env.CrystalNN(
     distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False
 )  # , search_cutoff=15.0)
 
-def input_folder_path():
-    while True:
-        folder_path = input("Enter the path of the folder containing dataset (Example: matsciml/datasets/materials_project/devset or exit): ")
-        if folder_path == "exit":
-            break
-        if os.path.exists(folder_path) and os.path.isdir(folder_path):
-            return folder_path
-        else:
-            print("Invalid folder path. Please enter a valid directory path.")
-
-def select_dataset():
-    print("\nSelect a dataset type:")
-    print("1. Dataset Materials Project")
-    print("2. Dataset NOMAD")
-    print("3. Dataset OQMD")
-    print("4. Dataset Carolina\n")
-    choice = input("Enter the number corresponding to your choice: ")
-
-    if choice == '1':
-        selected_dataset = "MP"
-    elif choice == '2':
-        selected_dataset = "NOMAD"
-    elif choice == '3':
-        selected_dataset = "OQMD"
-    elif choice == '4':
-        selected_dataset = "Carolina"
-    else:
-        raise ValueError(f"Invalid choice. Please enter a number between 1 and 4.")
-    return selected_dataset
-
-def output_folder_path():
-    while True:
-        folder_path = input("Enter the path of the output folder (Example: matsciml/datasets/materials_project/devset/output or exit): ")
-        if folder_path == "exit":
-            break
-        if os.path.exists(folder_path) and os.path.isdir(folder_path):
-            return folder_path
-        else:
-            print("Invalid folder path. Please enter a valid directory path.")
-
-
 def get_atomic_num(elements):
     atomic_num_dict = []
     for element in elements:
@@ -97,7 +56,37 @@ def get_distance_matrix(coords, lattice_vectors):
             distance_matrix[j, i] = distance
     return distance_matrix
 
-def processing_data(return_dict, lattice_params, edge_index, prop):
+def get_jimage(structure):
+    try:
+        crystal_graph = StructureGraph.with_local_env_strategy(structure, CrystalNN)
+    except ValueError:
+        return None
+    edge_indices, to_jimages = [], []
+    for i, j, to_jimage in crystal_graph.graph.edges(data="to_jimage"):
+        edge_indices.append([j, i])
+        to_jimages.append(to_jimage)
+        edge_indices.append([i, j])
+        to_jimages.append(tuple(-tj for tj in to_jimage))
+    return to_jimages, edge_indices
+
+def get_lattice(lattice):
+    lattice_params = torch.FloatTensor(
+        lattice.abc + tuple(lattice.angles)
+    )
+    lattice_features = {
+        "lattice_params": lattice_params,
+    }
+    return lattice_features
+
+def processing_data(structure, return_dict, y):
+    to_jimages, edge_indices = get_jimage(structure)
+    return_dict["to_jimages"] = torch.LongTensor(to_jimages)
+    return_dict["edge_index"] = torch.LongTensor(edge_indices).T
+    edge_index = return_dict["edge_index"]  # torch.LongTensor([[0, 1], [1, 0]])
+    return_dict["lattice_features"] = get_lattice(structure.lattice)
+    lattice_params = return_dict["lattice_features"]["lattice_params"]
+    prop = torch.Tensor([y])
+
     # atom_coords are fractional coordinates
     # edge_index is incremented during batching
     # https://pytorch-geometric.readthedocs.io/en/latest/notes/batching.html
@@ -134,39 +123,8 @@ def parse_structure_MP(item) -> None:
     return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
     return_dict["num_particles"] = len(atom_numbers)
     return_dict["distance_matrix"] = torch.from_numpy(structure.distance_matrix).float()
-    # jimages
-
-    #
-    try:
-        crystal_graph = StructureGraph.with_local_env_strategy(structure, CrystalNN)
-    except ValueError:
-        return None
-
-    edge_indices, to_jimages = [], []
-    for i, j, to_jimage in crystal_graph.graph.edges(data="to_jimage"):
-        edge_indices.append([j, i])
-        to_jimages.append(to_jimage)
-        edge_indices.append([i, j])
-        to_jimages.append(tuple(-tj for tj in to_jimage))
-    return_dict["to_jimages"] = torch.LongTensor(to_jimages)
-    return_dict["edge_index"] = torch.LongTensor(edge_indices).T
-
-    # grab lattice properties
-    lattice_params = torch.FloatTensor(
-        structure.lattice.abc + tuple(structure.lattice.angles)
-    )
-    lattice_features = {
-        "lattice_params": lattice_params,
-    }
-    return_dict["lattice_features"] = lattice_features
-
-    edge_index = return_dict["edge_index"]  # torch.LongTensor([[0, 1], [1, 0]])
-    lattice_params = return_dict["lattice_features"]["lattice_params"]
-    y = item.get("formation_energy_per_atom")
-    if y is None:
-        y = 1
-    prop = torch.Tensor([y])
-    data = processing_data(return_dict, lattice_params, edge_index, prop)
+    y = item.get("formation_energy_per_atom") or 1
+    data = processing_data(structure, return_dict, y)
     return data
 
 def parse_structure_NOMAD(item) -> None:
@@ -194,37 +152,9 @@ def parse_structure_NOMAD(item) -> None:
     return_dict["num_particles"] = num_particles
     distance_matrix = get_distance_matrix(cartesian_coords, numpy.array(structure["lattice_vectors"]) * 1E10)
     return_dict["distance_matrix"] = torch.from_numpy(distance_matrix)
-    # jimages
-    structure_new = Structure(lattice_vectors, species, frac_coords)
-    #
-    try:
-        crystal_graph = StructureGraph.with_local_env_strategy(structure_new, CrystalNN)
-    except ValueError:
-        return None
-    # print(crystal_graph, "\n")
-    edge_indices, to_jimages = [], []
-    for i, j, to_jimage in crystal_graph.graph.edges(data="to_jimage"):
-        edge_indices.append([j, i])
-        to_jimages.append(to_jimage)
-        edge_indices.append([i, j])
-        to_jimages.append(tuple(-tj for tj in to_jimage))
-    return_dict["to_jimages"] = torch.LongTensor(to_jimages)
-    return_dict["edge_index"] = torch.LongTensor(edge_indices).T
-
-    # grab lattice properties
-    lattice_params = torch.FloatTensor(
-        lattice_vectors.abc + tuple(lattice_vectors.angles)
-    )
-    lattice_features = {
-        "lattice_params": lattice_params,
-    }
-    return_dict["lattice_features"] = lattice_features
-
-    edge_index = return_dict["edge_index"]  # torch.LongTensor([[0, 1], [1, 0]])
-    lattice_params = return_dict["lattice_features"]["lattice_params"]
     y = (item["energies"]["total"]["value"] * 6.241509074461E+18) / num_particles   #formation_energy_per_atom, eV
-    prop = torch.Tensor([y])
-    data = processing_data(return_dict, lattice_params, edge_index, prop)
+    structure = Structure(lattice_vectors, species, frac_coords)
+    data = processing_data(structure, return_dict, y)
     return data
 
 def parse_structure_OQMD(item) -> None:
@@ -250,38 +180,9 @@ def parse_structure_OQMD(item) -> None:
     return_dict["num_particles"] = item["natoms"]
     distance_matrix = get_distance_matrix(cartesian_coords, numpy.array(item["unit_cell"]))
     return_dict["distance_matrix"] = torch.from_numpy(distance_matrix).float()
-    # jimages
-    structure_new = Structure(lattice_vectors, species, frac_coords)
-
-    #
-    try:
-        crystal_graph = StructureGraph.with_local_env_strategy(structure_new, CrystalNN)
-    except ValueError:
-        return None
-
-    edge_indices, to_jimages = [], []
-    for i, j, to_jimage in crystal_graph.graph.edges(data="to_jimage"):
-        edge_indices.append([j, i])
-        to_jimages.append(to_jimage)
-        edge_indices.append([i, j])
-        to_jimages.append(tuple(-tj for tj in to_jimage))
-    return_dict["to_jimages"] = torch.LongTensor(to_jimages)
-    return_dict["edge_index"] = torch.LongTensor(edge_indices).T
-
-    # grab lattice properties
-    lattice_params = torch.FloatTensor(
-        lattice_vectors.abc + tuple(lattice_vectors.angles)
-    )
-    lattice_features = {
-        "lattice_params": lattice_params,
-    }
-    return_dict["lattice_features"] = lattice_features
-
-    edge_index = return_dict["edge_index"]  # torch.LongTensor([[0, 1], [1, 0]])
-    lattice_params = return_dict["lattice_features"]["lattice_params"]
     y = item["delta_e"]
-    prop = torch.Tensor([y])
-    data = processing_data(return_dict, lattice_params, edge_index, prop)
+    structure = Structure(lattice_vectors, species, frac_coords)
+    data = processing_data(structure, return_dict, y)
     return data
 
 def parse_structure_Carolina(item) -> None:
@@ -316,38 +217,9 @@ def parse_structure_Carolina(item) -> None:
     return_dict["num_particles"] = len(item["atomic_numbers"])
     distance_matrix = get_distance_matrix(cartesian_coords, lattice_vectors._matrix)
     return_dict["distance_matrix"] = torch.from_numpy(distance_matrix)
-    # jimages
-    structure_new = Structure(lattice_vectors, species, frac_coords)
-
-    #
-    try:
-        crystal_graph = StructureGraph.with_local_env_strategy(structure_new, CrystalNN)
-    except ValueError:
-        return None
-
-    edge_indices, to_jimages = [], []
-    for i, j, to_jimage in crystal_graph.graph.edges(data="to_jimage"):
-        edge_indices.append([j, i])
-        to_jimages.append(to_jimage)
-        edge_indices.append([i, j])
-        to_jimages.append(tuple(-tj for tj in to_jimage))
-    return_dict["to_jimages"] = torch.LongTensor(to_jimages)
-    return_dict["edge_index"] = torch.LongTensor(edge_indices).T
-
-    # grab lattice properties
-    lattice_params = torch.FloatTensor(
-        lattice_vectors.abc + tuple(lattice_vectors.angles)
-    )
-    lattice_features = {
-        "lattice_params": lattice_params,
-    }
-    return_dict["lattice_features"] = lattice_features
-
-    edge_index = return_dict["edge_index"]  # torch.LongTensor([[0, 1], [1, 0]])
-    lattice_params = return_dict["lattice_features"]["lattice_params"]
     y = item["energy"]
-    prop = torch.Tensor([y])
-    data = processing_data(return_dict, lattice_params, edge_index, prop)
+    structure = Structure(lattice_vectors, species, frac_coords)
+    data = processing_data(structure, return_dict, y)
     return data
 
 
@@ -397,18 +269,11 @@ def main(args: Namespace):
     if not input_path.exists():
         raise FileNotFoundError(f"{input_path} could not be found.")
     if args.dataset is None:
-        raise FileNotFoundError(" Dataset name was not provided. Existing ones include MP, NOMAD, OQMD, Carolina, which are case-sensitive.")
-
-    # if output_path.exists():
-    #     raise ValueError(
-    #         f"{output_path} already exists, please check its contents and remove the folder!"
-    #     )
-
-    # if output_path.exists():
-    #     warnings.warn(
-    #         f"{output_path} already exists, please check its contents and remove the folder!"
-    #     )
-    #     shutil.rmtree(output_path)
+        raise FileNotFoundError("Dataset name was not provided.")
+    if output_path.exists():
+        raise ValueError(
+            f"{output_path} already exists, please check its contents and remove the folder!"
+        )
 
     os.makedirs(output_path, exist_ok=True)
     db_paths = sorted(input_path.glob("*.lmdb"))
@@ -421,15 +286,10 @@ def main(args: Namespace):
         target_env = lmdb.open(
             str(target),
             subdir=False,
-            # For Linux, the map_size can be set as high as possible such as 1099511627776(1TB), exceeding the physical memory size,
-            # and the final file size will be reduced to the required memory size.
-            # But for Windows system, map_size needs to be chosen carefully. It shouldn't exceed the physical memory size, and setting it too high should be avoided.
-            # This is because the final file size will be the same as the map_size, whether it is needed or not.
-            # Thus, a value like 10737418240 (10GB) is sufficient for a complete datasets including MP, Carolina, NOMAD, OQMD.
-            # For the devset, 10 MB is sufficient.
+            # The map_size setup is different for Windows vs. Linux:
             # https://github.com/tensorpack/tensorpack/issues/1209
             # https://stackoverflow.com/questions/33508305/lmdb-maximum-size-of-the-database-for-windows
-            map_size=10485760, ## 1099511627776 = 1TB, 1073741824 = 1 GB, 104857600 = 100 MB, 1048576 = 1 MB
+            map_size=1099511627776 * 2, ## 1099511627776 = 1TB, 1073741824 = 1 GB, 104857600 = 100 MB, 1048576 = 1 MB
             meminit=False,
             map_async=True,
         )
@@ -505,13 +365,11 @@ def main(args: Namespace):
 
 
 if __name__ == "__main__":
-    dataset = select_dataset()
-    input_path = input_folder_path()
-    output_path = output_folder_path()
     parser = ArgumentParser()
-    parser.add_argument("--src_lmdb", "-i", default=input_path, type=str, help="Folder containing the source LMDB files to be converted.")
-    parser.add_argument("--dataset", "-d", default=dataset, type=str, help="Different datasets including MP, Carolina, OQMD, NOMAD.")
-    parser.add_argument("--output_folder", "-o", default=output_path, type=str, help="Path to a non-existing folder to save processed data to.")
+    dataset = ["MP", "Carolina", "OQMD", "NOMAD"]
+    parser.add_argument("--src_lmdb", "-i", type=str, help="Folder containing the source LMDB files to be converted.")
+    parser.add_argument("--dataset", "-d", type=str, choices=dataset, help="Select one of the datasets.")
+    parser.add_argument("--output_folder", "-o", type=str, help="Path to a non-existing folder to save processed data to.")
     args = parser.parse_args()
     print(args)
     main(args)
