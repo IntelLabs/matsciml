@@ -7,7 +7,7 @@ import torch
 from matgl.graph.compute import (
     compute_theta_and_phi,
     create_line_graph,
-    ensure_line_graph_compatibility
+    ensure_line_graph_compatibility,
 )
 from matgl.models import M3GNet
 from matgl.models._megnet import *
@@ -43,7 +43,11 @@ def forward(
     g.edata["rbf"] = expanded_dists
     three_body_basis = self.basis_expansion(l_g)
     three_body_cutoff = polynomial_cutoff(g.edata["bond_dist"], self.threebody_cutoff)
-    node_feat, edge_feat, state_feat = self.embedding(node_types, g.edata["rbf"], state_attr)
+    node_feat, edge_feat, state_feat = self.embedding(
+        node_types,
+        g.edata["rbf"],
+        state_attr,
+    )
     for i in range(self.n_blocks):
         edge_feat = self.three_body_interactions[i](
             g,
@@ -53,7 +57,12 @@ def forward(
             node_feat,
             edge_feat,
         )
-        edge_feat, node_feat, state_feat = self.graph_layers[i](g, edge_feat, node_feat, state_feat)
+        edge_feat, node_feat, state_feat = self.graph_layers[i](
+            g,
+            edge_feat,
+            node_feat,
+            state_feat,
+        )
     g.ndata["node_feat"] = node_feat
     g.edata["edge_feat"] = edge_feat
     if self.is_intensive:
