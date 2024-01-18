@@ -32,7 +32,7 @@ dependencies = [
   "pymatgen==2023.7.20",
   "schema>=0.7.5",
   "ase>=3.22.1",
-  "matgl==0.8.5",
+  "matgl==0.9.1",
   "einops==0.7.0",
   "mendeleev==0.14.0",
   "e3nn==0.5.1"
