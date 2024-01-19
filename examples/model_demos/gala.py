@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytorch_lightning as pl
 
-from matsciml.datasets.transforms import DistancesTransform
+from matsciml.datasets.transforms import DistancesTransform, PointCloudToGraphTransform
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import SchNet
 from matsciml.models.base import ScalarRegressionTask
@@ -23,7 +23,16 @@ task = ScalarRegressionTask(
 # SchNet uses RBFs, and expects edge features corresponding to atom-atom distances
 dm = MatSciMLDataModule.from_devset(
     "IS2REDataset",
-    dset_kwargs={"transforms": [DistancesTransform()]},
+    dset_kwargs={
+        "transforms": [
+            PointCloudToGraphTransform(
+                "dgl",
+                cutoff_dist=20.0,
+                node_keys=["pos", "atomic_numbers"],
+            ),
+            DistancesTransform(),
+        ],
+    },
 )
 
 # run a quick training loop

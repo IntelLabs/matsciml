@@ -36,6 +36,11 @@ dm = MatSciMLDataModule.from_devset(
     "IS2REDataset",
     dset_kwargs={
         "transforms": [
+            PointCloudToGraphTransform(
+                "dgl",
+                cutoff_dist=20.0,
+                node_keys=["pos", "atomic_numbers"],
+            ),
             GraphToGraphTransform("pyg"),
             FrameAveraging(frame_averaging="3D", fa_method="stochastic"),
         ],

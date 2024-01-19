@@ -15,7 +15,7 @@ from matsciml.datasets.utils import point_cloud_featurization
 
 @registry.register_dataset("S2EFDataset")
 class S2EFDataset(PointCloudDataset):
-    __devset__ = Path(__file__).parents[0].joinpath("dev-s2ef-dgl")
+    __devset__ = Path(__file__).parents[0].joinpath("dev-s2ef")
 
     def data_from_key(
         self,
@@ -68,7 +68,7 @@ class S2EFDataset(PointCloudDataset):
 
 @registry.register_dataset("IS2REDataset")
 class IS2REDataset(PointCloudDataset):
-    __devset__ = Path(__file__).parents[0].joinpath("dev-is2re-dgl")
+    __devset__ = Path(__file__).parents[0].joinpath("dev-is2re")
 
     """
     Currently, this class doesn't have anything special implemented,
