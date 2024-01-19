@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from importlib import util
-from pkg_resources import get_distribution, DistributionNotFound
+
 from packaging.version import parse
+from pkg_resources import DistributionNotFound, get_distribution
 
 """
 The `package_registry` object is a convenient way to determine which packages have

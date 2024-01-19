@@ -4,16 +4,13 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import torch
 from torch_geometric.nn import SchNet
 from torch_scatter import scatter
 
-from matsciml.common.utils import (
-    conditional_grad,
-    get_pbc_distances,
-    radius_graph_pbc,
-)
+from matsciml.common.utils import conditional_grad, get_pbc_distances, radius_graph_pbc
 
 
 class SchNetWrap(SchNet):
@@ -72,7 +69,7 @@ class SchNetWrap(SchNet):
         self.cutoff = cutoff
         self.otf_graph = otf_graph
 
-        super(SchNetWrap, self).__init__(
+        super().__init__(
             hidden_channels=hidden_channels,
             num_filters=num_filters,
             num_interactions=num_interactions,
@@ -89,7 +86,9 @@ class SchNetWrap(SchNet):
 
         if self.otf_graph:
             edge_index, cell_offsets, neighbors = radius_graph_pbc(
-                data, self.cutoff, 50
+                data,
+                self.cutoff,
+                50,
             )
             data.edge_index = edge_index
             data.cell_offsets = cell_offsets
@@ -123,7 +122,7 @@ class SchNetWrap(SchNet):
             batch = torch.zeros_like(z) if batch is None else batch
             energy = scatter(h, batch, dim=0, reduce=self.readout)
         else:
-            energy = super(SchNetWrap, self).forward(z, pos, batch)
+            energy = super().forward(z, pos, batch)
         return energy
 
     def forward(self, data):

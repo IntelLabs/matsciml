@@ -1,6 +1,6 @@
 # Novel Materials Discovery (NOMAD)
 
-The [NOMAD database](https://nomad-lab.eu/nomad-lab/index.html) is a freely accessible database of 12,539,160 entries across 2,978,492 materials. Various API requests may be used to query and download many types of materials, properties, and simulation results. To organized a dataset to be used with the Open MatSciML toolkit, two API pipelines need to be use, namely: material ID gathering, and material archive downloading. 
+The [NOMAD database](https://nomad-lab.eu/nomad-lab/index.html) is a freely accessible database of 12,539,160 entries across 2,978,492 materials. Various API requests may be used to query and download many types of materials, properties, and simulation results. To organized a dataset to be used with the Open MatSciML toolkit, two API pipelines need to be use, namely: material ID gathering, and material archive downloading.
 
 A default query for gathering material ID's is provided by the `NomadRequest` module which ensures materials with certain properties are collected:
 
@@ -49,7 +49,7 @@ nomad = NomadRequest(split_files=["./base/all.yml"])
 nomad.download_data()
 ```
 
-An LMDB file will be saved for each split file in a directory: `./base_dir/split_name`. 
+An LMDB file will be saved for each split file in a directory: `./base_dir/split_name`.
 
 
 Finally, material ID's may be specified specifically along with a `split_dir` to download to:

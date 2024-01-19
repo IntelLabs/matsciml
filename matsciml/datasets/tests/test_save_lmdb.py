@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from matsciml.common.registry import registry
@@ -7,7 +9,7 @@ dsets = list(registry.__entries__["datasets"].values())
 
 """
 Unit tests for testing the dataset preprocessing dumping and loading
-functionality. Note that this might cause `/tmp` to grow if left 
+functionality. Note that this might cause `/tmp` to grow if left
 unmonitored!
 """
 

@@ -4,10 +4,10 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import numpy as np
 import torch
-
 
 """
 An evaluation module for use with the OCP dataset and suite of tasks. It should
@@ -224,8 +224,8 @@ def average_distance_within_threshold(prediction, target):
                         target["pbc"].tolist(),
                     ),
                     axis=1,
-                )
-            )
+                ),
+            ),
         )
 
     success = 0
@@ -283,7 +283,7 @@ def squared_error(prediction, target):
 def magnitude_error(prediction, target, p=2):
     assert prediction.shape[1] > 1
     error = torch.abs(
-        torch.norm(prediction, p=p, dim=-1) - torch.norm(target, p=p, dim=-1)
+        torch.norm(prediction, p=p, dim=-1) - torch.norm(target, p=p, dim=-1),
     )
     return {
         "metric": torch.mean(error).item(),

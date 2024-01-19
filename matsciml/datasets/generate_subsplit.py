@@ -1,14 +1,16 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
 import os
 from argparse import ArgumentParser, Namespace
-from typing import List
 from pathlib import Path
+from typing import List
 
-import numpy as np
 import lmdb
+import numpy as np
 from tqdm import tqdm
+
 from matsciml.datasets import utils
 
 """
@@ -18,8 +20,9 @@ See the bottom of this script for usage and documentation.
 
 
 def generate_split_indices(
-    all_indices: np.ndarray, splits_lengths: List[int]
-) -> List[np.ndarray]:
+    all_indices: np.ndarray,
+    splits_lengths: list[int],
+) -> list[np.ndarray]:
     cum_splits = np.cumsum(splits_lengths)
     # check that the chunks we ask for do not exceed the length
     # of the actual array
@@ -73,7 +76,9 @@ def main(args: Namespace):
         # copy each item into the new LMDB file
         for target_index, origin_index in enumerate(tqdm(split)):
             data = utils.get_data_from_index(
-                origin_index[0], origin_index[1], origin_envs
+                origin_index[0],
+                origin_index[1],
+                origin_envs,
             )
             utils.write_data(target_index, data, output_env)
 

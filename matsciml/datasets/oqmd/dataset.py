@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -10,20 +13,24 @@ from pymatgen.core import Lattice, Structure
 from matsciml.common.registry import registry
 from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets.base import PointCloudDataset
-from matsciml.datasets.utils import (atomic_number_map, concatenate_keys,
-                                     element_types, pad_point_cloud,
-                                     point_cloud_featurization)
+from matsciml.datasets.utils import (
+    atomic_number_map,
+    concatenate_keys,
+    element_types,
+    pad_point_cloud,
+    point_cloud_featurization,
+)
 
 
 @registry.register_dataset("OQMDDataset")
 class OQMDDataset(PointCloudDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
 
-    def index_to_key(self, index: int) -> Tuple[int]:
+    def index_to_key(self, index: int) -> tuple[int]:
         return (0, index)
 
     @staticmethod
-    def collate_fn(batch: List[DataDict]) -> BatchDict:
+    def collate_fn(batch: list[DataDict]) -> BatchDict:
         return concatenate_keys(
             batch,
             pad_keys=["pc_features"],
@@ -34,7 +41,7 @@ class OQMDDataset(PointCloudDataset):
         return super().data_from_key(0, idx)
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> dict[str, list[str]]:
         """Specifies tasks and their target keys. If more labels are desired this is
         they should be added by hand.
 
@@ -52,8 +59,10 @@ class OQMDDataset(PointCloudDataset):
         return keys
 
     def data_from_key(
-        self, lmdb_index: int, subindex: int
-    ) -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
+        self,
+        lmdb_index: int,
+        subindex: int,
+    ) -> dict[str, dict[str, torch.Tensor] | torch.Tensor]:
         """Available keys and their descriptions may be found here: https://static.oqmd.org/static/docs/restful.html#
 
         Parameters
@@ -73,14 +82,16 @@ class OQMDDataset(PointCloudDataset):
         # coordinates remains the original particle positions
         coords = torch.tensor(data["cart_coords"])
         return_dict["pos"] = coords
-        unit_cell = data['unit_cell']
+        unit_cell = data["unit_cell"]
         system_size = coords.size(0)
         node_choices = self.choose_dst_nodes(system_size, self.full_pairwise)
         src_nodes, dst_nodes = node_choices["src_nodes"], node_choices["dst_nodes"]
         atom_numbers = torch.LongTensor(data["atomic_numbers"])
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(
-            atom_numbers[src_nodes], atom_numbers[dst_nodes], 100
+            atom_numbers[src_nodes],
+            atom_numbers[dst_nodes],
+            100,
         )
         return_dict["atomic_numbers"] = atom_numbers
         return_dict["pc_features"] = pc_features
@@ -124,13 +135,13 @@ class OQMDDataset(PointCloudDataset):
         return return_dict
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> dict[str, list[str]]:
         return {"regression": ["energy", "band_gap", "stability"]}
 
     @staticmethod
     def _standardize_values(
-        value: Union[float, Iterable[float]]
-    ) -> Union[torch.Tensor, float]:
+        value: float | Iterable[float],
+    ) -> torch.Tensor | float:
         """
         Standardizes targets to be ingested by a model.
 
@@ -169,11 +180,11 @@ class OQMDDataset(PointCloudDataset):
 class OQMDM3GNetDataset(OQMDDataset):
     def __init__(
         self,
-        lmdb_root_path: Union[str, Path],
+        lmdb_root_path: str | Path,
         threebody_cutoff: float = 4.0,
         cutoff_dist: float = 20.0,
-        graph_labels: Union[list[Union[int, float]], None] = None,
-        transforms: Optional[List[Callable[..., Any]]] = None,
+        graph_labels: list[int | float] | None = None,
+        transforms: list[Callable[..., Any]] | None = None,
     ):
         super().__init__(lmdb_root_path, transforms)
         self.threebody_cutoff = threebody_cutoff
@@ -183,17 +194,18 @@ class OQMDM3GNetDataset(OQMDDataset):
     def data_from_key(self, lmdb_index: int, subindex: int) -> Any:
         return_dict = super().data_from_key(lmdb_index, subindex)
         num_to_element = dict(
-            zip(atomic_number_map().values(), atomic_number_map().keys())
+            zip(atomic_number_map().values(), atomic_number_map().keys()),
         )
         elements = [
             num_to_element[int(idx.item())] for idx in return_dict["atomic_numbers"]
         ]
-        a, b, c, alpha, beta, gamma = self.basis_to_latparams(return_dict['unit_cell'])
+        a, b, c, alpha, beta, gamma = self.basis_to_latparams(return_dict["unit_cell"])
         lattice = Lattice.from_parameters(a, b, c, alpha, beta, gamma)
         structure = Structure(lattice, elements, return_dict["pos"])
         self.structures = [structure]
         self.converter = Structure2Graph(
-            element_types=element_types(), cutoff=self.cutoff_dist
+            element_types=element_types(),
+            cutoff=self.cutoff_dist,
         )
         graphs, lg, sa = M3GNetDataset.process(self)
         return_dict["graph"] = graphs[0]

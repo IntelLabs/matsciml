@@ -4,10 +4,11 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import torch
 
-from ..initializers import he_orthogonal_init
+from matsciml.models.pyg.gemnet.initializers import he_orthogonal_init
 
 
 class EfficientInteractionDownProjection(torch.nn.Module):
@@ -39,7 +40,7 @@ class EfficientInteractionDownProjection(torch.nn.Module):
     def reset_parameters(self):
         self.weight = torch.nn.Parameter(
             torch.empty(
-                (self.num_spherical, self.num_radial, self.emb_size_interm)
+                (self.num_spherical, self.num_radial, self.emb_size_interm),
             ),
             requires_grad=True,
         )
@@ -118,7 +119,7 @@ class EfficientInteractionBilinear(torch.nn.Module):
             torch.empty(
                 (self.emb_size, self.emb_size_interm, self.units_out),
                 requires_grad=True,
-            )
+            ),
         )
         he_orthogonal_init(self.weight)
 

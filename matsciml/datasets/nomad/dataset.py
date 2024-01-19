@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
 from math import pi
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -24,11 +27,11 @@ from matsciml.datasets.utils import (
 class NomadDataset(PointCloudDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
 
-    def index_to_key(self, index: int) -> Tuple[int]:
+    def index_to_key(self, index: int) -> tuple[int]:
         return (0, index)
 
     @staticmethod
-    def collate_fn(batch: List[DataDict]) -> BatchDict:
+    def collate_fn(batch: list[DataDict]) -> BatchDict:
         return concatenate_keys(
             batch,
             pad_keys=["pc_features"],
@@ -39,7 +42,7 @@ class NomadDataset(PointCloudDataset):
         return super().data_from_key(0, idx)
 
     @property
-    def target_keys(self) -> Dict[str, List[str]]:
+    def target_keys(self) -> dict[str, list[str]]:
         """Specifies tasks and their target keys. If more labels are desired this is
         they should be added by hand.
 
@@ -59,8 +62,8 @@ class NomadDataset(PointCloudDataset):
 
     @staticmethod
     def _standardize_values(
-        value: Union[float, Iterable[float]]
-    ) -> Union[torch.Tensor, float]:
+        value: float | Iterable[float],
+    ) -> torch.Tensor | float:
         """
         Standardizes targets to be ingested by a model.
 
@@ -94,7 +97,7 @@ class NomadDataset(PointCloudDataset):
             # for scalars, just return the value
             return value
 
-    def _parse_data(self, data: Dict[str, Any], return_dict: Dict[str, Any]) -> Dict:
+    def _parse_data(self, data: dict[str, Any], return_dict: dict[str, Any]) -> dict:
         """Parse out relevant data and store it in a MatSciML friendly format.
 
         Args:
@@ -108,7 +111,7 @@ class NomadDataset(PointCloudDataset):
             torch.Tensor(
                 data["properties"]["structures"]["structure_original"][
                     "cartesian_site_positions"
-                ]
+                ],
             )
             * 1e10
         )
@@ -123,13 +126,15 @@ class NomadDataset(PointCloudDataset):
                 for symbol in data["properties"]["structures"]["structure_original"][
                     "species_at_sites"
                 ]
-            ]
+            ],
         )
         return_dict["atomic_numbers"] = atomic_numbers
         return_dict["cart_coords"] = cart_coords
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(
-            atomic_numbers[src_nodes], atomic_numbers[dst_nodes], 100
+            atomic_numbers[src_nodes],
+            atomic_numbers[dst_nodes],
+            100,
         )
         # keep atomic numbers for graph featurization
         return_dict["pc_features"] = pc_features
@@ -170,7 +175,7 @@ class NomadDataset(PointCloudDataset):
         ]
         return_dict["symmetry"]["group"] = data["material"]["symmetry"]["point_group"]
         standard_keys = set(return_dict.keys()).difference(
-            ["symmetry", "spin_polarized"]
+            ["symmetry", "spin_polarized"],
         )
         standard_dict = {
             key: self._standardize_values(return_dict[key]) for key in standard_keys
@@ -214,11 +219,11 @@ class NomadDataset(PointCloudDataset):
 class M3GNomadDataset(NomadDataset):
     def __init__(
         self,
-        lmdb_root_path: Union[str, Path],
+        lmdb_root_path: str | Path,
         threebody_cutoff: float = 4.0,
         cutoff_dist: float = 20.0,
-        graph_labels: Union[list[Union[int, float]], None] = None,
-        transforms: Optional[List[Callable[..., Any]]] = None,
+        graph_labels: list[int | float] | None = None,
+        transforms: list[Callable[..., Any]] | None = None,
     ):
         super().__init__(lmdb_root_path, transforms)
         self.threebody_cutoff = threebody_cutoff
@@ -229,18 +234,24 @@ class M3GNomadDataset(NomadDataset):
         return_dict = super().data_from_key(lmdb_index, subindex)
         a, b, c, alpha, beta, gamma = return_dict["lattice_params"]
         num_to_element = dict(
-            zip(atomic_number_map().values(), atomic_number_map().keys())
+            zip(atomic_number_map().values(), atomic_number_map().keys()),
         )
         elements = [
             num_to_element[int(idx.item())] for idx in return_dict["atomic_numbers"]
         ]
         lattice = Lattice.from_parameters(
-            a, b, c, alpha * 180 / pi, beta * 180 / pi, gamma * 180 / pi
+            a,
+            b,
+            c,
+            alpha * 180 / pi,
+            beta * 180 / pi,
+            gamma * 180 / pi,
         )
         structure = Structure(lattice, elements, return_dict["pos"])
         self.structures = [structure]
         self.converter = Structure2Graph(
-            element_types=element_types(), cutoff=self.cutoff_dist
+            element_types=element_types(),
+            cutoff=self.cutoff_dist,
         )
         graphs, lg, sa = M3GNetDataset.process(self)
         return_dict["graph"] = graphs[0]

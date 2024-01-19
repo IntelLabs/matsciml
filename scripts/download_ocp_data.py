@@ -4,7 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
-
+from __future__ import annotations
 
 import argparse
 import glob
@@ -118,7 +118,7 @@ def verify_count(output_path, task, split):
     paths = glob.glob(os.path.join(output_path, "*.txt"))
     count = 0
     for path in paths:
-        lines = open(path, "r").read().splitlines()
+        lines = open(path).read().splitlines()
         count += len(lines)
     assert (
         count == S2EF_COUNTS[task][split]
@@ -140,7 +140,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, help="Task to download")
     parser.add_argument(
-        "--split", type=str, help="Corresponding data split to download"
+        "--split",
+        type=str,
+        help="Corresponding data split to download",
     )
     parser.add_argument(
         "--keep",
@@ -160,7 +162,9 @@ if __name__ == "__main__":
         help="No. of feature-extracting processes or no. of dataset chunks",
     )
     parser.add_argument(
-        "--ref-energy", action="store_true", help="Subtract reference energies"
+        "--ref-energy",
+        action="store_true",
+        help="Subtract reference energies",
     )
     parser.add_argument(
         "--data-path",

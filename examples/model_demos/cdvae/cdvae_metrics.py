@@ -1,47 +1,49 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
-import sys, os
-import pytorch_lightning as pl
-import numpy as np
-import json
+from __future__ import annotations
+
 import argparse
+import json
 import os
-from pathlib import Path
-from tqdm import tqdm
-from p_tqdm import p_map
-from scipy.stats import wasserstein_distance
+import sys
 from collections import Counter
 from functools import partial
+from pathlib import Path
 
-from pymatgen.core.structure import Structure
+import numpy as np
+import pytorch_lightning as pl
+from matminer.featurizers.composition.composite import ElementProperty
+from matminer.featurizers.site.fingerprint import CrystalNNFingerprint
+from p_tqdm import p_map
+from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen.core.composition import Composition
 from pymatgen.core.lattice import Lattice
-from pymatgen.analysis.structure_matcher import StructureMatcher
-from matminer.featurizers.site.fingerprint import CrystalNNFingerprint
-from matminer.featurizers.composition.composite import ElementProperty
+from pymatgen.core.structure import Structure
+from scipy.stats import wasserstein_distance
 from torch_geometric.data import Batch
+from tqdm import tqdm
 
 try:
-    from matsciml.lightning.data_utils import MatSciMLDataModule
-    from matsciml.datasets.materials_project import CdvaeLMDBDataset
     from examples.model_demos.cdvae.cdvae import get_scalers
+    from matsciml.datasets.materials_project import CdvaeLMDBDataset
+    from matsciml.lightning.data_utils import MatSciMLDataModule
 
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    sys.path.append("{}/../".format(dir_path))
-    from matsciml.lightning.data_utils import MatSciMLDataModule
-    from matsciml.datasets.materials_project import CdvaeLMDBDataset
+    sys.path.append(f"{dir_path}/../")
     from examples.model_demos.cdvae.cdvae import get_scalers
+    from matsciml.datasets.materials_project import CdvaeLMDBDataset
+    from matsciml.lightning.data_utils import MatSciMLDataModule
     from matsciml.models.diffusion_utils.eval_utils import (
-        smact_validity,
-        structure_validity,
         CompScaler,
+        compute_cov,
+        get_crystals_list,
         get_fp_pdist,
         load_config,
         load_data,
-        get_crystals_list,
         prop_model_eval,
-        compute_cov,
+        smact_validity,
+        structure_validity,
     )
 
 
@@ -62,7 +64,7 @@ COV_Cutoffs = {
 }
 
 
-class Crystal(object):
+class Crystal:
     def __init__(self, crys_array_dict):
         self.frac_coords = crys_array_dict["frac_coords"]
         self.atom_types = crys_array_dict["atom_types"]
@@ -83,7 +85,7 @@ class Crystal(object):
             try:
                 self.structure = Structure(
                     lattice=Lattice.from_parameters(
-                        *(self.lengths.tolist() + self.angles.tolist())
+                        *(self.lengths.tolist() + self.angles.tolist()),
                     ),
                     species=self.atom_types,
                     coords=self.frac_coords,
@@ -134,7 +136,7 @@ class Crystal(object):
         self.struct_fp = np.array(site_fps).mean(axis=0)
 
 
-class RecEval(object):
+class RecEval:
     def __init__(self, pred_crys, gt_crys, stol=0.5, angle_tol=10, ltol=0.3):
         assert len(pred_crys) == len(gt_crys)
         self.matcher = StructureMatcher(stol=stol, angle_tol=angle_tol, ltol=ltol)
@@ -166,7 +168,7 @@ class RecEval(object):
         return self.get_match_rate_and_rms()
 
 
-class GenEval(object):
+class GenEval:
     def __init__(self, pred_crys, gt_crys, n_samples=1000, eval_model_name=None):
         self.crys = pred_crys
         self.gt_crys = gt_crys
@@ -176,12 +178,14 @@ class GenEval(object):
         valid_crys = [c for c in pred_crys if c.valid]
         if len(valid_crys) >= n_samples:
             sampled_indices = np.random.choice(
-                len(valid_crys), n_samples, replace=False
+                len(valid_crys),
+                n_samples,
+                replace=False,
             )
             self.valid_samples = [valid_crys[i] for i in sampled_indices]
         else:
             print(
-                f"{len(valid_crys)} is smaller than n_samples {n_samples}, using {len(valid_crys)}"
+                f"{len(valid_crys)} is smaller than n_samples {n_samples}, using {len(valid_crys)}",
             )
             self.valid_samples = [crys for crys in valid_crys]
             # raise Exception(f'not enough valid crystals in the predicted set: {len(valid_crys)}/{n_samples}')
@@ -216,10 +220,12 @@ class GenEval(object):
     def get_prop_wdist(self):
         if self.eval_model_name is not None:
             pred_props = prop_model_eval(
-                self.eval_model_name, [c.dict for c in self.valid_samples]
+                self.eval_model_name,
+                [c.dict for c in self.valid_samples],
             )
             gt_props = prop_model_eval(
-                self.eval_model_name, [c.dict for c in self.gt_crys]
+                self.eval_model_name,
+                [c.dict for c in self.gt_crys],
             )
             wdist_prop = wasserstein_distance(pred_props, gt_props)
             return {"wdist_prop": wdist_prop}
@@ -253,7 +259,7 @@ class GenEval(object):
         return metrics
 
 
-class OptEval(object):
+class OptEval:
     def __init__(self, crys, num_opt=100, eval_model_name=None):
         """
         crys is a list of length (<step_opt> * <num_opt>),
@@ -277,7 +283,8 @@ class OptEval(object):
             sr_5, sr_10, sr_15 = 0, 0, 0
         else:
             pred_props = prop_model_eval(
-                self.eval_model_name, [c.dict for c in valid_crys]
+                self.eval_model_name,
+                [c.dict for c in valid_crys],
             )
             percentiles = Percentiles[self.eval_model_name]
             props[valid_x, valid_y] = pred_props
@@ -382,7 +389,7 @@ def main(args):
     if "recon" in args.tasks:
         recon_file_path = get_file_paths(args.root_path, "recon", args.label)
         crys_array_list, true_crystal_array_list = get_crystal_array_list(
-            recon_file_path
+            recon_file_path,
         )
         pred_crys = p_map(lambda x: Crystal(x), crys_array_list)
         gt_crys = p_map(lambda x: Crystal(x), true_crystal_array_list)
@@ -406,7 +413,10 @@ def main(args):
             gt_crys = p_map(lambda x: Crystal(x), true_crystal_array_list)
 
         gen_evaluator = GenEval(
-            gen_crys, gt_crys, eval_model_name=eval_model_name, n_samples=args.n_samples
+            gen_crys,
+            gt_crys,
+            eval_model_name=eval_model_name,
+            n_samples=args.n_samples,
         )
         gen_metrics = gen_evaluator.get_metrics()
         all_metrics.update(gen_metrics)
@@ -430,7 +440,7 @@ def main(args):
 
     # only overwrite metrics computed in the new run.
     if Path(metrics_out_file).exists():
-        with open(metrics_out_file, "r") as f:
+        with open(metrics_out_file) as f:
             written_metrics = json.load(f)
             if isinstance(written_metrics, dict):
                 written_metrics.update(all_metrics)

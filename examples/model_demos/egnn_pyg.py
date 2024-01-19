@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import pytorch_lightning as pl
+
 from matsciml.datasets.transforms import GraphToGraphTransform
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models.base import ScalarRegressionTask
@@ -17,7 +20,8 @@ task = ScalarRegressionTask(
 )
 # matsciml devset for OCP are serialized with DGL - this transform goes between the two frameworks
 dm = MatSciMLDataModule.from_devset(
-    "IS2REDataset", dset_kwargs={"transforms": [GraphToGraphTransform("pyg")]}
+    "IS2REDataset",
+    dset_kwargs={"transforms": [GraphToGraphTransform("pyg")]},
 )
 
 # run a quick training loop

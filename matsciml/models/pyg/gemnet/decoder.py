@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -25,7 +27,7 @@ class GemNetTDecoder(nn.Module):
         radius=6.0,
         scale_file=None,
     ):
-        super(GemNetTDecoder, self).__init__()
+        super().__init__()
         self.cutoff = radius
         self.max_num_neighbors = max_neighbors
 

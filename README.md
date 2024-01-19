@@ -97,9 +97,9 @@ For more advanced use cases:
 Checkout materials generation with CDVAE
 </summary>
 
-CDVAE [7] is a latent diffusion model that trains a VAE on the reconstruction 
+CDVAE [7] is a latent diffusion model that trains a VAE on the reconstruction
 objective, adds Gaussian noise to the latent variable, and learns to predict
-the noise. The noised and generated features inlcude lattice parameters, 
+the noise. The noised and generated features inlcude lattice parameters,
 atoms composition, and atom coordinates.
 The generation process is based on the annealed Langevin dynamics.
 
@@ -140,7 +140,7 @@ Multiple tasks trained using the same dataset
 python examples/tasks/multitask/single_data_multitask_example.py
 ```
 
-Utilizes Materials Project data to train property regression and material classification jointly 
+Utilizes Materials Project data to train property regression and material classification jointly
 </details>
 
 <details>

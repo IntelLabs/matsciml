@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import torch
 from torch import nn
@@ -11,11 +12,7 @@ from torch_geometric.nn import DimeNet, radius_graph
 from torch_scatter import scatter
 from torch_sparse import SparseTensor
 
-from matsciml.common.utils import (
-    conditional_grad,
-    get_pbc_distances,
-    radius_graph_pbc,
-)
+from matsciml.common.utils import conditional_grad, get_pbc_distances, radius_graph_pbc
 
 
 class DimeNetWrap(DimeNet):
@@ -89,7 +86,7 @@ class DimeNetWrap(DimeNet):
         self.otf_graph = otf_graph
         self.max_angles_per_image = max_angles_per_image
 
-        super(DimeNetWrap, self).__init__(
+        super().__init__(
             hidden_channels=hidden_channels,
             out_channels=num_targets,
             num_blocks=num_blocks,
@@ -108,7 +105,10 @@ class DimeNetWrap(DimeNet):
 
         value = torch.arange(row.size(0), device=row.device)
         adj_t = SparseTensor(
-            row=col, col=row, value=value, sparse_sizes=(num_nodes, num_nodes)
+            row=col,
+            col=row,
+            value=value,
+            sparse_sizes=(num_nodes, num_nodes),
         )
         adj_t_row = adj_t[row]
         num_triplets = adj_t_row.set_value(None).sum(dim=1).to(torch.long)
@@ -139,7 +139,9 @@ class DimeNetWrap(DimeNet):
 
         if self.otf_graph:
             edge_index, cell_offsets, neighbors = radius_graph_pbc(
-                data, self.cutoff, 50
+                data,
+                self.cutoff,
+                50,
             )
             data.edge_index = edge_index
             data.cell_offsets = cell_offsets
@@ -210,7 +212,8 @@ class DimeNetWrap(DimeNet):
 
         # Interaction blocks.
         for interaction_block, output_block in zip(
-            self.interaction_blocks, self.output_blocks[1:]
+            self.interaction_blocks,
+            self.output_blocks[1:],
         ):
             x = interaction_block(x, rbf, sbf, idx_kj, idx_ji)
             P += output_block(x, rbf, i, num_nodes=pos.size(0))

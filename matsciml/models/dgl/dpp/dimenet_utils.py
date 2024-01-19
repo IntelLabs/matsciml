@@ -1,14 +1,15 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
 from typing import Optional
-import torch
-from torch import nn
 
 import dgl
 import dgl.function as fn
 import numpy as np
 import sympy as sym
+import torch
+from torch import nn
 
 from matsciml.models.dgl.dpp import basis_func as bf
 
@@ -41,7 +42,7 @@ class Envelope(nn.Module):
     """
 
     def __init__(self, exponent: float):
-        super(Envelope, self).__init__()
+        super().__init__()
 
         self.p = exponent + 1
         self.a = -(self.p + 1) * (self.p + 2) / 2
@@ -64,9 +65,12 @@ class BesselBasisLayer(nn.Module):
     """
 
     def __init__(
-        self, num_radial: int, cutoff: float, envelope_exponent: Optional[float] = 5
+        self,
+        num_radial: int,
+        cutoff: float,
+        envelope_exponent: float | None = 5,
     ):
-        super(BesselBasisLayer, self).__init__()
+        super().__init__()
 
         self.cutoff = cutoff
         self.envelope = Envelope(envelope_exponent)
@@ -89,9 +93,9 @@ class SphericalBasisLayer(nn.Module):
         num_spherical: int,
         num_radial: int,
         cutoff: int,
-        envelope_exponent: Optional[float] = 5,
+        envelope_exponent: float | None = 5,
     ):
-        super(SphericalBasisLayer, self).__init__()
+        super().__init__()
 
         assert num_radial <= 64
         self.num_radial = num_radial
@@ -101,10 +105,11 @@ class SphericalBasisLayer(nn.Module):
 
         # retrieve formulas
         self.bessel_formulas = bf.bessel_basis(
-            num_spherical, num_radial
+            num_spherical,
+            num_radial,
         )  # x, [num_spherical, num_radial] sympy functions
         self.sph_harm_formulas = bf.real_sph_harm(
-            num_spherical
+            num_spherical,
         )  # theta, [num_spherical, ] sympy functions
         self.sph_funcs = []
         self.bessel_funcs = []
@@ -116,18 +121,20 @@ class SphericalBasisLayer(nn.Module):
         for i in range(num_spherical):
             if i == 0:
                 first_sph = sym.lambdify(
-                    [theta], self.sph_harm_formulas[i][0], modules
+                    [theta],
+                    self.sph_harm_formulas[i][0],
+                    modules,
                 )(0)
                 self.sph_funcs.append(
-                    lambda tensor: torch.zeros_like(tensor) + first_sph
+                    lambda tensor: torch.zeros_like(tensor) + first_sph,
                 )
             else:
                 self.sph_funcs.append(
-                    sym.lambdify([theta], self.sph_harm_formulas[i][0], modules)
+                    sym.lambdify([theta], self.sph_harm_formulas[i][0], modules),
                 )
             for j in range(num_radial):
                 self.bessel_funcs.append(
-                    sym.lambdify([x], self.bessel_formulas[i][j], modules)
+                    sym.lambdify([x], self.bessel_formulas[i][j], modules),
                 )
 
     def get_bessel_funcs(self):
@@ -138,8 +145,8 @@ class SphericalBasisLayer(nn.Module):
 
 
 class ResidualLayer(nn.Module):
-    def __init__(self, units: int, activation: Optional[nn.Module] = None):
-        super(ResidualLayer, self).__init__()
+    def __init__(self, units: int, activation: nn.Module | None = None):
+        super().__init__()
 
         if activation is not None and not isinstance(activation, nn.Module):
             activation = activation()
@@ -171,10 +178,10 @@ class EmbeddingBlock(nn.Module):
         bessel_funcs: int,
         cutoff: int,
         envelope_exponent: int,
-        num_atom_types: Optional[int] = 95,
-        activation: Optional[nn.Module] = None,
+        num_atom_types: int | None = 95,
+        activation: nn.Module | None = None,
     ):
-        super(EmbeddingBlock, self).__init__()
+        super().__init__()
 
         self.bessel_funcs = bessel_funcs
         self.cutoff = cutoff
@@ -230,9 +237,9 @@ class InteractionPPBlock(nn.Module):
         num_spherical: int,
         num_before_skip: int,
         num_after_skip: int,
-        activation: Optional[nn.Module] = None,
+        activation: nn.Module | None = None,
     ):
-        super(InteractionPPBlock, self).__init__()
+        super().__init__()
 
         self.activation = activation
         if activation is not None and not isinstance(activation, nn.Module):
@@ -241,7 +248,9 @@ class InteractionPPBlock(nn.Module):
         self.dense_rbf1 = nn.Linear(num_radial, basis_emb_size, bias=False)
         self.dense_rbf2 = nn.Linear(basis_emb_size, emb_size, bias=False)
         self.dense_sbf1 = nn.Linear(
-            num_radial * num_spherical, basis_emb_size, bias=False
+            num_radial * num_spherical,
+            basis_emb_size,
+            bias=False,
         )
         self.dense_sbf2 = nn.Linear(basis_emb_size, int_emb_size, bias=False)
         # Dense transformations of input messages
@@ -255,7 +264,7 @@ class InteractionPPBlock(nn.Module):
             [
                 ResidualLayer(emb_size, activation=activation)
                 for _ in range(num_before_skip)
-            ]
+            ],
         )
         self.final_before_skip = nn.Linear(emb_size, emb_size)
         # Residual layers after skip connection
@@ -263,7 +272,7 @@ class InteractionPPBlock(nn.Module):
             [
                 ResidualLayer(emb_size, activation=activation)
                 for _ in range(num_after_skip)
-            ]
+            ],
         )
 
         self.reset_params()
@@ -332,14 +341,14 @@ class OutputPPBlock(nn.Module):
         out_emb_size: int,
         num_radial: int,
         num_dense: int,
-        num_targets: Optional[int] = None,
-        activation: Optional[nn.Module] = None,
-        extensive: Optional[bool] = True,
+        num_targets: int | None = None,
+        activation: nn.Module | None = None,
+        extensive: bool | None = True,
         encoder_only: bool = True,
     ):
         if num_targets and encoder_only:
             raise ValueError(f"")
-        super(OutputPPBlock, self).__init__()
+        super().__init__()
 
         if activation is not None and not isinstance(activation, nn.Module):
             activation = activation()
@@ -348,7 +357,7 @@ class OutputPPBlock(nn.Module):
         self.dense_rbf = nn.Linear(num_radial, emb_size, bias=False)
         self.up_projection = nn.Linear(emb_size, out_emb_size, bias=False)
         self.dense_layers = nn.ModuleList(
-            [nn.Linear(out_emb_size, out_emb_size) for _ in range(num_dense)]
+            [nn.Linear(out_emb_size, out_emb_size) for _ in range(num_dense)],
         )
         if not encoder_only:
             self.dense_final = nn.Linear(out_emb_size, num_targets, bias=False)

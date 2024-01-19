@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import pytorch_lightning as pl
 
-from matsciml.datasets.transforms import FrameAveraging
-from matsciml.datasets.transforms import GraphToGraphTransform
-from matsciml.datasets.transforms import PointCloudToGraphTransform
-from matsciml.datasets.transforms import UnitCellCalculator
+from matsciml.datasets.transforms import (
+    FrameAveraging,
+    GraphToGraphTransform,
+    PointCloudToGraphTransform,
+    UnitCellCalculator,
+)
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models.base import ScalarRegressionTask
 from matsciml.models.pyg import FAENet
@@ -22,10 +24,10 @@ task = ScalarRegressionTask(
         "average_frame_embeddings": True,
         "pred_as_dict": False,
         "hidden_dim": 128,
-        "output_dim": 64,
+        "out_dim": 64,
         "tag_hidden_channels": 0,
     },
-    # output_kwargs={"lazy": False, "input_dim": 64},
+    output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
     task_keys=["energy_relaxed"],
 )
 
@@ -58,8 +60,9 @@ task = ScalarRegressionTask(
         "hidden_dim": 128,
         "output_dim": 64,
         "tag_hidden_channels": 0,
+        "input_dim": 128,
     },
-    # output_kwargs={"lazy": False, "input_dim": 64},
+    output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
     task_keys=["band_gap"],
 )
 
@@ -69,7 +72,9 @@ dm = MatSciMLDataModule.from_devset(
         "transforms": [
             UnitCellCalculator(),
             PointCloudToGraphTransform(
-                "pyg", cutoff_dist=20.0, node_keys=["pos", "atomic_numbers"],
+                "pyg",
+                cutoff_dist=20.0,
+                node_keys=["pos", "atomic_numbers"],
             ),
             FrameAveraging(frame_averaging="3D", fa_method="stochastic"),
         ],

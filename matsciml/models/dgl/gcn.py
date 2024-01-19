@@ -1,6 +1,5 @@
 # Copyright (C) 2022-3 Intel Corporation
 # SPDX-License-Identifier: MIT License
-
 """
 This module shows the pattern for defining new GNNs to be plugged into
 either S2EF/IS2RE tasks.
@@ -8,7 +7,7 @@ either S2EF/IS2RE tasks.
 The general abstraction is LitModules (e.g. `S2EFLitModule`) encapsulate
 the training workflow, which takes an abstract GNN model and uses it to
 evaluate whatever task. The GNN model is expected to be a subclass of
-`AbstractTask` - specifically inheriting from either `AbstractS2EFModel` 
+`AbstractTask` - specifically inheriting from either `AbstractS2EFModel`
 or `AbstractIS2REModel` (I guess sub-subclass).
 
 The TL;DR would be:
@@ -25,12 +24,14 @@ S2EFLitModule(
 )
 
 """
-from typing import Any, Optional, Type, Union, Dict
+from __future__ import annotations
 
 from argparse import ArgumentParser
+from typing import Any, Dict, Optional, Type, Union
+
+import dgl
 import numpy as np
 import torch
-import dgl
 from dgl.nn import pytorch as dgl_nn
 from torch import nn
 
@@ -44,8 +45,8 @@ class GraphConvBlock(nn.Module):
         in_dim: int,
         out_dim: int,
         num_fc_layers: int = 3,
-        fc_out_dim: Optional[int] = None,
-        activation: Optional[Type[nn.Module]] = None,
+        fc_out_dim: int | None = None,
+        activation: type[nn.Module] | None = None,
     ) -> None:
         """
         Construct a single graph convolution interaction block, which comprises
@@ -73,7 +74,10 @@ class GraphConvBlock(nn.Module):
         if fc_out_dim is None:
             fc_out_dim = out_dim
         self.fc_layers = self._make_layers(
-            out_dim, fc_out_dim, num_fc_layers, activation
+            out_dim,
+            fc_out_dim,
+            num_fc_layers,
+            activation,
         )
 
     def forward(self, graph: dgl.DGLGraph, features: torch.Tensor) -> torch.Tensor:
@@ -103,8 +107,8 @@ class GraphConvBlock(nn.Module):
         in_dim: int,
         out_dim: int,
         num_layers: int,
-        activation: Optional[nn.Module] = None,
-    ) -> Type[nn.Module]:
+        activation: nn.Module | None = None,
+    ) -> type[nn.Module]:
         layers = []
         sizes = np.linspace(in_dim, out_dim, num_layers).astype(int)
         for i in range(num_layers - 1):
@@ -119,12 +123,12 @@ class GraphConvModel(AbstractDGLModel):
         self,
         atom_embedding_dim: int,
         out_dim: int,
-        num_blocks: Optional[int] = 3,
-        num_fc_layers: Optional[int] = 3,
-        activation: Optional[Type[nn.Module]] = nn.SiLU,
-        readout: Optional[Type[nn.Module]] = dgl_nn.SumPooling,
+        num_blocks: int | None = 3,
+        num_fc_layers: int | None = 3,
+        activation: type[nn.Module] | None = nn.SiLU,
+        readout: type[nn.Module] | None = dgl_nn.SumPooling,
         num_atom_embedding: int = 100,
-        embedding_kwargs: Dict[str, Any] = {},
+        embedding_kwargs: dict[str, Any] = {},
         encoder_only: bool = True,
     ) -> None:
         r"""
@@ -154,7 +158,10 @@ class GraphConvModel(AbstractDGLModel):
             Class to use for graph readout/pooling, by default dgl_nn.SumPooling
         """
         super().__init__(
-            atom_embedding_dim, num_atom_embedding, embedding_kwargs, encoder_only
+            atom_embedding_dim,
+            num_atom_embedding,
+            embedding_kwargs,
+            encoder_only,
         )
         self.blocks = self._make_blocks(
             atom_embedding_dim + 3,
@@ -175,8 +182,8 @@ class GraphConvModel(AbstractDGLModel):
         graph: dgl.DGLGraph,
         node_feats: torch.Tensor,
         pos: torch.Tensor,
-        edge_feats: Optional[torch.Tensor] = None,
-        graph_feats: Optional[torch.Tensor] = None,
+        edge_feats: torch.Tensor | None = None,
+        graph_feats: torch.Tensor | None = None,
         **kwargs,
     ) -> Embeddings:
         r"""
@@ -223,9 +230,9 @@ class GraphConvModel(AbstractDGLModel):
     def _make_blocks(
         in_dim: int,
         out_dim: int,
-        num_blocks: Optional[int] = 3,
-        num_fc_layers: Optional[int] = 3,
-        activation: Optional[nn.Module] = None,
+        num_blocks: int | None = 3,
+        num_fc_layers: int | None = 3,
+        activation: nn.Module | None = None,
     ) -> nn.ModuleList:
         """
         Convenience static method for composing interaction blocks.
@@ -257,6 +264,6 @@ class GraphConvModel(AbstractDGLModel):
                     sizes[depth + 1],
                     num_fc_layers,
                     activation=activation,
-                )
+                ),
             )
         return nn.ModuleList(blocks)

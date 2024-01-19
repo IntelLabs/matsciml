@@ -1,9 +1,11 @@
-from typing import List
-from abc import abstractmethod
-from matsciml.common import DataDict
+from __future__ import annotations
 
-from matsciml.datasets.transforms.base import AbstractDataTransform
+from abc import abstractmethod
+from typing import List
+
+from matsciml.common import DataDict
 from matsciml.common.types import DataDict
+from matsciml.datasets.transforms.base import AbstractDataTransform
 
 
 class RepresentationTransform(AbstractDataTransform):
@@ -48,7 +50,7 @@ class RepresentationTransform(AbstractDataTransform):
         pass
 
     @staticmethod
-    def _check_for_type(data: DataDict, _types: List[type]) -> bool:
+    def _check_for_type(data: DataDict, _types: list[type]) -> bool:
         """
         Checks whether there are entries within a DataDict structure that
         contain any of the types provided.

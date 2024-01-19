@@ -1,45 +1,46 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
-import sys, os
-import pytorch_lightning as pl
-from functools import partial
-from pathlib import Path
-import torch
+from __future__ import annotations
+
 import argparse
+import os
+import sys
+from pathlib import Path
+
+import pytorch_lightning as pl
+import torch
 from tqdm import tqdm
 
 try:
-    from matsciml.models.diffusion_pipeline import GenerationTask
-    from matsciml.models.pyg.gemnet.decoder import GemNetTDecoder
-    from matsciml.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
     from examples.model_demos.cdvae.cdvae_configs import (
-        enc_config,
-        dec_config,
         cdvae_config,
+        dec_config,
+        enc_config,
         mp_config,
     )
-    from matsciml.lightning.data_utils import MatSciMLDataModule
     from matsciml.datasets.materials_project import CdvaeLMDBDataset
+    from matsciml.lightning.data_utils import MatSciMLDataModule
+    from matsciml.models.diffusion_pipeline import GenerationTask
     from matsciml.models.diffusion_utils.data_utils import StandardScalerTorch
+    from matsciml.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
+    from matsciml.models.pyg.gemnet.decoder import GemNetTDecoder
 
 except:
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    sys.path.append("{}/../".format(dir_path))
-    from matsciml.models.diffusion_pipeline import GenerationTask
-    from matsciml.models.pyg.gemnet.decoder import GemNetTDecoder
-    from matsciml.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
-    from matsciml.lightning.data_utils import MatSciMLDataModule
-    from matsciml.datasets.materials_project import CdvaeLMDBDataset
-    from matsciml.models.diffusion_utils.data_utils import StandardScalerTorch
-
-    from examples.cdvae_configs import enc_config, dec_config, cdvae_config, mp_config
-
+    sys.path.append(f"{dir_path}/../")
+    from examples.cdvae_configs import cdvae_config, dec_config, enc_config, mp_config
     from examples.model_demos.cdvae.cdvae_configs import (
-        enc_config,
-        dec_config,
         cdvae_config,
+        dec_config,
+        enc_config,
         mp_config,
     )
+    from matsciml.datasets.materials_project import CdvaeLMDBDataset
+    from matsciml.lightning.data_utils import MatSciMLDataModule
+    from matsciml.models.diffusion_pipeline import GenerationTask
+    from matsciml.models.diffusion_utils.data_utils import StandardScalerTorch
+    from matsciml.models.pyg.dimenetpp_wrap_cdvae import DimeNetPlusPlusWrap
+    from matsciml.models.pyg.gemnet.decoder import GemNetTDecoder
 
 
 # computing scalers to re-scale regression targets to a normalized range

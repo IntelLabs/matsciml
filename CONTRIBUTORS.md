@@ -8,6 +8,7 @@ Here we list, in alphabetical order, people who have contributed (not just code)
 - Santiago Miret (@smiret-intel)
 - Marcel Nassar (@marcel-n)
 - Krzysztof Sadowski (@ksadowski13)
+- Jonathan Schmidt (@JonathanSchmidt1)
 - Matthew Spellings (@klarh)
 - Bin Mu (@bmuaz)
 

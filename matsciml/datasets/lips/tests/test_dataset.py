@@ -1,8 +1,9 @@
-import pytest
-from matsciml.datasets import lips
+from __future__ import annotations
 
+import pytest
+
+from matsciml.datasets import lips, transforms
 from matsciml.datasets.lips import LiPSDataset, lips_devset
-from matsciml.datasets import transforms
 
 
 @pytest.mark.dependency()

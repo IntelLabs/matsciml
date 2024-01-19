@@ -1,10 +1,10 @@
-import pytest
+from __future__ import annotations
 
+import pytest
 import torch
 
+from matsciml.datasets import S2EFDataset, s2ef_devset, transforms
 from matsciml.lightning.data_utils import MatSciMLDataModule
-from matsciml.datasets import S2EFDataset, s2ef_devset
-from matsciml.datasets import transforms
 
 
 @pytest.mark.dependency()
@@ -35,7 +35,8 @@ def test_batched_gv_transform():
         transforms.GraphVariablesTransform(),
     ]
     dm = MatSciMLDataModule.from_devset(
-        "S2EFDataset", dset_kwargs={"transforms": trans}
+        "S2EFDataset",
+        dset_kwargs={"transforms": trans},
     )
     dm.setup()
     loader = dm.train_dataloader()
@@ -53,7 +54,8 @@ def test_remove_tag_zero():
         transforms.RemoveTagZeroNodes(),
     ]
     dm = MatSciMLDataModule.from_devset(
-        "S2EFDataset", dset_kwargs={"transforms": trans}
+        "S2EFDataset",
+        dset_kwargs={"transforms": trans},
     )
     dm.setup()
     loader = dm.train_dataloader()
@@ -69,7 +71,8 @@ def test_graph_supernode():
         transforms.RemoveTagZeroNodes(),
     ]
     dm = MatSciMLDataModule.from_devset(
-        "S2EFDataset", dset_kwargs={"transforms": trans}
+        "S2EFDataset",
+        dset_kwargs={"transforms": trans},
     )
     dm.setup()
     loader = dm.train_dataloader()
@@ -85,7 +88,8 @@ def test_atom_supernode():
         transforms.RemoveTagZeroNodes(),
     ]
     dm = MatSciMLDataModule.from_devset(
-        "S2EFDataset", dset_kwargs={"transforms": trans}
+        "S2EFDataset",
+        dset_kwargs={"transforms": trans},
     )
     dm.setup()
     loader = dm.train_dataloader()
@@ -104,7 +108,8 @@ def test_all_supernodes():
         transforms.RemoveTagZeroNodes(),
     ]
     dm = MatSciMLDataModule.from_devset(
-        "S2EFDataset", dset_kwargs={"transforms": trans}
+        "S2EFDataset",
+        dset_kwargs={"transforms": trans},
     )
     dm.setup()
     loader = dm.train_dataloader()
@@ -127,7 +132,8 @@ def test_graph_sorting():
         transforms.GraphReordering("metis", k=10),
     ]
     dm = MatSciMLDataModule.from_devset(
-        "S2EFDataset", dset_kwargs={"transforms": trans}
+        "S2EFDataset",
+        dset_kwargs={"transforms": trans},
     )
     dm.setup()
     loader = dm.train_dataloader()

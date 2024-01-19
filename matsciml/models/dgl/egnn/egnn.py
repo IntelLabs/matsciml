@@ -1,7 +1,8 @@
 # Copyright (C) 2022-2023 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-from typing import Callable, List, Optional, Dict, Union, Any
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import dgl
 import torch
@@ -20,9 +21,9 @@ class PLEGNNBackbone(AbstractDGLModel):
         embed_hidden_dim: int,
         embed_out_dim: int,
         embed_depth: int,
-        embed_feat_dims: List[int],
-        embed_message_dims: List[int],
-        embed_position_dims: List[int],
+        embed_feat_dims: list[int],
+        embed_message_dims: list[int],
+        embed_position_dims: list[int],
         embed_edge_attributes_dim: int,
         embed_activation: str,
         embed_residual: bool,
@@ -43,13 +44,16 @@ class PLEGNNBackbone(AbstractDGLModel):
         prediction_hidden_dim: int,
         prediction_out_dim: int,
         prediction_activation: str,
-        atom_embedding_dim: Optional[int] = None,
+        atom_embedding_dim: int | None = None,
         num_atom_embedding: int = 100,
-        embedding_kwargs: Dict[str, Any] = {},
+        embedding_kwargs: dict[str, Any] = {},
         encoder_only: bool = True,
     ) -> None:
         super().__init__(
-            embed_hidden_dim, num_atom_embedding, embedding_kwargs, encoder_only
+            embed_hidden_dim,
+            num_atom_embedding,
+            embedding_kwargs,
+            encoder_only,
         )
         self.embed = EGNN(
             embed_in_dim,
@@ -138,10 +142,10 @@ class PLEGNNBackbone(AbstractDGLModel):
         embed_hidden_dim: int,
         node_projection_depth: int,
         node_projection_hidden_dim: int,
-    ) -> List[int]:
+    ) -> list[int]:
         node_projection_dims = [embed_hidden_dim]
         node_projection_dims.extend(
-            [node_projection_hidden_dim for _ in range(node_projection_depth)]
+            [node_projection_hidden_dim for _ in range(node_projection_depth)],
         )
 
         return node_projection_dims
@@ -155,7 +159,7 @@ class PLEGNNBackbone(AbstractDGLModel):
     ):
         prediction_dims = [node_projection_last_dim]
         prediction_dims.extend(
-            [prediction_hidden_dim for _ in range(prediction_depth - 1)]
+            [prediction_hidden_dim for _ in range(prediction_depth - 1)],
         )
         prediction_dims.append(prediction_out_dim)
 
@@ -182,8 +186,8 @@ class PLEGNNBackbone(AbstractDGLModel):
         graph: dgl.DGLGraph,
         node_feats: torch.Tensor,
         pos: torch.Tensor,
-        edge_feats: Optional[torch.Tensor] = None,
-        graph_feats: Optional[torch.Tensor] = None,
+        edge_feats: torch.Tensor | None = None,
+        graph_feats: torch.Tensor | None = None,
         **kwargs,
     ) -> Embeddings:
         r"""
