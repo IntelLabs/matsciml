@@ -24,36 +24,20 @@ CrystalNN = local_env.CrystalNN(
     distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False
 )  # , search_cutoff=15.0)
 
+Atomic_num_map_global = atomic_number_map()
+
 def get_atomic_num(elements):
-    atomic_num_dict = []
-    for element in elements:
-        atomic_num = atomic_number_map()[element]
-        if atomic_num is not None:
-            atomic_num_dict.append(atomic_num)
-    return atomic_num_dict
+    return [Atomic_num_map_global[element] for element in elements]
 
 def get_atoms_from_atomic_numbers(atomic_numbers):
-    map_reversed = {atomic_num: element for element, atomic_num in atomic_number_map().items()}
-    # Create a list to store the elements
-    elements = []
-    # Iterate through the atomic numbers
-    for atomic_num in atomic_numbers:
-        element = map_reversed[atomic_num]
-        if element is not None:
-            elements.append(element)
-    return elements
+    map_reversed = {atomic_num: element for element, atomic_num in Atomic_num_map_global.items()}
+    return [map_reversed[atomic_num] for atomic_num in atomic_numbers]
 
 def get_distance_matrix(coords, lattice_vectors):
-    num_sites = len(coords)
-    distance_matrix = numpy.zeros((num_sites, num_sites))
-    for i in range(num_sites):
-        for j in range(i, num_sites):
-            delta = numpy.subtract(coords[i], coords[j])
-            # Apply minimum image convention for periodic boundary conditions
-            # delta -= numpy.round(delta)
-            distance = numpy.linalg.norm(numpy.dot(delta, lattice_vectors))
-            distance_matrix[i, j] = distance
-            distance_matrix[j, i] = distance
+    # Create a 3D array containing all pairwise differences
+    delta = coords[:, numpy.newaxis, :] - coords[numpy.newaxis, :, :]
+    # Calculate the distances using vectorized operations
+    distance_matrix = numpy.linalg.norm(numpy.dot(delta, lattice_vectors), axis=2)
     return distance_matrix
 
 def get_jimage(structure):
@@ -277,8 +261,14 @@ def main(args: Namespace):
 
     os.makedirs(output_path, exist_ok=True)
     db_paths = sorted(input_path.glob("*.lmdb"))
-    # loop over individual LMDB files within the input set, if there are
-    # more than one
+    dataset_functions = {
+        "MP": data_to_cdvae_MP,
+        "NOMAD": data_to_cdvae_NOMAD,
+        "OQMD": data_to_cdvae_OQMD,
+        "Carolina": data_to_cdvae_Carolina,
+    }
+
+    # loop over individual LMDB files within the input set, if there are more than one
     for path in db_paths:
         target = output_path / path.name
         pyg_env = connect_db_read(path)
@@ -296,67 +286,18 @@ def main(args: Namespace):
         with pyg_env.begin() as txn:
             print(f"There are {txn.stat()['entries']} entries.")
             keys = [key for key in txn.cursor().iternext(values=False)]
-            if args.dataset == "MP":
-                for i, key in enumerate(tqdm(keys)):
-                    if key.decode("utf-8").isdigit():
-                        crystal_data = pickle.loads(txn.get(key))
-                        pyg_data = data_to_cdvae_MP(crystal_data)
-                        if pyg_data is not None:
-                            # convert the key before writing
-                            key = key.decode("utf-8")
-                            write_lmdb_data(key, pyg_data, target_env)
-                    # otherwise it's just metadata to copy over directly
-                    else:
-                        metadata = pickle.loads(txn.get(key))
-                        # convert the key before writing
+            for i, key in enumerate(tqdm(keys)):
+                dataset_name = args.dataset
+                if key.decode("utf-8").isdigit():
+                    crystal_data = pickle.loads(txn.get(key))
+                    pyg_data = dataset_functions.get(dataset_name)(crystal_data)
+                    if pyg_data is not None:
                         key = key.decode("utf-8")
-                        write_lmdb_data(key, metadata, target_env)
-            if args.dataset == "NOMAD":
-                for i, key in enumerate(tqdm(keys)):
-                    if key.decode("utf-8").isdigit():
-                        crystal_data = pickle.loads(txn.get(key))
-                        pyg_data = data_to_cdvae_NOMAD(crystal_data)
-                        if pyg_data is not None:
-                            # convert the key before writing
-                            key = key.decode("utf-8")
-                            write_lmdb_data(key, pyg_data, target_env)
-                    # otherwise it's just metadata to copy over directly
-                    else:
-                        metadata = pickle.loads(txn.get(key))
-                        # convert the key before writing
-                        key = key.decode("utf-8")
-                        write_lmdb_data(key, metadata, target_env)
-            if args.dataset == "OQMD":
-                for i, key in enumerate(tqdm(keys)):
-                    if key.decode("utf-8").isdigit():
-                        crystal_data = pickle.loads(txn.get(key))
-                        pyg_data = data_to_cdvae_OQMD(crystal_data)
-                        if pyg_data is not None:
-                            # convert the key before writing
-                            key = key.decode("utf-8")
-                            write_lmdb_data(key, pyg_data, target_env)
-                    # otherwise it's just metadata to copy over directly
-                    else:
-                        metadata = pickle.loads(txn.get(key))
-                        # convert the key before writing
-                        key = key.decode("utf-8")
-                        write_lmdb_data(key, metadata, target_env)
-            if args.dataset == "Carolina":
-                for i, key in enumerate(tqdm(keys)):
-                    if key.decode("utf-8").isdigit():
-                        crystal_data = pickle.loads(txn.get(key))
-                        pyg_data = data_to_cdvae_Carolina(crystal_data)
-                        if pyg_data is not None:
-                            # convert the key before writing
-                            key = key.decode("utf-8")
-                            write_lmdb_data(key, pyg_data, target_env)
-                    # otherwise it's just metadata to copy over directly
-                    else:
-                        metadata = pickle.loads(txn.get(key))
-                        # convert the key before writing
-                        key = key.decode("utf-8")
-                        write_lmdb_data(key, metadata, target_env)
-
+                        write_lmdb_data(key, pyg_data, target_env)
+                else:
+                    metadata = pickle.loads(txn.get(key))
+                    key = key.decode("utf-8")
+                    write_lmdb_data(key, metadata, target_env)
 
     end_time = time.time()
     running_time = end_time - start_time
