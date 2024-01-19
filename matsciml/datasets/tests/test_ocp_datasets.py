@@ -18,12 +18,8 @@ def test_base_s2ef_read():
     dset = S2EFDataset(s2ef_devset)
     # get the first entry
     data = dset.__getitem__(0)
-    assert all([key in data for key in ["graph", "targets", "target_types"]])
-    assert isinstance(
-        data["graph"],
-        dgl.DGLGraph,
-    ), f"Expected graph to be DGLGraph, got {type(data['graph'])}"
-    assert all([key in data["graph"].ndata for key in ["pos", "force"]])
+    assert all([key in data for key in ["targets", "target_types"]])
+    assert all([key in data.keys() for key in ["pos", "force"]])
 
 
 def test_base_is2re_read():
@@ -34,12 +30,8 @@ def test_base_is2re_read():
     dset = IS2REDataset(is2re_devset)
     # get the first entry
     data = dset.__getitem__(0)
-    assert all([key in data for key in ["graph", "targets", "target_types"]])
-    assert isinstance(
-        data["graph"],
-        dgl.DGLGraph,
-    ), f"Expected graph to be DGLGraph, got {type(data['graph'])}"
-    assert "pos" in data["graph"].ndata
+    assert all([key in data for key in ["targets", "target_types"]])
+    assert "pos" in data.keys()
     assert all([key in data["targets"] for key in ["energy_relaxed", "energy_init"]])
 
 
@@ -51,8 +43,8 @@ def test_is2re_collate():
     dset = IS2REDataset(is2re_devset)
     unbatched = [dset.__getitem__(i) for i in range(5)]
     batched = dset.collate_fn(unbatched)
-    # check there are 5 graphs
-    assert batched["graph"].batch_size == 5
+    # check there are 5 samples
+    assert len(batched["natoms"]) == 5
     # check one of the label shapes is correct
     assert batched["targets"]["energy_init"].size(0) == 5
 
@@ -66,10 +58,10 @@ def test_s2ef_collate():
     unbatched = [dset.__getitem__(i) for i in range(5)]
     batched = dset.collate_fn(unbatched)
     # check there are 5 graphs
-    assert batched["graph"].batch_size == 5
+    assert len(batched["natoms"]) == 5
     # check one of the label shapes is correct
     assert batched["targets"]["energy"].size(0) == 5
-    num_nodes = batched["graph"].num_nodes()
+    num_nodes = sum(batched["natoms"])
     assert batched["targets"]["force"].shape == (num_nodes, 3)
 
 

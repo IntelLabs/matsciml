@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 
 from matsciml.datasets import IS2REDataset, S2EFDataset, is2re_devset, s2ef_devset
 from matsciml.datasets.multi_dataset import MultiDataset
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.lightning.data_utils import MultiDataModule
 from matsciml.models import PLEGNNBackbone
 from matsciml.models.base import (
@@ -50,9 +51,19 @@ def model_def():
 
 @pytest.fixture
 def is2re_s2ef() -> MultiDataModule:
+    transforms = [
+        PointCloudToGraphTransform(
+            "dgl",
+            cutoff_dist=20.0,
+            node_keys=["pos", "atomic_numbers"],
+        ),
+    ]
     dm = MultiDataModule(
         train_dataset=MultiDataset(
-            [IS2REDataset(is2re_devset), S2EFDataset(s2ef_devset)],
+            [
+                IS2REDataset(is2re_devset, transforms=transforms),
+                S2EFDataset(s2ef_devset, transforms=transforms),
+            ],
         ),
         batch_size=16,
     )
@@ -97,7 +108,10 @@ def test_multitask_static_end2end(is2re_s2ef, model_def):
     is2re = ScalarRegressionTask(encoder, task_keys=["energy_init", "energy_relaxed"])
     s2ef = ForceRegressionTask(encoder, task_keys=["energy", "force"])
 
-    task = MultiTaskLitModule(("IS2REDataset", is2re), ("S2EFDataset", s2ef))
+    task = MultiTaskLitModule(
+        ("IS2REDataset", is2re),
+        ("S2EFDataset", s2ef),
+    )
     trainer = pl.Trainer(logger=False, enable_checkpointing=False, fast_dev_run=1)
     trainer.fit(task, datamodule=dm)
 
@@ -110,6 +124,9 @@ def test_multitask_dynamic_end2end(is2re_s2ef, model_def):
     is2re = ScalarRegressionTask(encoder)
     s2ef = ForceRegressionTask(encoder)
 
-    task = MultiTaskLitModule(("IS2REDataset", is2re), ("S2EFDataset", s2ef))
+    task = MultiTaskLitModule(
+        ("IS2REDataset", is2re),
+        ("S2EFDataset", s2ef),
+    )
     trainer = pl.Trainer(logger=False, enable_checkpointing=False, fast_dev_run=1)
     trainer.fit(task, datamodule=dm)

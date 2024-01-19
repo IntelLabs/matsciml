@@ -190,7 +190,7 @@ def point_cloud_featurization(
     torch.Tensor
         Feature tensor, with a shape of [num_src, num_dst, 2 x max_types]
     """
-    eye = torch.eye(max_types)
+    eye = torch.eye(max_types, dtype=int)
     src_onehot = eye[src_types][:, None]
     dst_onehot = eye[dst_types][None, :]
     plus, minus = src_onehot + dst_onehot, src_onehot - dst_onehot
