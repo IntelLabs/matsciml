@@ -606,7 +606,9 @@ if package_registry["pyg"]:
             ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
             for key in ["edge_feats", "graph_feats"]:
                 data[key] = getattr(graph, key, None)
-            atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers")
+            atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers").to(
+                torch.int,
+            )
             node_embeddings = self.atom_embedding(atomic_numbers)
             pos: torch.Tensor = getattr(graph, "pos")
             # optionally can fuse into a single tensor with `self.join_position_embeddings`

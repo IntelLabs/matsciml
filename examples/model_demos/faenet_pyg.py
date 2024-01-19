@@ -63,7 +63,7 @@ task = ScalarRegressionTask(
     encoder_kwargs={
         "pred_as_dict": False,
         "hidden_dim": 128,
-        "output_dim": 64,
+        "out_dim": 64,
         "tag_hidden_channels": 0,
         "input_dim": 128,
     },
