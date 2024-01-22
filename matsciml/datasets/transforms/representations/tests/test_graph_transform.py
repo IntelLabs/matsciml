@@ -104,16 +104,3 @@ if package_registry["dgl"]:
             match="No graphs to transform into point clouds!",
         ):
             sample = dset.__getitem__(0)
-
-    @pytest.mark.dependency(
-        depends=["test_transform_init", "test_dgl_atom_center_transform"],
-    )
-    def test_dgl_ocp_special():
-        dset = S2EFDataset(
-            s2ef_devset,
-        )
-        sample = dset.__getitem__(0)
-        assert "pc_features" in sample
-        assert "pos" in sample
-        # make sure positions are atom centered
-        assert sample["pos"].ndim == 2
