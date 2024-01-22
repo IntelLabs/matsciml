@@ -1,17 +1,32 @@
-from typing import Dict, Iterable, List, Union
+from __future__ import annotations
 
-import torch
+from collections.abc import Iterable
+from typing import Dict, List, Union
+
 import dgl
+import torch
 from torch.utils.data import ConcatDataset
 
-from matsciml.datasets.base import BaseLMDBDataset
 from matsciml.common.registry import registry
+from matsciml.datasets.base import BaseLMDBDataset
+
 
 # quasi-registry of functions for collating based on dataset class name
-collate_registry = {
-    dset_name: dset_class.collate_fn
-    for dset_name, dset_class in registry.__entries__["datasets"].items()
-}
+def collate_registry() -> dict[str]:
+    """
+    This is a function because of strange behavior where the registry only captures some
+    of the datasets available. Believed to be caused by the order of imports. Running
+    this as a function inside of collate_fn ensures everything is loaded and the
+    collate_registry functions as expected.
+    Returns
+    -------
+    dict[str]
+        names of datasets available
+    """
+    return {
+        dset_name: dset_class.collate_fn
+        for dset_name, dset_class in registry.__entries__["datasets"].items()
+    }
 
 
 @registry.register_dataset("MultiDataset")
@@ -30,12 +45,8 @@ class MultiDataset(ConcatDataset):
 
     @staticmethod
     def collate_fn(
-        batch: List[
-            Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-        ],
-    ) -> Dict[
-        str, Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
-    ]:
+        batch: list[dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]]],
+    ) -> dict[str, dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]]]:
         """
         Collate function for multiple datasets.
 
@@ -65,11 +76,11 @@ class MultiDataset(ConcatDataset):
             all_data[origin].append(entry)
         # convert the samples into batched data
         for key in all_data.keys():
-            all_data[key] = collate_registry[key](all_data[key])
+            all_data[key] = collate_registry()[key](all_data[key])
         return all_data
 
     @property
-    def target_keys(self) -> Dict[str, Dict[str, List[str]]]:
+    def target_keys(self) -> dict[str, dict[str, list[str]]]:
         keys = {}
         for dset in self.datasets:
             name = dset.__class__.__name__

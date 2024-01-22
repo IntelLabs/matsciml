@@ -5,7 +5,8 @@ Code attributions to https://github.com/materialsvirtuallab/m3gnet-dgl/tree/main
 along with contributions and modifications from Marcel Nassar, Santiago Miret, and Kelvin Lee
 """
 from __future__ import annotations
-from typing import Dict, Optional, List
+
+from typing import Dict, List, Optional
 
 import dgl
 import dgl.function as fn
@@ -46,7 +47,10 @@ class MEGNetGraphConv(Module):
 
     @classmethod
     def from_dims(
-        cls, edge_dims: List[int], node_dims: List[int], attr_dims: List[int]
+        cls,
+        edge_dims: list[int],
+        node_dims: list[int],
+        attr_dims: list[int],
     ) -> MEGNetGraphConv:
         """
         Class method to instantiate a MEGNet graph convolution layer given
@@ -70,7 +74,7 @@ class MEGNetGraphConv(Module):
         attr_update = MLP(attr_dims, Softplus(), activate_last=True)
         return cls(edge_update, node_update, attr_update)
 
-    def _edge_udf(self, edges: dgl.udf.EdgeBatch) -> Dict[str, torch.Tensor]:
+    def _edge_udf(self, edges: dgl.udf.EdgeBatch) -> dict[str, torch.Tensor]:
         """
         Edge-based user defined function; will apply `edge_func` to edge features.
 
@@ -203,7 +207,7 @@ class MEGNetBlock(Module):
         self,
         dims: list[int],
         conv_hiddens: list[int],
-        dropout: Optional[float] = None,
+        dropout: float | None = None,
         skip: bool = True,
     ) -> None:
         """
@@ -281,7 +285,10 @@ class MEGNetBlock(Module):
         graph_attr = self.attr_func(graph_attr)
 
         edge_feat, node_feat, graph_attr = self.conv(
-            graph, edge_feat, node_feat, graph_attr
+            graph,
+            edge_feat,
+            node_feat,
+            graph_attr,
         )
 
         if self.dropout:

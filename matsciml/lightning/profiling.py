@@ -1,15 +1,16 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
 from pathlib import Path
-from typing import Union
 from subprocess import run
-import psutil
+from typing import Union
 
-from torch import distributed as dist
+import psutil
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
+from torch import distributed as dist
 
 
 def is_vtune_running() -> bool:
@@ -41,7 +42,7 @@ class VTuneResume(Callback):
     ```
     """
 
-    def __init__(self, result_dir: Union[str, Path]) -> None:
+    def __init__(self, result_dir: str | Path) -> None:
         super().__init__()
         # result dir is necessary for VTune resume command to work
         if isinstance(result_dir, str):
@@ -67,22 +68,29 @@ class VTuneResume(Callback):
                 _ = run(["vtune", "-command", "stop", "-r", self._result_dir])
 
     def on_validation_start(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
     ) -> None:
         self._resume_vtune()
 
     def on_validation_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
     ) -> None:
         self._stop_vtune()
 
     def on_train_start(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
     ) -> None:
         self._resume_vtune()
 
     def on_train_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
     ) -> None:
         pass
-

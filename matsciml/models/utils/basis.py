@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import math
 from math import pi as PI
@@ -15,13 +16,12 @@ import torch.nn as nn
 from scipy.special import sph_harm
 from torch.nn.init import _calculate_correct_fan
 
-from .activations import Act
+from matsciml.models.utils.activations import Act
 
 
 class Sine(nn.Module):
     def __init__(self, w0: float = 30.0):
-
-        super(Sine, self).__init__()
+        super().__init__()
         self.w0 = w0
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -31,20 +31,19 @@ class Sine(nn.Module):
 class SIREN(nn.Module):
     def __init__(
         self,
-        layers: List[int],
+        layers: list[int],
         in_features: int,
         out_features: int,
         w0: float = 30.0,
         initializer: str = "siren",
         c: float = 6,
     ):
-
-        super(SIREN, self).__init__()
+        super().__init__()
         self.layers = [nn.Linear(in_features, layers[0]), Sine(w0=w0)]
 
         for index in range(len(layers) - 1):
             self.layers.extend(
-                [nn.Linear(layers[index], layers[index + 1]), Sine(w0=1)]
+                [nn.Linear(layers[index], layers[index + 1]), Sine(w0=1)],
             )
 
         self.layers.append(nn.Linear(layers[-1], out_features))
@@ -66,8 +65,7 @@ class SIREN(nn.Module):
 
 class SINESmearing(nn.Module):
     def __init__(self, in_features, num_freqs=40, use_cosine=False):
-
-        super(SINESmearing, self).__init__()
+        super().__init__()
 
         self.num_freqs = num_freqs
         self.out_dim = in_features * self.num_freqs
@@ -92,7 +90,7 @@ class SINESmearing(nn.Module):
 
 class GaussianSmearing(nn.Module):
     def __init__(self, in_features, start=0, end=1, num_freqs=50):
-        super(GaussianSmearing, self).__init__()
+        super().__init__()
         self.num_freqs = num_freqs
         offset = torch.linspace(start, end, num_freqs)
         self.coeff = -0.5 / (offset[1] - offset[0]).item() ** 2
@@ -109,8 +107,7 @@ class GaussianSmearing(nn.Module):
 
 class FourierSmearing(nn.Module):
     def __init__(self, in_features, num_freqs=40, use_cosine=False):
-
-        super(FourierSmearing, self).__init__()
+        super().__init__()
 
         self.num_freqs = num_freqs
         self.out_dim = in_features * self.num_freqs
@@ -141,7 +138,7 @@ class Basis(nn.Module):
         act="ssp",
         sph=None,
     ):
-        super(Basis, self).__init__()
+        super().__init__()
 
         self.num_freqs = num_freqs
         self.basis_type = basis_type
@@ -151,7 +148,9 @@ class Basis(nn.Module):
             self.out_dim = in_features * num_freqs
         elif basis_type == "powercosine":
             self.smearing = SINESmearing(
-                in_features, num_freqs, use_cosine=True
+                in_features,
+                num_freqs,
+                use_cosine=True,
             )
             self.out_dim = in_features * num_freqs
         elif basis_type == "fouriersine":
@@ -159,12 +158,16 @@ class Basis(nn.Module):
             self.out_dim = in_features * num_freqs
         elif basis_type == "gauss":
             self.smearing = GaussianSmearing(
-                in_features, start=0, end=1, num_freqs=num_freqs
+                in_features,
+                start=0,
+                end=1,
+                num_freqs=num_freqs,
             )
             self.out_dim = in_features * num_freqs
         elif basis_type == "linact":
             self.smearing = torch.nn.Sequential(
-                torch.nn.Linear(in_features, num_freqs * in_features), Act(act)
+                torch.nn.Linear(in_features, num_freqs * in_features),
+                Act(act),
             )
             self.out_dim = in_features * num_freqs
         elif basis_type == "raw" or basis_type == "rawcat":
@@ -182,14 +185,16 @@ class Basis(nn.Module):
             elif "mul" in basis_type:
                 self.smearing_sine = SINESmearing(in_features - 3, num_freqs)
                 self.lin = torch.nn.Linear(
-                    self.smearing_sine.out_dim, in_features - 3
+                    self.smearing_sine.out_dim,
+                    in_features - 3,
                 )
                 self.out_dim = (in_features - 3) * sph.out_dim
             elif "m40" in basis_type:
                 dim = 40
                 self.smearing_sine = SINESmearing(in_features - 3, num_freqs)
                 self.lin = torch.nn.Linear(
-                    self.smearing_sine.out_dim, dim
+                    self.smearing_sine.out_dim,
+                    dim,
                 )  # make the output dimensionality comparable.
                 self.out_dim = dim * sph.out_dim
             elif "nosine" in basis_type:
@@ -197,7 +202,7 @@ class Basis(nn.Module):
                 self.out_dim = (in_features - 3) * sph.out_dim
             else:
                 raise ValueError(
-                    "cat or mul not specified for spherical harnomics."
+                    "cat or mul not specified for spherical harnomics.",
                 )
         else:
             raise RuntimeError("Undefined basis type.")
@@ -206,7 +211,7 @@ class Basis(nn.Module):
         if "sph" in self.basis_type:
             if "nosine" not in self.basis_type:
                 x_sine = self.smearing_sine(
-                    x[:, 3:]
+                    x[:, 3:],
                 )  # the first three features correspond to edge_vec_normalized, so we ignore
                 if "cat" in self.basis_type:
                     # just concatenate spherical edge feature and sined node features
@@ -218,7 +223,7 @@ class Basis(nn.Module):
                     return torch.flatten(outer, start_dim=1)
                 else:
                     raise RuntimeError(
-                        f"Unknown basis type called {self.basis_type}"
+                        f"Unknown basis type called {self.basis_type}",
                     )
             else:
                 outer = torch.einsum("ik,ij->ikj", edge_attr_sph, x[:, 3:])
@@ -234,7 +239,7 @@ class Basis(nn.Module):
 
 class SphericalSmearing(nn.Module):
     def __init__(self, max_n=10, option="all"):
-        super(SphericalSmearing, self).__init__()
+        super().__init__()
 
         self.max_n = max_n
 
@@ -283,7 +288,8 @@ class SphericalSmearing(nn.Module):
         harm_mnonzero = harm[:, self.m != 0]
 
         harm_real = np.concatenate(
-            [harm_mzero.real, harm_mnonzero.real, harm_mnonzero.imag], axis=1
+            [harm_mzero.real, harm_mnonzero.real, harm_mnonzero.imag],
+            axis=1,
         )
 
         return torch.from_numpy(harm_real).to(torch.float32).to(xyz.device)

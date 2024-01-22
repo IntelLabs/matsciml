@@ -1,13 +1,15 @@
-from typing import List, Union, Optional
+from __future__ import annotations
+
 from functools import partial
+from typing import List, Optional, Union
 
 import torch
 
 from matsciml.common import DataDict, package_registry
-from matsciml.common.types import DataDict, GraphTypes, AbstractGraph
+from matsciml.common.types import AbstractGraph, DataDict, GraphTypes
+from matsciml.datasets import utils
 from matsciml.datasets.base import BaseLMDBDataset
 from matsciml.datasets.transforms.representations import RepresentationTransform
-from matsciml.datasets import utils
 
 """
 Transforms that create point cloud representations from graphs.
@@ -83,7 +85,8 @@ class GraphToPointCloudTransform(RepresentationTransform):
 
     def prologue(self, data: DataDict) -> None:
         assert self._check_for_type(
-            data, GraphTypes
+            data,
+            GraphTypes,
         ), f"No graphs to transform into point clouds!"
         assert data["dataset"] in [
             "IS2REDataset",
@@ -95,7 +98,8 @@ class GraphToPointCloudTransform(RepresentationTransform):
 
         def _convert_dgl(self, g: dgl.DGLGraph, data: DataDict) -> None:
             assert isinstance(
-                g, dgl.DGLGraph
+                g,
+                dgl.DGLGraph,
             ), f"Expected DGL graph as input, but got {g} which is type {type(g)}"
             features = g.ndata["atomic_numbers"].long()
             system_size = len(features)
@@ -109,7 +113,9 @@ class GraphToPointCloudTransform(RepresentationTransform):
             pos = g.ndata["pos"]
             # extract out point cloud features
             features = utils.point_cloud_featurization(
-                features[src_indices], features[dst_indices], 100
+                features[src_indices],
+                features[dst_indices],
+                100,
             )
             data["pos"] = pos  # left as N, 3
             data["pc_features"] = features
@@ -140,7 +146,10 @@ class GraphToPointCloudTransform(RepresentationTransform):
 
 class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
     def __init__(
-        self, backend: str, sample_size: int = 5, full_pairwise: bool = True
+        self,
+        backend: str,
+        sample_size: int = 5,
+        full_pairwise: bool = True,
     ) -> None:
         r"""
         Convert a graph data sample into a point cloud, with additional semantics
@@ -176,7 +185,7 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
         self.sample_size = sample_size
 
     @staticmethod
-    def _extract_indices(tags: torch.Tensor, nodes: torch.Tensor) -> List[List[int]]:
+    def _extract_indices(tags: torch.Tensor, nodes: torch.Tensor) -> list[list[int]]:
         """
         Extract out indices of nodes, given a tensor containing the OCP
         tags. This is written as in a framework agnostic way, with the
@@ -207,10 +216,10 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
 
     def _pick_src_dst(
         self,
-        molecule_nodes: List[int],
-        surface_nodes: List[int],
-        substrate_nodes: List[int],
-    ) -> List[List[int]]:
+        molecule_nodes: list[int],
+        surface_nodes: list[int],
+        substrate_nodes: list[int],
+    ) -> list[list[int]]:
         """
         Separates nodes into source and destination, as part of creating a more
         compact, molecule/atom centered representation of the point cloud. For
@@ -233,7 +242,8 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
             List of node indices used for source/destination designation
         """
         num_samples = max(
-            self.sample_size - len(molecule_nodes) + len(surface_nodes), 0
+            self.sample_size - len(molecule_nodes) + len(surface_nodes),
+            0,
         )
         if isinstance(substrate_nodes, list):
             substrate_nodes = torch.tensor(substrate_nodes)
@@ -258,18 +268,23 @@ class OCPGraphToPointCloudTransform(GraphToPointCloudTransform):
             # extract out nodes based on tags, then separate into src/dst point cloud
             # neighborhoods
             molecule_nodes, surface_nodes, substrate_nodes = self._extract_indices(
-                tags, nodes
+                tags,
+                nodes,
             )
             # the pairwise logic is located inside `_pick_src_dst`; in the affirmative
             # case, src_nodes == dst_nodes
             src_nodes, dst_nodes = self._pick_src_dst(
-                molecule_nodes, surface_nodes, substrate_nodes
+                molecule_nodes,
+                surface_nodes,
+                substrate_nodes,
             )
             # create point cloud featurizations
             src_features = atomic_numbers[src_nodes].long()
             dst_features = atomic_numbers[dst_nodes].long()
             pc_features = utils.point_cloud_featurization(
-                src_features, dst_features, max_types=100
+                src_features,
+                dst_features,
+                max_types=100,
             )
             # node positions still kept as N, 3
             node_pos = g.ndata["pos"]

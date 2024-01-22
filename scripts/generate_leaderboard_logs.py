@@ -1,28 +1,31 @@
+from __future__ import annotations
+
 from argparse import ArgumentParser
 from copy import deepcopy
 from pathlib import Path
 
 import pytorch_lightning as pl
 from munch import Munch, munchify, unmunchify
+from pytorch_lightning.loggers import CSVLogger
+from tqdm import tqdm
+from yaml import safe_load
+
 from matsciml import datasets as dsets
 from matsciml.datasets.transforms import DistancesTransform, GraphVariablesTransform
-
-# import the callback responsible for aggregating and formatting
-# prediction results
 from matsciml.lightning.callbacks import ForwardNaNDetection, LeaderboardWriter
 from matsciml.lightning.cli import DATAMODULE_REGISTRY, MODEL_REGISTRY
 from matsciml.lightning.data_utils import IS2REDGLDataModule, is2re_devset
 from matsciml.models import GraphConvModel, IS2RELitModule
-from pytorch_lightning.loggers import CSVLogger
-from tqdm import tqdm
-from yaml import safe_load
+
+# import the callback responsible for aggregating and formatting
+# prediction results
 
 
 def verify_input_args(args):
     # make sure all paths are valid
     for key in ["backbone_config", "ckpt_path", "data_config"]:
         assert Path(
-            getattr(args, key)
+            getattr(args, key),
         ).exists(), f"{key} does not correspond to a valid path! {getattr(args, key)}"
 
     for val_path in args.val_paths:
@@ -46,20 +49,21 @@ def verify_input_args(args):
 
 def load_model(args):
     # load in configs
-    with open(args.backbone_config, "r") as read_file:
+    with open(args.backbone_config) as read_file:
         backbone_yml = safe_load(read_file)
     # configure backbone
     backbone_cls = MODEL_REGISTRY.get(args.backbone)
     backbone = backbone_cls(**backbone_yml["model"]["init_args"]["gnn"]["init_args"])
     model_cls = MODEL_REGISTRY.get(args.task)
     model = model_cls(**backbone_yml["model"]["init_args"]).load_from_checkpoint(
-        gnn=backbone, checkpoint_path=args.ckpt_path
+        gnn=backbone,
+        checkpoint_path=args.ckpt_path,
     )
     return model
 
 
 def load_datamodule(args, path):
-    with open(args.data_config, "r") as read_file:
+    with open(args.data_config) as read_file:
         data_yml = safe_load(read_file)
 
     # match the right data module

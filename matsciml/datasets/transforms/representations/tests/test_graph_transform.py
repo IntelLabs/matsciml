@@ -1,18 +1,18 @@
-import pytest
+from __future__ import annotations
 
+import pytest
 import torch
 
-from matsciml.datasets import is2re_devset, IS2REDataset, s2ef_devset, S2EFDataset
+from matsciml.common import package_registry
+from matsciml.datasets import IS2REDataset, S2EFDataset, is2re_devset, s2ef_devset
 from matsciml.datasets.materials_project import (
-    materialsproject_devset,
     MaterialsProjectDataset,
+    materialsproject_devset,
 )
 from matsciml.datasets.transforms import (
     GraphToPointCloudTransform,
     OCPGraphToPointCloudTransform,
 )
-from matsciml.common import package_registry
-
 
 if package_registry["dgl"]:
     import dgl
@@ -20,7 +20,7 @@ if package_registry["dgl"]:
     @pytest.fixture()
     def demo_dgl_graph():
         g = dgl.graph(
-            [[0, 1], [1, 2], [2, 3], [2, 4], [2, 5], [3, 6], [6, 7], [6, 8], [6, 9]]
+            [[0, 1], [1, 2], [2, 3], [2, 4], [2, 5], [3, 6], [6, 7], [6, 8], [6, 9]],
         )
         g.ndata["pos"] = torch.rand(g.num_nodes(), 3)
         g.ndata["atomic_numbers"] = torch.randint(1, 100, (g.num_nodes(),))
@@ -53,7 +53,7 @@ if package_registry["dgl"]:
             t(data)
 
     @pytest.mark.dependency(
-        depends=["test_transform_init", "test_dgl_atom_center_transform"]
+        depends=["test_transform_init", "test_dgl_atom_center_transform"],
     )
     def test_dgl_pairwise_is2re():
         dset = IS2REDataset(
@@ -62,14 +62,14 @@ if package_registry["dgl"]:
         )
         sample = dset.__getitem__(0)
         assert all(
-            [key in sample for key in ["pos", "pc_features", "src_nodes", "dst_nodes"]]
+            [key in sample for key in ["pos", "pc_features", "src_nodes", "dst_nodes"]],
         )
         # make sure positions are still same dimension
         assert sample["pos"].ndim == 2
         assert sample["pc_features"].ndim == 3
 
     @pytest.mark.dependency(
-        depends=["test_transform_init", "test_dgl_atom_center_transform"]
+        depends=["test_transform_init", "test_dgl_atom_center_transform"],
     )
     def test_dgl_pairwise_s2ef():
         dset = S2EFDataset(
@@ -78,14 +78,14 @@ if package_registry["dgl"]:
         )
         sample = dset.__getitem__(0)
         assert all(
-            [key in sample for key in ["pos", "pc_features", "src_nodes", "dst_nodes"]]
+            [key in sample for key in ["pos", "pc_features", "src_nodes", "dst_nodes"]],
         )
         # make sure positions are still same dimension
         assert sample["pos"].ndim == 2
         assert sample["pc_features"].ndim == 3
 
     @pytest.mark.dependency(
-        depends=["test_transform_init", "test_dgl_atom_center_transform"]
+        depends=["test_transform_init", "test_dgl_atom_center_transform"],
     )
     def test_dgl_materials_project_fail():
         # makes sure this cannot be applied to a dataset with point clouds already
@@ -100,7 +100,7 @@ if package_registry["dgl"]:
             sample = dset.__getitem__(0)
 
     @pytest.mark.dependency(
-        depends=["test_transform_init", "test_dgl_atom_center_transform"]
+        depends=["test_transform_init", "test_dgl_atom_center_transform"],
     )
     def test_dgl_ocp_special():
         dset = S2EFDataset(

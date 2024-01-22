@@ -1,13 +1,15 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
 from typing import Callable, List, Tuple, Union
 
+import geometric_algebra_attention.pytorch as gala
 import torch
 import torch.nn as nn
 
-from .layers import VectorAttention
-import geometric_algebra_attention.pytorch as gala
+from matsciml.models.dgl.gaanet.gaanet_model.layers import VectorAttention
+
 
 class MLP(nn.Module):
     def __init__(
@@ -46,8 +48,13 @@ class MLP(nn.Module):
             if in_feats == hidden_feats:
                 self.residuals.append(nn.Identity())
             else:
-                self.residuals.append(nn.Linear(
-                    in_feats, hidden_feats, bias=False))
+                self.residuals.append(
+                    nn.Linear(
+                        in_feats,
+                        hidden_feats,
+                        bias=False,
+                    ),
+                )
 
                 for _ in range(num_layers - 2):
                     self.residuals.append(nn.Identity())
@@ -56,8 +63,13 @@ class MLP(nn.Module):
                 if hidden_feats == out_feats:
                     self.residuals.append(nn.Identity())
                 else:
-                    self.residuals.append(nn.Linear(
-                        hidden_feats, out_feats, bias=False))
+                    self.residuals.append(
+                        nn.Linear(
+                            hidden_feats,
+                            out_feats,
+                            bias=False,
+                        ),
+                    )
         else:
             self.residuals = None
 
@@ -96,10 +108,10 @@ class GAANet(nn.Module):
         residual_last: bool = False,
         dropout: float = 0,
         dropout_last: bool = False,
-        merge_func: str = 'mean',
-        join_func: str = 'mean',
+        merge_func: str = "mean",
+        join_func: str = "mean",
         rank: int = 2,
-        invariant_mode: str = 'single',
+        invariant_mode: str = "single",
     ) -> None:
         super().__init__()
         self.num_layers = num_layers
@@ -110,36 +122,40 @@ class GAANet(nn.Module):
         self.layers = nn.ModuleList()
 
         for _ in range(num_layers - 1):
-            self.layers.append(VectorAttention(
+            self.layers.append(
+                VectorAttention(
+                    in_feats,
+                    hidden_feats,
+                    merge_func=merge_func,
+                    join_func=join_func,
+                    rank=rank,
+                    invariant_mode=invariant_mode,
+                    residual=residual,
+                    reduce=False,
+                    dropout=dropout,
+                ),
+            )
+
+        self.layers.append(
+            VectorAttention(
                 in_feats,
                 hidden_feats,
                 merge_func=merge_func,
                 join_func=join_func,
                 rank=rank,
                 invariant_mode=invariant_mode,
-                residual=residual,
-                reduce=False,
-                dropout=dropout,
-            ))
-
-        self.layers.append(VectorAttention(
-            in_feats,
-            hidden_feats,
-            merge_func=merge_func,
-            join_func=join_func,
-            rank=rank,
-            invariant_mode=invariant_mode,
-            residual=residual_last,
-            reduce=True,
-            dropout=dropout if dropout_last else 0,
-        ))
+                residual=residual_last,
+                reduce=True,
+                dropout=dropout if dropout_last else 0,
+            ),
+        )
 
     def forward(
         self,
         inputs: torch.Tensor,
         positions: torch.Tensor,
         get_attention: bool = False,
-    ) -> Union[torch.Tensor, Tuple[torch.Tensor, List[torch.Tensor]]]:
+    ) -> torch.Tensor | tuple[torch.Tensor, list[torch.Tensor]]:
         x = inputs
 
         if get_attention:
@@ -163,9 +179,9 @@ class GAANet(nn.Module):
 
 
 class TiedMultivectorAttention(
-    gala.Multivector2MultivectorAttention, gala.MultivectorAttention
+    gala.Multivector2MultivectorAttention,
+    gala.MultivectorAttention,
 ):
-
     def __init__(
         self,
         n_dim,
@@ -180,7 +196,7 @@ class TiedMultivectorAttention(
         covariant_mode="partial",
         include_normalized_products=False,
         convex_covariants=False,
-        **kwargs
+        **kwargs,
     ):
         gala.Multivector2MultivectorAttention.__init__(
             self,
@@ -196,7 +212,7 @@ class TiedMultivectorAttention(
             covariant_mode=covariant_mode,
             include_normalized_products=include_normalized_products,
             convex_covariants=convex_covariants,
-            **kwargs
+            **kwargs,
         )
 
         if type(self) == TiedMultivectorAttention:
@@ -218,10 +234,14 @@ class TiedMultivectorAttention(
         scores = self._mask_scores(scores, products.broadcast_indices, mask)
 
         attention, invar_output = self._calculate_attention(
-            scores, new_invar_values, old_shape
+            scores,
+            new_invar_values,
+            old_shape,
         )
         attention, covar_output = self._calculate_attention(
-            scores, new_covar_values, old_shape
+            scores,
+            new_covar_values,
+            old_shape,
         )
         output = (covar_output, invar_output)
         return self.OutputType(

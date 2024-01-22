@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 """
 Copyright (c) Facebook, Inc. and its affiliates.
 
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
-
 """
 CGCNN-like embeddings using continuous values instead of original k-hot.
 
@@ -21,6 +22,7 @@ Properties:
 
 NaN stored for unavaialable parameters.
 """
+
 CONTINUOUS_EMBEDDINGS = {
     0: [
         float("NaN"),

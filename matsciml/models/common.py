@@ -115,7 +115,9 @@ class OutputBlock(nn.Module):
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         output = self.layers(data)
         if self.residual:
-            assert output.shape == data.shape
+            assert (
+                output.shape == data.shape
+            ), f"OutputBlock output shape {output.shape} does not match data shape {data.shape}. Module Info: {self.layers}"
             output = output + data
         return output
 
@@ -227,7 +229,7 @@ class IrrepOutputBlock(nn.Module):
             if len(activation) != len(output_dim):
                 raise ValueError(
                     "Number of activations passed not equal to number of representations; "
-                    f"got {len(activation)}, expected {len(output_dim)}"
+                    f"got {len(activation)}, expected {len(output_dim)}",
                 )
             # if we haven't converted the activation functions into the e3.nn wrapper,
             # do so now

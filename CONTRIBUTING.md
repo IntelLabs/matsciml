@@ -75,7 +75,7 @@ are not needed as explicit arguments.
 If variables/features are required by the model, one can override the `read_batch` method. See the [MPNN](https://github.com/IntelLabs/matsciml/blob/main/matsciml/models/dgl/mpnn.py)
 wrapper to see how this pattern can be used to check for data within a batch.
 
-Aside from implementing the `_forward` method of the model itself, the constituent building blocks should be broken up into their own files, respective to what their functions are. For example, layer based classes and utilities should be placed into a `layers.py` file, and other helpful functions can be placed in a `helper.py` or `utils.py` file. 
+Aside from implementing the `_forward` method of the model itself, the constituent building blocks should be broken up into their own files, respective to what their functions are. For example, layer based classes and utilities should be placed into a `layers.py` file, and other helpful functions can be placed in a `helper.py` or `utils.py` file.
 
 Completed models can be added to the list of imports in `./matsciml/models/<framework>/__init__.py`, where `<framework>` can be `dgl` or `pyg`.
 
@@ -108,7 +108,7 @@ class AmazingModel(AbstractPyGModel):
 ### DGL models
 
 DGL does not provide a class to inherit from for the message passing step, and instead, relies
-on users to define user-defined functions (`udf`), and extensive use of graph scopes. 
+on users to define user-defined functions (`udf`), and extensive use of graph scopes.
 
 We recommend reviewing the [MPNN](https://github.com/IntelLabs/matsciml/blob/main/matsciml/models/dgl/mpnn.py) wrapper
 to see a simplified case, and the [MegNet](https://github.com/IntelLabs/matsciml/tree/main/matsciml/models/dgl/megnet) implementation
@@ -132,7 +132,7 @@ for this type of model.
 - Provide proper documentation on how to access, use, and understand the data.
 - Make sure to include data preprocessing scripts if applicable.
 
-Adding a dataset usually involves interacting with an external API to query and download data. If this is the case, a separate `{dataset}_api.py` and `dataset.py` file can be used to separate out the functionalities. In the API file, a default query can be used to save data to lmdb files, and do any initial preprocessing necessary to get the data into a usable format. Keeping track of material ID's and the status of queries. 
+Adding a dataset usually involves interacting with an external API to query and download data. If this is the case, a separate `{dataset}_api.py` and `dataset.py` file can be used to separate out the functionalities. In the API file, a default query can be used to save data to lmdb files, and do any initial preprocessing necessary to get the data into a usable format. Keeping track of material ID's and the status of queries.
 
 The main dataset file should take care of all of the loading, processing and collating needed to prepare data for the training pipeline. This typically involves adding the necessary key-value pairs which are expected, such as `atomic_numbers`, `pc_features`, and `targets`.
 
@@ -144,7 +144,7 @@ The existing dataset's should be used as a template, and can be expanded upon de
 - Follow our testing framework and naming conventions.
 - Verify that all tests pass successfully before making a pull request.
 
-Tests for each new model and datasets should be added to their respective tests folder, and follow the conventions of the existing tests. Task specific tests may be added to the model folder itself. All relevant tests must pass in order for a pull request to be accepted and merged. 
+Tests for each new model and datasets should be added to their respective tests folder, and follow the conventions of the existing tests. Task specific tests may be added to the model folder itself. All relevant tests must pass in order for a pull request to be accepted and merged.
 
 Model tests may be added [here](https://github.com/IntelLabs/matsciml/tree/main/matsciml/models/dgl/tests), and dataset tests may be added to their respective dataset folders when created.
 

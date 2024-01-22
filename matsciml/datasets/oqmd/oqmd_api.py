@@ -1,16 +1,18 @@
+from __future__ import annotations
+
 import json
 import multiprocessing
 import os
 import random
 import warnings
 from functools import cached_property
-from typing import Dict, List, Optional, Union, Tuple
+from time import sleep, time
+from typing import Dict, List, Optional, Tuple, Union
 
 import lmdb
 import requests
 import yaml
 from tqdm import tqdm
-from time import time, sleep
 
 from matsciml.datasets.utils import write_lmdb_data
 
@@ -20,7 +22,7 @@ class QueryIndex:
     is no more data to download.
     """
 
-    def __init__(self, ids: List[int] = None):
+    def __init__(self, ids: list[int] = None):
         if ids is not None:
             self.custom_ids = True
             self.ids = ids + [None]
@@ -52,9 +54,9 @@ class OQMDRequest:
     def __init__(
         self,
         base_data_dir: str = "./",
-        split_files: Optional[List[str]] = None,
-        material_ids: Optional[List[int]] = None,
-        split_dir: Optional[str] = None,
+        split_files: list[str] | None = None,
+        material_ids: list[int] | None = None,
+        split_dir: str | None = None,
         limit: int = 1000,
         num_workers: int = 1,
     ):
@@ -77,19 +79,19 @@ class OQMDRequest:
             self.material_ids = list(range(0, 214435))
 
     @property
-    def material_ids(self) -> Union[List[str], None]:
+    def material_ids(self) -> list[str] | None:
         return self._material_ids
 
     @material_ids.setter
-    def material_ids(self, values: Union[List[int], None]) -> None:
+    def material_ids(self, values: list[int] | None) -> None:
         self._material_ids = values
 
     @property
-    def data_dir(self) -> Union[List[str], None]:
+    def data_dir(self) -> list[str] | None:
         return self._data_dir
 
     @data_dir.setter
-    def data_dir(self, dst_folder: Union[str, None]) -> None:
+    def data_dir(self, dst_folder: str | None) -> None:
         """Use the `base_data_dir` plus the destination folder to create `data_dir`.
         The `dst_folder` is determined by which split we are processing specified by
         `split_files`, otherwise will default to `all`.
@@ -100,7 +102,7 @@ class OQMDRequest:
         self._data_dir = os.path.join(self.base_data_dir, dst_folder)
         os.makedirs(self._data_dir, exist_ok=True)
 
-    def process_ids(self) -> Dict[str, int]:
+    def process_ids(self) -> dict[str, int]:
         """Builds a dictionary of split names and the id's associated with them.
         If not split files are specified then whatever material id's are present are
         used to create the 'all' split.
@@ -111,7 +113,7 @@ class OQMDRequest:
         ids = {}
         if self.split_files is not None:
             for split_file in self.split_files:
-                ids[split_file] = yaml.safe_load(open(split_file, "r"))
+                ids[split_file] = yaml.safe_load(open(split_file))
         if self.split_dir is not None:
             ids[self.split_dir] = self.material_ids
         else:
@@ -129,7 +131,7 @@ class OQMDRequest:
             print(f"Downloading data to : {self.data_dir}")
             self.oqmd_request()
 
-    def parse_sites(self, sites: List[str]) -> Tuple[List, List]:
+    def parse_sites(self, sites: list[str]) -> tuple[list, list]:
         """Extract `cart_coords` from `sites`, which are a list of strings with
         element name followed by x, y, z coordinates, e.g. "Na @ 0.1 -0.1 0.3".
 
@@ -160,7 +162,7 @@ class OQMDRequest:
         atomic_numbers = [self.atomic_number_map[symbol] for symbol in symbols]
         return atomic_numbers, cart_coords
 
-    def oqmd_request(self) -> Dict[int, bool]:
+    def oqmd_request(self) -> dict[int, bool]:
         """Query the OQMD API which uses pagination to supply data, which is selected by
         a page limit and offset. When querying the whole database (material_ids=None),
         this will run unitl no more data is returned. When using material_ids, they
@@ -177,7 +179,8 @@ class OQMDRequest:
             warning_message = f"Offset {index*self.limit} failed to download with: {requested_data.status_code}\n"
             warnings.warn(warning_message)
             with open(
-                os.path.join(os.path.dirname(self.data_dir), f"failed.txt"), "a"
+                os.path.join(os.path.dirname(self.data_dir), f"failed.txt"),
+                "a",
             ) as f:
                 f.write(warning_message)
             return False
@@ -217,38 +220,41 @@ class OQMDRequest:
             t2 = time()
             print(f"Loading Batch {index} time {round(t2 - t1, 2)} seconds")
             with open(
-                os.path.join(self.data_dir, "query_" + str(index) + ".json"), "w"
+                os.path.join(self.data_dir, "query_" + str(index) + ".json"),
+                "w",
             ) as json_file:
                 json.dump(data["data"], json_file, indent=2)
             index = next(query_index)
         return request_status
 
     @cached_property
-    def atomic_number_map(self) -> Dict[str, int]:
+    def atomic_number_map(self) -> dict[str, int]:
         """List of element symbols and their atomic numbers.
 
         Returns:
             Dict[str, int]: _description_
         """
         # fmt: off
-        an_map = {'H': 1, 'He': 2, 'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8, 
-              'F': 9, 'Ne': 10, 'Na': 11, 'Mg': 12, 'Al': 13, 'Si': 14, 'P': 15, 
-              'S': 16, 'Cl': 17, 'Ar': 18, 'K': 19, 'Ca': 20, 'Sc': 21, 'Ti': 22, 
-              'V': 23, 'Cr': 24, 'Mn': 25, 'Fe': 26, 'Co': 27, 'Ni': 28, 'Cu': 29, 
-              'Zn': 30, 'Ga': 31, 'Ge': 32, 'As': 33, 'Se': 34, 'Br': 35, 'Kr': 36, 
-              'Rb': 37, 'Sr': 38, 'Y': 39, 'Zr': 40, 'Nb': 41, 'Mo': 42, 'Tc': 43, 
-              'Ru': 44, 'Rh': 45, 'Pd': 46, 'Ag': 47, 'Cd': 48, 'In': 49, 'Sn': 50, 
-              'Sb': 51, 'Te': 52, 'I': 53, 'Xe': 54, 'Cs': 55, 'Ba': 56, 'La': 57, 
-              'Ce': 58, 'Pr': 59, 'Nd': 60, 'Pm': 61, 'Sm': 62, 'Eu': 63, 'Gd': 64, 
-              'Tb': 65, 'Dy': 66, 'Ho': 67, 'Er': 68, 'Tm': 69, 'Yb': 70, 'Lu': 71, 
-              'Hf': 72, 'Ta': 73, 'W': 74, 'Re': 75, 'Os': 76, 'Ir': 77, 'Pt': 78, 
-              'Au': 79, 'Hg': 80, 'Tl': 81, 'Pb': 82, 'Bi': 83, 'Po': 84, 'At': 85, 
-              'Rn': 86, 'Fr': 87, 'Ra': 88, 'Ac': 89, 'Th': 90, 'Pa': 91, 'U': 92, 
-              'Np': 93, 'Pu': 94, 'Am': 95, 'Cm': 96, 'Bk': 97, 'Cf': 98, 'Es': 99, 
-              'Fm': 100, 'Md': 101, 'No': 102, 'Lr': 103, 'Rf': 104, 'Db': 105, 
-              'Sg': 106, 'Bh': 107, 'Hs': 108, 'Mt': 109, 'Ds': 110, 'Rg': 111, 
-              'Cn': 112, 'Nh': 113, 'Fl': 114, 'Mc': 115, 'Lv': 116, 'Ts': 117, 
-              'Og': 118}
+        an_map = {
+            'H': 1, 'He': 2, 'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8,
+            'F': 9, 'Ne': 10, 'Na': 11, 'Mg': 12, 'Al': 13, 'Si': 14, 'P': 15,
+            'S': 16, 'Cl': 17, 'Ar': 18, 'K': 19, 'Ca': 20, 'Sc': 21, 'Ti': 22,
+            'V': 23, 'Cr': 24, 'Mn': 25, 'Fe': 26, 'Co': 27, 'Ni': 28, 'Cu': 29,
+            'Zn': 30, 'Ga': 31, 'Ge': 32, 'As': 33, 'Se': 34, 'Br': 35, 'Kr': 36,
+            'Rb': 37, 'Sr': 38, 'Y': 39, 'Zr': 40, 'Nb': 41, 'Mo': 42, 'Tc': 43,
+            'Ru': 44, 'Rh': 45, 'Pd': 46, 'Ag': 47, 'Cd': 48, 'In': 49, 'Sn': 50,
+            'Sb': 51, 'Te': 52, 'I': 53, 'Xe': 54, 'Cs': 55, 'Ba': 56, 'La': 57,
+            'Ce': 58, 'Pr': 59, 'Nd': 60, 'Pm': 61, 'Sm': 62, 'Eu': 63, 'Gd': 64,
+            'Tb': 65, 'Dy': 66, 'Ho': 67, 'Er': 68, 'Tm': 69, 'Yb': 70, 'Lu': 71,
+            'Hf': 72, 'Ta': 73, 'W': 74, 'Re': 75, 'Os': 76, 'Ir': 77, 'Pt': 78,
+            'Au': 79, 'Hg': 80, 'Tl': 81, 'Pb': 82, 'Bi': 83, 'Po': 84, 'At': 85,
+            'Rn': 86, 'Fr': 87, 'Ra': 88, 'Ac': 89, 'Th': 90, 'Pa': 91, 'U': 92,
+            'Np': 93, 'Pu': 94, 'Am': 95, 'Cm': 96, 'Bk': 97, 'Cf': 98, 'Es': 99,
+            'Fm': 100, 'Md': 101, 'No': 102, 'Lr': 103, 'Rf': 104, 'Db': 105,
+            'Sg': 106, 'Bh': 107, 'Hs': 108, 'Mt': 109, 'Ds': 110, 'Rg': 111,
+            'Cn': 112, 'Nh': 113, 'Fl': 114, 'Mc': 115, 'Lv': 116, 'Ts': 117,
+            'Og': 118,
+        }
         # fmt: on
         return an_map
 
@@ -257,31 +263,29 @@ class OQMDRequest:
         set of required keys are defined to ensure all data have the same contents.
         """
         files = os.listdir(self.data_dir)
-        required_keys = set(
-            [
-                "name",
-                "entry_id",
-                "calculation_id",
-                "icsd_id",
-                "formationenergy_id",
-                "duplicate_entry_id",
-                "composition",
-                "composition_generic",
-                "prototype",
-                "spacegroup",
-                "volume",
-                "ntypes",
-                "natoms",
-                "unit_cell",
-                "band_gap",
-                "delta_e",
-                "stability",
-                "fit",
-                "calculation_label",
-                "atomic_numbers",
-                "cart_coords",
-            ]
-        )
+        required_keys = {
+            "name",
+            "entry_id",
+            "calculation_id",
+            "icsd_id",
+            "formationenergy_id",
+            "duplicate_entry_id",
+            "composition",
+            "composition_generic",
+            "prototype",
+            "spacegroup",
+            "volume",
+            "ntypes",
+            "natoms",
+            "unit_cell",
+            "band_gap",
+            "delta_e",
+            "stability",
+            "fit",
+            "calculation_label",
+            "atomic_numbers",
+            "cart_coords",
+        }
         oqmd_data = []
         for file in tqdm(files, desc="Processing Json Files"):
             with open(os.path.join(self.data_dir, file)) as f:
@@ -344,12 +348,14 @@ class OQMDRequest:
         )
         if self.data is not None:
             for index, entry in tqdm(
-                enumerate(self.data), desc="Entries processed", total=len(self.data)
+                enumerate(self.data),
+                desc="Entries processed",
+                total=len(self.data),
             ):
                 write_lmdb_data(index, entry, target_env)
         else:
             raise ValueError(
-                f"No data was available for serializing - did you run `retrieve_data`?"
+                f"No data was available for serializing - did you run `retrieve_data`?",
             )
 
     @classmethod

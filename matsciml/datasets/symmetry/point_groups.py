@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import collections
 import functools
 import itertools
+import re
+
 import numpy as np
 import rowan
-import re
 
 """
 Original implementation by Matthew Spellings (Vector Institute) 5/25/2023
@@ -47,7 +50,7 @@ class PointGroup:
             if "n" in name:
                 cls._PARAMETRIC_GROUPS.add(name)
                 pattern = name.replace("n", r"(?P<n>\d+)")
-                pattern = "^{}$".format(pattern)
+                pattern = f"^{pattern}$"
                 cls._PARAMETRIC_PATTERNS[pattern] = name
             return f
 
@@ -165,7 +168,7 @@ def full_tetrahedral(x):
             (f, f, 0),
             (0, f, f),
             (f, 0, f),
-        ]
+        ],
     )
     quats = rowan.from_mirror_plane(*mirrors.T)
     for mirror in quats:
@@ -188,7 +191,7 @@ def pyritohedral(x):
             (0, 0, 1),
             (0, 1, 0),
             (1, 0, 0),
-        ]
+        ],
     )
     quats = rowan.from_mirror_plane(*mirrors.T)
     for mirror in quats:
@@ -206,7 +209,7 @@ def pyritohedral(x):
             (0, 0, 1),
             (0, 1, 0),
             (1, 0, 0),
-        ]
+        ],
     )
     quats = rowan.from_mirror_plane(*mirrors.T)
     for mirror in quats:
@@ -243,7 +246,7 @@ def full_octahedral(x):
             (0, 0, 1),
             (0, 1, 0),
             (1, 0, 0),
-        ]
+        ],
     )
     quats = rowan.from_mirror_plane(*mirrors.T)
     for mirror in quats:
@@ -252,7 +255,8 @@ def full_octahedral(x):
 
 
 IcosahedralSymmetries = collections.namedtuple(
-    "IcosahedralSymmetries", ["d3_axes", "d5_axes", "mirror_planes"]
+    "IcosahedralSymmetries",
+    ["d3_axes", "d5_axes", "mirror_planes"],
 )
 
 
@@ -266,26 +270,31 @@ def get_icosahedral_symmetries():
 
     d5_ax = vertices[np.sum(vertices, axis=-1) > 0]
     d5_neighbor_indices = np.argsort(
-        np.linalg.norm(d5_ax[:, None] - d5_ax[None], axis=-1), axis=-1
+        np.linalg.norm(d5_ax[:, None] - d5_ax[None], axis=-1),
+        axis=-1,
     )[:, 1]
     orthos = np.cross(d5_ax[:, None], d5_ax[d5_neighbor_indices, None])
     d5_axes = np.concatenate([d5_ax[:, None], orthos], axis=1)
 
     dod_vertices = list(itertools.product(*(3 * [[-1, 1]])))
     for i, phi, invphi in itertools.product(
-        range(3), [-phi, phi], [-1.0 / phi, 1.0 / phi]
+        range(3),
+        [-phi, phi],
+        [-1.0 / phi, 1.0 / phi],
     ):
         dod_vertices.append(np.roll([0, phi, invphi], i))
     dod_vertices = np.array(dod_vertices)
     d3_ax = dod_vertices[np.sum(dod_vertices, axis=-1) > 0]
     d3_neighbor_indices = np.argsort(
-        np.linalg.norm(d3_ax[:, None] - d3_ax[None], axis=-1), axis=-1
+        np.linalg.norm(d3_ax[:, None] - d3_ax[None], axis=-1),
+        axis=-1,
     )[:, 1]
     orthos = np.cross(d3_ax[:, None], d3_ax[d3_neighbor_indices, None])
     d3_axes = np.concatenate([d3_ax[:, None], orthos], axis=1)
 
     vertex_neighbors = np.argsort(
-        np.linalg.norm(vertices[:, None] - vertices[None], axis=-1), axis=-1
+        np.linalg.norm(vertices[:, None] - vertices[None], axis=-1),
+        axis=-1,
     )[:, 1:6]
     edges = set()
     for i, js in zip(range(len(vertices)), vertex_neighbors):

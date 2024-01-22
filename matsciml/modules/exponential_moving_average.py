@@ -2,12 +2,12 @@
 Copied (and improved) from:
 https://github.com/fadel/pytorch_ema/blob/master/torch_ema/ema.py (MIT license)
 """
-
-from __future__ import division, unicode_literals
+from __future__ import annotations
 
 import copy
 import weakref
-from typing import Iterable, Optional
+from collections.abc import Iterable
+from typing import Optional
 
 import torch
 
@@ -37,21 +37,18 @@ class ExponentialMovingAverage:
         self.decay = decay
         self.num_updates = 0 if use_num_updates else None
         parameters = list(parameters)
-        self.shadow_params = [
-            p.clone().detach() for p in parameters if p.requires_grad
-        ]
+        self.shadow_params = [p.clone().detach() for p in parameters if p.requires_grad]
         self.collected_params = []
         # By maintaining only a weakref to each parameter,
         # we maintain the old GC behaviour of ExponentialMovingAverage:
         # if the model goes out of scope but the ExponentialMovingAverage
         # is kept, no references to the model or its parameters will be
         # maintained, and the model will be cleaned up.
-        self._params_refs = [
-            weakref.ref(p) for p in parameters if p.requires_grad
-        ]
+        self._params_refs = [weakref.ref(p) for p in parameters if p.requires_grad]
 
     def _get_parameters(
-        self, parameters: Optional[Iterable[torch.nn.Parameter]]
+        self,
+        parameters: Iterable[torch.nn.Parameter] | None,
     ) -> Iterable[torch.nn.Parameter]:
         if parameters is None:
             parameters = [p() for p in self._params_refs]
@@ -62,14 +59,15 @@ class ExponentialMovingAverage:
                     "was initialized no longer exists (was garbage collected);"
                     " please either provide `parameters` explicitly or keep "
                     "the model to which they belong from being garbage "
-                    "collected."
+                    "collected.",
                 )
             return parameters
         else:
             return [p for p in parameters if p.requires_grad]
 
     def update(
-        self, parameters: Optional[Iterable[torch.nn.Parameter]] = None
+        self,
+        parameters: Iterable[torch.nn.Parameter] | None = None,
     ) -> None:
         """
         Update currently maintained parameters.
@@ -88,7 +86,8 @@ class ExponentialMovingAverage:
         if self.num_updates is not None:
             self.num_updates += 1
             decay = min(
-                decay, (1 + self.num_updates) / (10 + self.num_updates)
+                decay,
+                (1 + self.num_updates) / (10 + self.num_updates),
             )
         one_minus_decay = 1.0 - decay
         with torch.no_grad():
@@ -97,7 +96,8 @@ class ExponentialMovingAverage:
                 s_param.add_(tmp, alpha=one_minus_decay)
 
     def copy_to(
-        self, parameters: Optional[Iterable[torch.nn.Parameter]] = None
+        self,
+        parameters: Iterable[torch.nn.Parameter] | None = None,
     ) -> None:
         """
         Copy current parameters into given collection of parameters.
@@ -113,7 +113,8 @@ class ExponentialMovingAverage:
             param.data.copy_(s_param.data)
 
     def store(
-        self, parameters: Optional[Iterable[torch.nn.Parameter]] = None
+        self,
+        parameters: Iterable[torch.nn.Parameter] | None = None,
     ) -> None:
         """
         Save the current parameters for restoring later.
@@ -127,7 +128,8 @@ class ExponentialMovingAverage:
         self.collected_params = [param.clone() for param in parameters]
 
     def restore(
-        self, parameters: Optional[Iterable[torch.nn.Parameter]] = None
+        self,
+        parameters: Iterable[torch.nn.Parameter] | None = None,
     ) -> None:
         """
         Restore the parameters stored with the `store` method.
@@ -174,11 +176,13 @@ class ExponentialMovingAverage:
 
         self.num_updates = state_dict["num_updates"]
         assert self.num_updates is None or isinstance(
-            self.num_updates, int
+            self.num_updates,
+            int,
         ), "Invalid num_updates"
 
         assert isinstance(
-            state_dict["shadow_params"], list
+            state_dict["shadow_params"],
+            list,
         ), "shadow_params must be a list"
         self.shadow_params = [
             p.to(self.shadow_params[i].device)
@@ -189,7 +193,8 @@ class ExponentialMovingAverage:
         ), "shadow_params must all be Tensors"
 
         assert isinstance(
-            state_dict["collected_params"], list
+            state_dict["collected_params"],
+            list,
         ), "collected_params must be a list"
         # collected_params is empty at initialization,
         # so use shadow_params for device instead

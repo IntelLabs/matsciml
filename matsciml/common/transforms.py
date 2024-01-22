@@ -4,9 +4,9 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
-
 # Borrowed from https://github.com/rusty1s/pytorch_geometric/blob/master/torch_geometric/transforms/random_rotate.py
 # with changes to keep track of the rotation / inverse rotation matrices.
+from __future__ import annotations
 
 import math
 import numbers
@@ -16,7 +16,7 @@ import torch
 from torch_geometric.transforms import LinearTransformation
 
 
-class RandomRotate(object):
+class RandomRotate:
     r"""Rotates node positions around a specific axis by a randomly sampled
     factor within a given interval.
 
@@ -70,5 +70,7 @@ class RandomRotate(object):
 
     def __repr__(self):
         return "{}({}, axis={})".format(
-            self.__class__.__name__, self.degrees, self.axis
+            self.__class__.__name__,
+            self.degrees,
+            self.axis,
         )

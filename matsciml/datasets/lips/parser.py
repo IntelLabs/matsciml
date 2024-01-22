@@ -23,8 +23,8 @@ class LiPSStructure:
     Data structure for parsing the LiPS data from
     https://archive.materialscloud.org/record/2022.45
 
-    The main form of interaction for this class is to load in an extended XYZ 
-    file, and dump it as an LMDB file consistent with other datasets 
+    The main form of interaction for this class is to load in an extended XYZ
+    file, and dump it as an LMDB file consistent with other datasets
     in matsciml.
     """
 
@@ -42,7 +42,7 @@ class LiPSStructure:
         return self.atoms[index]
 
     @staticmethod
-    def entry_to_dict(struct: Atoms) -> dict[str, Union[torch.Tensor, float]]:
+    def entry_to_dict(struct: Atoms) -> dict[str, torch.Tensor | float]:
         result = {
             "pos": struct.get_positions(),
             "cell": struct.get_cell(),
@@ -73,14 +73,14 @@ class LiPSStructure:
         return result
 
     @classmethod
-    def from_xyz(cls, xyz_path: Union[str, Path]) -> LiPSStructure:
+    def from_xyz(cls, xyz_path: str | Path) -> LiPSStructure:
         if isinstance(xyz_path, str):
             xyz_path = Path(xyz_path)
         assert xyz_path.exists(), f"{xyz_path} not found."
         atoms = read(str(xyz_path), index=":", format="extxyz")
         return cls(*atoms)
 
-    def to_lmdb(self, lmdb_path: Union[str, Path]) -> None:
+    def to_lmdb(self, lmdb_path: str | Path) -> None:
         if isinstance(lmdb_path, str):
             lmdb_path = Path(lmdb_path)
         os.makedirs(lmdb_path, exist_ok=True)

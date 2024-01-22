@@ -1,9 +1,10 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
-import torch
 import functools
 
+import torch
 
 # def custom_norm(inputs: torch.Tensor) -> torch.Tensor:
 #

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import multiprocessing
 import os
 import re
@@ -42,7 +44,7 @@ class NomadRequest:
                 "results.properties.electronic.band_structure_electronic",
                 "results.material.symmetry",
                 "run.calculation.energy",
-            ]
+            ],
         },
         "pagination": {
             "page_size": 10000,
@@ -59,9 +61,9 @@ class NomadRequest:
     def __init__(
         self,
         base_data_dir: str = "./",
-        split_files: Optional[List[str]] = None,
-        material_ids: Optional[List[int]] = None,
-        split_dir: Optional[str] = None,
+        split_files: list[str] | None = None,
+        material_ids: list[int] | None = None,
+        split_dir: str | None = None,
         num_workers: int = -1,
     ):
         self.split_dir = split_dir
@@ -80,19 +82,19 @@ class NomadRequest:
             raise Exception(f"Only one of split_dir and split_files may be supplied")
 
     @property
-    def material_ids(self) -> Union[Dict[int, str], None]:
+    def material_ids(self) -> dict[int, str] | None:
         return self._material_ids
 
     @material_ids.setter
-    def material_ids(self, values: Union[Dict[int, str], None]) -> None:
+    def material_ids(self, values: dict[int, str] | None) -> None:
         self._material_ids = values
 
     @property
-    def data_dir(self) -> Union[List[str], None]:
+    def data_dir(self) -> list[str] | None:
         return self._data_dir
 
     @data_dir.setter
-    def data_dir(self, dst_folder: Union[str, None]) -> None:
+    def data_dir(self, dst_folder: str | None) -> None:
         """Use the `base_data_dir` plus the destination folder to create `data_dir`.
         The `dst_folder` is determined by which split we are processing specified by
         `split_files`, otherwise will default to `all`.
@@ -103,7 +105,7 @@ class NomadRequest:
         self._data_dir = os.path.join(self.base_data_dir, dst_folder)
         os.makedirs(self._data_dir, exist_ok=True)
 
-    def process_ids(self) -> Dict[str, int]:
+    def process_ids(self) -> dict[str, int]:
         """Builds a dictionary of split names and the id's associated with them.
         If not split files are specified then whatever material id's are present are
         used to create the 'all' split.
@@ -114,18 +116,18 @@ class NomadRequest:
         ids = {}
         if self.split_files is not None:
             for split_file in self.split_files:
-                ids[split_file] = yaml.load(open(split_file, "r"), Loader=CBaseLoader)
+                ids[split_file] = yaml.load(open(split_file), Loader=CBaseLoader)
         elif self.split_dir is not None:
             ids[self.split_dir] = self.material_ids
         else:
             try:
                 self.split_file = os.path.join(self.data_dir, "all.yml")
-                ids["all"] = yaml.load(open(self.split_file, "r"), Loader=CBaseLoader)
+                ids["all"] = yaml.load(open(self.split_file), Loader=CBaseLoader)
             except FileNotFoundError:
                 raise f"Found no split files! {self.split_file}"
         return ids
 
-    def fetch_ids(self) -> Dict[int, str]:
+    def fetch_ids(self) -> dict[int, str]:
         """Manually queries the Nomad API, which uses pagination to buffer data incrementally
         to prevent crashes and potential data loss. Pagination is not conducive to
         parallel processing so this process is somewhat slow. 10,000 samples at a time
@@ -218,7 +220,7 @@ class NomadRequest:
             print(f"Downloading data to : {self.data_dir}")
             self.nomad_request()
 
-    def fetch_data(self, idx: int, key: str) -> Tuple[int, str, bool]:
+    def fetch_data(self, idx: int, key: str) -> tuple[int, str, bool]:
         """Uses a specific endpoint which takes a single material ID and downloads its
         data archive. Much more data is available that what is saved to self.data.
         Requests are retried a maximum of 5 times.
@@ -247,7 +249,7 @@ class NomadRequest:
             energies = {
                 "energies": data["data"]["archive"]["run"][-1]["calculation"][-1][
                     "energy"
-                ]
+                ],
             }
             results.update(energies)
             self.data[idx] = results
@@ -277,12 +279,13 @@ class NomadRequest:
         warning_message = f"Sample {id_idx} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
         warnings.warn(warning_message, category=Warning)
         with open(
-            os.path.join(os.path.dirname(self.data_dir), f"failed.txt"), "a"
+            os.path.join(os.path.dirname(self.data_dir), f"failed.txt"),
+            "a",
         ) as f:
             f.write(warning_message)
         return False
 
-    def nomad_request(self) -> List:
+    def nomad_request(self) -> list:
         """Multiprocessing to query data by material ID. Saves data to lmdb at the end
         of the queries.
         Returns:
@@ -291,7 +294,7 @@ class NomadRequest:
         self.data = [None] * len(self.material_ids)
         self.material_ids = {int(k): v for k, v in self.material_ids.items()}
         request_status = dict(
-            zip(list(self.material_ids.keys()), [None] * len(self.material_ids))
+            zip(list(self.material_ids.keys()), [None] * len(self.material_ids)),
         )
         with suppress(OSError):
             os.remove(os.path.join(self.data_dir, f"failed.txt"))
@@ -305,7 +308,9 @@ class NomadRequest:
 
             # Iterate over completed futures to access the responses
             for future in tqdm(
-                as_completed(futures), total=len(self.material_ids), desc="Downloading"
+                as_completed(futures),
+                total=len(self.material_ids),
+                desc="Downloading",
             ):
                 try:
                     _, key, status = future.result()
@@ -347,12 +352,14 @@ class NomadRequest:
         )
         if self.data is not None:
             for index, entry in tqdm(
-                enumerate(self.data), desc="Entries processed", total=len(self.data)
+                enumerate(self.data),
+                desc="Entries processed",
+                total=len(self.data),
             ):
                 write_lmdb_data(index, entry, target_env)
         else:
             raise ValueError(
-                f"No data was available for serializing - did you run `retrieve_data`?"
+                f"No data was available for serializing - did you run `retrieve_data`?",
             )
 
     @classmethod
@@ -361,7 +368,8 @@ class NomadRequest:
 
         np.random.seed(6)
         ids = yaml.load(
-            open("./matsciml/datasets/nomad/all.yml", "r"), Loader=CBaseLoader
+            open("./matsciml/datasets/nomad/all.yml"),
+            Loader=CBaseLoader,
         )
         random_ids = np.random.randint(0, len(ids), 100)
         dset_ids = list(ids.keys())
@@ -380,7 +388,7 @@ class NomadRequest:
 
 if __name__ == "__main__":
     nomad = NomadRequest(base_data_dir="./base")
-    ids = yaml.load(open("./matsciml/datasets/nomad/all.yml", "r"), Loader=CBaseLoader)
+    ids = yaml.load(open("./matsciml/datasets/nomad/all.yml"), Loader=CBaseLoader)
     nomad.data_dir = "./matsciml/datasets/nomad/base"
     nomad.material_ids = ids
     nomad.nomad_request()

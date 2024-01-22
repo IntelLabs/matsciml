@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from typing import Tuple
-from typing import Union
+from typing import Tuple, Union
 
 import pandas as pd
 import torch
 import torch.nn as nn
-from mendeleev.fetch import fetch_ionization_energies
-from mendeleev.fetch import fetch_table
+from mendeleev.fetch import fetch_ionization_energies, fetch_table
 from torch import nn
-from torch.nn import Embedding
-from torch.nn import Linear
+from torch.nn import Embedding, Linear
 from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.norm import GraphNorm
 from torch_scatter import scatter
@@ -374,7 +371,10 @@ class InteractionBlock(MessagePassing):
             self.lin_h.bias.data.fill_(0)
 
     def forward(
-        self, h: torch.Tensor, edge_index: torch.Tensor, e: torch.Tesnor,
+        self,
+        h: torch.Tensor,
+        edge_index: torch.Tensor,
+        e: torch.Tesnor,
     ) -> torch.Tensor:
         """Forward pass of the Interaction block.
         Called in FAENet forward pass to update atom representations.
@@ -432,7 +432,10 @@ class InteractionBlock(MessagePassing):
         return h
 
     def message(
-        self, x_j: torch.Tensor, W: torch.Tensor, local_env=None,
+        self,
+        x_j: torch.Tensor,
+        W: torch.Tensor,
+        local_env=None,
     ) -> torch.Tensor:
         if local_env is not None:
             return W
@@ -444,7 +447,11 @@ class OutputBlock(nn.Module):
     """Compute task-specific predictions from final atom representations."""
 
     def __init__(
-        self, energy_head: str, hidden_channels: int, act: callable, out_dim: int = 1,
+        self,
+        energy_head: str,
+        hidden_channels: int,
+        act: callable,
+        out_dim: int = 1,
     ) -> None:
         super().__init__()
         self.energy_head = energy_head
@@ -534,7 +541,11 @@ class ForceDecoder(nn.Module):
     """
 
     def __init__(
-        self, type: str, input_channels: int, model_configs: dict, act: callable,
+        self,
+        type: str,
+        input_channels: int,
+        model_configs: dict,
+        act: callable,
     ):
         super().__init__()
         self.type = type

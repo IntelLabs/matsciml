@@ -1,12 +1,14 @@
-import pytest
+from __future__ import annotations
+
 import shutil
 
-from matsciml.datasets.materials_project import (
-    MaterialsProjectRequest,
-    MaterialsProjectDataset,
-)
+import pytest
 
 from matsciml.datasets import transforms
+from matsciml.datasets.materials_project import (
+    MaterialsProjectDataset,
+    MaterialsProjectRequest,
+)
 
 # TODO add marks to pyproject.toml
 
@@ -51,7 +53,7 @@ def test_dataset_load(devset_dir):
             [
                 key in data.keys()
                 for key in ["pos", "atomic_numbers", "lattice_features", "dataset"]
-            ]
+            ],
         )
 
 
@@ -111,7 +113,7 @@ def test_saved_devset_pointcloud():
 
 def test_saved_devset_graph():
     dset = MaterialsProjectDataset.from_devset(
-        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)]
+        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
     )
     samples = [dset.__getitem__(i) for i in range(16)]
     batch = dset.collate_fn(samples)

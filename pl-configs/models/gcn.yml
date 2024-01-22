@@ -4,7 +4,7 @@
 model:
   class_path: "S2EFLitModule"
   init_args:
-    gnn: 
+    gnn:
       class_path: "GraphConvModel"
       init_args:
         atom_embedding_dim: 128

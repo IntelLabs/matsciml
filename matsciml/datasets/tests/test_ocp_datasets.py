@@ -1,5 +1,6 @@
 # Copyright (C) 2022 Intel Corporation
 # SPDX-License-Identifier: MIT License
+from __future__ import annotations
 
 import dgl
 
@@ -19,7 +20,8 @@ def test_base_s2ef_read():
     data = dset.__getitem__(0)
     assert all([key in data for key in ["graph", "targets", "target_types"]])
     assert isinstance(
-        data["graph"], dgl.DGLGraph
+        data["graph"],
+        dgl.DGLGraph,
     ), f"Expected graph to be DGLGraph, got {type(data['graph'])}"
     assert all([key in data["graph"].ndata for key in ["pos", "force"]])
 
@@ -34,7 +36,8 @@ def test_base_is2re_read():
     data = dset.__getitem__(0)
     assert all([key in data for key in ["graph", "targets", "target_types"]])
     assert isinstance(
-        data["graph"], dgl.DGLGraph
+        data["graph"],
+        dgl.DGLGraph,
     ), f"Expected graph to be DGLGraph, got {type(data['graph'])}"
     assert "pos" in data["graph"].ndata
     assert all([key in data["targets"] for key in ["energy_relaxed", "energy_init"]])

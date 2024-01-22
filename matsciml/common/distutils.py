@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+from __future__ import annotations
 
 import logging
 import os
@@ -21,7 +22,7 @@ def setup(config):
         if node_list is not None:
             try:
                 hostnames = subprocess.check_output(
-                    ["scontrol", "show", "hostnames", node_list]
+                    ["scontrol", "show", "hostnames", node_list],
                 )
                 config["init_method"] = "tcp://{host}:{port}".format(
                     host=hostnames.split()[0].decode("utf-8"),
@@ -48,7 +49,7 @@ def setup(config):
                     config["local_rank"] = int(os.environ.get("SLURM_LOCALID"))
 
                 logging.info(
-                    f"Init: {config['init_method']}, {config['world_size']}, {config['rank']}"
+                    f"Init: {config['init_method']}, {config['world_size']}, {config['rank']}",
                 )
                 dist.init_process_group(
                     backend=config["distributed_backend"],
@@ -67,7 +68,7 @@ def setup(config):
             "echo $(cat {} | sort | uniq | grep -v batch | grep -v login | head -1)"
         ).format(os.environ["LSB_DJOB_HOSTFILE"])
         os.environ["MASTER_ADDR"] = str(
-            subprocess.check_output(get_master, shell=True)
+            subprocess.check_output(get_master, shell=True),
         )[2:-3]
         os.environ["MASTER_PORT"] = "23456"
         os.environ["WORLD_SIZE"] = os.environ["OMPI_COMM_WORLD_SIZE"]
@@ -81,7 +82,8 @@ def setup(config):
         )
     else:
         dist.init_process_group(
-            backend=config["distributed_backend"], init_method="env://"
+            backend=config["distributed_backend"],
+            init_method="env://",
         )
     # TODO: SLURM
 
@@ -144,9 +146,7 @@ def all_gather(data, group=dist.group.WORLD, device=None):
         tensor = torch.tensor(data)
     if device is not None:
         tensor = tensor.cuda(device)
-    tensor_list = [
-        tensor.new_zeros(tensor.shape) for _ in range(get_world_size())
-    ]
+    tensor_list = [tensor.new_zeros(tensor.shape) for _ in range(get_world_size())]
     dist.all_gather(tensor_list, tensor, group=group)
     if not isinstance(data, torch.Tensor):
         result = [tensor.cpu().numpy() for tensor in tensor_list]
