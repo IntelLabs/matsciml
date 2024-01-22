@@ -7,12 +7,12 @@
 from typing import Optional, Sequence
 
 import torch.utils.data
+import torch_geometric
 
 from matsciml.models.pyg.mace.tools import (
     AtomicNumberTable,
     atomic_numbers_to_indices,
     to_one_hot,
-    torch_geometric,
     voigt_to_matrix,
 )
 

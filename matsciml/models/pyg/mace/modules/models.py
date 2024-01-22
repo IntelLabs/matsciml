@@ -22,7 +22,6 @@ from matsciml.models.pyg.mace.tools import (
     AtomicNumberTable,
     atomic_numbers_to_indices,
     to_one_hot,
-    torch_geometric,
     voigt_to_matrix,
 )
 
@@ -270,6 +269,7 @@ class ScaleShiftMACE(MACE):
         self,
         atomic_inter_scale: float,
         atomic_inter_shift: float,
+        training :bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -280,7 +280,6 @@ class ScaleShiftMACE(MACE):
     def _forward(
         self,
         data: Dict[str, torch.Tensor],
-        training: bool = False,
         compute_force: bool = True,
         compute_virials: bool = False,
         compute_stress: bool = False,
@@ -288,6 +287,7 @@ class ScaleShiftMACE(MACE):
     ) -> Dict[str, Optional[torch.Tensor]]:
         # Setup
         data["positions"].requires_grad_(True)
+        
         num_graphs = data["ptr"].numel() - 1
         displacement = torch.zeros(
             (num_graphs, 3, 3),
@@ -356,23 +356,21 @@ class ScaleShiftMACE(MACE):
         # Add E_0 and (scaled) interaction energy
         total_energy = e0 + inter_e
         node_energy = node_e0 + node_inter_es
-
-        # forces, virials, stress = get_outputs(
-        #     energy=inter_e,
-        #     positions=data["positions"],
-        #     displacement=displacement,
-        #     cell=data["cell"],
-        #     training=training,
-        #     compute_force=compute_force,
-        #     compute_virials=compute_virials,
-        #     compute_stress=compute_stress,
-        # )
-
+        forces, virials, stress = get_outputs(
+            energy=total_energy,
+            positions=data["positions"],
+            displacement=displacement,
+            cell=data["cell"],
+            training=self.training,
+            compute_force=compute_force,
+            compute_virials=compute_virials,
+            compute_stress=compute_stress,
+        )
         output = {
             "energy": total_energy,
             "node_energy": node_energy,
             "interaction_energy": inter_e,
-            # "forces": forces,
+            "forces": forces,
             # "virials": virials,
             # "stress": stress,
             "displacement": displacement,
@@ -380,7 +378,7 @@ class ScaleShiftMACE(MACE):
             "edge_feats" :edge_feats
         }
 
-        return Embeddings(output["energy"].reshape(-1,1),output["node_feats"])
+        return Embeddings({'energy':output["energy"].reshape(-1,1),'force':output["forces"]})
     
     def read_batch(self, batch: BatchDict) -> DataDict:
         """
@@ -415,20 +413,191 @@ class ScaleShiftMACE(MACE):
             data[key] = getattr(graph, key, None)
         
         data["positions"]=getattr(graph, "pos")
-        data["forces"]=getattr(graph, "force")
+        data["forces"]=getattr(graph, "force",None)
         # Charges default to 0 instead of None if not found
         data["charges"] = getattr(batch,"charges", torch.zeros_like(data["batch"]))
         
-        data["energy_weight"]=torch.ones((data["energy"].shape[0],))
-        data["forces_weight"]=torch.ones((data["energy"].shape[0],))
+        data["energy_weight"]=torch.ones((data["positions"].shape[0],))
+        data["forces_weight"]=torch.ones((data["positions"].shape[0],))
                 
-        data["stress"]=torch.ones((data["energy"].shape[0],3,3))
-        data["stress_weights"]=torch.ones((data["energy"].shape[0],))
+        data["stress"]=torch.ones((data["positions"].shape[0],3,3))
+        data["stress_weights"]=torch.ones((data["positions"].shape[0],))
         
-        data["virials"]=torch.ones((data["energy"].shape[0],3,3))
-        data["virials_weights"]=torch.ones((data["energy"].shape[0],))
+        data["virials"]=torch.ones((data["positions"].shape[0],3,3))
+        data["virials_weights"]=torch.ones((data["positions"].shape[0],))
         
-        data["weights"]=torch.ones((data["energy"].shape[0],))
+        data["weights"]=torch.ones((data["positions"].shape[0],))
+
+        atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers")
+        z_table=tools.get_atomic_number_table_from_zs(atomic_numbers.numpy())
+
+        indices = atomic_numbers_to_indices(atomic_numbers, z_table=z_table)
+        data["node_attrs"] = to_one_hot(
+            torch.tensor(indices, dtype=torch.long).unsqueeze(-1),
+            num_classes=len(z_table),
+        )
+
+        shifts=[]
+        edge_index=[]
+        unit_shifts=[]
+        b_sz=data["ptr"].numel()-1
+        pos_k=data["positions"].reshape(b_sz,-1,3)
+        cell_k=data["cell"].reshape(b_sz,3,3)
+        for k in range(b_sz):
+            pbc_tensor=pbc[k]==1
+            pbc_tuple=(pbc_tensor[0].item(),pbc_tensor[1].item(),pbc_tensor[2].item())
+            edge_index_k, shifts_k, unit_shifts_k= get_neighborhood(pos_k[k].numpy(),cutoff=self.r_max.item(),pbc=pbc_tuple, cell=cell_k[k])
+            shifts+=[torch.Tensor(shifts_k)]
+            edge_index+=[ (torch.Tensor(edge_index_k)+83*k).T.to(torch.int64)]
+            unit_shifts+=[torch.Tensor(unit_shifts_k)]
+
+        data["shifts"]=torch.concatenate(shifts)
+        data["unit_shifts"]=torch.concatenate(unit_shifts)
+        data["edge_index"]=torch.concatenate(edge_index).T
+        return {'data':data}
+
+    def read_batch_size(self, batch: BatchDict) -> int:
+        graph = batch["graph"]
+        return graph.num_graphs
+
+
+@compile_mode("script")
+class ScaleShiftMACE1(MACE):
+    def __init__(
+        self,
+        atomic_inter_scale: float,
+        atomic_inter_shift: float,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.scale_shift = ScaleShiftBlock(
+            scale=atomic_inter_scale, shift=atomic_inter_shift
+        )
+
+    def _forward(
+        self,
+        data: Dict[str, torch.Tensor],
+        training: bool = False,
+    ) -> Dict[str, Optional[torch.Tensor]]:
+        # Setup
+        data["positions"].requires_grad_(True)
+        num_graphs = data["ptr"].numel() - 1
+       
+
+        # Atomic energies
+        node_e0 = self.atomic_energies_fn(data["node_attrs"])
+        e0 = scatter_sum(
+            src=node_e0, index=data["batch"], dim=-1, dim_size=num_graphs
+        )  # [n_graphs,]
+
+        # Embeddings
+        node_feats = self.node_embedding(data["node_attrs"])
+        vectors, lengths = get_edge_vectors_and_lengths(
+            positions=data["positions"],
+            edge_index=data["edge_index"],
+            shifts=data["shifts"],
+        )
+        edge_attrs = self.spherical_harmonics(vectors)
+        edge_feats = self.radial_embedding(lengths)
+
+        # Interactions
+        node_es_list = []
+        node_feats_list=[]
+        for interaction, product, readout in zip(
+            self.interactions, self.products, self.readouts
+        ):
+            node_feats, sc = interaction(
+                node_attrs=data["node_attrs"],
+                node_feats=node_feats,
+                edge_attrs=edge_attrs,
+                edge_feats=edge_feats,
+                edge_index=data["edge_index"],
+            )
+            node_feats = product(
+                node_feats=node_feats, sc=sc, node_attrs=data["node_attrs"]
+            )
+            node_feats_list.append(node_feats)
+            node_es_list.append(readout(node_feats).squeeze(-1))  # {[n_nodes, ], }
+
+        # Sum over interactions
+        node_inter_es = torch.sum(
+            torch.stack(node_es_list, dim=0), dim=0
+        )  # [n_nodes, ]
+        node_inter_es = self.scale_shift(node_inter_es)
+
+        # Sum over nodes in graph
+        inter_e = scatter_sum(
+            src=node_inter_es, index=data["batch"], dim=-1, dim_size=num_graphs
+        )  # [n_graphs,]
+
+        # Add E_0 and (scaled) interaction energy
+        total_energy = e0 + inter_e
+        node_energy = node_e0 + node_inter_es
+
+    
+
+        output = {
+            "energy": total_energy,
+            "node_energy": node_energy,
+            "interaction_energy": inter_e,
+            # "forces": forces,
+            # "virials": virials,
+            # "stress": stress,
+            "node_feats_list" :torch.stack(node_feats_list[:-1], dim=0),
+            "edge_feats" :edge_feats
+        }
+        
+
+
+        return Embeddings(None,output["node_feats_list"])
+    
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        """
+        Extract PyG structure and features to pass into the model.
+
+        More complicated models can override this method to extract out edge and
+        graph features as well.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data to process.
+
+        
+        Returns
+        -------
+        DataDict
+            Dictionary of input features to pass into the model
+        """
+        assert (
+            "graph" in batch
+        ), f"Model {self.__class__.__name__} expects graph structures, but 'graph' key was not found in batch."
+        graph = batch.get("graph")    
+        pbc=batch.get('pbc')    
+        data={'cell':batch.get('cell'),'energy':batch.get('energy')}
+        
+        assert isinstance(
+            graph, (pyg.data.Data, pyg.data.Batch)
+        ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
+        
+        for key in ["ptr","batch","edge_feats", "graph_feats"]:
+            data[key] = getattr(graph, key, None)
+        
+        data["positions"]=getattr(graph, "pos")
+        data["forces"]=getattr(graph, "force",None)
+        # Charges default to 0 instead of None if not found
+        data["charges"] = getattr(batch,"charges", torch.zeros_like(data["batch"]))
+        
+        data["energy_weight"]=torch.ones((data["positions"].shape[0],))
+        data["forces_weight"]=torch.ones((data["positions"].shape[0],))
+                
+        data["stress"]=torch.ones((data["positions"].shape[0],3,3))
+        data["stress_weights"]=torch.ones((data["positions"].shape[0],))
+        
+        data["virials"]=torch.ones((data["positions"].shape[0],3,3))
+        data["virials_weights"]=torch.ones((data["positions"].shape[0],))
+        
+        data["weights"]=torch.ones((data["positions"].shape[0],))
 
         atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers")
         z_table=tools.get_atomic_number_table_from_zs(atomic_numbers.numpy())
