@@ -1,3 +1,11 @@
+###########################################################################################
+# Implementation of MACE models and other models based E(3)-Equivariant MPNNs 
+#(https://github.com/ACEsuit/mace)
+# Original Authors: Ilyes Batatia, Gregor Simm
+# Integrated into matsciml by Vaibhav Bihani, Sajid Mannan
+# This program is distributed under the MIT License
+###########################################################################################
+
 from .atomic_data import AtomicData
 from .neighborhood import get_neighborhood
 from .utils import (

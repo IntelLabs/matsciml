@@ -1,3 +1,13 @@
+###########################################################################################
+# Implementation of MACE models and other models based E(3)-Equivariant MPNNs
+# (https://github.com/ACEsuit/mace)
+# Original Authors: Ilyes Batatia, Gregor Simm
+# Integrated into matsciml by Vaibhav Bihani, Sajid Mannan
+# This program is distributed under the MIT License
+###########################################################################################
+
+
+
 from .cg import U_matrix_real
 from .checkpoint import CheckpointHandler, CheckpointIO, CheckpointState
 from .torch_tools import (
