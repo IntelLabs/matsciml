@@ -139,22 +139,19 @@ class IdentityOutputBlock(nn.Module):
     """
     Building block for output heads. Identity relation
     """
-
     def __init__(
         self,
         **kwargs
     ) -> None:
         """
         Initialize an `OutputBlock` as an Identity operation.
-
         
         """
         super().__init__()
         self.layers = None
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
-        output = data
-        return output
+        return data
 
     @property
     def input_dim(self) -> int:
@@ -166,7 +163,7 @@ class IdentityOutputBlock(nn.Module):
         -------
         None 
         """
-        return None
+        return -1
 
 
 
