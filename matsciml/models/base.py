@@ -1110,7 +1110,7 @@ class ScalarRegressionTask(BaseTaskModule):
     def _make_output_heads(self) -> nn.ModuleDict:
         modules = {}
         for key in self.task_keys:
-            modules[key] = OutputHead(**self.output_kwargs).to(self.device)
+            modules[key] = OutputHead(1,**self.output_kwargs).to(self.device)
         return nn.ModuleDict(modules)
 
     def _filter_task_keys(
