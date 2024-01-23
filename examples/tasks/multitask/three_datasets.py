@@ -22,8 +22,12 @@ lips_dset = LiPSDataset.from_devset(
     transforms=[PointCloudToGraphTransform(backend="dgl", cutoff_dist=10.0)],
 )
 # OCP datasets are saved as DGL graphs
-is2re_dset = IS2REDataset.from_devset()
-s2ef_dset = S2EFDataset.from_devset()
+is2re_dset = IS2REDataset.from_devset(
+    transforms=[PointCloudToGraphTransform(backend="dgl", cutoff_dist=10.0)],
+)
+s2ef_dset = S2EFDataset.from_devset(
+    transforms=[PointCloudToGraphTransform(backend="dgl", cutoff_dist=10.0)],
+)
 # use MultiDataset to concatenate each dataset
 dset = MultiDataset([lips_dset, is2re_dset, s2ef_dset])
 

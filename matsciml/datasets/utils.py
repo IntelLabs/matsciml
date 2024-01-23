@@ -195,7 +195,7 @@ def point_cloud_featurization(
     dst_onehot = eye[dst_types][None, :]
     plus, minus = src_onehot + dst_onehot, src_onehot - dst_onehot
     feat_tensor = torch.concat([plus, minus], axis=-1)
-    return feat_tensor
+    return feat_tensor.float()
 
 
 def connect_db_read(lmdb_path: str | Path, **kwargs) -> lmdb.Environment:

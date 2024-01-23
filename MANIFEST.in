@@ -1,6 +1,6 @@
 
-recursive-include matsciml/datasets/dev-s2ef-dgl *
-recursive-include matsciml/datasets/dev-is2re-dgl *
+recursive-include matsciml/datasets/dev-s2ef *
+recursive-include matsciml/datasets/dev-is2re *
 recursive-include matsciml/datasets/materials_project/devset *
 recursive-include matsciml/datasets/lips/devset *
 recursive-include matsciml/datasets/carolina_db/devset *

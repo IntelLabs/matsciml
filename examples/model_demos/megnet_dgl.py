@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytorch_lightning as pl
 
-from matsciml.datasets.transforms import DistancesTransform, GraphVariablesTransform
+from matsciml.datasets.transforms import (
+    DistancesTransform,
+    GraphVariablesTransform,
+    PointCloudToGraphTransform,
+)
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import MEGNet
 from matsciml.models.base import ScalarRegressionTask
@@ -29,8 +33,19 @@ task = ScalarRegressionTask(
 # MPNN expects edge features corresponding to atom-atom distances
 dm = MatSciMLDataModule.from_devset(
     "IS2REDataset",
-    dset_kwargs={"transforms": [DistancesTransform(), GraphVariablesTransform()]},
+    dset_kwargs={
+        "transforms": [
+            PointCloudToGraphTransform(
+                "dgl",
+                cutoff_dist=20.0,
+                node_keys=["pos", "atomic_numbers"],
+            ),
+            DistancesTransform(),
+            GraphVariablesTransform(),
+        ],
+    },
     num_workers=0,
+    batch_size=2,
 )
 
 # run a quick training loop

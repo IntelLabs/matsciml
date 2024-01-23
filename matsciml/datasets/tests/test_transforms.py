@@ -10,6 +10,11 @@ from matsciml.lightning.data_utils import MatSciMLDataModule
 @pytest.mark.dependency()
 def test_distance_transform():
     trans = [
+        transforms.PointCloudToGraphTransform(
+            "dgl",
+            cutoff_dist=20.0,
+            node_keys=["pos", "atomic_numbers"],
+        ),
         transforms.DistancesTransform(),
     ]
     dset = S2EFDataset(s2ef_devset, transforms=trans)
@@ -20,6 +25,11 @@ def test_distance_transform():
 @pytest.mark.dependency(["test_distance_transform"])
 def test_graph_variable_transform():
     trans = [
+        transforms.PointCloudToGraphTransform(
+            "dgl",
+            cutoff_dist=20.0,
+            node_keys=["pos", "atomic_numbers"],
+        ),
         transforms.DistancesTransform(),
         transforms.GraphVariablesTransform(),
     ]
@@ -31,6 +41,11 @@ def test_graph_variable_transform():
 @pytest.mark.dependency(["test_graph_variable_transform"])
 def test_batched_gv_transform():
     trans = [
+        transforms.PointCloudToGraphTransform(
+            "dgl",
+            cutoff_dist=20.0,
+            node_keys=["pos", "atomic_numbers"],
+        ),
         transforms.DistancesTransform(),
         transforms.GraphVariablesTransform(),
     ]
@@ -51,6 +66,11 @@ def test_batched_gv_transform():
 @pytest.mark.dependency()
 def test_remove_tag_zero():
     trans = [
+        transforms.PointCloudToGraphTransform(
+            "dgl",
+            cutoff_dist=20.0,
+            node_keys=["pos", "atomic_numbers", "tags"],
+        ),
         transforms.RemoveTagZeroNodes(),
     ]
     dm = MatSciMLDataModule.from_devset(
@@ -67,6 +87,11 @@ def test_remove_tag_zero():
 @pytest.mark.dependency(["test_remove_tag_zero"])
 def test_graph_supernode():
     trans = [
+        transforms.PointCloudToGraphTransform(
+            "dgl",
+            cutoff_dist=20.0,
+            node_keys=["pos", "atomic_numbers", "tags", "fixed"],
+        ),
         transforms.GraphSuperNodes(100),
         transforms.RemoveTagZeroNodes(),
     ]
@@ -84,6 +109,11 @@ def test_graph_supernode():
 @pytest.mark.dependency(["test_remove_tag_zero"])
 def test_atom_supernode():
     trans = [
+        transforms.PointCloudToGraphTransform(
+            "dgl",
+            cutoff_dist=20.0,
+            node_keys=["pos", "atomic_numbers", "tags", "fixed"],
+        ),
         transforms.AtomicSuperNodes(100),
         transforms.RemoveTagZeroNodes(),
     ]
@@ -103,6 +133,11 @@ def test_atom_supernode():
 @pytest.mark.dependency(["test_atom_supernode", "test_graph_supernode"])
 def test_all_supernodes():
     trans = [
+        transforms.PointCloudToGraphTransform(
+            "dgl",
+            cutoff_dist=20.0,
+            node_keys=["pos", "atomic_numbers", "tags", "fixed"],
+        ),
         transforms.GraphSuperNodes(100),
         transforms.AtomicSuperNodes(100),
         transforms.RemoveTagZeroNodes(),
@@ -129,6 +164,11 @@ def test_all_supernodes():
 @pytest.mark.skip(reason="Broken test.")
 def test_graph_sorting():
     trans = [
+        transforms.PointCloudToGraphTransform(
+            "dgl",
+            cutoff_dist=20.0,
+            node_keys=["pos", "atomic_numbers"],
+        ),
         transforms.GraphReordering("metis", k=10),
     ]
     dm = MatSciMLDataModule.from_devset(
