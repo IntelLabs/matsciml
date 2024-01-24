@@ -134,6 +134,39 @@ class OutputBlock(nn.Module):
         return self.layers[0].weight.size(-1)
 
 
+@registry.register_model("IdentityOutputBlock")
+class IdentityOutputBlock(nn.Module):
+    """
+    Building block for output heads. Identity relation
+    """
+    def __init__(
+        self,
+        **kwargs
+    ) -> None:
+        """
+        Initialize an `OutputBlock` as an Identity operation.
+        
+        """
+        super().__init__()
+        self.layers = None
+
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
+        return data
+
+    @property
+    def input_dim(self) -> int:
+        """
+        Return the expected input size of this ``Identity OutputBlock``
+        Any output is fine.
+
+        Returns
+        -------
+        None 
+        """
+        return -1
+
+
+
 @registry.register_model("IrrepOutputBlock")
 class IrrepOutputBlock(nn.Module):
     def __init__(
