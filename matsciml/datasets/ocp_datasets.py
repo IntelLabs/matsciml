@@ -3,58 +3,30 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable
 
 import dgl
 import torch
-from dgl.dataloading import GraphDataLoader
-from munch import Munch
 
 from matsciml.common.registry import registry
-from matsciml.datasets.base import BaseLMDBDataset
-
-
-class OpenCatalystDataset(BaseLMDBDataset):
-    @property
-    def representation(self) -> str:
-        return self._representation
-
-    @representation.setter
-    def representation(self, value: str) -> None:
-        value = value.lower()
-        assert value in [
-            "graph",
-            "point_cloud",
-        ], "Supported representations are 'graph' and 'point_cloud'."
-        self._representation = value
-
-    @property
-    def pad_keys(self) -> list:
-        # in the event this i
-        return ["pc_features"]
-
-    @property
-    def data_loader(self) -> GraphDataLoader:
-        return GraphDataLoader
+from matsciml.datasets.base import PointCloudDataset
+from matsciml.datasets.utils import point_cloud_featurization
 
 
 @registry.register_dataset("S2EFDataset")
-class S2EFDataset(OpenCatalystDataset):
-    __devset__ = Path(__file__).parents[0].joinpath("dev-s2ef-dgl")
+class S2EFDataset(PointCloudDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("dev-s2ef")
 
     def data_from_key(
         self,
         lmdb_index: int,
         subindex: int,
-    ) -> dict[str, torch.Tensor | dgl.DGLGraph]:
+    ) -> dict[str, torch.Tensor]:
         """
-        Overrides the `BaseOCPDataset.data_from_key` function, as there are
-        some nuances with unpacking the S2EF data regarding `Munch`, and
-        maybe DGLGraphs.
+        Overrides the `BaseLMDBDataset.data_from_key` function.
 
-        Essentially, we check if the data read in from the LMDB is a Munch
-        object, and if so, we construct the DGLGraph and pack it with the
-        labels into a dictionary, consistent with the other datasets.
+        Essentially, we add in extra point cloud based labels into the
+        data dictionary, consistent with the other datasets.
 
         Parameters
         ----------
@@ -65,44 +37,29 @@ class S2EFDataset(OpenCatalystDataset):
 
         Returns
         -------
-        Dict[str, Union[torch.Tensor, dgl.DGLGraph]]
-            Dictionary with keys: ["graph", "natoms", "y", "sid", "fid", "cell"]
+        Dict[str, torch.Tensor]
+            Dictionary with keys: ["natoms", "y", "sid", "fid", "cell"]
         """
         # read in data as you would normally
         data = super().data_from_key(lmdb_index, subindex)
-        # repackage the data if serialized as Munch
-        output_data = {}
-        # TODO confirm that this is the only case right now
-        if isinstance(data, Munch):
-            u, v = data.get("edge_index")
-            # create a DGL graph
-            graph = dgl.graph((u, v), num_nodes=data.get("natoms"))
-            for key in [
-                "pos",
-                "force",
-                "tags",
-                "fixed",
-                "atomic_numbers",
-            ]:
-                graph.ndata[key] = data.get(key)
-            graph.edata["cell_offsets"] = data.get("cell_offsets")
-            # loop over labels
-            for key in ["natoms", "y", "sid", "fid", "cell"]:
-                output_data[key] = data.get(key)
-            # make graph bidirectional
-            graph = dgl.to_bidirected(graph, copy_ndata=True)
-            output_data["graph"] = graph
-        # This is the case for test set data for s2ef with dgl format.
-        elif "graph" in data.keys():
-            output_data = data
-        # tacking on metadata about the task; energy and force regression
-        output_data["targets"] = {}
-        output_data["target_types"] = {"regression": [], "classification": []}
-        output_data["targets"]["energy"] = data.get("y")
-        output_data["targets"]["force"] = output_data["graph"].ndata.get("force")
+        system_size = data["pos"].size(0)
+        node_choices = self.choose_dst_nodes(system_size, self.full_pairwise)
+        src_nodes, dst_nodes = node_choices["src_nodes"], node_choices["dst_nodes"]
+        atom_numbers = data["atomic_numbers"].to(torch.int)
+        # uses one-hot encoding featurization
+        pc_features = point_cloud_featurization(
+            atom_numbers[src_nodes],
+            atom_numbers[dst_nodes],
+            100,
+        )
+        data["pc_features"] = pc_features
+        data["targets"] = {}
+        data["target_types"] = {"regression": [], "classification": []}
+        data["targets"]["energy"] = data.get("y")
+        data["targets"]["force"] = data.get("force")
         for key in ["energy", "force"]:
-            output_data["target_types"]["regression"].append(key)
-        return output_data
+            data["target_types"]["regression"].append(key)
+        return data
 
     @property
     def target_keys(self) -> dict[str, list[str]]:
@@ -110,8 +67,8 @@ class S2EFDataset(OpenCatalystDataset):
 
 
 @registry.register_dataset("IS2REDataset")
-class IS2REDataset(OpenCatalystDataset):
-    __devset__ = Path(__file__).parents[0].joinpath("dev-is2re-dgl")
+class IS2REDataset(PointCloudDataset):
+    __devset__ = Path(__file__).parents[0].joinpath("dev-is2re")
 
     """
     Currently, this class doesn't have anything special implemented,
@@ -134,10 +91,19 @@ class IS2REDataset(OpenCatalystDataset):
         self,
         lmdb_index: int,
         subindex: int,
-    ) -> dict[str, torch.Tensor | dgl.DGLGraph]:
+    ) -> dict[str, torch.Tensor]:
         data = super().data_from_key(lmdb_index, subindex)
-        # make graph bidirectional if it isn't already
-        data["graph"] = dgl.to_bidirected(data["graph"], copy_ndata=True)
+        system_size = data["pos"].size(0)
+        node_choices = self.choose_dst_nodes(system_size, self.full_pairwise)
+        src_nodes, dst_nodes = node_choices["src_nodes"], node_choices["dst_nodes"]
+        atom_numbers = data["atomic_numbers"].to(torch.int)
+        # uses one-hot encoding featurization
+        pc_features = point_cloud_featurization(
+            atom_numbers[src_nodes],
+            atom_numbers[dst_nodes],
+            100,
+        )
+        data["pc_features"] = pc_features
         # tacking on metadata about the task; energy
         data["targets"] = {}
         data["target_types"] = {"regression": [], "classification": []}

@@ -606,7 +606,9 @@ if package_registry["pyg"]:
             ), f"Model {self.__class__.__name__} expects PyG graphs, but data in 'graph' key is type {type(graph)}"
             for key in ["edge_feats", "graph_feats"]:
                 data[key] = getattr(graph, key, None)
-            atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers")
+            atomic_numbers: torch.Tensor = getattr(graph, "atomic_numbers").to(
+                torch.int,
+            )
             node_embeddings = self.atom_embedding(atomic_numbers)
             pos: torch.Tensor = getattr(graph, "pos")
             # optionally can fuse into a single tensor with `self.join_position_embeddings`
@@ -957,7 +959,7 @@ class BaseTaskModule(pl.LightningModule):
         self,
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         batch_idx: int,
-    ):
+    ):  
         loss_dict = self._compute_losses(batch)
         metrics = {}
         # prepending training flag for
@@ -1110,7 +1112,7 @@ class ScalarRegressionTask(BaseTaskModule):
     def _make_output_heads(self) -> nn.ModuleDict:
         modules = {}
         for key in self.task_keys:
-            modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
+            modules[key] = OutputHead(1,**self.output_kwargs).to(self.device)
         return nn.ModuleDict(modules)
 
     def _filter_task_keys(
@@ -1190,6 +1192,229 @@ class ScalarRegressionTask(BaseTaskModule):
         dataloader_idx: int = 0,
     ):
         self.on_train_batch_start(batch, batch_idx)
+
+
+
+@registry.register_task("MaceEnergyForceTask")
+class MaceEnergyForceTask(BaseTaskModule):
+    __task__ = "regression"
+    """
+    Class for training MACE on energy and forces
+    
+    """
+
+    def __init__(
+        self,
+        encoder: Optional[nn.Module] = None,
+        encoder_class: Optional[Type[nn.Module]] = None,
+        encoder_kwargs: Optional[Dict[str, Any]] = None,
+        loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
+        loss_coeff: Optional[Dict[str,Any]] = None, 
+        task_keys: Optional[List[str]] = None,
+        output_kwargs: Dict[str, Any] = {},
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            encoder,
+            encoder_class,
+            encoder_kwargs,
+            loss_func,
+            task_keys,
+            output_kwargs,
+            **kwargs,
+        )
+        self.save_hyperparameters(ignore=["encoder", "loss_func"])
+        self.loss_coeff=loss_coeff
+
+    def process_embedding(self, embeddings: Embeddings) -> Dict[str, torch.Tensor]:
+        """
+        Given a set of embeddings, output predictions for each head.
+
+        Parameters
+        ----------
+        embeddings : torch.Tensor
+            Batch of graph/point cloud embeddings
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Predictions per output head
+        """
+        results = {}
+        for key, head in self.output_heads.items():
+            # in the event that we get multiple embeddings, we average
+            # every dimension execpt the batch and dimensionality
+            output = head(embeddings.system_embedding[key])
+            output = reduce(output, "b ... d -> b d", reduction="mean")
+            results[key] = output
+        return results
+
+    
+    def _compute_losses(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
+        """
+        Compute pred versus target for every target, then sum.
+        With coefficients defined for each key
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of samples to evaluate on.
+
+        embeddings : Optional[torch.Tensor]
+            If provided, bypasses calling the encoder and obtains predictions
+            from processing the embeddings. Mainly intended for use with multitask
+            abstraction.
+
+        Returns
+        -------
+        Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
+            Dictionary containing the joint loss, and a subdictionary
+            containing each individual target loss.
+        """
+        targets = self._get_targets(batch)
+        predictions = self(batch)
+        losses = {}
+        for key in self.task_keys:
+            target_val = targets[key]
+            if self.uses_normalizers:
+                target_val = self.normalizers[key].norm(target_val)
+            if self.loss_coeff==None:
+                coefficient=1.0
+            else:
+                coefficient=self.loss_coeff[key]
+
+            losses[key] = self.loss_func(predictions[key], target_val)*(coefficient/predictions[key].numel())
+        
+        total_loss: torch.Tensor = sum(losses.values())
+        return {"loss": total_loss, "log": losses}
+
+    
+    def _make_output_heads(self) -> nn.ModuleDict:
+        modules = {}
+        for key in self.task_keys:
+            modules[key] = OutputHead(**self.output_kwargs[key]).to(self.device)
+        return nn.ModuleDict(modules)
+
+    def _filter_task_keys(
+        self,
+        keys: List[str],
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+    ) -> List[str]:
+        """
+        Filters out task keys for scalar regression.
+
+        This routine will filter out keys with targets that are multidimensional, since
+        this is the _scalar_ regression task class.
+
+        Parameters
+        ----------
+        keys : List[str]
+            List of task keys
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of training samples to inspect.
+
+        Returns
+        -------
+        List[str]
+            List of filtered task keys
+        """
+        keys = super()._filter_task_keys(keys, batch)
+
+        def checker(key) -> bool:
+            # this ignores all non-tensor objects, and checks to make
+            # sure the last target dimension is scalar
+            target = batch["targets"][key]
+            if isinstance(target, torch.Tensor):
+                return target.size(-1) <= 1
+            return False
+
+        # this filters out targets that are multidimensional
+        keys = list(filter(checker, keys))
+        return keys
+
+    def validation_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch_idx: int,
+    ):  
+        with torch.enable_grad(): #Enabled gradient for Force computation
+            loss_dict = self._compute_losses(batch)
+        metrics = {}
+        # prepending training flag for
+        for key, value in loss_dict["log"].items():
+            metrics[f"val_{key}"] = value
+        try:
+            batch_size = self.encoder.read_batch_size(batch)
+        except:
+            warn(
+                "Unable to parse batch size from data, defaulting to `None` for logging."
+            )
+            batch_size = None
+        self.log_dict(metrics, batch_size=batch_size)
+        return loss_dict
+
+    def test_step(
+        self,
+        batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
+        batch_idx: int,
+    ):
+        with torch.enable_grad(): #Enabled gradient for Force computation
+            loss_dict = self._compute_losses(batch)
+        metrics = {}
+        # prepending training flag for
+        for key, value in loss_dict["log"].items():
+            metrics[f"test_{key}"] = value
+        try:
+            batch_size = self.encoder.read_batch_size(batch)
+        except:
+            warn(
+                "Unable to parse batch size from data, defaulting to `None` for logging."
+            )
+            batch_size = None
+        self.log_dict(metrics, batch_size=batch_size)
+        return loss_dict
+
+
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
+        """
+        PyTorch Lightning hook to check OutputHeads are created.
+
+        This will take data from the batch to determine which key to retrieve
+        data from and how many heads to create.
+
+        Parameters
+        ----------
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of data from data loader.
+        batch_idx : int
+            Batch index.
+        unused
+            PyTorch Lightning hangover
+
+        Returns
+        -------
+        Optional[int]
+            Just returns the parent result.
+        """
+        status = super().on_train_batch_start(batch, batch_idx)
+        # if there are no task keys set, task has not been initialized yet
+        if len(self.task_keys) == 0:
+            keys = batch["target_types"]["regression"]
+            self.task_keys = self._filter_task_keys(keys, batch)
+            # now add the parameters to our task's optimizer
+            opt = self.optimizers()
+            opt.add_param_group({"params": self.output_heads.parameters()})
+            # create normalizers for each target
+            self.normalizers = self._make_normalizers()
+        return status
+
+    def on_validation_batch_start(
+        self, batch: any, batch_idx: int, dataloader_idx: int
+    ):
+        self.on_train_batch_start(batch, batch_idx)
+
 
 
 @registry.register_task("BinaryClassificationTask")

@@ -77,27 +77,14 @@ if package_registry["dgl"]:
         )
         assert torch.allclose(new_batch["graph"].ndata["pos"], graph.ndata["pos"])
 
-    @pytest.mark.dependency()
-    def test_collate_is2re_dgl():
-        dset = IS2REDataset(is2re_devset)
-        samples = [dset.__getitem__(i) for i in range(4)]
-        # no keys needed to be padded
-        batch = concatenate_keys(samples)
-        assert "graph" in batch
-        graph = batch["graph"]
-        assert graph.batch_size == 4
-        assert all([key in batch for key in ["targets", "target_types"]])
-
 
 @pytest.mark.dependency(depends=["test_collate_is2re_dgl"])
 def test_collate_is2re_pc():
-    dset = IS2REDataset(is2re_devset, transforms=[OCPGraphToPointCloudTransform("dgl")])
+    dset = IS2REDataset(is2re_devset)
     samples = [dset.__getitem__(i) for i in range(4)]
     batch = dset.collate_fn(samples)
+    assert len(batch["atomic_numbers"]) == 4
     assert all(
-        [
-            key in batch
-            for key in ["pos", "pc_features", "mask", "targets", "target_types"]
-        ],
+        [key in batch for key in ["pos", "pc_features", "targets", "target_types"]],
     )
     assert sorted(batch.keys())

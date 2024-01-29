@@ -11,7 +11,7 @@ from matsciml.datasets.materials_project import (
 )
 from matsciml.datasets.transforms import (
     GraphToPointCloudTransform,
-    OCPGraphToPointCloudTransform,
+    PointCloudToGraphTransform,
 )
 
 if package_registry["dgl"]:
@@ -58,15 +58,18 @@ if package_registry["dgl"]:
     def test_dgl_pairwise_is2re():
         dset = IS2REDataset(
             is2re_devset,
-            transforms=[GraphToPointCloudTransform("dgl", full_pairwise=True)],
+            transforms=[
+                PointCloudToGraphTransform(
+                    "dgl",
+                    cutoff_dist=20.0,
+                    node_keys=["pos", "atomic_numbers"],
+                ),
+            ],
         )
         sample = dset.__getitem__(0)
-        assert all(
-            [key in sample for key in ["pos", "pc_features", "src_nodes", "dst_nodes"]],
-        )
+        assert "graph" in sample
         # make sure positions are still same dimension
-        assert sample["pos"].ndim == 2
-        assert sample["pc_features"].ndim == 3
+        assert sample["graph"].ndata["pos"].ndim == 2
 
     @pytest.mark.dependency(
         depends=["test_transform_init", "test_dgl_atom_center_transform"],
@@ -74,15 +77,18 @@ if package_registry["dgl"]:
     def test_dgl_pairwise_s2ef():
         dset = S2EFDataset(
             s2ef_devset,
-            transforms=[GraphToPointCloudTransform("dgl", full_pairwise=True)],
+            transforms=[
+                PointCloudToGraphTransform(
+                    "dgl",
+                    cutoff_dist=20.0,
+                    node_keys=["pos", "atomic_numbers"],
+                ),
+            ],
         )
         sample = dset.__getitem__(0)
-        assert all(
-            [key in sample for key in ["pos", "pc_features", "src_nodes", "dst_nodes"]],
-        )
+        assert "graph" in sample
         # make sure positions are still same dimension
-        assert sample["pos"].ndim == 2
-        assert sample["pc_features"].ndim == 3
+        assert sample["graph"].ndata["pos"].ndim == 2
 
     @pytest.mark.dependency(
         depends=["test_transform_init", "test_dgl_atom_center_transform"],
@@ -98,20 +104,3 @@ if package_registry["dgl"]:
             match="No graphs to transform into point clouds!",
         ):
             sample = dset.__getitem__(0)
-
-    @pytest.mark.dependency(
-        depends=["test_transform_init", "test_dgl_atom_center_transform"],
-    )
-    def test_dgl_ocp_special():
-        dset = S2EFDataset(
-            s2ef_devset,
-            transforms=[OCPGraphToPointCloudTransform("dgl", full_pairwise=True)],
-        )
-        sample = dset.__getitem__(0)
-        assert "pc_features" in sample
-        assert "pos" in sample
-        # make sure positions are atom centered
-        assert sample["pos"].ndim == 2
-        pos = sample["pos"]
-        pc_features = sample["pc_features"]
-        assert all([sample["dst_nodes"].size(0) == pc_features.size(i) for i in [0, 1]])

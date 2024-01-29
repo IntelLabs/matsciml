@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytorch_lightning as pl
 
 from matsciml.datasets.materials_project import MaterialsProjectDataset
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import PLEGNNBackbone
 from matsciml.models.base import ForceRegressionTask, GradFreeForceRegressionTask
@@ -15,7 +16,18 @@ def test_regression_devset():
 
 
 def test_force_regression():
-    devset = MatSciMLDataModule.from_devset("S2EFDataset")
+    devset = MatSciMLDataModule.from_devset(
+        "S2EFDataset",
+        dset_kwargs={
+            "transforms": [
+                PointCloudToGraphTransform(
+                    "dgl",
+                    cutoff_dist=20.0,
+                    node_keys=["pos", "atomic_numbers"],
+                ),
+            ],
+        },
+    )
     model_args = {
         "embed_in_dim": 128,
         "embed_hidden_dim": 32,
@@ -54,7 +66,18 @@ def test_force_regression():
 
 
 def test_gradfree_force_regression():
-    devset = MatSciMLDataModule.from_devset("S2EFDataset")
+    devset = MatSciMLDataModule.from_devset(
+        "S2EFDataset",
+        dset_kwargs={
+            "transforms": [
+                PointCloudToGraphTransform(
+                    "dgl",
+                    cutoff_dist=20.0,
+                    node_keys=["pos", "atomic_numbers"],
+                ),
+            ],
+        },
+    )
     model_args = {
         "embed_in_dim": 128,
         "embed_hidden_dim": 32,

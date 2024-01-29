@@ -92,11 +92,9 @@ def test_datamodule_graph_transforms(dset_classname, backend):
 
 
 @pytest.mark.parametrize("dset_classname", just_ocp)
-def test_ocp_pc_transforms(dset_classname):
-    t = GraphToPointCloudTransform("dgl")
+def test_ocp_pc(dset_classname):
     datamodule = MatSciMLDataModule.from_devset(
         dset_classname,
-        dset_kwargs={"transforms": [t]},
     )
     datamodule.setup()
     for split in ["train", "val", "test"]:
