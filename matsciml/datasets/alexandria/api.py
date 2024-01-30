@@ -14,13 +14,6 @@ from tqdm import tqdm
 from matsciml.datasets import utils
 from matsciml.datasets.alexandria import AlexandriaDataset
 
-URL = "https://alexandria.icams.rub.de/"
-threeD = "/pbe/alexandria_000.json.bz2"
-twoD = "/pbe_2d/alexandria_001.json.bz2"
-oneD = "/pbe_1d/alexandria_002.json.bz2"
-response = requests.get(URL)
-
-
 class AlexandriaRequest:
     def __init__(
         self,
