@@ -54,15 +54,13 @@ def get_jimage(structure):
     return to_jimages, edge_indices
 
 def get_lattice(lattice):
-    lattice_params = torch.FloatTensor(
-        lattice.abc + tuple(lattice.angles)
-    )
-    lattice_features = {
-        "lattice_params": lattice_params,
-    }
-    return lattice_features
+    lattice_params = torch.FloatTensor(lattice.abc + tuple(lattice.angles))
+    return {"lattice_params": lattice_params}
 
 def processing_data(structure, return_dict, y):
+    """
+    The same as OG with the addition of jimages field
+    """
     to_jimages, edge_indices = get_jimage(structure)
     return_dict["to_jimages"] = torch.LongTensor(to_jimages)
     return_dict["edge_index"] = torch.LongTensor(edge_indices).T
@@ -88,39 +86,22 @@ def processing_data(structure, return_dict, y):
     )
     return data
 
-def parse_structure_MP(item) -> None:
-    """
-    The same as OG with the addition of jimages field
-    """
+def parse_structure_MP(item, structure) -> None:
     return_dict = {}
-    structure = item.get("structure", None)
-    if structure is None:
-        raise ValueError(
-            "Structure not found in data - workflow needs a structure to use!"
-        )
     coords = torch.from_numpy(structure.cart_coords).float()
     return_dict["pos"] = coords[None, :] - coords[:, None]
     return_dict["coords"] = coords
     return_dict["frac_coords"] = structure.frac_coords
     atom_numbers = torch.LongTensor(structure.atomic_numbers)
-    # keep atomic numbers for graph featurization
-    return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)
+    return_dict["atomic_numbers"] = torch.LongTensor(structure.atomic_numbers)     # keep atomic numbers for graph featurization
     return_dict["num_particles"] = len(atom_numbers)
     return_dict["distance_matrix"] = torch.from_numpy(structure.distance_matrix).float()
     y = item.get("formation_energy_per_atom") or 1
     data = processing_data(structure, return_dict, y)
     return data
 
-def parse_structure_NOMAD(item) -> None:
-    """
-    The same as OG with the addition of jimages field
-    """
+def parse_structure_NOMAD(item, structure) -> None:
     return_dict = {}
-    structure = item["properties"]["structures"].get("structure_conventional", None)
-    if structure is None:
-        raise ValueError(
-            "Structure not found in data - workflow needs a structure to use!"
-        )
     cartesian_coords = numpy.array(structure["cartesian_site_positions"]) * 1E10
     lattice_vectors = Lattice(numpy.array(structure["lattice_vectors"]) * 1E10)
     species = structure["species_at_sites"]
@@ -131,8 +112,7 @@ def parse_structure_NOMAD(item) -> None:
     return_dict["frac_coords"] = frac_coords
     num_particles = len(species)
     atom_numbers = get_atomic_num(species)
-    # keep atomic numbers for graph featurization
-    return_dict["atomic_numbers"] = torch.LongTensor(atom_numbers)
+    return_dict["atomic_numbers"] = torch.LongTensor(atom_numbers)     # keep atomic numbers for graph featurization
     return_dict["num_particles"] = num_particles
     distance_matrix = get_distance_matrix(cartesian_coords, numpy.array(structure["lattice_vectors"]) * 1E10)
     return_dict["distance_matrix"] = torch.from_numpy(distance_matrix)
@@ -141,16 +121,8 @@ def parse_structure_NOMAD(item) -> None:
     data = processing_data(structure, return_dict, y)
     return data
 
-def parse_structure_OQMD(item) -> None:
-    """
-    The same as OG with the addition of jimages field
-    """
+def parse_structure_OQMD(item, structure) -> None:
     return_dict = {}
-    structure = item.get("cart_coords", None)
-    if structure is None:
-        raise ValueError(
-            "Structure not found in data - workflow needs a structure to use!"
-        )
     cartesian_coords = numpy.array(structure)
     lattice_vectors = Lattice(numpy.array(item["unit_cell"]))
     species = [site.split(" ")[0] for site in item["sites"]]
@@ -159,8 +131,7 @@ def parse_structure_OQMD(item) -> None:
     return_dict["pos"] = coords[None, :] - coords[:, None]
     return_dict["coords"] = coords
     return_dict["frac_coords"] = frac_coords
-    # keep atomic numbers for graph featurization
-    return_dict["atomic_numbers"] = torch.LongTensor(item["atomic_numbers"])
+    return_dict["atomic_numbers"] = torch.LongTensor(item["atomic_numbers"])     # keep atomic numbers for graph featurization
     return_dict["num_particles"] = item["natoms"]
     distance_matrix = get_distance_matrix(cartesian_coords, numpy.array(item["unit_cell"]))
     return_dict["distance_matrix"] = torch.from_numpy(distance_matrix).float()
@@ -169,17 +140,8 @@ def parse_structure_OQMD(item) -> None:
     data = processing_data(structure, return_dict, y)
     return data
 
-def parse_structure_Carolina(item) -> None:
-    """
-    The same as OG with the addition of jimages field
-    """
+def parse_structure_Carolina(item, structure) -> None:
     return_dict = {}
-    structure = item.get("cart_coords", None)
-    if structure is None:
-        raise ValueError(
-            "Structure not found in data - workflow needs a structure to use!"
-        )
-    # print(item["_cell_length_a"])
     cartesian_coords = structure
     a, b, c, alpha, beta, gamma = [
                     float(item["_cell_length_a"]),
@@ -196,8 +158,7 @@ def parse_structure_Carolina(item) -> None:
     return_dict["coords"] = coords
     return_dict["frac_coords"] = frac_coords
     atom_numbers = torch.LongTensor(item["atomic_numbers"])
-    # keep atomic numbers for graph featurization
-    return_dict["atomic_numbers"] = atom_numbers
+    return_dict["atomic_numbers"] = atom_numbers     # keep atomic numbers for graph featurization
     return_dict["num_particles"] = len(item["atomic_numbers"])
     distance_matrix = get_distance_matrix(cartesian_coords, lattice_vectors._matrix)
     return_dict["distance_matrix"] = torch.from_numpy(distance_matrix)
@@ -206,42 +167,59 @@ def parse_structure_Carolina(item) -> None:
     data = processing_data(structure, return_dict, y)
     return data
 
-
 def check_num_atoms(num_atoms):
     if num_atoms is not None:
         if num_atoms > MAX_ATOMS:
-            return None
+            print("Number of atoms is larger than MAX_ATOMS.")
+            return False
         return True
     else:
         warnings.warn("One entry is skipped due to missing the number of atoms, which is needed by the workflow!")
 
-def data_to_cdvae_MP(item):
-    num_atoms = len(item["structure"].atomic_numbers)
-    check_num_atoms(num_atoms)
-    if check_num_atoms:
-        pyg_data = parse_structure_MP(item)
-        return pyg_data
+def check_structure(structure):
+    if structure is None:
+        raise ValueError("Structure not found in data - workflow needs a structure to use!")
+    else:
+        return True
 
-def data_to_cdvae_NOMAD(item):
-    num_atoms = len(item["properties"]["structures"]["structure_conventional"]["species_at_sites"])
-    check_num_atoms(num_atoms)
-    if check_num_atoms:
-        pyg_data = parse_structure_NOMAD(item)
-        return pyg_data
+def data_to_cdvae(item, dataset_name):
+    """
+    Convert data to PyTorch Geometric format for a given dataset.
 
-def data_to_cdvae_OQMD(item):
-    num_atoms = item["natoms"]
-    check_num_atoms(num_atoms)
-    if check_num_atoms:
-        pyg_data = parse_structure_OQMD(item)
-        return pyg_data
+    Args:
+    - item: The data item to be converted.
+    - dataset_name: Name of the dataset.
 
-def data_to_cdvae_Carolina(item):
-    num_atoms = len(item["atomic_numbers"])
+    Returns:
+    - PyTorch Geometric data object.
+    """
+    if dataset_name == "MP":
+        num_atoms = len(item["structure"].atomic_numbers)
+        structure = item.get("structure", None)
+        parse_structure_func = parse_structure_MP
+    elif dataset_name == "NOMAD":
+        num_atoms = len(item["properties"]["structures"]["structure_conventional"]["species_at_sites"])
+        structure = item["properties"]["structures"].get("structure_conventional", None)
+        parse_structure_func = parse_structure_NOMAD
+    elif dataset_name == "OQMD":
+        num_atoms = item["natoms"]
+        structure = item.get("cart_coords", None)
+        parse_structure_func = parse_structure_OQMD
+    elif dataset_name == "Carolina":
+        num_atoms = len(item["atomic_numbers"])
+        structure = item.get("cart_coords", None)
+        parse_structure_func = parse_structure_Carolina
+    else:
+        raise ValueError("Invalid dataset name provided.")
+
     check_num_atoms(num_atoms)
-    if check_num_atoms:
-        pyg_data = parse_structure_Carolina(item)
+    check_structure(structure)
+    if check_num_atoms and check_structure:
+        pyg_data = parse_structure_func(item, structure)
         return pyg_data
+    else:
+        return None
+
 
 #############################################################################
 def main(args: Namespace):
@@ -249,24 +227,14 @@ def main(args: Namespace):
     print("Start")
     input_path = Path(args.src_lmdb)
     output_path = Path(args.output_folder)
-
     if not input_path.exists():
         raise FileNotFoundError(f"{input_path} could not be found.")
     if args.dataset is None:
         raise FileNotFoundError("Dataset name was not provided.")
     if output_path.exists():
-        raise ValueError(
-            f"{output_path} already exists, please check its contents and remove the folder!"
-        )
-
+        raise ValueError(f"{output_path} already exists, please check its contents and remove the folder!")
     os.makedirs(output_path, exist_ok=True)
     db_paths = sorted(input_path.glob("*.lmdb"))
-    dataset_functions = {
-        "MP": data_to_cdvae_MP,
-        "NOMAD": data_to_cdvae_NOMAD,
-        "OQMD": data_to_cdvae_OQMD,
-        "Carolina": data_to_cdvae_Carolina,
-    }
 
     # loop over individual LMDB files within the input set, if there are more than one
     for path in db_paths:
@@ -290,7 +258,7 @@ def main(args: Namespace):
                 dataset_name = args.dataset
                 if key.decode("utf-8").isdigit():
                     crystal_data = pickle.loads(txn.get(key))
-                    pyg_data = dataset_functions.get(dataset_name)(crystal_data)
+                    pyg_data = data_to_cdvae(crystal_data, dataset_name)
                     if pyg_data is not None:
                         key = key.decode("utf-8")
                         write_lmdb_data(key, pyg_data, target_env)
@@ -307,10 +275,11 @@ def main(args: Namespace):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    dataset = ["MP", "Carolina", "OQMD", "NOMAD"]
+    dataset = ["MP", "NOMAD", "OQMD", "Carolina"]
     parser.add_argument("--src_lmdb", "-i", type=str, help="Folder containing the source LMDB files to be converted.")
     parser.add_argument("--dataset", "-d", type=str, choices=dataset, help="Select one of the datasets.")
     parser.add_argument("--output_folder", "-o", type=str, help="Path to a non-existing folder to save processed data to.")
+    # CLI example: python examples/model_demos/cdvae/cdvae_precompute.py -i matsciml/datasets/materials_project/devset -d MP -o matsciml/datasets/materials_project/devset/cdvae
     args = parser.parse_args()
     print(args)
     main(args)
