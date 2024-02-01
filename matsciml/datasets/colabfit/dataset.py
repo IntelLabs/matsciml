@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 from matsciml.common.registry import registry
-from matsciml.common.types import DataDict
+from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets.base import PointCloudDataset
 from matsciml.datasets.utils import concatenate_keys, point_cloud_featurization
 

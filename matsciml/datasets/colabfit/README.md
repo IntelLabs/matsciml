@@ -4,4 +4,4 @@
 
 LMDB files can be downloaded via the ColabFit site or through the [colabfit-cli](https://github.com/colabfit/colabfit-cli) tool. The CLI enables querying across all datasets on the ColabFit Exchange and provides an easy interface to download desired datasets in a MatSciML-ready format.
 
-If you utlize the ColabFit Exchange to access data, please cite the original creators of the dataset you use and refer to [this link](https://colabfit.org/about/) for how to cite ColabFit itself.
+If you utilize the ColabFit Exchange to access data, please cite the original creators of the dataset you use and refer to [this link](https://colabfit.org/about/) for how to cite ColabFit itself.
