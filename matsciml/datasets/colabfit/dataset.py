@@ -24,9 +24,6 @@ POSSIBLE_KEYS = [
 class ColabFitDataset(PointCloudDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
 
-    def index_to_key(self, index: int) -> tuple[int]:
-        return (0, index)
-
     def data_from_key(
         self,
         lmdb_index: int,
