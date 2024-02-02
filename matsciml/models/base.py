@@ -1411,7 +1411,7 @@ class MaceEnergyForceTask(BaseTaskModule):
         return status
 
     def on_validation_batch_start(
-        self, batch: any, batch_idx: int, dataloader_idx: int
+        self, batch: any, batch_idx: int, dataloader_idx: int = 0
     ):
         self.on_train_batch_start(batch, batch_idx)
 
