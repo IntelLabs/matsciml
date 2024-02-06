@@ -605,8 +605,9 @@ def element_types():
 def make_pymatgen_periodic_structure(
     atomic_numbers: torch.Tensor,
     coords: torch.Tensor,
-    lat_angles: torch.Tensor,
-    lat_abc: torch.Tensor,
+    lat_angles: torch.Tensor | None = None,
+    lat_abc: torch.Tensor | None = None,
+    lattice: Lattice | None = None,
 ) -> Structure:
     """
     Construct a Pymatgen structure from available information
@@ -638,7 +639,13 @@ def make_pymatgen_periodic_structure(
         is_frac = False
     else:
         is_frac = True
-    lattice = Lattice(*lat_abc, *lat_angles)
+    if not lattice:
+        if lat_angles is None or lat_abc is None:
+            raise ValueError(
+                "Unable to construct Lattice object without parameters:"
+                f" Angles: {lat_angles}, ABC: {lat_abc}",
+            )
+        lattice = Lattice(*lat_abc, *lat_angles)
     structure = Structure(
         lattice,
         atomic_numbers,
