@@ -701,7 +701,7 @@ def calculate_periodic_shifts(
     return_dict = {
         "src": torch.LongTensor(all_src),
         "dst": torch.LongTensor(all_dst),
-        "images": torch.LongTensor(all_images),
+        "images": torch.FloatTensor(all_images),
         "cell": cell,
         "pos": frac_coords,
     }
