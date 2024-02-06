@@ -30,7 +30,7 @@ if _has_graphs:
         in Angstroms.
         """
 
-        def __init__(self, cutoff_radius: float, graph_backend: str = "dgl") -> None:
+        def __init__(self, cutoff_radius: float) -> None:
             super().__init__()
             self.cutoff_radius = cutoff_radius
 
