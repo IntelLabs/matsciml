@@ -190,16 +190,27 @@ class PointCloudToGraphTransform(RepresentationTransform):
             coords = data["pos"]
             atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
             num_nodes = len(atom_numbers)
-            # skip edge calculation if the distance matrix
-            # exists already
-            if "distance_matrix" not in data:
-                dist_mat = self.node_distances(coords)
+            # use pre-computed edges with periodic boundary conditions
+            if all([f"{key}_nodes" in data for key in ["src", "dst"]]):
+                adj_list = [data["src_nodes"], data["dst_nodes"]]
             else:
-                dist_mat = data.get("distance_matrix")
-            adj_list = self.edges_from_dist(dist_mat, self.cutoff_dist)
+                # skip edge calculation if the distance matrix
+                # exists already
+                if "distance_matrix" not in data:
+                    dist_mat = self.node_distances(coords)
+                else:
+                    dist_mat = data.get("distance_matrix")
+                adj_list = self.edges_from_dist(dist_mat, self.cutoff_dist)
             g = dgl_graph(adj_list, num_nodes=num_nodes)
             g.ndata["atomic_numbers"] = atom_numbers
             g.ndata["pos"] = coords
+            # copying over periodic data if it exists
+            for key in ["images"]:
+                if key in data:
+                    g.ndata[key] = data[key]
+            for key in ["offsets", "pbc_distances"]:
+                if key in data:
+                    g.edata[key] = data[key]
             data["graph"] = g
 
     if package_registry["pyg"]:
