@@ -694,7 +694,7 @@ def calculate_periodic_shifts(
             all_dst.append(site.index)
             all_images.append(site.image)
     # get the lattice definition for use later
-    cell = rearrange(structure.lattice.matrix(), "i j -> () i j")
+    cell = rearrange(structure.lattice.matrix, "i j -> () i j")
     cell = torch.from_numpy(cell).float()
     # get coordinates as well, for standardization
     frac_coords = torch.from_numpy(structure.frac_coords).float()
