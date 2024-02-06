@@ -54,6 +54,8 @@ if _has_graphs:
                         " in the data.",
                     )
                 lattice_params: torch.Tensor = data[lattice_key]
+                if isinstance(lattice_params, dict):
+                    lattice_params = lattice_params["lattice_params"]
                 abc, angles = lattice_params[:3], lattice_params[3:]
                 angles = torch.FloatTensor(
                     tuple(angle * (180.0 / torch.pi) for angle in angles),
