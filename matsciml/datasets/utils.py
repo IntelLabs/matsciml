@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import lmdb
 import torch
+from einops import einsum, rearrange
 from joblib import Parallel, delayed
 from pymatgen.core import Lattice, Structure
 from torch.nn.utils.rnn import pad_sequence
@@ -646,3 +647,68 @@ def make_pymatgen_periodic_structure(
         coords_are_cartesian=not is_frac,
     )
     return structure
+
+
+def calculate_periodic_shifts(
+    structure: Structure,
+    cutoff: float,
+) -> dict[str, torch.Tensor]:
+    """
+    Compute properties with respect to periodic boundary conditions.
+
+    This function takes a periodic structure defined by a Pymatgen structure,
+    and uses it to compute edges and subsequently distances between imaged
+    atoms based on the cut-off value.
+
+    Important things to note are the fact that we build in assumptions based off
+    `Structure.get_all_neighbors`: for example, we need it to be a periodic
+    structure (for obvious reasons), and that we are using fractional coordinates
+    in order to compute the distances and offsets.
+
+    Parameters
+    ----------
+    structure
+        Pymatgen periodic structure.
+    cutoff
+        Radial cut off for defining edges.
+
+    Returns
+    -------
+    dict[str, torch.Tensor]
+        Dictionary containing edge definitions and properties
+        associated with periodic structures.
+    """
+    assert (
+        structure.is_3d_periodic
+    ), "Structure is not periodic; can't compute periodic shifts!"
+    neighbors = structure.get_all_neighbors(
+        cutoff,
+        include_index=True,
+        include_image=True,
+    )
+    # process the neighbors now
+    all_src, all_dst, all_images = [], [], []
+    for src_idx, dst_sites in enumerate(neighbors):
+        for site in dst_sites:
+            all_src.append(src_idx)
+            all_dst.append(site.index)
+            all_images.append(site.image)
+    # get the lattice definition for use later
+    cell = rearrange(structure.lattice.matrix(), "i j -> () i j")
+    cell = torch.from_numpy(cell).float()
+    # get coordinates as well, for standardization
+    frac_coords = torch.from_numpy(structure.frac_coords).float()
+    return_dict = {
+        "src": torch.LongTensor(all_src),
+        "dst": torch.LongTensor(all_dst),
+        "images": torch.LongTensor(all_images),
+        "cell": cell,
+        "pos": frac_coords,
+    }
+    # now calculate offsets based on each image for a lattice
+    return_dict["offsets"] = einsum(images, cell, "v i, n i j -> v j")
+    src, dst = return_dict["src"], return_dict["dst"]
+    return_dict["pbc_distances"] = (
+        frac_coords[dst] - frac_coords[src] + return_dict["offsets"]
+    )
+    return return_dict
