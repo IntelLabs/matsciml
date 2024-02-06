@@ -706,8 +706,8 @@ def calculate_periodic_shifts(
     # get coordinates as well, for standardization
     frac_coords = torch.from_numpy(structure.frac_coords).float()
     return_dict = {
-        "src": torch.LongTensor(all_src),
-        "dst": torch.LongTensor(all_dst),
+        "src_nodes": torch.LongTensor(all_src),
+        "dst_nodes": torch.LongTensor(all_dst),
         "images": torch.FloatTensor(all_images),
         "cell": cell,
         "pos": frac_coords,
