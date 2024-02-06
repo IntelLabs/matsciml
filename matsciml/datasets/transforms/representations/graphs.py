@@ -266,6 +266,15 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 edge_index = edge_index.T.contiguous()
             g = PyGGraph(edge_index=edge_index, pos=coords)
             g.atomic_numbers = atom_numbers
+            # run through potential periodic data as well. The two
+            # are functionally the same, but separating them because
+            # we keep edge and node data separate
+            for key in ["images"]:
+                if key in data:
+                    setattr(g, key, data[key])
+            for key in ["offsets", "pbc_distances"]:
+                if key in data:
+                    setattr(g, key, data[key])
             data["graph"] = g
 
     def convert(self, data: DataDict) -> None:
