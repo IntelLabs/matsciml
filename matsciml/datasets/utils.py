@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import lmdb
 import torch
 from joblib import Parallel, delayed
+from pymatgen.core import Lattice, Structure
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
@@ -598,3 +599,50 @@ def atomic_number_map() -> dict[str, int]:
 @lru_cache(1)
 def element_types():
     return list(atomic_number_map().keys())
+
+
+def make_pymatgen_periodic_structure(
+    atomic_numbers: torch.Tensor,
+    coords: torch.Tensor,
+    lat_angles: torch.Tensor,
+    lat_abc: torch.Tensor,
+) -> Structure:
+    """
+    Construct a Pymatgen structure from available information
+
+    The utility of this function is that it wraps Lattice and Structure
+    construction in a single pass. Additionally, we do a rudimentary
+    check on ``coords``, whereby we assume fractional coordinates if
+    all coordinate values are between [0,1]. The check, however, is specifically
+    whether there are values beyond that range.
+
+    Parameters
+    ----------
+    atomic_numbers : torch.Tensor
+        1D tensor containing atomic numbers
+    coords
+        2D tensor containing the position of each atom. Can be fractional
+        or cartesian coordinates.
+    lat_angles
+        1D tensor containing three elements for the lattice angles.
+    lat_abc
+        1D tensor containing three elements for the lattice abc values.
+
+    Returns
+    -------
+    Structure
+        Periodic structure object
+    """
+    if coords.max() > 1.0 or coords.min() < 0.0:
+        is_frac = False
+    else:
+        is_frac = True
+    lattice = Lattice(*lat_abc, *lat_angles)
+    structure = Structure(
+        lattice,
+        atomic_numbers,
+        coords,
+        to_unit_cell=True,
+        coords_are_cartesian=not is_frac,
+    )
+    return structure
