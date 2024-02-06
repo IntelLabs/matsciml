@@ -65,4 +65,5 @@ if _has_graphs:
                 lattice=lattice,
             )
             graph_props = calculate_periodic_shifts(structure, self.cutoff_radius)
+            data.update(graph_props)
             return data
