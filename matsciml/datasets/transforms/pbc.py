@@ -19,7 +19,7 @@ else:
 
 if _has_graphs:
 
-    class PeriodicGraphTransform(AbstractDataTransform):
+    class PeriodicPropertiesTransform(AbstractDataTransform):
         """
         Rewires an already present graph to include periodic boundary conditions.
 
