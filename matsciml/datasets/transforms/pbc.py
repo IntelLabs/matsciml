@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import torch
-from einops import rearrange
 from pymatgen.core import Lattice
 
 from matsciml.common.packages import package_registry
 from matsciml.common.types import DataDict
 from matsciml.datasets.transforms.base import AbstractDataTransform
+from matsciml.datasets.utils import (
+    calculate_periodic_shifts,
+    make_pymatgen_periodic_structure,
+)
 
 if any([pkg in package_registry for pkg in ["pyg", "dgl"]]):
     _has_graphs = True
@@ -27,31 +30,39 @@ if _has_graphs:
         in Angstroms.
         """
 
-        def __init__(self, cutoff_radius: float) -> None:
+        def __init__(self, cutoff_radius: float, graph_backend: str = "dgl") -> None:
             super().__init__()
             self.cutoff_radius = cutoff_radius
 
         def __call__(self, data: DataDict) -> DataDict:
-            assert (
-                "graph" in data
-            ), "Missing graph in data sample; please prepend a graph transform."
-            if "lattice_features" in data:
-                lattice_key = "lattice_features"
-            elif "lattice_params" in data:
-                lattice_key = "lattice_params"
+            for key in ["atomic_numbers", "pos"]:
+                assert key in data, f"{key} missing from data sample!"
+            if "cell" in data:
+                # squeeze is used to make sure we remove empty dims
+                lattice = Lattice(data["cell"].squeeze())
             else:
-                raise KeyError(
-                    "Data sample is missing lattice parameters. "
-                    "Ensure `lattice_features` or `lattice_params` is available"
-                    " in the data.",
+                # if we don't have a cell already, we go through the
+                # whole process
+                if "lattice_features" in data:
+                    lattice_key = "lattice_features"
+                elif "lattice_params" in data:
+                    lattice_key = "lattice_params"
+                else:
+                    raise KeyError(
+                        "Data sample is missing lattice parameters. "
+                        "Ensure `lattice_features` or `lattice_params` is available"
+                        " in the data.",
+                    )
+                lattice_params: torch.Tensor = data[lattice_key]
+                abc, angles = lattice_params[:3], lattice_params[3:]
+                angles = torch.FloatTensor(
+                    tuple(angle * (180.0 / torch.pi) for angle in angles),
                 )
-            lattice_params: torch.Tensor = data[lattice_key]
-            abc, angles = lattice_params[:3], lattice_params[3:]
-            angles = torch.FloatTensor(
-                tuple(angle * (180.0 / torch.pi) for angle in angles),
+                lattice = Lattice.from_parameters(*abc, *angles)
+            structure = make_pymatgen_periodic_structure(
+                data["atomic_numbers"],
+                data["pos"],
+                lattice=lattice,
             )
-            lattice_obj = Lattice.from_parameters(*abc, *angles)
-            lattice_matrix = torch.Tensor(lattice_obj.matrix)
-            # add dimension for batching
-            data["cell"] = rearrange(lattice_matrix, "h w -> () h w")
+            graph_props = calculate_periodic_shifts(structure, self.cutoff_radius)
             return data
