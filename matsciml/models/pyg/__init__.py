@@ -21,5 +21,5 @@ if _has_pyg:
     from matsciml.models.pyg.egnn import EGNN
     from matsciml.models.pyg.faenet import FAENet
     from matsciml.models.pyg.forcenet import ForceNet
-    from matsciml.models.pyg.mace.modules.models import MACE, ScaleShiftMACE
+    from matsciml.models.pyg.mace import MACE, ScaleShiftMACE
     from matsciml.models.pyg.schnet import SchNetWrap
