@@ -16,8 +16,6 @@ See https://github.com/pytorch/pytorch/issues/63780.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import torch
 
 

@@ -11,7 +11,7 @@ import logging
 import os
 import sys
 from collections.abc import Iterable, Sequence
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import numpy as np
 import torch

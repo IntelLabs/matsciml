@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import collections
-from typing import List, Union
 
 import torch
 from e3nn import o3
