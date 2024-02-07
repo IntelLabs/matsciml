@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import ase.neighborlist
 import numpy as np
 

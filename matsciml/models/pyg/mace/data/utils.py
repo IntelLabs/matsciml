@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import ase.data
 import ase.io
