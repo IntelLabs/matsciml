@@ -192,7 +192,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
             num_nodes = len(atom_numbers)
             # use pre-computed edges with periodic boundary conditions
             if all([f"{key}_nodes" in data for key in ["src", "dst"]]):
-                adj_list = [data["src_nodes"], data["dst_nodes"]]
+                adj_list = (data["src_nodes"], data["dst_nodes"])
             else:
                 # skip edge calculation if the distance matrix
                 # exists already
