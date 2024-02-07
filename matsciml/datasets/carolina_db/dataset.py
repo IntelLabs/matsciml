@@ -196,6 +196,7 @@ class M3GCMDataset(CMDataset):
         self.threebody_cutoff = threebody_cutoff
         self.graph_labels = graph_labels
         self.cutoff_dist = cutoff_dist
+        self.clear_processed = True
 
     def data_from_key(self, lmdb_index: int, subindex: int) -> Any:
         return_dict = super().data_from_key(lmdb_index, subindex)
@@ -220,6 +221,6 @@ class M3GCMDataset(CMDataset):
             element_types=element_types(),
             cutoff=self.cutoff_dist,
         )
-        graphs, lg, sa = M3GNetDataset.process(self)
+        graphs, lattices, lg, sa = M3GNetDataset.process(self)
         return_dict["graph"] = graphs[0]
         return return_dict

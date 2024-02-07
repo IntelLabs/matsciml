@@ -683,6 +683,7 @@ class M3GMaterialsProjectDataset(MaterialsProjectDataset):
         self.threebody_cutoff = threebody_cutoff
         self.graph_labels = graph_labels
         self.cutoff_dist = cutoff_dist
+        self.clear_processed = True
 
     def _parse_structure(
         self,
@@ -696,5 +697,5 @@ class M3GMaterialsProjectDataset(MaterialsProjectDataset):
             element_types=element_types(),
             cutoff=self.cutoff_dist,
         )
-        graphs, lg, sa = M3GNetDataset.process(self)
+        graphs, lattices, lg, sa = M3GNetDataset.process(self)
         return_dict["graph"] = graphs[0]
