@@ -18,6 +18,7 @@ else:
 
 
 if _has_graphs:
+    __all__ = ["PeriodicPropertiesTransform"]
 
     class PeriodicPropertiesTransform(AbstractDataTransform):
         """
