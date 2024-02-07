@@ -190,16 +190,24 @@ class PointCloudToGraphTransform(RepresentationTransform):
             coords = data["pos"]
             atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
             num_nodes = len(atom_numbers)
-            # skip edge calculation if the distance matrix
-            # exists already
-            if "distance_matrix" not in data:
-                dist_mat = self.node_distances(coords)
+            # use pre-computed edges with periodic boundary conditions
+            if all([f"{key}_nodes" in data for key in ["src", "dst"]]):
+                adj_list = (data["src_nodes"], data["dst_nodes"])
             else:
-                dist_mat = data.get("distance_matrix")
-            adj_list = self.edges_from_dist(dist_mat, self.cutoff_dist)
+                # skip edge calculation if the distance matrix
+                # exists already
+                if "distance_matrix" not in data:
+                    dist_mat = self.node_distances(coords)
+                else:
+                    dist_mat = data.get("distance_matrix")
+                adj_list = self.edges_from_dist(dist_mat, self.cutoff_dist)
             g = dgl_graph(adj_list, num_nodes=num_nodes)
             g.ndata["atomic_numbers"] = atom_numbers
             g.ndata["pos"] = coords
+            # copying over periodic data if it exists
+            for key in ["offsets", "pbc_distances", "images"]:
+                if key in data:
+                    g.edata[key] = data[key]
             data["graph"] = g
 
     if package_registry["pyg"]:
@@ -237,20 +245,33 @@ class PointCloudToGraphTransform(RepresentationTransform):
             """
             atom_numbers = self.get_atom_types(data)
             coords = data["pos"]
-            atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
-            if "distance_matrix" not in data:
-                dist_mat = self.node_distances(coords)
+            # check to see if we have pre-computed edges
+            if all([f"{key}_nodes" in data for key in ["src", "dst"]]) in data:
+                edge_index = torch.stack([data["src_nodes"], data["dst_nodes"]])
             else:
-                dist_mat = data.get("distance_matrix")
-            # convert ensure edges are in the right format for PyG
-            edge_index = torch.LongTensor(
-                self.edges_from_dist(dist_mat, self.cutoff_dist),
-            )
+                atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
+                if "distance_matrix" not in data:
+                    dist_mat = self.node_distances(coords)
+                else:
+                    dist_mat = data.get("distance_matrix")
+                # convert ensure edges are in the right format for PyG
+                edge_index = torch.LongTensor(
+                    self.edges_from_dist(dist_mat, self.cutoff_dist),
+                )
             # if not in the expected shape, transpose and reformat layout
             if edge_index.size(0) != 2 and edge_index.size(1) == 2:
                 edge_index = edge_index.T.contiguous()
             g = PyGGraph(edge_index=edge_index, pos=coords)
             g.atomic_numbers = atom_numbers
+            # run through potential periodic data as well. The two
+            # are functionally the same, but separating them because
+            # we keep edge and node data separate
+            for key in ["images"]:
+                if key in data:
+                    setattr(g, key, data[key])
+            for key in ["offsets", "pbc_distances"]:
+                if key in data:
+                    setattr(g, key, data[key])
             data["graph"] = g
 
     def convert(self, data: DataDict) -> None:
@@ -290,7 +311,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 del data[key]
             except KeyError:
                 pass
-        if self.backend == "dgl":
+        if self.backend == "dgl" and "cell" not in data:
             # DGL graphs are inherently directed, so we need to add non-redundant
             # reverse edges to avoid issues with message passing
             data["graph"] = dgl.to_bidirected(data["graph"], copy_ndata=True)
