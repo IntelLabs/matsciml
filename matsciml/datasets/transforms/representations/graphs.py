@@ -311,7 +311,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 del data[key]
             except KeyError:
                 pass
-        if self.backend == "dgl":
+        if self.backend == "dgl" and "cell" not in data:
             # DGL graphs are inherently directed, so we need to add non-redundant
             # reverse edges to avoid issues with message passing
             data["graph"] = dgl.to_bidirected(data["graph"], copy_ndata=True)
