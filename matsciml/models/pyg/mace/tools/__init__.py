@@ -7,10 +7,15 @@
 ###########################################################################################
 
 
+from __future__ import annotations
 
-from .cg import U_matrix_real
-from .checkpoint import CheckpointHandler, CheckpointIO, CheckpointState
-from .torch_tools import (
+from matsciml.models.pyg.mace.tools.cg import U_matrix_real
+from matsciml.models.pyg.mace.tools.checkpoint import (
+    CheckpointHandler,
+    CheckpointIO,
+    CheckpointState,
+)
+from matsciml.models.pyg.mace.tools.torch_tools import (
     TensorDict,
     cartesian_to_spherical,
     count_parameters,
@@ -23,7 +28,7 @@ from .torch_tools import (
     to_one_hot,
     voigt_to_matrix,
 )
-from .utils import (
+from matsciml.models.pyg.mace.tools.utils import (
     AtomicNumberTable,
     MetricsLogger,
     atomic_numbers_to_indices,
