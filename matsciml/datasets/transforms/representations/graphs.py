@@ -205,7 +205,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
             g.ndata["atomic_numbers"] = atom_numbers
             g.ndata["pos"] = coords
             # copying over periodic data if it exists
-            for key in ["offsets", "pbc_distances"]:
+            for key in ["offsets", "pbc_distances", "images"]:
                 if key in data:
                     g.edata[key] = data[key]
             data["graph"] = g
