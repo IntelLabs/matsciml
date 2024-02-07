@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple
-
 import torch
 from e3nn import o3
 from e3nn.util.jit import compile_mode

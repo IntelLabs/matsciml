@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable
 
 import numpy as np
 import torch.nn.functional

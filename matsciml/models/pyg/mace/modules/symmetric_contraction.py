@@ -7,8 +7,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Union
-
 import opt_einsum_fx
 import torch
 import torch.fx

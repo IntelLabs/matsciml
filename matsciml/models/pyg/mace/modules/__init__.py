@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Optional, Type
+from typing import Callable
 
 import torch
 

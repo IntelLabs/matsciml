@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Callable
 
 import numpy as np
 import torch
@@ -15,9 +15,9 @@ import torch_geometric as pyg
 from e3nn import o3
 from e3nn.util.jit import compile_mode
 
-from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
+from matsciml.common.types import BatchDict, DataDict, Embeddings
 from matsciml.models.base import AbstractPyGModel
-from matsciml.models.pyg.mace import data, modules, tools
+from matsciml.models.pyg.mace import tools
 from matsciml.models.pyg.mace.data import AtomicData, get_neighborhood
 from matsciml.models.pyg.mace.modules.blocks import (
     AtomicEnergiesBlock,
@@ -38,12 +38,7 @@ from matsciml.models.pyg.mace.modules.utils import (
     get_outputs,
     get_symmetric_displacement,
 )
-from matsciml.models.pyg.mace.tools import (
-    AtomicNumberTable,
-    atomic_numbers_to_indices,
-    to_one_hot,
-    voigt_to_matrix,
-)
+from matsciml.models.pyg.mace.tools import atomic_numbers_to_indices, to_one_hot
 from matsciml.models.pyg.mace.tools.scatter import scatter_sum
 
 
