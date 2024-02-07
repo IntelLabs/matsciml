@@ -672,6 +672,9 @@ def calculate_periodic_shifts(
     structure (for obvious reasons), and that we are using fractional coordinates
     in order to compute the distances and offsets.
 
+    Portions of this code were inspired by the `e3nn` documentation, which is
+    released under MIT license.
+
     Parameters
     ----------
     structure
