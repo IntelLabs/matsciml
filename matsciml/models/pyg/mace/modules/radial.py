@@ -4,6 +4,8 @@
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
+from __future__ import annotations
+
 import numpy as np
 import torch
 from e3nn.util.jit import compile_mode
@@ -35,7 +37,8 @@ class BesselBasis(torch.nn.Module):
             self.register_buffer("bessel_weights", bessel_weights)
 
         self.register_buffer(
-            "r_max", torch.tensor(r_max, dtype=torch.get_default_dtype())
+            "r_max",
+            torch.tensor(r_max, dtype=torch.get_default_dtype()),
         )
         self.register_buffer(
             "prefactor",
@@ -67,7 +70,8 @@ class PolynomialCutoff(torch.nn.Module):
         super().__init__()
         self.register_buffer("p", torch.tensor(p, dtype=torch.get_default_dtype()))
         self.register_buffer(
-            "r_max", torch.tensor(r_max, dtype=torch.get_default_dtype())
+            "r_max",
+            torch.tensor(r_max, dtype=torch.get_default_dtype()),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

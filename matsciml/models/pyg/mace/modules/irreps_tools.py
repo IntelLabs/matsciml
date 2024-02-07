@@ -4,6 +4,8 @@
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
+from __future__ import annotations
+
 from typing import List, Tuple
 
 import torch
@@ -13,12 +15,14 @@ from e3nn.util.jit import compile_mode
 
 # Based on mir-group/nequip
 def tp_out_irreps_with_instructions(
-    irreps1: o3.Irreps, irreps2: o3.Irreps, target_irreps: o3.Irreps
-) -> Tuple[o3.Irreps, List]:
+    irreps1: o3.Irreps,
+    irreps2: o3.Irreps,
+    target_irreps: o3.Irreps,
+) -> tuple[o3.Irreps, list]:
     trainable = True
 
     # Collect possible irreps and their instructions
-    irreps_out_list: List[Tuple[int, o3.Irreps]] = []
+    irreps_out_list: list[tuple[int, o3.Irreps]] = []
     instructions = []
     for i, (mul, ir_in) in enumerate(irreps1):
         for j, (_, ir_edge) in enumerate(irreps2):
