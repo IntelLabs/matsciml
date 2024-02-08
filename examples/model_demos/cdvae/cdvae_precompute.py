@@ -102,8 +102,8 @@ def parse_structure_MP(item, structure) -> None:
 
 def parse_structure_NOMAD(item, structure) -> None:
     return_dict = {}
-    cartesian_coords = numpy.array(structure["cartesian_site_positions"]) * 1E10
-    lattice_vectors = Lattice(numpy.array(structure["lattice_vectors"]) * 1E10)
+    cartesian_coords = numpy.array(structure["cartesian_site_positions"])
+    lattice_vectors = Lattice(numpy.array(structure["lattice_vectors"]))
     species = structure["species_at_sites"]
     frac_coords = lattice_vectors.get_fractional_coords(cart_coords=cartesian_coords)
     coords = torch.from_numpy(cartesian_coords)
@@ -114,9 +114,9 @@ def parse_structure_NOMAD(item, structure) -> None:
     atom_numbers = get_atomic_num(species)
     return_dict["atomic_numbers"] = torch.LongTensor(atom_numbers)     # keep atomic numbers for graph featurization
     return_dict["num_particles"] = num_particles
-    distance_matrix = get_distance_matrix(cartesian_coords, numpy.array(structure["lattice_vectors"]) * 1E10)
+    distance_matrix = get_distance_matrix(cartesian_coords, numpy.array(structure["lattice_vectors"]))
     return_dict["distance_matrix"] = torch.from_numpy(distance_matrix)
-    y = (item["energies"]["total"]["value"] * 6.241509074461E+18) / num_particles   #formation_energy_per_atom, eV
+    y = (item["energies"]["total"]["value"]) / num_particles   #formation_energy_per_atom, eV
     structure = Structure(lattice_vectors, species, frac_coords)
     data = processing_data(structure, return_dict, y)
     return data
