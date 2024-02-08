@@ -1,17 +1,19 @@
 ###########################################################################################
 # Implementation of MACE models and other models based E(3)-Equivariant MPNNs
-#(https://github.com/ACEsuit/mace)
+# (https://github.com/ACEsuit/mace)
 # Original Authors: Ilyes Batatia, Gregor Simm
 # Integrated into matsciml by Vaibhav Bihani, Sajid Mannan
 # This program is distributed under the MIT License
 ###########################################################################################
 
 
-from typing import Callable, Dict, Optional, Type
+from __future__ import annotations
+
+from typing import Callable
 
 import torch
 
-from .blocks import (
+from matsciml.models.pyg.mace.modules.blocks import (
     AgnosticNonlinearInteractionBlock,
     AgnosticResidualNonlinearInteractionBlock,
     AtomicEnergiesBlock,
@@ -28,9 +30,7 @@ from .blocks import (
     ResidualElementDependentInteractionBlock,
     ScaleShiftBlock,
 )
-
-
-from .models import (
+from matsciml.models.pyg.mace.modules.models import (
     MACE,
     AtomicDipolesMACE,
     BOTNet,
@@ -38,9 +38,9 @@ from .models import (
     ScaleShiftBOTNet,
     ScaleShiftMACE,
 )
-from .radial import BesselBasis, PolynomialCutoff
-from .symmetric_contraction import SymmetricContraction
-from .utils import (
+from matsciml.models.pyg.mace.modules.radial import BesselBasis, PolynomialCutoff
+from matsciml.models.pyg.mace.modules.symmetric_contraction import SymmetricContraction
+from matsciml.models.pyg.mace.modules.utils import (
     compute_avg_num_neighbors,
     compute_fixed_charge_dipole,
     compute_mean_rms_energy_forces,
@@ -48,7 +48,7 @@ from .utils import (
     compute_rms_dipoles,
 )
 
-interaction_classes: Dict[str, Type[InteractionBlock]] = {
+interaction_classes: dict[str, type[InteractionBlock]] = {
     "AgnosticNonlinearInteractionBlock": AgnosticNonlinearInteractionBlock,
     "ResidualElementDependentInteractionBlock": ResidualElementDependentInteractionBlock,
     "AgnosticResidualNonlinearInteractionBlock": AgnosticResidualNonlinearInteractionBlock,
@@ -56,13 +56,13 @@ interaction_classes: Dict[str, Type[InteractionBlock]] = {
     "RealAgnosticInteractionBlock": RealAgnosticInteractionBlock,
 }
 
-scaling_classes: Dict[str, Callable] = {
+scaling_classes: dict[str, Callable] = {
     "std_scaling": compute_mean_std_atomic_inter_energy,
     "rms_forces_scaling": compute_mean_rms_energy_forces,
     "rms_dipoles_scaling": compute_rms_dipoles,
 }
 
-gate_dict: Dict[str, Optional[Callable]] = {
+gate_dict: dict[str, Callable | None] = {
     "abs": torch.abs,
     "tanh": torch.tanh,
     "silu": torch.nn.functional.silu,

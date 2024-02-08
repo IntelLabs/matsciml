@@ -14,7 +14,7 @@ that don't require installing PyTorch C++ extensions.
 See https://github.com/pytorch/pytorch/issues/63780.
 """
 
-from typing import Optional
+from __future__ import annotations
 
 import torch
 
@@ -36,8 +36,8 @@ def scatter_sum(
     src: torch.Tensor,
     index: torch.Tensor,
     dim: int = -1,
-    out: Optional[torch.Tensor] = None,
-    dim_size: Optional[int] = None,
+    out: torch.Tensor | None = None,
+    dim_size: int | None = None,
     reduce: str = "sum",
 ) -> torch.Tensor:
     assert reduce == "sum"  # for now, TODO
@@ -61,8 +61,8 @@ def scatter_std(
     src: torch.Tensor,
     index: torch.Tensor,
     dim: int = -1,
-    out: Optional[torch.Tensor] = None,
-    dim_size: Optional[int] = None,
+    out: torch.Tensor | None = None,
+    dim_size: int | None = None,
     unbiased: bool = True,
 ) -> torch.Tensor:
     if out is not None:
@@ -99,8 +99,8 @@ def scatter_mean(
     src: torch.Tensor,
     index: torch.Tensor,
     dim: int = -1,
-    out: Optional[torch.Tensor] = None,
-    dim_size: Optional[int] = None,
+    out: torch.Tensor | None = None,
+    dim_size: int | None = None,
 ) -> torch.Tensor:
     out = scatter_sum(src, index, dim, out, dim_size)
     dim_size = out.size(dim)

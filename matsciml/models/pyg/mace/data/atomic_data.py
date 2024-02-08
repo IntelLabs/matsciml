@@ -4,20 +4,21 @@
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
-from typing import Optional, Sequence
+from __future__ import annotations
+
+from collections.abc import Sequence
 
 import torch.utils.data
 import torch_geometric
 
+from matsciml.models.pyg.mace.data.neighborhood import get_neighborhood
+from matsciml.models.pyg.mace.data.utils import Configuration
 from matsciml.models.pyg.mace.tools import (
     AtomicNumberTable,
     atomic_numbers_to_indices,
     to_one_hot,
     voigt_to_matrix,
 )
-
-from .neighborhood import get_neighborhood
-from .utils import Configuration
 
 
 class AtomicData(torch_geometric.data.Data):
@@ -50,18 +51,18 @@ class AtomicData(torch_geometric.data.Data):
         positions: torch.Tensor,  # [n_nodes, 3]
         shifts: torch.Tensor,  # [n_edges, 3],
         unit_shifts: torch.Tensor,  # [n_edges, 3]
-        cell: Optional[torch.Tensor],  # [3,3]
-        weight: Optional[torch.Tensor],  # [,]
-        energy_weight: Optional[torch.Tensor],  # [,]
-        forces_weight: Optional[torch.Tensor],  # [,]
-        stress_weight: Optional[torch.Tensor],  # [,]
-        virials_weight: Optional[torch.Tensor],  # [,]
-        forces: Optional[torch.Tensor],  # [n_nodes, 3]
-        energy: Optional[torch.Tensor],  # [, ]
-        stress: Optional[torch.Tensor],  # [1,3,3]
-        virials: Optional[torch.Tensor],  # [1,3,3]
-        dipole: Optional[torch.Tensor],  # [, 3]
-        charges: Optional[torch.Tensor],  # [n_nodes, ]
+        cell: torch.Tensor | None,  # [3,3]
+        weight: torch.Tensor | None,  # [,]
+        energy_weight: torch.Tensor | None,  # [,]
+        forces_weight: torch.Tensor | None,  # [,]
+        stress_weight: torch.Tensor | None,  # [,]
+        virials_weight: torch.Tensor | None,  # [,]
+        forces: torch.Tensor | None,  # [n_nodes, 3]
+        energy: torch.Tensor | None,  # [, ]
+        stress: torch.Tensor | None,  # [1,3,3]
+        virials: torch.Tensor | None,  # [1,3,3]
+        dipole: torch.Tensor | None,  # [, 3]
+        charges: torch.Tensor | None,  # [n_nodes, ]
     ):
         # Check shapes
         num_nodes = node_attrs.shape[0]
@@ -108,10 +109,16 @@ class AtomicData(torch_geometric.data.Data):
 
     @classmethod
     def from_config(
-        cls, config: Configuration, z_table: AtomicNumberTable, cutoff: float
-    ) -> "AtomicData":
+        cls,
+        config: Configuration,
+        z_table: AtomicNumberTable,
+        cutoff: float,
+    ) -> AtomicData:
         edge_index, shifts, unit_shifts = get_neighborhood(
-            positions=config.positions, cutoff=cutoff, pbc=config.pbc, cell=config.cell
+            positions=config.positions,
+            cutoff=cutoff,
+            pbc=config.pbc,
+            cell=config.cell,
         )
         indices = atomic_numbers_to_indices(config.atomic_numbers, z_table=z_table)
         one_hot = to_one_hot(
@@ -123,7 +130,8 @@ class AtomicData(torch_geometric.data.Data):
             torch.tensor(config.cell, dtype=torch.get_default_dtype())
             if config.cell is not None
             else torch.tensor(
-                3 * [0.0, 0.0, 0.0], dtype=torch.get_default_dtype()
+                3 * [0.0, 0.0, 0.0],
+                dtype=torch.get_default_dtype(),
             ).view(3, 3)
         )
 
@@ -169,7 +177,7 @@ class AtomicData(torch_geometric.data.Data):
         )
         stress = (
             voigt_to_matrix(
-                torch.tensor(config.stress, dtype=torch.get_default_dtype())
+                torch.tensor(config.stress, dtype=torch.get_default_dtype()),
             ).unsqueeze(0)
             if config.stress is not None
             else None

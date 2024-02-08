@@ -4,9 +4,11 @@
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
+from __future__ import annotations
+
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
 
 import ase.data
 import ase.io
@@ -31,29 +33,31 @@ DEFAULT_CONFIG_TYPE_WEIGHTS = {DEFAULT_CONFIG_TYPE: 1.0}
 class Configuration:
     atomic_numbers: np.ndarray
     positions: Positions  # Angstrom
-    energy: Optional[float] = None  # eV
-    forces: Optional[Forces] = None  # eV/Angstrom
-    stress: Optional[Stress] = None  # eV/Angstrom^3
-    virials: Optional[Virials] = None  # eV
-    dipole: Optional[Vector] = None  # Debye
-    charges: Optional[Charges] = None  # atomic unit
-    cell: Optional[Cell] = None
-    pbc: Optional[Pbc] = None
+    energy: float | None = None  # eV
+    forces: Forces | None = None  # eV/Angstrom
+    stress: Stress | None = None  # eV/Angstrom^3
+    virials: Virials | None = None  # eV
+    dipole: Vector | None = None  # Debye
+    charges: Charges | None = None  # atomic unit
+    cell: Cell | None = None
+    pbc: Pbc | None = None
 
     weight: float = 1.0  # weight of config in loss
     energy_weight: float = 1.0  # weight of config energy in loss
     forces_weight: float = 1.0  # weight of config forces in loss
     stress_weight: float = 1.0  # weight of config stress in loss
     virials_weight: float = 1.0  # weight of config virial in loss
-    config_type: Optional[str] = DEFAULT_CONFIG_TYPE  # config_type of config
+    config_type: str | None = DEFAULT_CONFIG_TYPE  # config_type of config
 
 
-Configurations = List[Configuration]
+Configurations = list[Configuration]
 
 
 def random_train_valid_split(
-    items: Sequence, valid_fraction: float, seed: int
-) -> Tuple[List, List]:
+    items: Sequence,
+    valid_fraction: float,
+    seed: int,
+) -> tuple[list, list]:
     assert 0.0 < valid_fraction < 1.0
 
     size = len(items)
@@ -70,14 +74,14 @@ def random_train_valid_split(
 
 
 def config_from_atoms_list(
-    atoms_list: List[ase.Atoms],
+    atoms_list: list[ase.Atoms],
     energy_key="energy",
     forces_key="forces",
     stress_key="stress",
     virials_key="virials",
     dipole_key="dipole",
     charges_key="charges",
-    config_type_weights: Dict[str, float] = None,
+    config_type_weights: dict[str, float] = None,
 ) -> Configurations:
     """Convert list of ase.Atoms into Configurations"""
     if config_type_weights is None:
@@ -95,7 +99,7 @@ def config_from_atoms_list(
                 dipole_key=dipole_key,
                 charges_key=charges_key,
                 config_type_weights=config_type_weights,
-            )
+            ),
         )
     return all_configs
 
@@ -108,7 +112,7 @@ def config_from_atoms(
     virials_key="virials",
     dipole_key="dipole",
     charges_key="charges",
-    config_type_weights: Dict[str, float] = None,
+    config_type_weights: dict[str, float] = None,
 ) -> Configuration:
     """Convert ase.Atoms to Configuration"""
     if config_type_weights is None:
@@ -122,13 +126,14 @@ def config_from_atoms(
     # Charges default to 0 instead of None if not found
     charges = atoms.arrays.get(charges_key, np.zeros(len(atoms)))  # atomic unit
     atomic_numbers = np.array(
-        [ase.data.atomic_numbers[symbol] for symbol in atoms.symbols]
+        [ase.data.atomic_numbers[symbol] for symbol in atoms.symbols],
     )
     pbc = tuple(atoms.get_pbc())
     cell = np.array(atoms.get_cell())
     config_type = atoms.info.get("config_type", "Default")
     weight = atoms.info.get("config_weight", 1.0) * config_type_weights.get(
-        config_type, 1.0
+        config_type,
+        1.0,
     )
     energy_weight = atoms.info.get("config_energy_weight", 1.0)
     forces_weight = atoms.info.get("config_forces_weight", 1.0)
@@ -171,7 +176,7 @@ def config_from_atoms(
 
 def test_config_types(
     test_configs: Configurations,
-) -> List[Tuple[Optional[str], List[Configuration]]]:
+) -> list[tuple[str | None, list[Configuration]]]:
     """Split test set based on config_type-s"""
     test_by_ct = []
     all_cts = []
@@ -187,7 +192,7 @@ def test_config_types(
 
 def load_from_xyz(
     file_path: str,
-    config_type_weights: Dict,
+    config_type_weights: dict,
     energy_key: str = "energy",
     forces_key: str = "forces",
     stress_key: str = "stress",
@@ -195,7 +200,7 @@ def load_from_xyz(
     dipole_key: str = "dipole",
     charges_key: str = "charges",
     extract_atomic_energies: bool = False,
-) -> Tuple[Dict[int, float], Configurations]:
+) -> tuple[dict[int, float], Configurations]:
     atoms_list = ase.io.read(file_path, index=":")
 
     if not isinstance(atoms_list, list):
@@ -205,7 +210,7 @@ def load_from_xyz(
     if extract_atomic_energies:
         atoms_without_iso_atoms = []
 
-        for idx, atoms in enumerate(atoms_list):# 1000
+        for idx, atoms in enumerate(atoms_list):  # 1000
             if len(atoms) == 1 and atoms.info["config_type"] == "IsolatedAtom":
                 if energy_key in atoms.info.keys():
                     atomic_energies_dict[atoms.get_atomic_numbers()[0]] = atoms.info[
@@ -214,7 +219,7 @@ def load_from_xyz(
                 else:
                     logging.warning(
                         f"Configuration '{idx}' is marked as 'IsolatedAtom' "
-                        "but does not contain an energy."
+                        "but does not contain an energy.",
                     )
             else:
                 atoms_without_iso_atoms.append(atoms)
@@ -238,8 +243,9 @@ def load_from_xyz(
 
 
 def compute_average_E0s(
-    collections_train: Configurations, z_table: AtomicNumberTable
-) -> Dict[int, float]:
+    collections_train: Configurations,
+    z_table: AtomicNumberTable,
+) -> dict[int, float]:
     """
     Function to compute the average interaction energy of each chemical element
     returns dictionary of E0s
@@ -259,7 +265,7 @@ def compute_average_E0s(
             atomic_energies_dict[z] = E0s[i]
     except np.linalg.LinAlgError:
         logging.warning(
-            "Failed to compute E0s using least squares regression, using the same for all atoms"
+            "Failed to compute E0s using least squares regression, using the same for all atoms",
         )
         atomic_energies_dict = {}
         for i, z in enumerate(z_table.zs):

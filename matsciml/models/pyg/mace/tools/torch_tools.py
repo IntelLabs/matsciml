@@ -4,14 +4,15 @@
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
+from __future__ import annotations
+
 import logging
-from typing import Dict
 
 import numpy as np
 import torch
 from e3nn.io import CartesianTensor
 
-TensorDict = Dict[str, torch.Tensor]
+TensorDict = dict[str, torch.Tensor]
 
 
 def to_one_hot(indices: torch.Tensor, num_classes: int) -> torch.Tensor:
@@ -52,7 +53,7 @@ def init_device(device_str: str) -> torch.device:
     if device_str == "cuda":
         assert torch.cuda.is_available(), "No CUDA device available!"
         logging.info(
-            f"CUDA version: {torch.version.cuda}, CUDA device: {torch.cuda.current_device()}"
+            f"CUDA version: {torch.version.cuda}, CUDA device: {torch.cuda.current_device()}",
         )
         torch.cuda.init()
         return torch.device("cuda")
@@ -111,7 +112,8 @@ def voigt_to_matrix(t: torch.Tensor):
         return t
 
     return torch.tensor(
-        [[t[0], t[5], t[4]], [t[5], t[1], t[3]], [t[4], t[3], t[2]]], dtype=t.dtype
+        [[t[0], t[5], t[4]], [t[5], t[1], t[3]], [t[4], t[3], t[2]]],
+        dtype=t.dtype,
     )
 
 

@@ -4,7 +4,7 @@
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
-from typing import List, Optional, Tuple
+from __future__ import annotations
 
 import numpy as np
 import torch
@@ -12,16 +12,17 @@ import torch.nn
 import torch.utils.data
 from scipy.constants import c, e
 
+from matsciml.models.pyg.mace.modules.blocks import AtomicEnergiesBlock
 from matsciml.models.pyg.mace.tools import to_numpy
 from matsciml.models.pyg.mace.tools.scatter import scatter_sum
 
-from .blocks import AtomicEnergiesBlock
-
 
 def compute_forces(
-    energy: torch.Tensor, positions: torch.Tensor, training: bool = True
+    energy: torch.Tensor,
+    positions: torch.Tensor,
+    training: bool = True,
 ) -> torch.Tensor:
-    grad_outputs: List[Optional[torch.Tensor]] = [torch.ones_like(energy)]
+    grad_outputs: list[torch.Tensor | None] = [torch.ones_like(energy)]
     gradient = torch.autograd.grad(
         outputs=[energy],  # [n_graphs, ]
         inputs=[positions],  # [n_nodes, 3]
@@ -44,8 +45,8 @@ def compute_forces_virials(
     cell: torch.Tensor,
     training: bool = True,
     compute_stress: bool = False,
-) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]:
-    grad_outputs: List[Optional[torch.Tensor]] = [torch.ones_like(energy)]
+) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+    grad_outputs: list[torch.Tensor | None] = [torch.ones_like(energy)]
     forces, virials = torch.autograd.grad(
         outputs=[energy],  # [n_graphs, ]
         inputs=[positions, displacement],  # [n_nodes, 3]
@@ -74,11 +75,11 @@ def compute_forces_virials(
 def get_symmetric_displacement(
     positions: torch.Tensor,
     unit_shifts: torch.Tensor,
-    cell: Optional[torch.Tensor],
+    cell: torch.Tensor | None,
     edge_index: torch.Tensor,
     num_graphs: int,
     batch: torch.Tensor,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     if cell is None:
         cell = torch.zeros(
             num_graphs * 3,
@@ -97,7 +98,9 @@ def get_symmetric_displacement(
         displacement + displacement.transpose(-1, -2)
     )  # From https://github.com/mir-group/nequip
     positions = positions + torch.einsum(
-        "be,bec->bc", positions, symmetric_displacement[batch]
+        "be,bec->bc",
+        positions,
+        symmetric_displacement[batch],
     )
     cell = cell.view(-1, 3, 3)
     cell = cell + torch.matmul(cell, symmetric_displacement)
@@ -112,13 +115,13 @@ def get_symmetric_displacement(
 def get_outputs(
     energy: torch.Tensor,
     positions: torch.Tensor,
-    displacement: Optional[torch.Tensor],
+    displacement: torch.Tensor | None,
     cell: torch.Tensor,
     training: bool = False,
     compute_force: bool = True,
     compute_virials: bool = True,
     compute_stress: bool = True,
-) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
+) -> tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
     if (compute_virials or compute_stress) and displacement is not None:
         # forces come for free
         forces, virials, stress = compute_forces_virials(
@@ -146,7 +149,7 @@ def get_edge_vectors_and_lengths(
     shifts: torch.Tensor,  # [n_edges, 3]
     normalize: bool = False,
     eps: float = 1e-9,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     sender = edge_index[0]
     receiver = edge_index[1]
     vectors = positions[receiver] - positions[sender] + shifts  # [n_edges, 3]
@@ -161,7 +164,7 @@ def get_edge_vectors_and_lengths(
 def compute_mean_std_atomic_inter_energy(
     data_loader: torch.utils.data.DataLoader,
     atomic_energies: np.ndarray,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     atomic_energies_fn = AtomicEnergiesBlock(atomic_energies=atomic_energies)
 
     avg_atom_inter_es_list = []
@@ -169,11 +172,14 @@ def compute_mean_std_atomic_inter_energy(
     for batch in data_loader:
         node_e0 = atomic_energies_fn(batch.node_attrs)
         graph_e0s = scatter_sum(
-            src=node_e0, index=batch.batch, dim=-1, dim_size=batch.num_graphs
+            src=node_e0,
+            index=batch.batch,
+            dim=-1,
+            dim_size=batch.num_graphs,
         )
         graph_sizes = batch.ptr[1:] - batch.ptr[:-1]
         avg_atom_inter_es_list.append(
-            (batch.energy - graph_e0s) / graph_sizes
+            (batch.energy - graph_e0s) / graph_sizes,
         )  # {[n_graphs], }
 
     avg_atom_inter_es = torch.cat(avg_atom_inter_es_list)  # [total_n_graphs]
@@ -186,7 +192,7 @@ def compute_mean_std_atomic_inter_energy(
 def compute_mean_rms_energy_forces(
     data_loader: torch.utils.data.DataLoader,
     atomic_energies: np.ndarray,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     atomic_energies_fn = AtomicEnergiesBlock(atomic_energies=atomic_energies)
 
     atom_energy_list = []
@@ -195,11 +201,14 @@ def compute_mean_rms_energy_forces(
     for batch in data_loader:
         node_e0 = atomic_energies_fn(batch.node_attrs)
         graph_e0s = scatter_sum(
-            src=node_e0, index=batch.batch, dim=-1, dim_size=batch.num_graphs
+            src=node_e0,
+            index=batch.batch,
+            dim=-1,
+            dim_size=batch.num_graphs,
         )
         graph_sizes = batch.ptr[1:] - batch.ptr[:-1]
         atom_energy_list.append(
-            (batch.energy - graph_e0s) / graph_sizes
+            (batch.energy - graph_e0s) / graph_sizes,
         )  # {[n_graphs], }
         forces_list.append(batch.forces)  # {[n_graphs*n_atoms,3], }
 
@@ -221,14 +230,14 @@ def compute_avg_num_neighbors(data_loader: torch.utils.data.DataLoader) -> float
         num_neighbors.append(counts)
 
     avg_num_neighbors = torch.mean(
-        torch.cat(num_neighbors, dim=0).type(torch.get_default_dtype())
+        torch.cat(num_neighbors, dim=0).type(torch.get_default_dtype()),
     )
     return to_numpy(avg_num_neighbors).item()
 
 
 def compute_rms_dipoles(
     data_loader: torch.utils.data.DataLoader,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     dipoles_list = []
     for batch in data_loader:
         dipoles_list.append(batch.dipole)  # {[n_graphs,3], }
@@ -246,5 +255,8 @@ def compute_fixed_charge_dipole(
 ) -> torch.Tensor:
     mu = positions * charges.unsqueeze(-1) / (1e-11 / c / e)  # [N_atoms,3]
     return scatter_sum(
-        src=mu, index=batch.unsqueeze(-1), dim=0, dim_size=num_graphs
+        src=mu,
+        index=batch.unsqueeze(-1),
+        dim=0,
+        dim_size=num_graphs,
     )  # [N_graphs,3]

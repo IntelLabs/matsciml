@@ -4,23 +4,24 @@
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
+from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable
 
 import numpy as np
 import torch.nn.functional
 from e3nn import nn, o3
 from e3nn.util.jit import compile_mode
 
-from matsciml.models.pyg.mace.tools.scatter import scatter_sum
-
-from .irreps_tools import (
+from matsciml.models.pyg.mace.modules.irreps_tools import (
     linear_out_irreps,
     reshape_irreps,
     tp_out_irreps_with_instructions,
 )
-from .radial import BesselBasis, PolynomialCutoff
-from .symmetric_contraction import SymmetricContraction
+from matsciml.models.pyg.mace.modules.radial import BesselBasis, PolynomialCutoff
+from matsciml.models.pyg.mace.modules.symmetric_contraction import SymmetricContraction
+from matsciml.models.pyg.mace.tools.scatter import scatter_sum
 
 
 @compile_mode("script")
@@ -49,14 +50,18 @@ class LinearReadoutBlock(torch.nn.Module):
 @compile_mode("script")
 class NonLinearReadoutBlock(torch.nn.Module):
     def __init__(
-        self, irreps_in: o3.Irreps, MLP_irreps: o3.Irreps, gate: Optional[Callable]
+        self,
+        irreps_in: o3.Irreps,
+        MLP_irreps: o3.Irreps,
+        gate: Callable | None,
     ):
         super().__init__()
         self.hidden_irreps = MLP_irreps
         self.linear_1 = o3.Linear(irreps_in=irreps_in, irreps_out=self.hidden_irreps)
         self.non_linearity = nn.Activation(irreps_in=self.hidden_irreps, acts=[gate])
         self.linear_2 = o3.Linear(
-            irreps_in=self.hidden_irreps, irreps_out=o3.Irreps("0e")
+            irreps_in=self.hidden_irreps,
+            irreps_out=o3.Irreps("0e"),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:  # [n_nodes, irreps]  # [..., ]
@@ -94,10 +99,14 @@ class NonLinearDipoleReadoutBlock(torch.nn.Module):
         else:
             self.irreps_out = o3.Irreps("1x0e + 1x1o")
         irreps_scalars = o3.Irreps(
-            [(mul, ir) for mul, ir in MLP_irreps if ir.l == 0 and ir in self.irreps_out]
+            [
+                (mul, ir)
+                for mul, ir in MLP_irreps
+                if ir.l == 0 and ir in self.irreps_out
+            ],
         )
         irreps_gated = o3.Irreps(
-            [(mul, ir) for mul, ir in MLP_irreps if ir.l > 0 and ir in self.irreps_out]
+            [(mul, ir) for mul, ir in MLP_irreps if ir.l > 0 and ir in self.irreps_out],
         )
         irreps_gates = o3.Irreps([mul, "0e"] for mul, _ in irreps_gated)
         self.equivariant_nonlin = nn.Gate(
@@ -110,7 +119,8 @@ class NonLinearDipoleReadoutBlock(torch.nn.Module):
         self.irreps_nonlin = self.equivariant_nonlin.irreps_in.simplify()
         self.linear_1 = o3.Linear(irreps_in=irreps_in, irreps_out=self.irreps_nonlin)
         self.linear_2 = o3.Linear(
-            irreps_in=self.hidden_irreps, irreps_out=self.irreps_out
+            irreps_in=self.hidden_irreps,
+            irreps_out=self.irreps_out,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:  # [n_nodes, irreps]  # [..., ]
@@ -122,7 +132,7 @@ class NonLinearDipoleReadoutBlock(torch.nn.Module):
 class AtomicEnergiesBlock(torch.nn.Module):
     atomic_energies: torch.Tensor
 
-    def __init__(self, atomic_energies: Union[np.ndarray, torch.Tensor]):
+    def __init__(self, atomic_energies: np.ndarray | torch.Tensor):
         super().__init__()
         assert len(atomic_energies.shape) == 1
 
@@ -132,7 +142,8 @@ class AtomicEnergiesBlock(torch.nn.Module):
         )  # [n_elements, ]
 
     def forward(
-        self, x: torch.Tensor  # one-hot of elements [..., n_elements]
+        self,
+        x: torch.Tensor,  # one-hot of elements [..., n_elements]
     ) -> torch.Tensor:  # [..., ]
         return torch.matmul(x, self.atomic_energies)
 
@@ -166,7 +177,7 @@ class EquivariantProductBasisBlock(torch.nn.Module):
         target_irreps: o3.Irreps,
         correlation: int,
         use_sc: bool = True,
-        num_elements: Optional[int] = None,
+        num_elements: int | None = None,
     ) -> None:
         super().__init__()
 
@@ -188,7 +199,7 @@ class EquivariantProductBasisBlock(torch.nn.Module):
     def forward(
         self,
         node_feats: torch.Tensor,
-        sc: Optional[torch.Tensor],
+        sc: torch.Tensor | None,
         node_attrs: torch.Tensor,
     ) -> torch.Tensor:
         node_feats = self.symmetric_contractions(node_feats, node_attrs)
@@ -258,7 +269,10 @@ class TensorProductWeightsBlock(torch.nn.Module):
         edge_feats: torch.Tensor,
     ):
         return torch.einsum(
-            "be, ba, aek -> bk", edge_feats, sender_or_receiver_node_attrs, self.weights
+            "be, ba, aek -> bk",
+            edge_feats,
+            sender_or_receiver_node_attrs,
+            self.weights,
         )
 
     def __repr__(self):
@@ -279,7 +293,9 @@ class ResidualElementDependentInteractionBlock(InteractionBlock):
         )
         # TensorProduct
         irreps_mid, instructions = tp_out_irreps_with_instructions(
-            self.node_feats_irreps, self.edge_attrs_irreps, self.target_irreps
+            self.node_feats_irreps,
+            self.edge_attrs_irreps,
+            self.target_irreps,
         )
         self.conv_tp = o3.TensorProduct(
             self.node_feats_irreps,
@@ -300,12 +316,17 @@ class ResidualElementDependentInteractionBlock(InteractionBlock):
         self.irreps_out = linear_out_irreps(irreps_mid, self.target_irreps)
         self.irreps_out = self.irreps_out.simplify()
         self.linear = o3.Linear(
-            irreps_mid, self.irreps_out, internal_weights=True, shared_weights=True
+            irreps_mid,
+            self.irreps_out,
+            internal_weights=True,
+            shared_weights=True,
         )
 
         # Selector TensorProduct
         self.skip_tp = o3.FullyConnectedTensorProduct(
-            self.node_feats_irreps, self.node_attrs_irreps, self.irreps_out
+            self.node_feats_irreps,
+            self.node_attrs_irreps,
+            self.irreps_out,
         )
 
     def forward(
@@ -323,10 +344,15 @@ class ResidualElementDependentInteractionBlock(InteractionBlock):
         node_feats = self.linear_up(node_feats)
         tp_weights = self.conv_tp_weights(node_attrs[sender], edge_feats)
         mji = self.conv_tp(
-            node_feats[sender], edge_attrs, tp_weights
+            node_feats[sender],
+            edge_attrs,
+            tp_weights,
         )  # [n_edges, irreps]
         message = scatter_sum(
-            src=mji, index=receiver, dim=0, dim_size=num_nodes
+            src=mji,
+            index=receiver,
+            dim=0,
+            dim_size=num_nodes,
         )  # [n_nodes, irreps]
         message = self.linear(message) / self.avg_num_neighbors
         return message + sc  # [n_nodes, irreps]
@@ -343,7 +369,9 @@ class AgnosticNonlinearInteractionBlock(InteractionBlock):
         )
         # TensorProduct
         irreps_mid, instructions = tp_out_irreps_with_instructions(
-            self.node_feats_irreps, self.edge_attrs_irreps, self.target_irreps
+            self.node_feats_irreps,
+            self.edge_attrs_irreps,
+            self.target_irreps,
         )
         self.conv_tp = o3.TensorProduct(
             self.node_feats_irreps,
@@ -366,12 +394,17 @@ class AgnosticNonlinearInteractionBlock(InteractionBlock):
         self.irreps_out = linear_out_irreps(irreps_mid, self.target_irreps)
         self.irreps_out = self.irreps_out.simplify()
         self.linear = o3.Linear(
-            irreps_mid, self.irreps_out, internal_weights=True, shared_weights=True
+            irreps_mid,
+            self.irreps_out,
+            internal_weights=True,
+            shared_weights=True,
         )
 
         # Selector TensorProduct
         self.skip_tp = o3.FullyConnectedTensorProduct(
-            self.irreps_out, self.node_attrs_irreps, self.irreps_out
+            self.irreps_out,
+            self.node_attrs_irreps,
+            self.irreps_out,
         )
 
     def forward(
@@ -388,10 +421,15 @@ class AgnosticNonlinearInteractionBlock(InteractionBlock):
         tp_weights = self.conv_tp_weights(edge_feats)
         node_feats = self.linear_up(node_feats)
         mji = self.conv_tp(
-            node_feats[sender], edge_attrs, tp_weights
+            node_feats[sender],
+            edge_attrs,
+            tp_weights,
         )  # [n_edges, irreps]
         message = scatter_sum(
-            src=mji, index=receiver, dim=0, dim_size=num_nodes
+            src=mji,
+            index=receiver,
+            dim=0,
+            dim_size=num_nodes,
         )  # [n_nodes, irreps]
         message = self.linear(message) / self.avg_num_neighbors
         message = self.skip_tp(message, node_attrs)
@@ -410,7 +448,9 @@ class AgnosticResidualNonlinearInteractionBlock(InteractionBlock):
         )
         # TensorProduct
         irreps_mid, instructions = tp_out_irreps_with_instructions(
-            self.node_feats_irreps, self.edge_attrs_irreps, self.target_irreps
+            self.node_feats_irreps,
+            self.edge_attrs_irreps,
+            self.target_irreps,
         )
         self.conv_tp = o3.TensorProduct(
             self.node_feats_irreps,
@@ -433,12 +473,17 @@ class AgnosticResidualNonlinearInteractionBlock(InteractionBlock):
         self.irreps_out = linear_out_irreps(irreps_mid, self.target_irreps)
         self.irreps_out = self.irreps_out.simplify()
         self.linear = o3.Linear(
-            irreps_mid, self.irreps_out, internal_weights=True, shared_weights=True
+            irreps_mid,
+            self.irreps_out,
+            internal_weights=True,
+            shared_weights=True,
         )
 
         # Selector TensorProduct
         self.skip_tp = o3.FullyConnectedTensorProduct(
-            self.node_feats_irreps, self.node_attrs_irreps, self.irreps_out
+            self.node_feats_irreps,
+            self.node_attrs_irreps,
+            self.irreps_out,
         )
 
     def forward(
@@ -456,10 +501,15 @@ class AgnosticResidualNonlinearInteractionBlock(InteractionBlock):
         node_feats = self.linear_up(node_feats)
         tp_weights = self.conv_tp_weights(edge_feats)
         mji = self.conv_tp(
-            node_feats[sender], edge_attrs, tp_weights
+            node_feats[sender],
+            edge_attrs,
+            tp_weights,
         )  # [n_edges, irreps]
         message = scatter_sum(
-            src=mji, index=receiver, dim=0, dim_size=num_nodes
+            src=mji,
+            index=receiver,
+            dim=0,
+            dim_size=num_nodes,
         )  # [n_nodes, irreps]
         message = self.linear(message) / self.avg_num_neighbors
         message = message + sc
@@ -502,12 +552,17 @@ class RealAgnosticInteractionBlock(InteractionBlock):
         irreps_mid = irreps_mid.simplify()
         self.irreps_out = self.target_irreps
         self.linear = o3.Linear(
-            irreps_mid, self.irreps_out, internal_weights=True, shared_weights=True
+            irreps_mid,
+            self.irreps_out,
+            internal_weights=True,
+            shared_weights=True,
         )
 
         # Selector TensorProduct
         self.skip_tp = o3.FullyConnectedTensorProduct(
-            self.irreps_out, self.node_attrs_irreps, self.irreps_out
+            self.irreps_out,
+            self.node_attrs_irreps,
+            self.irreps_out,
         )
         self.reshape = reshape_irreps(self.irreps_out)
 
@@ -518,17 +573,22 @@ class RealAgnosticInteractionBlock(InteractionBlock):
         edge_attrs: torch.Tensor,
         edge_feats: torch.Tensor,
         edge_index: torch.Tensor,
-    ) -> Tuple[torch.Tensor, None]:
+    ) -> tuple[torch.Tensor, None]:
         sender = edge_index[0]
         receiver = edge_index[1]
         num_nodes = node_feats.shape[0]
         node_feats = self.linear_up(node_feats)
         tp_weights = self.conv_tp_weights(edge_feats)
         mji = self.conv_tp(
-            node_feats[sender], edge_attrs, tp_weights
+            node_feats[sender],
+            edge_attrs,
+            tp_weights,
         )  # [n_edges, irreps]
         message = scatter_sum(
-            src=mji, index=receiver, dim=0, dim_size=num_nodes
+            src=mji,
+            index=receiver,
+            dim=0,
+            dim_size=num_nodes,
         )  # [n_nodes, irreps]
         message = self.linear(message) / self.avg_num_neighbors
         message = self.skip_tp(message, node_attrs)
@@ -574,12 +634,17 @@ class RealAgnosticResidualInteractionBlock(InteractionBlock):
         irreps_mid = irreps_mid.simplify()
         self.irreps_out = self.target_irreps
         self.linear = o3.Linear(
-            irreps_mid, self.irreps_out, internal_weights=True, shared_weights=True
+            irreps_mid,
+            self.irreps_out,
+            internal_weights=True,
+            shared_weights=True,
         )
 
         # Selector TensorProduct
         self.skip_tp = o3.FullyConnectedTensorProduct(
-            self.node_feats_irreps, self.node_attrs_irreps, self.hidden_irreps
+            self.node_feats_irreps,
+            self.node_attrs_irreps,
+            self.hidden_irreps,
         )
         self.reshape = reshape_irreps(self.irreps_out)
 
@@ -590,7 +655,7 @@ class RealAgnosticResidualInteractionBlock(InteractionBlock):
         edge_attrs: torch.Tensor,
         edge_feats: torch.Tensor,
         edge_index: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         sender = edge_index[0]
         receiver = edge_index[1]
         num_nodes = node_feats.shape[0]
@@ -598,10 +663,15 @@ class RealAgnosticResidualInteractionBlock(InteractionBlock):
         node_feats = self.linear_up(node_feats)
         tp_weights = self.conv_tp_weights(edge_feats)
         mji = self.conv_tp(
-            node_feats[sender], edge_attrs, tp_weights
+            node_feats[sender],
+            edge_attrs,
+            tp_weights,
         )  # [n_edges, irreps]
         message = scatter_sum(
-            src=mji, index=receiver, dim=0, dim_size=num_nodes
+            src=mji,
+            index=receiver,
+            dim=0,
+            dim_size=num_nodes,
         )  # [n_nodes, irreps]
         message = self.linear(message) / self.avg_num_neighbors
         return (
@@ -615,10 +685,12 @@ class ScaleShiftBlock(torch.nn.Module):
     def __init__(self, scale: float, shift: float):
         super().__init__()
         self.register_buffer(
-            "scale", torch.tensor(scale, dtype=torch.get_default_dtype())
+            "scale",
+            torch.tensor(scale, dtype=torch.get_default_dtype()),
         )
         self.register_buffer(
-            "shift", torch.tensor(shift, dtype=torch.get_default_dtype())
+            "shift",
+            torch.tensor(shift, dtype=torch.get_default_dtype()),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
