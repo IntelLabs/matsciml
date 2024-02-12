@@ -87,7 +87,5 @@ RUN pip install torch-scatter -f https://data.pyg.org/whl/torch-2.2.0+cu121.html
 RUN pip install torch-sparse -f https://data.pyg.org/whl/torch-2.2.0+cu121.html
 RUN pip install torch-geometric
 
-RUN pip install black
-
 RUN pip uninstall -y dgl
 RUN pip install dgl -f https://data.dgl.ai/wheels/cu121/repo.html
