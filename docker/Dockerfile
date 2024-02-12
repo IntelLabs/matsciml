@@ -51,17 +51,41 @@ RUN pip install -q \
     matplotlib \
     scikit-learn
 
-RUN pip install numba lmdb munch geometric_algebra_attention jsonargparse[signatures] sympy pymatgen
-RUN pip install torch==2.0.0+cu118 --index-url https://download.pytorch.org/whl/cu118
-RUN pip install dgl==0.9.1 -f https://data.dgl.ai/wheels/cu118/repo.html
-RUN pip install  dglgo -f https://data.dgl.ai/wheels-test/repo.html
-RUN pip install dgllife==0.3.2 rdkit==2023.3.1 rowan
-RUN pip install torch-scatter -f https://data.pyg.org/whl/torch-2.0.0+cu118.html
-RUN pip install torch-sparse -f https://data.pyg.org/whl/torch-2.0.0+cu118.html
+RUN pip install psutil
+RUN pip install pytorch_lightning==2.1.3
+RUN pip install dgllife==0.3.2
+RUN pip install rdkit==2023.3.1
+RUN pip install numba>=0.55.0
+RUN pip install numpy>=1.21.0
+RUN pip install matplotlib
+RUN pip install munch==2.5.0
+RUN pip install lmdb==1.4.1
+RUN pip install geometric-algebra-attention>=0.3.0
+RUN pip install sympy>=1.10.1
+RUN pip install jsonargparse[signatures]>=4.13.1
+RUN pip install --no-cache mp_api==0.33.3
+RUN pip install emmet-core==0.64.0
+RUN pip install pydantic==1.10.12
+RUN pip install pymatgen==2023.7.20
+RUN pip install schema>=0.7.5
+RUN pip install ase>=3.22.1
+RUN pip install matgl==0.9.2
+RUN pip install einops==0.7.0
+RUN pip install mendeleev==0.14.0
+RUN pip install e3nn==0.5.1
+
+RUN pip install black>=22.3.0
+RUN pip install flake8
+RUN pip install flake8-pyproject
+RUN pip install flake8-black
+RUN pip install flake8-bandit
+RUN pip install pre-commit
+RUN pip install bandit
+RUN pip install pytest
+
+RUN pip install torch-scatter -f https://data.pyg.org/whl/torch-2.2.0+cu121.html
+RUN pip install torch-sparse -f https://data.pyg.org/whl/torch-2.2.0+cu121.html
 RUN pip install torch-geometric
-RUN pip install smact
-RUN pip install matminer
-RUN pip install p_tqdm
-RUN pip install -U pytorch-lightning==1.8.6
-RUN pip install -U torchmetrics==0.11.4
-RUN pip install -U pytest
+
+RUN pip uninstall -y dgl
+RUN pip install dgl -f https://data.dgl.ai/wheels/cu121/repo.html
