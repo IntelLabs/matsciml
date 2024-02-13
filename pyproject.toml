@@ -49,13 +49,8 @@ all = [
   "matsciml[dev,symmetry,pyg]",
 ]
 dev = [
-  "black>=22.3.0",
-  "flake8",
-  "flake8-pyproject",
-  "flake8-black",
-  "flake8-bandit",
+  "ruff==0.2.1",
   "pre-commit",
-  "bandit",
   "pytest"
 ]
 pyg = [
