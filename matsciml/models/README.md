@@ -176,7 +176,7 @@ def test_model_forward_nograd(dset_class_name: str, model_fixture: NewModel):
     batch = next(iter(loader))
     # run the model without gradient tracking
     with torch.no_grad():
-        embeddings = egnn_architecture(batch)
+        embeddings = model_fixture(batch)
     # returns embeddings, and runs numerical checks
     for z in [embeddings.system_embedding, embeddings.point_embedding]:
         assert torch.isreal(z).all()
