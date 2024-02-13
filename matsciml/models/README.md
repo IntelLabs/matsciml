@@ -1,7 +1,7 @@
 # Model implementations
 
-At a high level, model implementations in Open MatSciML are expected to emit a system-level embedding; i.e. $B$
-vector embeddings with dimension $D$ for $B$ minibatch size, and $D$ some hyperparameter of your model, given
+At a high level, model implementations in Open MatSciML are expected to emit a system-level $[B, D]$ embedding,
+where $B$ is the minibatch size and $D$ is some model (typically `output_dim`) hyperparameter given
 some material structure comprising node, edge, and graph features.
 
 - When contributing models, make sure they are well-documented with clear explanations and examples.
@@ -84,11 +84,11 @@ class AmazingModelConv(MessagePassing):
 
 
 class AmazingModel(AbstractPyGModel):
-    def _forward(...):
+    def _forward(...) -> Embeddings:
         for block in self.blocks:
             node_feats = block(graph, node_feats, edge_feats)
         graph_feats = readout(node_feats)
-        return graph_feats
+        return Embeddings(system_embedding=graph_feats, point_embedding=node_feats)
 ```
 
 ### DGL models
