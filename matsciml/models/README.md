@@ -111,3 +111,91 @@ Models that operate on point clouds directly are not necessarily as complex as g
 as they do not need to rely on framework abstractions to perform message passing. Tt is still best
 to make model architectures as modular as possible, but we do not have any rigorous style enforcement
 for this type of model.
+
+## Testing
+
+Testing is a task that is necessary to make sure models implemented in Open MatSciML Toolkit are functional
+at the fullest extent: we want to try and avoid architectures implemented for specific datasets, instead
+ideally we want to preserve free composition across data, models, and tasks.
+
+We plan to implement a set of unified unit tests, but for now we require model contributions to come with
+their own minimal unit test suite to test functionality. For a clean example, see [`matsciml/models/pyg/tests/test_egnn.py`][egnn-test],
+but we will reproduce the relevant bits below. The two main test design targets are:
+
+1. Ensure your new architecture can read in data from "all" datasets
+2. Ensure model outputs are: real, not `NaN`, are finite, and are within reasonable ranges (e.g. not 10 million)
+
+For a hypothetical new model, `NewModel` implemented with PyTorch Geometric, the
+test below automatically tests against datasets contained in the registry,
+loads a batch, then runs the data through the model. To adapt it to your own
+architecture, you nominally just need to swap out `model_fixture`.
+
+```python
+import pytest
+
+from matsciml import datasets
+from matsciml.datases.transforms import PeriodicPropertiesTransform, PointCloudToGraphTransform
+from matsciml.common.registry import registry
+from matsciml.models import NewModel
+
+
+# fixture for some nominal set of hyperparameters that can be used
+# across datasets
+@pytest.fixture
+def model_fixture() -> NewModel:
+    model = NewModel(...)
+    return model
+
+
+# here we filter out datasets from the registry that don't make sense
+ignore_dset = ["Multi", "M3G", "PyG", "Cdvae"]
+filtered_list = list(
+    filter(
+        lambda x: all([target_str not in x for target_str in ignore_dset]),
+        registry.__entries__["datasets"].keys(),
+    ),
+)
+
+@pytest.mark.parametrize(
+    "dset_class_name",
+    filtered_list,
+)
+def test_model_forward_nograd(dset_class_name: str, model_fixture: NewModel):
+    transforms = [
+        PeriodicPropertiesTransform(cutoff_radius=6.0),
+        PointCloudToGraphTransform("pyg"),
+    ]
+    dm = MatSciMLDataModule.from_devset(
+        dset_class_name,
+        batch_size=8,
+        dset_kwargs={"transforms": transforms},
+    )
+    # dummy initialization
+    dm.setup("fit")
+    loader = dm.train_dataloader()
+    batch = next(iter(loader))
+    # run the model without gradient tracking
+    with torch.no_grad():
+        embeddings = egnn_architecture(batch)
+    # returns embeddings, and runs numerical checks
+    for z in [embeddings.system_embedding, embeddings.point_embedding]:
+        assert torch.isreal(z).all()
+        assert ~torch.isnan(z).all()  # check there are no NaNs
+        assert torch.isfinite(z).all()
+        assert torch.all(torch.abs(z) <= 1000)  # ensure reasonable values
+```
+
+For those unfamiliar with testing frameworks, `@pytest.fixture` instantiates the
+architecture and allows re-use across tests whereas `@pytest.mark.paramterize`
+will automatically generate new tests based on inputs. In this case, `filtered_list`
+is created by looking at all of the datasets registered in the `registry`,
+and is used to parametrize `test_model_forward_nograd` so that it is run with each
+dataset.
+
+The important thing to note is that not every test needs to pass, but having
+information on which datasets work and which do not is extremely helpful for
+maintainers to determine when and how to merge your new model into Open MatSciML.
+On the other hand, it is also informative for you (and other users) to know,
+for example, which datasets need to be normalized.
+
+[egnn-test]: ./pyg/tests/test_egnn.py
