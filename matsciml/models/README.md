@@ -108,7 +108,7 @@ the corresponding `message`, `propagate`, etc. functions as appropriate.
 ### Point cloud models
 
 Models that operate on point clouds directly are not necessarily as complex as graph architectures,
-as they do not need to rely on framework abstractions to perform message passing. Tt is still best
+as they do not need to rely on framework abstractions to perform message passing. It is still best
 to make model architectures as modular as possible, but we do not have any rigorous style enforcement
 for this type of model.
 
