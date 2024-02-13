@@ -7,9 +7,8 @@ Thank you for considering a contribution to our project! We appreciate your supp
 We recommend installing Open MatSciML Toolkit as an editable install with the relevant development dependencies using `pip install -e './[dev]'`.
 
 Additionally, we ask contributors to use our `pre-commit` workflow, which can be installed via `pre-commit install`, which helps enforce code
-style consistency and run static code checkers such as `flake8` and `bandit`. For the latter, we rely on `black` to do the vast majority
-of code formatting. While not explicitly enforced, we highly encourage the use of type annotations for function arguments in addition
-to docstrings in NumPy style.
+style consistency and run static code checkers with `ruff`. Docstrings are written in [NumPy style](https://numpydoc.readthedocs.io/en/latest/format.html), and where possible,
+type annotations are very helpful for users and maintainers.
 
 ## Models
 
