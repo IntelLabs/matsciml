@@ -198,4 +198,8 @@ maintainers to determine when and how to merge your new model into Open MatSciML
 On the other hand, it is also informative for you (and other users) to know,
 for example, which datasets need to be normalized.
 
+The recommendation is to nest these tests under their respective frameworks (e.g. `matsciml/models/pyg/tests`).
+As you are developing your model, you can then run `pytest -vv test_<model>.py` to ensure
+things are working as intended!
+
 [egnn-test]: ./pyg/tests/test_egnn.py
