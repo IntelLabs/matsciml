@@ -59,8 +59,7 @@ you need to override, which returns the system/graph and point/node-level embedd
 The `**kwargs` ensures that any additional variables that are not required by your architecture (for example graph features)
 are not needed as explicit arguments.
 
-If variables/features are required by the model, one can override the `read_batch` method. See the [MPNN](https://github.com/IntelLabs/matsciml/blob/main/matsciml/models/dgl/mpnn.py)
-wrapper to see how this pattern can be used to check for data within a batch.
+If variables/features are required by the model, one can override the `read_batch` method. See the [MPNN](https://github.com/IntelLabs/matsciml/blob/main/matsciml/models/dgl/mpnn.py) wrapper to see how this pattern can be used to check for data within a batch. *An important note*: the recommended style is to have tensor creation as a __transform__, rather than implement it in `read_batch`; PyTorch Lightning will automatically move data samples to the correct device, whereas if including it in `read_batch` will require explicit data movement which is a frequently made error.
 
 Aside from implementing the `_forward` method of the model itself, the constituent building blocks should be broken up into their own files, respective to what their functions are. For example, layer based classes and utilities should be placed into a `layers.py` file, and other helpful functions can be placed in a `helper.py` or `utils.py` file.
 
