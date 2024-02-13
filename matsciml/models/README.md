@@ -135,6 +135,7 @@ import pytest
 
 from matsciml import datasets
 from matsciml.datasets.transforms import PeriodicPropertiesTransform, PointCloudToGraphTransform
+from matsciml.lightning import MatSciMLDataModule
 from matsciml.common.registry import registry
 from matsciml.models import NewModel
 
