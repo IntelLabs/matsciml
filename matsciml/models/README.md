@@ -134,7 +134,7 @@ architecture, you nominally just need to swap out `model_fixture`.
 import pytest
 
 from matsciml import datasets
-from matsciml.datases.transforms import PeriodicPropertiesTransform, PointCloudToGraphTransform
+from matsciml.datasets.transforms import PeriodicPropertiesTransform, PointCloudToGraphTransform
 from matsciml.common.registry import registry
 from matsciml.models import NewModel
 
