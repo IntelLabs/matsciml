@@ -693,8 +693,13 @@ def calculate_periodic_shifts(
         include_index=True,
         include_image=True,
     )
-    if len(neighbors) == 0 and adaptive_cutoff:
-        while len(neighbors) == 0 and cutoff < 30.0:
+    def _all_sites_have_neighbors(neighbors):
+        return all([len(n) for n in neighbors])
+
+    # if there are sites without neighbors and user requested adaptive
+    # cut off, we'll keep trying
+    if not _all_sites_have_neighbors(neighbors) and adaptive_cutoff:
+        while not _all_sites_have_neighbors(neighbors) and cutoff < 30.0:
             # increment radial cutoff progressively
             cutoff += 0.5
             neighbors = structure.get_all_neighbors(
@@ -702,7 +707,7 @@ def calculate_periodic_shifts(
             )
     # placing a secondary check means that if the cut off goes to space
     # and we still don't find a neighbor, we have a problem with the structure
-    if len(neighbors) == 0:
+    if not _all_sites_have_neighbors(neighbors)
         raise ValueError(
             f"No neighbors detected for structure with cutoff {cutoff}; {structure}"
         )
