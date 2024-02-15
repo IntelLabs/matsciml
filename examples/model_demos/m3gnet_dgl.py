@@ -7,6 +7,13 @@ from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import M3GNet
 from matsciml.models.base import ScalarRegressionTask
 
+from matsciml.datasets.transforms import MGLDataTransform
+from matsciml.datasets.transforms import (
+    PeriodicPropertiesTransform,
+    PointCloudToGraphTransform,
+)
+
+
 # construct a scalar regression task with SchNet encoder
 task = ScalarRegressionTask(
     encoder_class=M3GNet,
@@ -14,11 +21,18 @@ task = ScalarRegressionTask(
         "element_types": element_types(),
     },
     output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
-    task_keys=["energy_total"],
+    task_keys=["energy_init"],
 )
 
 dm = MatSciMLDataModule.from_devset(
-    "M3GNomadDataset",
+    "OQMDDataset",
+    dset_kwargs={
+        "transforms": [
+            PeriodicPropertiesTransform(cutoff_radius=10.0),
+            PointCloudToGraphTransform(backend="dgl"),
+            MGLDataTransform(),
+        ]
+    },
     num_workers=0,
     batch_size=4,
 )

@@ -1,0 +1,27 @@
+from __future__ import annotations
+
+from matsciml.common.types import DataDict
+from matsciml.datasets.transforms.base import AbstractDataTransform
+from matgl.graph.compute import compute_pair_vector_and_distance
+import torch
+
+__all__ = ["MGLDataTransform"]
+
+
+class MGLDataTransform(AbstractDataTransform):
+    """
+    Implements a transform to add or swap keys required by matgl models.
+    """
+
+    def __call__(self, data: DataDict) -> DataDict:
+        graph = data["graph"]
+        graph.edata["pbc_offset"] = graph.edata["offsets"]
+        graph.edata["pbc_offshift"] = torch.matmul(
+            graph.edata["pbc_offset"], data["cell"][0]
+        )
+        graph.ndata["node_type"] = graph.ndata["atomic_numbers"].type(torch.int)
+        bond_vec, bond_dist = compute_pair_vector_and_distance(graph)
+        graph.edata["bond_vec"] = bond_vec
+        graph.edata["bond_dist"] = bond_dist
+        data["graph"] = graph
+        return data
