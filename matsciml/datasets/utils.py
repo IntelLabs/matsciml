@@ -693,6 +693,7 @@ def calculate_periodic_shifts(
         include_index=True,
         include_image=True,
     )
+
     def _all_sites_have_neighbors(neighbors):
         return all([len(n) for n in neighbors])
 
@@ -707,7 +708,7 @@ def calculate_periodic_shifts(
             )
     # placing a secondary check means that if the cut off goes to space
     # and we still don't find a neighbor, we have a problem with the structure
-    if not _all_sites_have_neighbors(neighbors)
+    if not _all_sites_have_neighbors(neighbors):
         raise ValueError(
             f"No neighbors detected for structure with cutoff {cutoff}; {structure}"
         )
