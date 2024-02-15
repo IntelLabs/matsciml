@@ -29,7 +29,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
     a large cut off for the entire dataset.
     """
 
-    def __init__(self, cutoff_radius: float, adaptive_cutoff: bool) -> None:
+    def __init__(self, cutoff_radius: float, adaptive_cutoff: bool = False) -> None:
         super().__init__()
         self.cutoff_radius = cutoff_radius
         self.adaptive_cutoff = adaptive_cutoff
