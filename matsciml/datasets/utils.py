@@ -5,14 +5,13 @@ from collections.abc import Generator
 from functools import lru_cache, partial
 from os import makedirs
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 
 import lmdb
 import torch
 from einops import einsum, rearrange
 from joblib import Parallel, delayed
 from pymatgen.core import Lattice, Structure
-from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
 from matsciml.common import package_registry
@@ -22,7 +21,6 @@ if package_registry["dgl"]:
     import dgl
 
 if package_registry["pyg"]:
-    import torch_geometric
     from torch_geometric.data import Batch as PyGBatch
     from torch_geometric.data import Data as PyGGraph
 
@@ -301,7 +299,7 @@ def get_lmdb_keys(
         keys = [key.decode("utf-8") for key in txn.cursor().iternext(values=False)]
     if ignore_keys and _lambda:
         raise ValueError(
-            f"Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive.",
+            "Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive.",
         )
     if ignore_keys:
         _lambda = lambda x: x not in ignore_keys
@@ -463,7 +461,7 @@ def parallel_lmdb_write(
         target_dir = Path(target_dir)
     # make the LMDB directory
     makedirs(target_dir, exist_ok=True)
-    assert target_dir.is_dir(), f"Target to write LMDB data to is not a directory."
+    assert target_dir.is_dir(), "Target to write LMDB data to is not a directory."
 
     def write_chunk(
         chunk: list[Any],
@@ -530,7 +528,7 @@ def parallel_lmdb_write(
     lmdb_indices = list(range(num_procs))
     assert all(
         [length != 0 for length in lengths],
-    ), f"Too many processes specified and not enough data to split over multiple LMDB files. Decrease `num_procs!`"
+    ), "Too many processes specified and not enough data to split over multiple LMDB files. Decrease `num_procs!`"
     p = Parallel(num_procs)(
         delayed(write_chunk)(chunk, target_dir, index, metadata)
         for chunk, index in zip(chunks, lmdb_indices)
@@ -559,7 +557,7 @@ def retrieve_pointcloud_node_types(pc_feats: torch.Tensor) -> tuple[torch.Tensor
     """
     assert (
         pc_feats.ndim == 3
-    ), f"Expected individual samples of point clouds, not batched."
+    ), "Expected individual samples of point clouds, not batched."
     src_types = pc_feats.sum(dim=1).argmax(-1)
     dst_types = pc_feats.sum(dim=0).argmax(-1)
     return (src_types, dst_types)
