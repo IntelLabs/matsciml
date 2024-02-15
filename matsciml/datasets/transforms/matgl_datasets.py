@@ -14,6 +14,9 @@ class MGLDataTransform(AbstractDataTransform):
     """
 
     def __call__(self, data: DataDict) -> DataDict:
+        assert (
+            "offsets" in data
+        ), "Offsets missing from data sample! Make sure to include PeriodicPropertiesTransform in the datamodule."
         graph = data["graph"]
         graph.edata["pbc_offset"] = graph.edata["offsets"]
         graph.edata["pbc_offshift"] = torch.matmul(
@@ -23,5 +26,4 @@ class MGLDataTransform(AbstractDataTransform):
         bond_vec, bond_dist = compute_pair_vector_and_distance(graph)
         graph.edata["bond_vec"] = bond_vec
         graph.edata["bond_dist"] = bond_dist
-        data["graph"] = graph
         return data
