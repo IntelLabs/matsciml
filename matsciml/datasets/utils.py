@@ -655,8 +655,7 @@ def make_pymatgen_periodic_structure(
 
 
 def calculate_periodic_shifts(
-    structure: Structure,
-    cutoff: float,
+    structure: Structure, cutoff: float, adaptive_cutoff: bool = False
 ) -> dict[str, torch.Tensor]:
     """
     Compute properties with respect to periodic boundary conditions.
@@ -694,10 +693,17 @@ def calculate_periodic_shifts(
         include_index=True,
         include_image=True,
     )
-    if len(neighbors) == 0:
+    if len(neighbors) == 0 and not adaptive_cutoff:
         raise ValueError(
             f"No neighbors detected for structure with cutoff {cutoff}; {structure}"
         )
+    elif len(neighbors) == 0 and adaptive_cutoff:
+        while len(neighbors) == 0 and cutoff < 30.0:
+            # increment radial cutoff progressively
+            cutoff += 0.5
+            neighbors = structure.get_all_neighbors(
+                cutoff, include_index=True, include_image=True
+            )
     # process the neighbors now
     all_src, all_dst, all_images = [], [], []
     for src_idx, dst_sites in enumerate(neighbors):
