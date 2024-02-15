@@ -21,14 +21,14 @@ task = ScalarRegressionTask(
         "element_types": element_types(),
     },
     output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
-    task_keys=["energy_init"],
+    task_keys=["energy_total"],
 )
 
 dm = MatSciMLDataModule.from_devset(
-    "OQMDDataset",
+    "NomadDataset",
     dset_kwargs={
         "transforms": [
-            PeriodicPropertiesTransform(cutoff_radius=10.0),
+            PeriodicPropertiesTransform(cutoff_radius=6.5),
             PointCloudToGraphTransform(backend="dgl"),
             MGLDataTransform(),
         ]
