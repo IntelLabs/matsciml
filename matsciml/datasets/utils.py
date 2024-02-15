@@ -694,6 +694,10 @@ def calculate_periodic_shifts(
         include_index=True,
         include_image=True,
     )
+    if len(neighbors) == 0:
+        raise ValueError(
+            f"No neighbors detected for structure with cutoff {cutoff}; {structure}"
+        )
     # process the neighbors now
     all_src, all_dst, all_images = [], [], []
     for src_idx, dst_sites in enumerate(neighbors):
@@ -701,6 +705,11 @@ def calculate_periodic_shifts(
             all_src.append(src_idx)
             all_dst.append(site.index)
             all_images.append(site.image)
+    if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
+        raise ValueError(
+            f"No images or edges to work off for cutoff {cutoff}."
+            f" Please inspect your structure and neighbors: {structure} {neighbors}"
+        )
     # get the lattice definition for use later
     cell = rearrange(structure.lattice.matrix, "i j -> () i j")
     cell = torch.from_numpy(cell.copy()).float()
