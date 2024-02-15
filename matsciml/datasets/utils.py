@@ -708,7 +708,7 @@ def calculate_periodic_shifts(
     if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
         raise ValueError(
             f"No images or edges to work off for cutoff {cutoff}."
-            f" Please inspect your structure and neighbors: {structure} {neighbors}"
+            f" Please inspect your structure and neighbors: {structure} {neighbors} {structure.cart_coords}"
         )
     # get the lattice definition for use later
     cell = rearrange(structure.lattice.matrix, "i j -> () i j")
