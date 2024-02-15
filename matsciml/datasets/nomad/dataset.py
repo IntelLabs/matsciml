@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 from math import pi
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 
 import numpy as np
 import torch
 from matgl.ext.pymatgen import Structure2Graph
-from matgl.graph.data import M3GNetDataset
+from matgl.graph.data import MGLDataset
 from pymatgen.core import Lattice, Structure
 
 from matsciml.common.registry import registry
@@ -18,7 +18,6 @@ from matsciml.datasets.utils import (
     atomic_number_map,
     concatenate_keys,
     element_types,
-    pad_point_cloud,
     point_cloud_featurization,
 )
 
@@ -215,8 +214,8 @@ class NomadDataset(PointCloudDataset):
         return return_dict
 
 
-@registry.register_dataset("M3GNomadDataset")
-class M3GNomadDataset(NomadDataset):
+@registry.register_dataset("MGLNomadDataset")
+class MGLNomadDataset(NomadDataset):
     def __init__(
         self,
         lmdb_root_path: str | Path,
@@ -254,6 +253,6 @@ class M3GNomadDataset(NomadDataset):
             element_types=element_types(),
             cutoff=self.cutoff_dist,
         )
-        graphs, lattices, lg, sa  = M3GNetDataset.process(self)
+        graphs, lattices, lg, sa = MGLDataset.process(self)
         return_dict["graph"] = graphs[0]
         return return_dict

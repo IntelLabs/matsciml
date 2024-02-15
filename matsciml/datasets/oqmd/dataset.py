@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 
 import numpy as np
 import torch
 from matgl.ext.pymatgen import Structure2Graph
-from matgl.graph.data import M3GNetDataset
+from matgl.graph.data import MGLDataset
 from pymatgen.core import Lattice, Structure
 
 from matsciml.common.registry import registry
@@ -17,7 +17,6 @@ from matsciml.datasets.utils import (
     atomic_number_map,
     concatenate_keys,
     element_types,
-    pad_point_cloud,
     point_cloud_featurization,
 )
 
@@ -134,10 +133,6 @@ class OQMDDataset(PointCloudDataset):
 
         return return_dict
 
-    @property
-    def target_keys(self) -> dict[str, list[str]]:
-        return {"regression": ["energy", "band_gap", "stability"]}
-
     @staticmethod
     def _standardize_values(
         value: float | Iterable[float],
@@ -208,7 +203,7 @@ class OQMDM3GNetDataset(OQMDDataset):
             element_types=element_types(),
             cutoff=self.cutoff_dist,
         )
-        graphs, lattices, lg, sa = M3GNetDataset.process(self)
+        graphs, lattices, lg, sa = MGLDataset.process(self)
         return_dict["graph"] = graphs[0]
         return return_dict
 

@@ -7,16 +7,16 @@ from functools import cache, cached_property
 from importlib.util import find_spec
 from math import pi
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 
 import numpy as np
 import torch
 from emmet.core.symmetry import SymmetryData
 from matgl.ext.pymatgen import Structure2Graph
-from matgl.graph.data import M3GNetDataset
+from matgl.graph.data import MGLDataset
 from pymatgen.analysis import local_env
 from pymatgen.analysis.graphs import StructureGraph
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import Structure
 from tqdm import tqdm
 
 from matsciml.common.registry import registry
@@ -697,5 +697,5 @@ class M3GMaterialsProjectDataset(MaterialsProjectDataset):
             element_types=element_types(),
             cutoff=self.cutoff_dist,
         )
-        graphs, lattices, lg, sa = M3GNetDataset.process(self)
+        graphs, lattices, lg, sa = MGLDataset.process(self)
         return_dict["graph"] = graphs[0]
