@@ -242,7 +242,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
             atom_numbers = self.get_atom_types(data)
             coords = data["pos"]
             # check to see if we have pre-computed edges
-            if all([f"{key}_nodes" in data for key in ["src", "dst"]]) in data:
+            if all([f"{key}_nodes" in data for key in ["src", "dst"]]):
                 edge_index = torch.stack([data["src_nodes"], data["dst_nodes"]])
             else:
                 atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
