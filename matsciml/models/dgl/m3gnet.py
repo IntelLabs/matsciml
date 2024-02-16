@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import dgl
 import torch
-from matgl.models import M3GNet
-
 
 from matsciml.common.types import Embeddings
 
@@ -20,7 +18,7 @@ and to construct the Embedding's output object.
 """
 
 
-@registry.register_model(M3GNet)
+@registry.register_model("M3GNet")
 class M3GNet(AbstractDGLModel):
     def __init__(
         self, element_types: list[str], return_all_layer_output: bool, *args, **kwargs
