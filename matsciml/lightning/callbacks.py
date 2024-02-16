@@ -8,7 +8,7 @@ from datetime import datetime
 from logging import DEBUG, getLogger
 from pathlib import Path
 from time import time
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable
 
 import numpy as np
 import pytorch_lightning as pl
@@ -73,7 +73,7 @@ class LeaderboardWriter(BasePredictionWriter):
             results = {key: [] for key in keys}
             for prediction in world_predictions:
                 for key, value in prediction.items():
-                    if any([type(v) == str for v in value]):
+                    if any([isinstance(v, str) for v in value]):
                         results[key].extend(value)
                     else:
                         if key == "chunk_ids":
@@ -481,7 +481,7 @@ class GarbageCallback(Callback):
         """
         step = trainer.global_step
         if step % self.frequency == 0:
-            cleared_objs = gc.collect()
+            _ = gc.collect()
 
 
 class InferenceWriter(BasePredictionWriter):
