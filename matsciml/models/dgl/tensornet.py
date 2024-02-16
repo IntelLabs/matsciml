@@ -13,6 +13,8 @@ from matsciml.common.types import Embeddings
 from matsciml.common.registry import registry
 from matsciml.models.base import AbstractDGLModel
 
+__all__ = ["TensorNet"]
+
 
 @registry.register_model("TensorNet")
 class TensorNet(AbstractDGLModel, MGLTensorNet):
