@@ -544,15 +544,134 @@ if package_registry["codecarbon"]:
     from codecarbon import EmissionsTracker, OfflineEmissionsTracker
 
     class CodeCarbonCallback(Callback):
-        def __init__(self, offline: bool = True, **kwargs):
+        """
+        Integrates `codecarbon` functionality to the end-to-end workflows
+        such as "fit", "test", and "predict". Currently, we just segment into
+        these different tasks, and the measurement is integrated throughout
+        until we are done with training, etc.
+
+        In the future this could be further broken down into measuring power
+        consumption at specific parts of workflows.
+        """
+
+        def __init__(
+            self,
+            output_file: str | Path = "emissions.pt",
+            output_dir: str | Path | None = None,
+            offline: bool = True,
+            **kwargs,
+        ):
+            """
+            Instantiate a ``CodeCarbonCallback`` object.
+
+            This configures the matsciml workflow to use ``codecarbon``
+            and estimate emissions footprint for training, testing, and
+            inference tasks.
+
+            Parameters
+            ----------
+            output_file : str | Path, default "emissions.pt"
+                Filename to save the emissions data to. The default
+                value will save it to an "emissions.pt" file.
+            output_dir : str | Path | None, default None
+                Directory to house the output file. The default behavior
+                is set to ``None``, which will try and share the ``log_dir``
+                of a logger to consolidate results.
+            offline : bool
+                Flag to use the offline workflow, which is the default case.
+
+            Raises
+            ------
+            KeyError
+                If using offline mode and no country ISO code is provided,
+                ``codecarbon`` will refuse to work.
+            """
             super().__init__()
             track = OfflineEmissionsTracker if offline else EmissionsTracker
+            # override some settings to make it compatible with intended usage
+            kwargs["save_to_file"] = False
+            kwargs["save_to_api"] = False
+            kwargs.setdefault("project_name", "matsciml-experiment")
+            # remove redundant config keys
+            for key in ["output_file", "output_dir"]:
+                if key in kwargs:
+                    del kwargs[key]
+            if offline and "country_iso_code" not in kwargs:
+                raise KeyError(
+                    "Offline mode specified but no country ISO code provided."
+                )
             self.tracker = track(**kwargs)
-            self.data = {key: [] for key in ["train", "test", "validation", "predict"]}
+            self.output_file = output_file
+            self._temp_output_dir = output_dir
+            self.reset_data()
 
-        def on_train_start(self, trainer, pl_module):
-            self.tracker.start_task("train")
+        def reset_data(self) -> None:
+            self.data = {key: [] for key in ["fit", "test", "predict"]}
 
-        def on_train_end(self, trainer, pl_module):
-            emissions_data = self.tracker.stop_task("train")
-            self.data["train"].append(emissions_data)
+        def dump_data(self, trainer: pl.Trainer):
+            """
+            Writes the data to disk via ``torch.save``.
+
+            This will try and be a little clever by borrowing a logger's
+            output directory if it exists, and fall back to defaults
+            otherwise.
+
+            Parameters
+            ----------
+            trainer
+                Instance of ``pl.Trainer``, which is used to access the
+                logger instances as well.
+            """
+            log_dir = self._temp_output_dir
+            # if nothing was specified
+            if not log_dir:
+                # try and get it from the logger
+                if trainer.logger:
+                    # if we have multiple loggers, find the first
+                    # `log_dir` to use
+                    if isinstance(trainer.logger, list):
+                        for logger in trainer.logger:
+                            log_dir = getattr(logger, "log_dir", None)
+                            if log_dir:
+                                break
+                    else:
+                        log_dir = getattr(trainer.logger, "log_dir", None)
+                if not log_dir:
+                    log_dir = "./emissions_data"
+            log_dir = Path(log_dir)
+            # this case exists if we aren't using logging and need to create
+            # a folder
+            if not log_dir.exists():
+                log_dir.mkdir(parents=True)
+            output = log_dir.joinpath(self.output_file)
+            torch.save(self.data, str(output.absolute()))
+
+        def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+            self.tracker.start()
+            self.tracker.start_task("fit")
+
+        def on_fit_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+            emissions_data = self.tracker.stop_task("fit")
+            self.tracker.stop()
+            self.data["fit"].append(emissions_data)
+            self.dump_data(trainer)
+
+        def on_predict_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+            self.tracker.start()
+            self.tracker.start_task("predict")
+
+        def on_predict_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+            emissions_data = self.tracker.stop_task("predict")
+            self.tracker.stop()
+            self.data["predict"].append(emissions_data)
+            self.dump_data(trainer)
+
+        def on_test_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+            self.tracker.start()
+            self.tracker.start_task("test")
+
+        def on_test_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+            emissions_data = self.tracker.stop_task("test")
+            self.tracker.stop()
+            self.data["test"].append(emissions_data)
+            self.dump_data(trainer)
