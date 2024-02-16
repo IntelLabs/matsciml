@@ -19,3 +19,4 @@ if _has_dgl:
     from matsciml.models.dgl.megnet import MEGNet
     from matsciml.models.dgl.mpnn import MPNN
     from matsciml.models.dgl.schnet_dgl import SchNet
+    from matsciml.models.dgl.tensornet import TensorNet
