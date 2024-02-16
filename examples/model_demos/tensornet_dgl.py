@@ -25,7 +25,7 @@ dm = MatSciMLDataModule.from_devset(
     "NomadDataset",
     dset_kwargs={
         "transforms": [
-            PeriodicPropertiesTransform(cutoff_radius=6.5),
+            PeriodicPropertiesTransform(cutoff_radius=6.5, adaptive_cutoff=True),
             PointCloudToGraphTransform(
                 "dgl",
                 cutoff_dist=20.0,
@@ -38,5 +38,5 @@ dm = MatSciMLDataModule.from_devset(
 )
 
 # run a quick training loop
-trainer = pl.Trainer(fast_dev_run=10, devices=1, accelerator="gpu")
+trainer = pl.Trainer(fast_dev_run=10)
 trainer.fit(task, datamodule=dm)
