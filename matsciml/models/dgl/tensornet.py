@@ -48,7 +48,7 @@ class TensorNet(AbstractDGLModel, MGLTensorNet):
         """
         # Obtain graph, with distances and relative position vectors
         g.edata["pbc_offshift"] = g.edata["offsets"]
-        g.ndata["node_type"] = g.ndata["atomic_numbers"].type(torch.int)
+        g.ndata["node_type"] = g.ndata["atomic_numbers"].long()
         bond_vec, bond_dist = compute_pair_vector_and_distance(g)
         g.edata["bond_vec"] = bond_vec.to(g.device)
         g.edata["bond_dist"] = bond_dist.to(g.device)
