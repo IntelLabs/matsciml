@@ -22,11 +22,17 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
     transform will compute the unit cell, tile it, and then rewire the graph
     edges such that it can capture connectivity given a radial cutoff given
     in Angstroms.
+
+    Cut off radius is specified in Angstroms. An additional flag, ``adaptive_cutoff``,
+    allows the cut off value to grow up to 100 angstroms in order to find neighbors.
+    This allows larger (typically unstable) structures to be modeled without applying
+    a large cut off for the entire dataset.
     """
 
-    def __init__(self, cutoff_radius: float) -> None:
+    def __init__(self, cutoff_radius: float, adaptive_cutoff: bool = False) -> None:
         super().__init__()
         self.cutoff_radius = cutoff_radius
+        self.adaptive_cutoff = adaptive_cutoff
 
     def __call__(self, data: DataDict) -> DataDict:
         for key in ["atomic_numbers", "pos"]:
@@ -60,6 +66,8 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             data["pos"],
             lattice=lattice,
         )
-        graph_props = calculate_periodic_shifts(structure, self.cutoff_radius)
+        graph_props = calculate_periodic_shifts(
+            structure, self.cutoff_radius, self.adaptive_cutoff
+        )
         data.update(graph_props)
         return data

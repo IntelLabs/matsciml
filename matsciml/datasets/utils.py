@@ -5,14 +5,13 @@ from collections.abc import Generator
 from functools import lru_cache, partial
 from os import makedirs
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 
 import lmdb
 import torch
 from einops import einsum, rearrange
 from joblib import Parallel, delayed
 from pymatgen.core import Lattice, Structure
-from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
 from matsciml.common import package_registry
@@ -22,7 +21,6 @@ if package_registry["dgl"]:
     import dgl
 
 if package_registry["pyg"]:
-    import torch_geometric
     from torch_geometric.data import Batch as PyGBatch
     from torch_geometric.data import Data as PyGGraph
 
@@ -301,7 +299,7 @@ def get_lmdb_keys(
         keys = [key.decode("utf-8") for key in txn.cursor().iternext(values=False)]
     if ignore_keys and _lambda:
         raise ValueError(
-            f"Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive.",
+            "Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive.",
         )
     if ignore_keys:
         _lambda = lambda x: x not in ignore_keys
@@ -463,7 +461,7 @@ def parallel_lmdb_write(
         target_dir = Path(target_dir)
     # make the LMDB directory
     makedirs(target_dir, exist_ok=True)
-    assert target_dir.is_dir(), f"Target to write LMDB data to is not a directory."
+    assert target_dir.is_dir(), "Target to write LMDB data to is not a directory."
 
     def write_chunk(
         chunk: list[Any],
@@ -530,7 +528,7 @@ def parallel_lmdb_write(
     lmdb_indices = list(range(num_procs))
     assert all(
         [length != 0 for length in lengths],
-    ), f"Too many processes specified and not enough data to split over multiple LMDB files. Decrease `num_procs!`"
+    ), "Too many processes specified and not enough data to split over multiple LMDB files. Decrease `num_procs!`"
     p = Parallel(num_procs)(
         delayed(write_chunk)(chunk, target_dir, index, metadata)
         for chunk, index in zip(chunks, lmdb_indices)
@@ -559,7 +557,7 @@ def retrieve_pointcloud_node_types(pc_feats: torch.Tensor) -> tuple[torch.Tensor
     """
     assert (
         pc_feats.ndim == 3
-    ), f"Expected individual samples of point clouds, not batched."
+    ), "Expected individual samples of point clouds, not batched."
     src_types = pc_feats.sum(dim=1).argmax(-1)
     dst_types = pc_feats.sum(dim=0).argmax(-1)
     return (src_types, dst_types)
@@ -657,8 +655,7 @@ def make_pymatgen_periodic_structure(
 
 
 def calculate_periodic_shifts(
-    structure: Structure,
-    cutoff: float,
+    structure: Structure, cutoff: float, adaptive_cutoff: bool = False
 ) -> dict[str, torch.Tensor]:
     """
     Compute properties with respect to periodic boundary conditions.
@@ -696,6 +693,25 @@ def calculate_periodic_shifts(
         include_index=True,
         include_image=True,
     )
+
+    def _all_sites_have_neighbors(neighbors):
+        return all([len(n) for n in neighbors])
+
+    # if there are sites without neighbors and user requested adaptive
+    # cut off, we'll keep trying
+    if not _all_sites_have_neighbors(neighbors) and adaptive_cutoff:
+        while not _all_sites_have_neighbors(neighbors) and cutoff < 30.0:
+            # increment radial cutoff progressively
+            cutoff += 0.5
+            neighbors = structure.get_all_neighbors(
+                cutoff, include_index=True, include_image=True
+            )
+    # placing a secondary check means that if the cut off goes to space
+    # and we still don't find a neighbor, we have a problem with the structure
+    if not _all_sites_have_neighbors(neighbors):
+        raise ValueError(
+            f"No neighbors detected for structure with cutoff {cutoff}; {structure}"
+        )
     # process the neighbors now
     all_src, all_dst, all_images = [], [], []
     for src_idx, dst_sites in enumerate(neighbors):
@@ -703,6 +719,11 @@ def calculate_periodic_shifts(
             all_src.append(src_idx)
             all_dst.append(site.index)
             all_images.append(site.image)
+    if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
+        raise ValueError(
+            f"No images or edges to work off for cutoff {cutoff}."
+            f" Please inspect your structure and neighbors: {structure} {neighbors} {structure.cart_coords}"
+        )
     # get the lattice definition for use later
     cell = rearrange(structure.lattice.matrix, "i j -> () i j")
     cell = torch.from_numpy(cell.copy()).float()

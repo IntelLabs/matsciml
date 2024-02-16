@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import List, Optional, Tuple, Union
 from warnings import warn
 
 import numpy as np
 import torch
 
 from matsciml.common import DataDict, package_registry
-from matsciml.common.types import AbstractGraph, DataDict, GraphTypes
+from matsciml.common.types import AbstractGraph, GraphTypes
 from matsciml.datasets.transforms.representations import RepresentationTransform
 from matsciml.datasets.utils import retrieve_pointcloud_node_types
 
@@ -24,7 +23,6 @@ if package_registry["dgl"]:
     from dgl import graph as dgl_graph
 
 if package_registry["pyg"]:
-    import torch_geometric
     from torch_geometric.data import Data as PyGGraph
 
 log = getLogger(__name__)
@@ -58,14 +56,12 @@ class PointCloudToGraphTransform(RepresentationTransform):
             GraphTypes,
         ), "Data structure already contains a graph: transform shouldn't be required."
         # check for keys needed to construct the graph
-        assert "pos" in data, f"No atomic positions 'pos' key present in data sample."
+        assert "pos" in data, "No atomic positions 'pos' key present in data sample."
         has_atom_key = False
         for key in ["atomic_numbers", "pc_features"]:
             if key in data:
                 has_atom_key = True
-        assert (
-            has_atom_key
-        ), f"Neither 'atomic_numbers' nor 'pc_features' keys were present in data sample."
+        assert has_atom_key, "Neither 'atomic_numbers' nor 'pc_features' keys were present in data sample."
         return super().prologue(data)
 
     @staticmethod
@@ -100,11 +96,11 @@ class PointCloudToGraphTransform(RepresentationTransform):
             (src_types, dst_types) = retrieve_pointcloud_node_types(data["pc_features"])
             assert src_types.size(0) == data["pos"].size(
                 0,
-            ), f"Number of source nodes != number of atom positions!"
+            ), "Number of source nodes != number of atom positions!"
             return src_types
         else:
             raise KeyError(
-                f"No suitable atom types to read from; expect either 'atomic_numbers' or 'pc_features' to read from a data sample.",
+                "No suitable atom types to read from; expect either 'atomic_numbers' or 'pc_features' to read from a data sample.",
             )
 
     @staticmethod
@@ -246,7 +242,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
             atom_numbers = self.get_atom_types(data)
             coords = data["pos"]
             # check to see if we have pre-computed edges
-            if all([f"{key}_nodes" in data for key in ["src", "dst"]]) in data:
+            if all([f"{key}_nodes" in data for key in ["src", "dst"]]):
                 edge_index = torch.stack([data["src_nodes"], data["dst_nodes"]])
             else:
                 atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
