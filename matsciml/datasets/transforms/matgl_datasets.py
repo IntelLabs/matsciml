@@ -18,10 +18,8 @@ class MGLDataTransform(AbstractDataTransform):
             "offsets" in data
         ), "Offsets missing from data sample! Make sure to include PeriodicPropertiesTransform in the datamodule."
         graph = data["graph"]
-        graph.edata["pbc_offset"] = graph.edata["offsets"]
-        graph.edata["pbc_offshift"] = torch.matmul(
-            graph.edata["pbc_offset"], data["cell"][0]
-        )
+        graph.edata["pbc_offset"] = data["images"]
+        graph.edata["pbc_offshift"] = graph.edata["offsets"]
         graph.ndata["node_type"] = graph.ndata["atomic_numbers"].type(torch.int)
         bond_vec, bond_dist = compute_pair_vector_and_distance(graph)
         graph.edata["bond_vec"] = bond_vec
