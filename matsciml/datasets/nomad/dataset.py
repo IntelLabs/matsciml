@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from math import pi
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import torch
-from matgl.ext.pymatgen import Structure2Graph
-from matgl.graph.data import M3GNetDataset
-from pymatgen.core import Lattice, Structure
 
 from matsciml.common.registry import registry
 from matsciml.common.types import BatchDict, DataDict
@@ -17,8 +13,6 @@ from matsciml.datasets.base import PointCloudDataset
 from matsciml.datasets.utils import (
     atomic_number_map,
     concatenate_keys,
-    element_types,
-    pad_point_cloud,
     point_cloud_featurization,
 )
 
@@ -212,48 +206,4 @@ class NomadDataset(PointCloudDataset):
         data = super().data_from_key(lmdb_index, subindex)
         return_dict = {}
         self._parse_data(data, return_dict=return_dict)
-        return return_dict
-
-
-@registry.register_dataset("M3GNomadDataset")
-class M3GNomadDataset(NomadDataset):
-    def __init__(
-        self,
-        lmdb_root_path: str | Path,
-        threebody_cutoff: float = 4.0,
-        cutoff_dist: float = 20.0,
-        graph_labels: list[int | float] | None = None,
-        transforms: list[Callable[..., Any]] | None = None,
-    ):
-        super().__init__(lmdb_root_path, transforms)
-        self.threebody_cutoff = threebody_cutoff
-        self.graph_labels = graph_labels
-        self.cutoff_dist = cutoff_dist
-        self.clear_processed = True
-
-    def data_from_key(self, lmdb_index: int, subindex: int) -> Any:
-        return_dict = super().data_from_key(lmdb_index, subindex)
-        a, b, c, alpha, beta, gamma = return_dict["lattice_params"]
-        num_to_element = dict(
-            zip(atomic_number_map().values(), atomic_number_map().keys()),
-        )
-        elements = [
-            num_to_element[int(idx.item())] for idx in return_dict["atomic_numbers"]
-        ]
-        lattice = Lattice.from_parameters(
-            a,
-            b,
-            c,
-            alpha * 180 / pi,
-            beta * 180 / pi,
-            gamma * 180 / pi,
-        )
-        structure = Structure(lattice, elements, return_dict["pos"])
-        self.structures = [structure]
-        self.converter = Structure2Graph(
-            element_types=element_types(),
-            cutoff=self.cutoff_dist,
-        )
-        graphs, lattices, lg, sa  = M3GNetDataset.process(self)
-        return_dict["graph"] = graphs[0]
         return return_dict
