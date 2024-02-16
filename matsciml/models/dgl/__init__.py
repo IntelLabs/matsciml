@@ -11,4 +11,12 @@ except ImportError:
 
 
 if _has_dgl:
-    pass
+    from matsciml.models.dgl.dpp import DimeNetPP
+    from matsciml.models.dgl.egnn import PLEGNNBackbone
+    from matsciml.models.dgl.gaanet import GalaPotential
+    from matsciml.models.dgl.gcn import GraphConvModel
+    from matsciml.models.dgl.m3gnet import M3GNet
+    from matsciml.models.dgl.megnet import MEGNet
+    from matsciml.models.dgl.mpnn import MPNN
+    from matsciml.models.dgl.schnet_dgl import SchNet
+    from matsciml.models.dgl.tensornet import TensorNet
