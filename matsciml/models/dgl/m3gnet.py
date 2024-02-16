@@ -43,5 +43,6 @@ class M3GNet(AbstractDGLModel):
         outputs = self.model(
             graph, return_all_layer_output=self.all_embeddings, **kwargs
         )
-        # gc_3 is essentially the last graph layer before the readout
-        return Embeddings(outputs["readout"], outputs["gc_3"]["node_feat"])
+        # gc_{self.model.n_blocks} is essentially the last graph layer before the readout
+        last_layer = f"gc_{self.model.n_blocks}"
+        return Embeddings(outputs["readout"], outputs[last_layer]["node_feat"])
