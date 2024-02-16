@@ -5,9 +5,13 @@ import dgl
 import torch
 from matgl.models import M3GNet
 
-from matsciml.common.types import BatchDict
 
 from matsciml.common.types import Embeddings
+
+
+from matgl.models import M3GNet as matgl_m3gnet
+from matsciml.common.registry import registry
+from matsciml.models.base import AbstractDGLModel
 
 """
 M3GNet is integrated from matgl: https://github.com/materialsvirtuallab/matgl
@@ -16,27 +20,21 @@ and to construct the Embedding's output object.
 """
 
 
-def forward(
-    self,
-    batch: BatchDict,
-    state_attr: torch.Tensor | None = None,
-    l_g: dgl.DGLGraph | None = None,
-):
-    """Performs message passing and updates node representations.
+@registry.register_model(M3GNet)
+class M3GNet(AbstractDGLModel):
+    def __init__(self, element_types, *args, **kwargs):
+        super().__init__(atom_embedding_dim=len(element_types))
+        self.elemenet_types = element_types
+        self.model = matgl_m3gnet(element_types, *args, **kwargs)
 
-    Args:
-        g : DGLGraph for a batch of graphs.
-        state_attr: State attrs for a batch of graphs.
-        l_g : DGLGraph for a batch of line graphs.
-
-    Returns:
-        output: Output property for a batch of graphs
-    """
-    graph = batch["graph"]
-    outputs = self.m3gnet_forward(graph, state_attr, l_g, return_all_layer_output=True)
-    # gc_3 is essentially the last graph layer before the readout
-    return Embeddings(outputs["readout"], outputs["gc_3"]["node_feat"])
-
-
-M3GNet.m3gnet_forward = M3GNet.forward
-M3GNet.forward = forward
+    def _forward(
+        self,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        edge_feats: torch.Tensor,
+        graph_feats: torch.Tensor,
+        pos: torch.Tensor | None = None,
+        **kwargs,
+    ) -> Embeddings:
+        outputs = self.model(graph, return_all_layer_output=True, **kwargs)
+        return Embeddings(outputs["readout"], outputs["gc_3"]["node_feat"])
