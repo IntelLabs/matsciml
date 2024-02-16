@@ -19,6 +19,7 @@ from torch import distributed as dist
 from torch import nn
 from torch.optim import Optimizer
 
+from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
 
 
@@ -537,3 +538,21 @@ class InferenceWriter(BasePredictionWriter):
         rank = trainer.global_rank
         path = self.output_dir.joinpath(f"results_rank{rank}.pt")
         torch.save(predictions, path)
+
+
+if package_registry["codecarbon"]:
+    from codecarbon import EmissionsTracker, OfflineEmissionsTracker
+
+    class CodeCarbonCallback(Callback):
+        def __init__(self, offline: bool = True, **kwargs):
+            super().__init__()
+            track = OfflineEmissionsTracker if offline else EmissionsTracker
+            self.tracker = track(**kwargs)
+            self.data = {key: [] for key in ["train", "test", "validation", "predict"]}
+
+        def on_train_start(self, trainer, pl_module):
+            self.tracker.start_task("train")
+
+        def on_train_end(self, trainer, pl_module):
+            emissions_data = self.tracker.stop_task("train")
+            self.data["train"].append(emissions_data)
