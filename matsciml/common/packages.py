@@ -19,6 +19,7 @@ package_registry["ccl"] = (
 # graph specific packages
 package_registry["pyg"] = True if util.find_spec("torch_geometric") else False
 package_registry["dgl"] = True if util.find_spec("dgl") else False
+package_registry["codecarbon"] = True if util.find_spec("codecarbon") else False
 
 
 def get_package_version(module_name: str) -> str:
