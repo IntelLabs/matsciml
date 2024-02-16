@@ -22,9 +22,12 @@ and to construct the Embedding's output object.
 
 @registry.register_model(M3GNet)
 class M3GNet(AbstractDGLModel):
-    def __init__(self, element_types, *args, **kwargs):
+    def __init__(
+        self, element_types: list[str], return_all_layer_output: bool, *args, **kwargs
+    ):
         super().__init__(atom_embedding_dim=len(element_types))
         self.elemenet_types = element_types
+        self.all_embeddings = return_all_layer_output
         self.model = matgl_m3gnet(element_types, *args, **kwargs)
 
     def _forward(
@@ -36,5 +39,8 @@ class M3GNet(AbstractDGLModel):
         pos: torch.Tensor | None = None,
         **kwargs,
     ) -> Embeddings:
-        outputs = self.model(graph, return_all_layer_output=True, **kwargs)
+        outputs = self.model(
+            graph, return_all_layer_output=self.all_embeddings, **kwargs
+        )
+        # gc_3 is essentially the last graph layer before the readout
         return Embeddings(outputs["readout"], outputs["gc_3"]["node_feat"])

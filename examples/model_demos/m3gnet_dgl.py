@@ -17,7 +17,7 @@ from matsciml.datasets.transforms import (
 # construct a scalar regression task with SchNet encoder
 task = ScalarRegressionTask(
     encoder_class=M3GNet,
-    encoder_kwargs={"element_types": element_types(), "output_layers": "final"},
+    encoder_kwargs={"element_types": element_types(), "return_all_layer_output": True},
     output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
     task_keys=["energy_total"],
 )
