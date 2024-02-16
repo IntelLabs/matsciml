@@ -2,21 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Callable
 
 import numpy as np
 import torch
-from matgl.ext.pymatgen import Structure2Graph
-from matgl.graph.data import MGLDataset
-from pymatgen.core import Lattice, Structure
 
 from matsciml.common.registry import registry
 from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets.base import PointCloudDataset
 from matsciml.datasets.utils import (
-    atomic_number_map,
     concatenate_keys,
-    element_types,
     point_cloud_featurization,
 )
 
@@ -169,74 +163,3 @@ class OQMDDataset(PointCloudDataset):
         else:
             # for scalars, just return the value
             return value
-
-
-@registry.register_dataset("OQMDM3GNetDataset")
-class OQMDM3GNetDataset(OQMDDataset):
-    def __init__(
-        self,
-        lmdb_root_path: str | Path,
-        threebody_cutoff: float = 4.0,
-        cutoff_dist: float = 20.0,
-        graph_labels: list[int | float] | None = None,
-        transforms: list[Callable[..., Any]] | None = None,
-    ):
-        super().__init__(lmdb_root_path, transforms)
-        self.threebody_cutoff = threebody_cutoff
-        self.graph_labels = graph_labels
-        self.cutoff_dist = cutoff_dist
-        self.clear_processed = True
-
-    def data_from_key(self, lmdb_index: int, subindex: int) -> Any:
-        return_dict = super().data_from_key(lmdb_index, subindex)
-        num_to_element = dict(
-            zip(atomic_number_map().values(), atomic_number_map().keys()),
-        )
-        elements = [
-            num_to_element[int(idx.item())] for idx in return_dict["atomic_numbers"]
-        ]
-        a, b, c, alpha, beta, gamma = self.basis_to_latparams(return_dict["unit_cell"])
-        lattice = Lattice.from_parameters(a, b, c, alpha, beta, gamma)
-        structure = Structure(lattice, elements, return_dict["pos"])
-        self.structures = [structure]
-        self.converter = Structure2Graph(
-            element_types=element_types(),
-            cutoff=self.cutoff_dist,
-        )
-        graphs, lattices, lg, sa = MGLDataset.process(self)
-        return_dict["graph"] = graphs[0]
-        return return_dict
-
-    def angle(self, x, y, radians=False):
-        """Return the angle between two lattice vectors
-
-        Examples:
-        >>> angle([1,0,0], [0,1,0])
-        90.0
-        """
-        if radians:
-            return np.arccos(np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y)))
-        else:
-            return (
-                np.arccos(np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y)))
-                * 180.0
-                / np.pi
-            )
-
-    def basis_to_latparams(self, basis, radians=False):
-        """Returns the lattice parameters [a, b, c, alpha, beta, gamma].
-
-        Example:
-
-        >>> basis_to_latparams([[3,0,0],[0,3,0],[0,0,5]])
-        [3, 3, 5, 90, 90, 90]
-        """
-
-        va, vb, vc = basis
-        a = np.linalg.norm(va)
-        b = np.linalg.norm(vb)
-        c = np.linalg.norm(vc)
-        alpha = self.angle(vb, vc, radians=radians)
-        beta = self.angle(vc, va, radians=radians)
-        gamma = self.angle(va, vb, radians=radians)
-        return [a, b, c, alpha, beta, gamma]

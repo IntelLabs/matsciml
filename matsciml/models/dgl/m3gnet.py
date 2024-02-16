@@ -1,81 +1,46 @@
 from __future__ import annotations
 
-from typing import Union
 
 import dgl
 import torch
-from matgl.graph.compute import (
-    compute_theta_and_phi,
-    create_line_graph,
-    ensure_line_graph_compatibility,
-)
-from matgl.models import M3GNet
-from matgl.models._megnet import *
-from matgl.utils.cutoff import polynomial_cutoff
 
 from matsciml.common.types import Embeddings
 
 
-def forward(
-    self,
-    g: dgl.DGLGraph,
-    state_attr: torch.Tensor | None = None,
-    l_g: dgl.DGLGraph | None = None,
-):
-    """Performs message passing and updates node representations.
+from matgl.models import M3GNet as matgl_m3gnet
+from matsciml.common.registry import registry
+from matsciml.models.base import AbstractDGLModel
 
-    Args:
-        g : DGLGraph for a batch of graphs.
-        state_attr: State attrs for a batch of graphs.
-        l_g : DGLGraph for a batch of line graphs.
+"""
+M3GNet is integrated from matgl: https://github.com/materialsvirtuallab/matgl
+The forward pass needs to be overwritten to accommodate matsciml's expected inputs,
+and to construct the Embedding's output object.
+"""
 
-    Returns:
-        output: Output property for a batch of graphs
-    """
-    g = g["graph"]
-    node_types = g.ndata["node_type"]
-    expanded_dists = self.bond_expansion(g.edata["bond_dist"])
-    if l_g is None:
-        l_g = create_line_graph(g, self.threebody_cutoff)
-    else:
-        l_g = ensure_line_graph_compatibility(g, l_g, self.threebody_cutoff)
-    l_g.apply_edges(compute_theta_and_phi)
-    g.edata["rbf"] = expanded_dists
-    three_body_basis = self.basis_expansion(l_g)
-    three_body_cutoff = polynomial_cutoff(g.edata["bond_dist"], self.threebody_cutoff)
-    node_feat, edge_feat, state_feat = self.embedding(
-        node_types,
-        g.edata["rbf"],
-        state_attr,
-    )
-    for i in range(self.n_blocks):
-        edge_feat = self.three_body_interactions[i](
-            g,
-            l_g,
-            three_body_basis,
-            three_body_cutoff,
-            node_feat,
-            edge_feat,
+
+@registry.register_model("M3GNet")
+class M3GNet(AbstractDGLModel):
+    def __init__(
+        self, element_types: list[str], return_all_layer_output: bool, *args, **kwargs
+    ):
+        super().__init__(atom_embedding_dim=len(element_types))
+        self.elemenet_types = element_types
+        self.all_embeddings = return_all_layer_output
+        self.model = matgl_m3gnet(element_types, *args, **kwargs)
+        self.atomic_embedding = self.model.embedding
+
+    def _forward(
+        self,
+        graph: dgl.DGLGraph,
+        node_feats: torch.Tensor,
+        edge_feats: torch.Tensor,
+        graph_feats: torch.Tensor,
+        pos: torch.Tensor | None = None,
+        **kwargs,
+    ) -> Embeddings:
+        outputs = self.model(
+            graph, return_all_layer_output=self.all_embeddings, **kwargs
         )
-        edge_feat, node_feat, state_feat = self.graph_layers[i](
-            g,
-            edge_feat,
-            node_feat,
-            state_feat,
-        )
-    g.ndata["node_feat"] = node_feat
-    g.edata["edge_feat"] = edge_feat
-    if self.is_intensive:
-        node_vec = self.readout(g)
-        vec = torch.hstack([node_vec, state_feat]) if self.include_states else node_vec  # type: ignore
-        output = self.final_layer(vec)
-        if self.task_type == "classification":
-            output = self.sigmoid(output)
-    else:
-        g.ndata["atomic_properties"] = self.final_layer(g)
-        output = dgl.readout_nodes(g, "atomic_properties", op="sum")
-    return Embeddings(vec, node_vec)
-
-
-M3GNet.m3gnet_forward = M3GNet.forward
-M3GNet.forward = forward
+        # gc_{self.model.n_blocks} is essentially the last graph layer before the readout
+        last_layer = f"gc_{self.model.n_blocks}"
+        return Embeddings(outputs["readout"], outputs[last_layer]["node_feat"])
