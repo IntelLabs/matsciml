@@ -8,8 +8,6 @@ from typing import Any, Callable
 import numpy as np
 import torch
 from emmet.core.symmetry import SymmetryData
-from matgl.ext.pymatgen import Structure2Graph
-from matgl.graph.data import M3GNetDataset
 from pymatgen.core.structure import Structure
 
 from matsciml.common.registry import registry
@@ -237,34 +235,3 @@ class AlexandriaDataset(PointCloudDataset):
             unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
         )
 
-
-@registry.register_dataset("M3GAlexandriaDataset")
-class M3GAlexandriaDataset(AlexandriaDataset):
-    def __init__(
-        self,
-        lmdb_root_path: str | Path,
-        threebody_cutoff: float = 20.0,
-        cutoff_dist: float = 20.0,
-        graph_labels: list[int | float] | None = None,
-        transforms: list[Callable[..., Any]] | None = None,
-    ):
-        super().__init__(lmdb_root_path, transforms)
-        self.threebody_cutoff = threebody_cutoff
-        self.graph_labels = graph_labels
-        self.cutoff_dist = cutoff_dist
-        self.clear_processed = True
-
-    def _parse_structure(
-        self,
-        data: dict[str, Any],
-        return_dict: dict[str, Any],
-    ) -> None:
-        super()._parse_structure(data, return_dict)
-        structure: None | Structure = Structure.from_dict(data.get("structure", None))
-        self.structures = [structure]
-        self.converter = Structure2Graph(
-            element_types=element_types(),
-            cutoff=self.cutoff_dist,
-        )
-        graphs, lg, sa = M3GNetDataset.process(self)
-        return_dict["graph"] = graphs[0]
