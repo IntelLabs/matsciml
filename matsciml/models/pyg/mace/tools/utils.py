@@ -4,16 +4,19 @@
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 import sys
-from typing import Any, Dict, Iterable, Optional, Sequence, Union
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 import numpy as np
 import torch
 
-from .torch_tools import to_numpy
+from matsciml.models.pyg.mace.tools.torch_tools import to_numpy
 
 
 def compute_mae(delta: np.ndarray) -> float:
@@ -47,9 +50,9 @@ def get_tag(name: str, seed: int) -> str:
 
 
 def setup_logger(
-    level: Union[int, str] = logging.INFO,
-    tag: Optional[str] = None,
-    directory: Optional[str] = None,
+    level: int | str = logging.INFO,
+    tag: str | None = None,
+    directory: str | None = None,
 ):
     logger = logging.getLogger()
     logger.setLevel(level)
@@ -97,7 +100,8 @@ def get_atomic_number_table_from_zs(zs: Iterable[int]) -> AtomicNumberTable:
 
 
 def atomic_numbers_to_indices(
-    atomic_numbers: np.ndarray, z_table: AtomicNumberTable
+    atomic_numbers: np.ndarray,
+    z_table: AtomicNumberTable,
 ) -> np.ndarray:
     to_index_fn = np.vectorize(z_table.z_to_index)
     return to_index_fn(atomic_numbers)
@@ -112,12 +116,18 @@ def get_optimizer(
 ) -> torch.optim.Optimizer:
     if name == "adam":
         return torch.optim.Adam(
-            parameters, lr=learning_rate, amsgrad=amsgrad, weight_decay=weight_decay
+            parameters,
+            lr=learning_rate,
+            amsgrad=amsgrad,
+            weight_decay=weight_decay,
         )
 
     if name == "adamw":
         return torch.optim.AdamW(
-            parameters, lr=learning_rate, amsgrad=amsgrad, weight_decay=weight_decay
+            parameters,
+            lr=learning_rate,
+            amsgrad=amsgrad,
+            weight_decay=weight_decay,
         )
 
     raise RuntimeError(f"Unknown optimizer '{name}'")
@@ -142,7 +152,7 @@ class MetricsLogger:
         self.filename = tag + ".txt"
         self.path = os.path.join(self.directory, self.filename)
 
-    def log(self, d: Dict[str, Any]) -> None:
+    def log(self, d: dict[str, Any]) -> None:
         logging.debug(f"Saving info: {self.path}")
         os.makedirs(name=self.directory, exist_ok=True)
         with open(self.path, mode="a", encoding="utf-8") as f:

@@ -4,8 +4,9 @@
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
+from __future__ import annotations
+
 import collections
-from typing import List, Union
 
 import torch
 from e3nn import o3
@@ -15,7 +16,7 @@ _INPUT = collections.namedtuple("_INPUT", "tensor, start, stop")
 
 
 def _wigner_nj(
-    irrepss: List[o3.Irreps],
+    irrepss: list[o3.Irreps],
     normalization: str = "component",
     filter_ir_mid=None,
     dtype=None,
@@ -58,7 +59,9 @@ def _wigner_nj(
 
                 C = torch.einsum("jk,ijl->ikl", C_left.flatten(1), C)
                 C = C.reshape(
-                    ir_out.dim, *(irreps.dim for irreps in irrepss_left), ir.dim
+                    ir_out.dim,
+                    *(irreps.dim for irreps in irrepss_left),
+                    ir.dim,
                 )
                 for u in range(mul):
                     E = torch.zeros(
@@ -80,15 +83,15 @@ def _wigner_nj(
                                 ),
                             ),
                             E,
-                        )
+                        ),
                     ]
             i += mul * ir.dim
     return sorted(ret, key=lambda x: x[0])
 
 
 def U_matrix_real(
-    irreps_in: Union[str, o3.Irreps],
-    irreps_out: Union[str, o3.Irreps],
+    irreps_in: str | o3.Irreps,
+    irreps_out: str | o3.Irreps,
     correlation: int,
     normalization: str = "component",
     filter_ir_mid=None,

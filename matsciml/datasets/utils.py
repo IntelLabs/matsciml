@@ -5,12 +5,13 @@ from collections.abc import Generator
 from functools import lru_cache, partial
 from os import makedirs
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 
 import lmdb
 import torch
+from einops import einsum, rearrange
 from joblib import Parallel, delayed
-from torch.nn.utils.rnn import pad_sequence
+from pymatgen.core import Lattice, Structure
 from tqdm import tqdm
 
 from matsciml.common import package_registry
@@ -20,7 +21,6 @@ if package_registry["dgl"]:
     import dgl
 
 if package_registry["pyg"]:
-    import torch_geometric
     from torch_geometric.data import Batch as PyGBatch
     from torch_geometric.data import Data as PyGGraph
 
@@ -299,7 +299,7 @@ def get_lmdb_keys(
         keys = [key.decode("utf-8") for key in txn.cursor().iternext(values=False)]
     if ignore_keys and _lambda:
         raise ValueError(
-            f"Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive.",
+            "Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive.",
         )
     if ignore_keys:
         _lambda = lambda x: x not in ignore_keys
@@ -461,7 +461,7 @@ def parallel_lmdb_write(
         target_dir = Path(target_dir)
     # make the LMDB directory
     makedirs(target_dir, exist_ok=True)
-    assert target_dir.is_dir(), f"Target to write LMDB data to is not a directory."
+    assert target_dir.is_dir(), "Target to write LMDB data to is not a directory."
 
     def write_chunk(
         chunk: list[Any],
@@ -528,7 +528,7 @@ def parallel_lmdb_write(
     lmdb_indices = list(range(num_procs))
     assert all(
         [length != 0 for length in lengths],
-    ), f"Too many processes specified and not enough data to split over multiple LMDB files. Decrease `num_procs!`"
+    ), "Too many processes specified and not enough data to split over multiple LMDB files. Decrease `num_procs!`"
     p = Parallel(num_procs)(
         delayed(write_chunk)(chunk, target_dir, index, metadata)
         for chunk, index in zip(chunks, lmdb_indices)
@@ -557,7 +557,7 @@ def retrieve_pointcloud_node_types(pc_feats: torch.Tensor) -> tuple[torch.Tensor
     """
     assert (
         pc_feats.ndim == 3
-    ), f"Expected individual samples of point clouds, not batched."
+    ), "Expected individual samples of point clouds, not batched."
     src_types = pc_feats.sum(dim=1).argmax(-1)
     dst_types = pc_feats.sum(dim=0).argmax(-1)
     return (src_types, dst_types)
@@ -598,3 +598,149 @@ def atomic_number_map() -> dict[str, int]:
 @lru_cache(1)
 def element_types():
     return list(atomic_number_map().keys())
+
+
+def make_pymatgen_periodic_structure(
+    atomic_numbers: torch.Tensor,
+    coords: torch.Tensor,
+    lat_angles: torch.Tensor | None = None,
+    lat_abc: torch.Tensor | None = None,
+    lattice: Lattice | None = None,
+) -> Structure:
+    """
+    Construct a Pymatgen structure from available information
+
+    The utility of this function is that it wraps Lattice and Structure
+    construction in a single pass. Additionally, we do a rudimentary
+    check on ``coords``, whereby we assume fractional coordinates if
+    all coordinate values are between [0,1]. The check, however, is specifically
+    whether there are values beyond that range.
+
+    Parameters
+    ----------
+    atomic_numbers : torch.Tensor
+        1D tensor containing atomic numbers
+    coords
+        2D tensor containing the position of each atom. Can be fractional
+        or cartesian coordinates.
+    lat_angles
+        1D tensor containing three elements for the lattice angles.
+    lat_abc
+        1D tensor containing three elements for the lattice abc values.
+
+    Returns
+    -------
+    Structure
+        Periodic structure object
+    """
+    if coords.max() > 1.0 or coords.min() < 0.0:
+        is_frac = False
+    else:
+        is_frac = True
+    if not lattice:
+        if lat_angles is None or lat_abc is None:
+            raise ValueError(
+                "Unable to construct Lattice object without parameters:"
+                f" Angles: {lat_angles}, ABC: {lat_abc}",
+            )
+        lattice = Lattice(*lat_abc, *lat_angles)
+    structure = Structure(
+        lattice,
+        atomic_numbers,
+        coords,
+        to_unit_cell=True,
+        coords_are_cartesian=not is_frac,
+    )
+    return structure
+
+
+def calculate_periodic_shifts(
+    structure: Structure, cutoff: float, adaptive_cutoff: bool = False
+) -> dict[str, torch.Tensor]:
+    """
+    Compute properties with respect to periodic boundary conditions.
+
+    This function takes a periodic structure defined by a Pymatgen structure,
+    and uses it to compute edges and subsequently distances between imaged
+    atoms based on the cut-off value.
+
+    Important things to note are the fact that we build in assumptions based off
+    `Structure.get_all_neighbors`: for example, we need it to be a periodic
+    structure (for obvious reasons), and that we are using fractional coordinates
+    in order to compute the distances and offsets.
+
+    Portions of this code were inspired by the `e3nn` documentation, which is
+    released under MIT license.
+
+    Parameters
+    ----------
+    structure
+        Pymatgen periodic structure.
+    cutoff
+        Radial cut off for defining edges.
+
+    Returns
+    -------
+    dict[str, torch.Tensor]
+        Dictionary containing edge definitions and properties
+        associated with periodic structures.
+    """
+    assert (
+        structure.is_3d_periodic
+    ), "Structure is not periodic; can't compute periodic shifts!"
+    neighbors = structure.get_all_neighbors(
+        cutoff,
+        include_index=True,
+        include_image=True,
+    )
+
+    def _all_sites_have_neighbors(neighbors):
+        return all([len(n) for n in neighbors])
+
+    # if there are sites without neighbors and user requested adaptive
+    # cut off, we'll keep trying
+    if not _all_sites_have_neighbors(neighbors) and adaptive_cutoff:
+        while not _all_sites_have_neighbors(neighbors) and cutoff < 30.0:
+            # increment radial cutoff progressively
+            cutoff += 0.5
+            neighbors = structure.get_all_neighbors(
+                cutoff, include_index=True, include_image=True
+            )
+    # placing a secondary check means that if the cut off goes to space
+    # and we still don't find a neighbor, we have a problem with the structure
+    if not _all_sites_have_neighbors(neighbors):
+        raise ValueError(
+            f"No neighbors detected for structure with cutoff {cutoff}; {structure}"
+        )
+    # process the neighbors now
+    all_src, all_dst, all_images = [], [], []
+    for src_idx, dst_sites in enumerate(neighbors):
+        for site in dst_sites:
+            all_src.append(src_idx)
+            all_dst.append(site.index)
+            all_images.append(site.image)
+    if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
+        raise ValueError(
+            f"No images or edges to work off for cutoff {cutoff}."
+            f" Please inspect your structure and neighbors: {structure} {neighbors} {structure.cart_coords}"
+        )
+    # get the lattice definition for use later
+    cell = rearrange(structure.lattice.matrix, "i j -> () i j")
+    cell = torch.from_numpy(cell.copy()).float()
+    # get coordinates as well, for standardization
+    frac_coords = torch.from_numpy(structure.frac_coords).float()
+    return_dict = {
+        "src_nodes": torch.LongTensor(all_src),
+        "dst_nodes": torch.LongTensor(all_dst),
+        "images": torch.FloatTensor(all_images),
+        "cell": cell,
+        "pos": frac_coords,
+    }
+    # now calculate offsets based on each image for a lattice
+    return_dict["offsets"] = einsum(return_dict["images"], cell, "v i, n i j -> v j")
+    src, dst = return_dict["src_nodes"], return_dict["dst_nodes"]
+    # this corresponds to distances between nodes based on unit cell images
+    return_dict["unit_offsets"] = (
+        frac_coords[dst] - frac_coords[src] + return_dict["offsets"]
+    )
+    return return_dict

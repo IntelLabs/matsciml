@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import List, Optional, Tuple, Union
 from warnings import warn
 
 import numpy as np
 import torch
 
 from matsciml.common import DataDict, package_registry
-from matsciml.common.types import AbstractGraph, DataDict, GraphTypes
+from matsciml.common.types import AbstractGraph, GraphTypes
 from matsciml.datasets.transforms.representations import RepresentationTransform
 from matsciml.datasets.utils import retrieve_pointcloud_node_types
 
@@ -24,7 +23,6 @@ if package_registry["dgl"]:
     from dgl import graph as dgl_graph
 
 if package_registry["pyg"]:
-    import torch_geometric
     from torch_geometric.data import Data as PyGGraph
 
 log = getLogger(__name__)
@@ -58,14 +56,12 @@ class PointCloudToGraphTransform(RepresentationTransform):
             GraphTypes,
         ), "Data structure already contains a graph: transform shouldn't be required."
         # check for keys needed to construct the graph
-        assert "pos" in data, f"No atomic positions 'pos' key present in data sample."
+        assert "pos" in data, "No atomic positions 'pos' key present in data sample."
         has_atom_key = False
         for key in ["atomic_numbers", "pc_features"]:
             if key in data:
                 has_atom_key = True
-        assert (
-            has_atom_key
-        ), f"Neither 'atomic_numbers' nor 'pc_features' keys were present in data sample."
+        assert has_atom_key, "Neither 'atomic_numbers' nor 'pc_features' keys were present in data sample."
         return super().prologue(data)
 
     @staticmethod
@@ -100,11 +96,11 @@ class PointCloudToGraphTransform(RepresentationTransform):
             (src_types, dst_types) = retrieve_pointcloud_node_types(data["pc_features"])
             assert src_types.size(0) == data["pos"].size(
                 0,
-            ), f"Number of source nodes != number of atom positions!"
+            ), "Number of source nodes != number of atom positions!"
             return src_types
         else:
             raise KeyError(
-                f"No suitable atom types to read from; expect either 'atomic_numbers' or 'pc_features' to read from a data sample.",
+                "No suitable atom types to read from; expect either 'atomic_numbers' or 'pc_features' to read from a data sample.",
             )
 
     @staticmethod
@@ -190,16 +186,24 @@ class PointCloudToGraphTransform(RepresentationTransform):
             coords = data["pos"]
             atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
             num_nodes = len(atom_numbers)
-            # skip edge calculation if the distance matrix
-            # exists already
-            if "distance_matrix" not in data:
-                dist_mat = self.node_distances(coords)
+            # use pre-computed edges with periodic boundary conditions
+            if all([f"{key}_nodes" in data for key in ["src", "dst"]]):
+                adj_list = (data["src_nodes"], data["dst_nodes"])
             else:
-                dist_mat = data.get("distance_matrix")
-            adj_list = self.edges_from_dist(dist_mat, self.cutoff_dist)
+                # skip edge calculation if the distance matrix
+                # exists already
+                if "distance_matrix" not in data:
+                    dist_mat = self.node_distances(coords)
+                else:
+                    dist_mat = data.get("distance_matrix")
+                adj_list = self.edges_from_dist(dist_mat, self.cutoff_dist)
             g = dgl_graph(adj_list, num_nodes=num_nodes)
             g.ndata["atomic_numbers"] = atom_numbers
             g.ndata["pos"] = coords
+            # copying over periodic data if it exists
+            for key in ["offsets", "pbc_distances", "images"]:
+                if key in data:
+                    g.edata[key] = data[key]
             data["graph"] = g
 
     if package_registry["pyg"]:
@@ -237,20 +241,33 @@ class PointCloudToGraphTransform(RepresentationTransform):
             """
             atom_numbers = self.get_atom_types(data)
             coords = data["pos"]
-            atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
-            if "distance_matrix" not in data:
-                dist_mat = self.node_distances(coords)
+            # check to see if we have pre-computed edges
+            if all([f"{key}_nodes" in data for key in ["src", "dst"]]):
+                edge_index = torch.stack([data["src_nodes"], data["dst_nodes"]])
             else:
-                dist_mat = data.get("distance_matrix")
-            # convert ensure edges are in the right format for PyG
-            edge_index = torch.LongTensor(
-                self.edges_from_dist(dist_mat, self.cutoff_dist),
-            )
+                atom_numbers, coords = self._apply_mask(atom_numbers, coords, data)
+                if "distance_matrix" not in data:
+                    dist_mat = self.node_distances(coords)
+                else:
+                    dist_mat = data.get("distance_matrix")
+                # convert ensure edges are in the right format for PyG
+                edge_index = torch.LongTensor(
+                    self.edges_from_dist(dist_mat, self.cutoff_dist),
+                )
             # if not in the expected shape, transpose and reformat layout
             if edge_index.size(0) != 2 and edge_index.size(1) == 2:
                 edge_index = edge_index.T.contiguous()
             g = PyGGraph(edge_index=edge_index, pos=coords)
             g.atomic_numbers = atom_numbers
+            # run through potential periodic data as well. The two
+            # are functionally the same, but separating them because
+            # we keep edge and node data separate
+            for key in ["images"]:
+                if key in data:
+                    setattr(g, key, data[key])
+            for key in ["offsets", "pbc_distances"]:
+                if key in data:
+                    setattr(g, key, data[key])
             data["graph"] = g
 
     def convert(self, data: DataDict) -> None:
@@ -290,7 +307,7 @@ class PointCloudToGraphTransform(RepresentationTransform):
                 del data[key]
             except KeyError:
                 pass
-        if self.backend == "dgl":
+        if self.backend == "dgl" and "cell" not in data:
             # DGL graphs are inherently directed, so we need to add non-redundant
             # reverse edges to avoid issues with message passing
             data["graph"] = dgl.to_bidirected(data["graph"], copy_ndata=True)

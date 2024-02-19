@@ -4,7 +4,7 @@
 # This program is distributed under the MIT License (see MIT.md)
 ###########################################################################################
 
-from typing import Optional, Tuple
+from __future__ import annotations
 
 import ase.neighborlist
 import numpy as np
@@ -13,10 +13,10 @@ import numpy as np
 def get_neighborhood(
     positions: np.ndarray,  # [num_positions, 3]
     cutoff: float,
-    pbc: Optional[Tuple[bool, bool, bool]] = None,
-    cell: Optional[np.ndarray] = None,  # [3, 3]
+    pbc: tuple[bool, bool, bool] | None = None,
+    cell: np.ndarray | None = None,  # [3, 3]
     true_self_interaction=False,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     if pbc is None:
         pbc = (False, False, False)
 

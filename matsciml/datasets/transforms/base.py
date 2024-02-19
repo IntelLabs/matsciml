@@ -34,3 +34,6 @@ class AbstractDataTransform:
             Transformed item from an abstract dataset
         """
         raise NotImplementedError
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}: {self.__dict__}"

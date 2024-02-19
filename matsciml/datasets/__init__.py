@@ -14,6 +14,7 @@ is2re_devset = Path(__file__).parents[0].joinpath("dev-is2re")
 
 from matsciml.datasets.alexandria import AlexandriaDataset, M3GAlexandriaDataset
 from matsciml.datasets.carolina_db import CMDataset
+from matsciml.datasets.colabfit import ColabFitDataset
 from matsciml.datasets.lips import LiPSDataset, lips_devset
 from matsciml.datasets.materials_project import (
     MaterialsProjectDataset,
@@ -45,4 +46,5 @@ __all__ = [
     "materialsproject_devset",
     "lips_devset",
     "symmetry_devset",
+    "ColabFitDataset",
 ]
