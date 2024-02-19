@@ -10,9 +10,15 @@ distance to the convex hull per atom, formation energy per atom and density of s
 A fixed training, validation and test split as well as a link to a FAIR repository will be added in the future
 with a further publication.
 
-References: [10.1002/adma.202210788](http://hdl.handle.net/10.1002/adma.202210788) (3D),
+References: 
+
+[10.1002/adma.202210788](http://hdl.handle.net/10.1002/adma.202210788) (3D),
+
 [10.1088/2053-1583/accc43](http://hdl.handle.net/10.1088/2053-1583/accc43) (2D),
-[10.1126/sciadv.abi7948](http://hdl.handle.net/10.1126/sciadv.abi7948) (method) 
+
+[10.1126/sciadv.abi7948](http://hdl.handle.net/10.1126/sciadv.abi7948) (method)
+
+[10.1038/s41597-022-01177-w](http://hdl.handle.net/10.1038/s41597-022-01177-w) (PBEsol and SCAN)
 
 Alexandria is available for use under the terms of the Creative Commons Attribution 4.0 License.
 Under this license you are free to share and adapt the data, but you must give appropriate credit
