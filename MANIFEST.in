@@ -8,3 +8,4 @@ recursive-include matsciml/datasets/nomad/devset *
 recursive-include matsciml/datasets/oqmd/devset *
 recursive-include matsciml/datasets/symmetry/devset *
 recursive-include matsciml/datasets/colabfit/devset *
+recursive-include matsciml/datasets/alexandria/devset *
