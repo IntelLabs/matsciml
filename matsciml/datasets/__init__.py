@@ -12,7 +12,7 @@ s2ef_devset = Path(__file__).parents[0].joinpath("dev-s2ef")
 is2re_devset = Path(__file__).parents[0].joinpath("dev-is2re")
 
 
-from matsciml.datasets.alexandria import AlexandriaDataset, M3GAlexandriaDataset
+from matsciml.datasets.alexandria import AlexandriaDataset
 from matsciml.datasets.carolina_db import CMDataset
 from matsciml.datasets.colabfit import ColabFitDataset
 from matsciml.datasets.lips import LiPSDataset, lips_devset
@@ -28,7 +28,6 @@ from matsciml.datasets.symmetry import SyntheticPointGroupDataset, symmetry_devs
 
 __all__ = [
     "AlexandriaDataset",
-    "M3GAlexandriaDataset",
     "IS2REDataset",
     "S2EFDataset",
     "CMDataset",
