@@ -624,20 +624,21 @@ if package_registry["codecarbon"]:
             """
             log_dir = self._temp_output_dir
             # if nothing was specified
-            if not log_dir:
+            if not log_dir and trainer.logger:
                 # try and get it from the logger
-                if trainer.logger:
-                    # if we have multiple loggers, find the first
-                    # `log_dir` to use
-                    if isinstance(trainer.logger, list):
-                        for logger in trainer.logger:
-                            log_dir = getattr(logger, "log_dir", None)
-                            if log_dir:
-                                break
-                    else:
-                        log_dir = getattr(trainer.logger, "log_dir", None)
-                if not log_dir:
-                    log_dir = "./emissions_data"
+                # if we have multiple loggers, find the first
+                # `log_dir` to use
+                if isinstance(trainer.logger, list):
+                    for logger in trainer.logger:
+                        log_dir = getattr(logger, "log_dir", None)
+                        if log_dir:
+                            break
+                # when we only have a single logger just grab it
+                else:
+                    log_dir = getattr(trainer.logger, "log_dir", None)
+            # fallback to default value otherwise
+            if not log_dir:
+                log_dir = "./emissions_data"
             log_dir = Path(log_dir)
             # this case exists if we aren't using logging and need to create
             # a folder
