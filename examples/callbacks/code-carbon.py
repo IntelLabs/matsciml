@@ -27,7 +27,7 @@ dm = MatSciMLDataModule.from_devset(
     "IS2REDataset",
     dset_kwargs={
         "transforms": [
-            PeriodicPropertiesTransform(6.0),
+            PeriodicPropertiesTransform(6.0, adaptive_cutoff=True),
             PointCloudToGraphTransform(
                 "pyg",
                 node_keys=["pos", "atomic_numbers"],
