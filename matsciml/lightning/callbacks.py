@@ -8,7 +8,7 @@ from datetime import datetime
 from logging import DEBUG, getLogger
 from pathlib import Path
 from time import time
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable
 
 import numpy as np
 import pytorch_lightning as pl
@@ -19,6 +19,7 @@ from torch import distributed as dist
 from torch import nn
 from torch.optim import Optimizer
 
+from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
 
 
@@ -73,7 +74,7 @@ class LeaderboardWriter(BasePredictionWriter):
             results = {key: [] for key in keys}
             for prediction in world_predictions:
                 for key, value in prediction.items():
-                    if any([type(v) == str for v in value]):
+                    if any([isinstance(v, str) for v in value]):
                         results[key].extend(value)
                     else:
                         if key == "chunk_ids":
@@ -481,7 +482,7 @@ class GarbageCallback(Callback):
         """
         step = trainer.global_step
         if step % self.frequency == 0:
-            cleared_objs = gc.collect()
+            _ = gc.collect()
 
 
 class InferenceWriter(BasePredictionWriter):
@@ -537,3 +538,148 @@ class InferenceWriter(BasePredictionWriter):
         rank = trainer.global_rank
         path = self.output_dir.joinpath(f"results_rank{rank}.pt")
         torch.save(predictions, path)
+
+
+if package_registry["codecarbon"]:
+    from codecarbon import EmissionsTracker, OfflineEmissionsTracker
+
+    class CodeCarbonCallback(Callback):
+        """
+        Integrates `codecarbon` functionality to the end-to-end workflows
+        such as "fit", "test", and "predict". Currently, we just segment into
+        these different tasks, and the measurement is integrated throughout
+        until we are done with training, etc.
+
+        In the future this could be further broken down into measuring power
+        consumption at specific parts of workflows.
+        """
+
+        def __init__(
+            self,
+            output_file: str | Path = "emissions.pt",
+            output_dir: str | Path | None = None,
+            offline: bool = True,
+            **kwargs,
+        ):
+            """
+            Instantiate a ``CodeCarbonCallback`` object.
+
+            This configures the matsciml workflow to use ``codecarbon``
+            and estimate emissions footprint for training, testing, and
+            inference tasks.
+
+            Parameters
+            ----------
+            output_file : str | Path, default "emissions.pt"
+                Filename to save the emissions data to. The default
+                value will save it to an "emissions.pt" file.
+            output_dir : str | Path | None, default None
+                Directory to house the output file. The default behavior
+                is set to ``None``, which will try and share the ``log_dir``
+                of a logger to consolidate results.
+            offline : bool
+                Flag to use the offline workflow, which is the default case.
+
+            Raises
+            ------
+            KeyError
+                If using offline mode and no country ISO code is provided,
+                ``codecarbon`` will refuse to work.
+            """
+            super().__init__()
+            track = OfflineEmissionsTracker if offline else EmissionsTracker
+            # override some settings to make it compatible with intended usage
+            kwargs["save_to_file"] = False
+            kwargs["save_to_api"] = False
+            kwargs.setdefault("project_name", "matsciml-experiment")
+            # remove redundant config keys
+            for key in ["output_file", "output_dir"]:
+                if key in kwargs:
+                    del kwargs[key]
+            if offline and "country_iso_code" not in kwargs:
+                raise KeyError(
+                    "Offline mode specified but no country ISO code provided."
+                )
+            self.tracker = track(**kwargs)
+            self.output_file = output_file
+            self._temp_output_dir = output_dir
+            self.reset_data()
+
+        def reset_data(self) -> None:
+            self.data = {key: [] for key in ["fit", "test", "predict"]}
+
+        def dump_data(self, trainer: pl.Trainer):
+            """
+            Writes the data to disk via ``torch.save``.
+
+            This will try and be a little clever by borrowing a logger's
+            output directory if it exists, and fall back to defaults
+            otherwise.
+
+            Parameters
+            ----------
+            trainer
+                Instance of ``pl.Trainer``, which is used to access the
+                logger instances as well.
+            """
+            log_dir = self._temp_output_dir
+            # if nothing was specified
+            if not log_dir and trainer.logger:
+                # try and get it from the logger
+                # if we have multiple loggers, find the first
+                # `log_dir` to use
+                if isinstance(trainer.logger, list):
+                    for logger in trainer.logger:
+                        log_dir = getattr(logger, "log_dir", None)
+                        if log_dir:
+                            break
+                # when we only have a single logger just grab it
+                else:
+                    log_dir = getattr(trainer.logger, "log_dir", None)
+            # fallback to default value otherwise
+            if not log_dir:
+                log_dir = "./emissions_data"
+            log_dir = Path(log_dir)
+            # this case exists if we aren't using logging and need to create
+            # a folder
+            if not log_dir.exists():
+                log_dir.mkdir(parents=True)
+            output = log_dir.joinpath(self.output_file)
+            torch.save(self.data, str(output.absolute()))
+
+        def teardown(
+            self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", stage: str
+        ) -> None:
+            super().teardown(trainer, pl_module, stage)
+            # trigger a dump if and only if we are actively monitoring
+            if self.tracker._scheduler and self.tracker._active_task:
+                taskname = self.tracker._active_task
+                emissions_data = self.tracker.stop_task(taskname)
+                self.tracker.stop()
+                self.data[taskname].append(emissions_data)
+                self.dump_data(trainer)
+
+        def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+            self.tracker.start()
+            self.tracker.start_task("fit")
+
+        def on_predict_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+            self.tracker.start()
+            self.tracker.start_task("predict")
+
+        def on_test_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+            self.tracker.start()
+            self.tracker.start_task("test")
+
+        def on_exception(
+            self,
+            trainer: "pl.Trainer",
+            pl_module: "pl.LightningModule",
+            exception: BaseException,
+        ) -> None:
+            # trigger this case when we break or fail out of training and whatnot
+            # unexpectedly
+            if not (stage := self.tracker._active_task):
+                stage = ""
+            self.teardown(trainer, pl_module, stage)
+            super().on_exception(trainer, pl_module, exception)
