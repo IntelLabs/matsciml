@@ -669,3 +669,16 @@ if package_registry["codecarbon"]:
         def on_test_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
             self.tracker.start()
             self.tracker.start_task("test")
+
+        def on_exception(
+            self,
+            trainer: "pl.Trainer",
+            pl_module: "pl.LightningModule",
+            exception: BaseException,
+        ) -> None:
+            # trigger this case when we break or fail out of training and whatnot
+            # unexpectedly
+            if not (stage := self.tracker._active_task):
+                stage = ""
+            self.teardown(trainer, pl_module, stage)
+            super().on_exception(trainer, pl_module, exception)
