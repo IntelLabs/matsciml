@@ -646,32 +646,26 @@ if package_registry["codecarbon"]:
             output = log_dir.joinpath(self.output_file)
             torch.save(self.data, str(output.absolute()))
 
+        def teardown(
+            self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", stage: str
+        ) -> None:
+            super().teardown(trainer, pl_module, stage)
+            # trigger a dump if and only if we are actively monitoring
+            if self.tracker._scheduler and self.tracker._active_task:
+                taskname = self.tracker._active_task
+                emissions_data = self.tracker.stop_task(taskname)
+                self.tracker.stop()
+                self.data[taskname].append(emissions_data)
+                self.dump_data(trainer)
+
         def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
             self.tracker.start()
             self.tracker.start_task("fit")
-
-        def on_fit_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
-            emissions_data = self.tracker.stop_task("fit")
-            self.tracker.stop()
-            self.data["fit"].append(emissions_data)
-            self.dump_data(trainer)
 
         def on_predict_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
             self.tracker.start()
             self.tracker.start_task("predict")
 
-        def on_predict_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
-            emissions_data = self.tracker.stop_task("predict")
-            self.tracker.stop()
-            self.data["predict"].append(emissions_data)
-            self.dump_data(trainer)
-
         def on_test_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
             self.tracker.start()
             self.tracker.start_task("test")
-
-        def on_test_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
-            emissions_data = self.tracker.stop_task("test")
-            self.tracker.stop()
-            self.data["test"].append(emissions_data)
-            self.dump_data(trainer)
