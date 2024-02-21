@@ -15,12 +15,15 @@ import torch
 from matsciml.common import package_registry
 from matsciml.datasets.transforms.base import AbstractDataTransform
 
+__all__ = ["FrameAveraging"]
+
 if package_registry["dgl"]:
-    import dgl
+    pass
 
 if package_registry["pyg"]:
     import torch_geometric
     from torch_geometric.transforms import LinearTransformation
+
 
 def compute_frames(
     eigenvec,
