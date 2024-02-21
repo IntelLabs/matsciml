@@ -30,7 +30,7 @@ request = AlexandriaRequest(indices, lmdb_target_dir, dataset="2D")
 request.download_and_write(n_jobs=2)
 
 # example of downloading the 1D pbe dataset
-indices = list(range(0, 2))
+indices = list(range(0, 1))
 # The target directory where the LMDB file will be written
 lmdb_target_dir = "alexandria_1D"
 request = AlexandriaRequest(indices, lmdb_target_dir, dataset="1D")

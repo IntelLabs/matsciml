@@ -9,11 +9,49 @@ from matsciml.datasets.carolina_db import CMDRequest
 from matsciml.datasets.materials_project import MaterialsProjectRequest
 from matsciml.datasets.nomad import NomadRequest
 from matsciml.datasets.oqmd import OQMDRequest
+from matsciml.datasets.alexandria import AlexandriaRequest
 
 
 def main(args):
     base_data_dir = args.base_dataset_dir
     for dataset in args.dataset:
+        if dataset == "Alexandria_3D_scan":
+            indices = list(range(0, 5))
+            request = AlexandriaRequest(
+                indices, base_data_dir.joinpath("alexandria_3D_scan"), dataset="scan"
+            )
+            request.download_and_write(n_jobs=5)
+
+        if dataset == "Alexandria_3D_pbesol":
+            indices = list(range(0, 5))
+            request = AlexandriaRequest(
+                indices,
+                base_data_dir.joinpath("alexandria_3D_pbesol"),
+                dataset="pbesol",
+            )
+            request.download_and_write(n_jobs=5)
+
+        if dataset == "Alexandria_3D_pbe":
+            indices = list(range(0, 45))
+            request = AlexandriaRequest(
+                indices, base_data_dir.joinpath("alexandria_3D_pbe"), dataset="pbe"
+            )
+            request.download_and_write(n_jobs=5)
+
+        if dataset == "Alexandria_2D":
+            indices = list(range(0, 2))
+            request = AlexandriaRequest(
+                indices, base_data_dir.joinpath("alexandria_2D"), dataset="2D"
+            )
+            request.download_and_write(n_jobs=2)
+
+        if dataset == "Alexandria_1D":
+            indices = list(range(0, 1))
+            request = AlexandriaRequest(
+                indices, base_data_dir.joinpath("alexandria_1D"), dataset="1D"
+            )
+            request.download_and_write(n_jobs=1)
+
         if dataset == "CMD":
             cmd = CMDRequest(base_data_dir=base_data_dir.joinpath("carolina_db"))
             cmd.download_data()
