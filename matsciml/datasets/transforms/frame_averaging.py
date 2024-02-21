@@ -17,12 +17,11 @@ from matsciml.datasets.transforms.base import AbstractDataTransform
 
 __all__ = ["FrameAveraging"]
 
-if package_registry["dgl"]:
-    pass
-
 if package_registry["pyg"]:
     import torch_geometric
     from torch_geometric.transforms import LinearTransformation
+else:
+    raise Exception("torch_geometric is required for Frame Averaging transform.")
 
 
 def compute_frames(
