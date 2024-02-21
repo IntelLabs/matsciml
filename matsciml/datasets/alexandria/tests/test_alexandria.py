@@ -24,7 +24,6 @@ def test_dataset_collate():
     # check the nuclear coordinates and numbers match what is expected
     assert batch["pos"].shape[-1] == 3
     assert batch["pos"].ndim == 2
-    print(batch["atomic_numbers"])
     assert len(batch["atomic_numbers"]) == 10
 
 
@@ -103,7 +102,7 @@ def test_sampled_pointcloud():
     assert sample["pos"].ndim == 2
 
 
-def test_graph_transform():
+def test_graph_transform_dgl():
     dset = AlexandriaDataset(
         AlexandriaDataset.__devset__,
         full_pairwise=False,
@@ -115,3 +114,31 @@ def test_graph_transform():
     sample = dset.__getitem__(10)
     assert "graph" in sample
     assert all([key in sample["graph"].ndata for key in ["pos", "atomic_numbers"]])
+
+
+def test_graph_transform_pyg():
+    dset = AlexandriaDataset(
+        AlexandriaDataset.__devset__,
+        full_pairwise=False,
+        transforms=[
+            PeriodicPropertiesTransform(20.0),
+            PointCloudToGraphTransform("pyg", cutoff_dist=20.0),
+        ],
+    )
+    sample = dset.__getitem__(10)
+    assert "graph" in sample
+    assert all([key in sample["graph"] for key in ["pos", "atomic_numbers"]])
+
+
+def test_graph_transform_pyg_full_pairwise():
+    dset = AlexandriaDataset(
+        AlexandriaDataset.__devset__,
+        full_pairwise=True,
+        transforms=[
+            PeriodicPropertiesTransform(20.0),
+            PointCloudToGraphTransform("pyg", cutoff_dist=20.0),
+        ],
+    )
+    sample = dset.__getitem__(10)
+    assert "graph" in sample
+    assert all([key in sample["graph"] for key in ["pos", "atomic_numbers"]])
