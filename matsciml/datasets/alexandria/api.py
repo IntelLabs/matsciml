@@ -3,8 +3,7 @@ from __future__ import annotations
 import bz2
 import json
 import os
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 import numpy as np
 import requests
@@ -12,7 +11,7 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 
 from matsciml.datasets import utils
-from matsciml.datasets.alexandria import AlexandriaDataset
+
 
 class AlexandriaRequest:
     def __init__(
@@ -29,9 +28,11 @@ class AlexandriaRequest:
             "e_above_hull",
         ],
         devset: bool = False,
+        max_atoms: Optional[int] = 10000,
     ):
         """
         Download a set of files from a dataset of the Alexandria database and write it to a set of LMDB file.
+        All single atom structures are removed to avoid errors in dgl.
 
         Parameters
         ----------
@@ -47,6 +48,9 @@ class AlexandriaRequest:
         devset : bool
             boolean to indicate if the devset should be downloaded. In this case only the first 100 entries
             will be written to an LMDB file.
+        max_atoms : int
+            Maximum number of atoms in the structure. Structures with more atoms are removed during the download.
+            This can be used to avoid unbalanced batchsizes during training.
         Raises
         ------
         ValueError
@@ -56,6 +60,7 @@ class AlexandriaRequest:
         self.dataset = dataset
         self.target_dir = lmdb_target_dir
         self.devset = devset
+        self.max_atoms = max_atoms
         if not os.path.isdir(self.target_dir):
             os.mkdir(self.target_dir)
 
@@ -107,6 +112,7 @@ class AlexandriaRequest:
             structure=structure,
             force=get_forces_array_from_structure(structure),
             entry_id=computed_entry_dict["data"]["mat_id"],
+            natoms=len(structure["sites"]),
             magmoms=get_magmoms_array_from_structure(structure),
             targets=targets,
         )
@@ -141,7 +147,7 @@ class AlexandriaRequest:
             self.get_data_dict(entry)
             for entry in tqdm(data["entries"], desc=f"Processing file {index}")
         ]
-        if self.devset == True:
+        if self.devset:
             computed_entry_dict = computed_entry_dict[0:100]
         lmdb_env = utils.connect_lmdb_write(
             os.path.join(self.target_dir, "data_00" + str(index)),
@@ -152,7 +158,9 @@ class AlexandriaRequest:
                 desc=f"Writing LMDB data to file {lmdb_env.path()}",
             ),
         ):
-            utils.write_lmdb_data(subindex, _data, lmdb_env)
+            # remove single atom structures to avoid errors in dgl
+            if _data["natoms"] > 1 and _data["natoms"] < self.max_atoms:
+                utils.write_lmdb_data(subindex, _data, lmdb_env)
 
     def download_and_write(self, n_jobs: int = 1) -> None:
         """
@@ -163,7 +171,7 @@ class AlexandriaRequest:
         n_jobs : int
             Number of parallel jobs to run. Default is 1.
         """
-        p = Parallel(n_jobs=n_jobs, backend="multiprocessing", verbose=10)(
+        _ = Parallel(n_jobs=n_jobs, backend="multiprocessing", verbose=10)(
             delayed(self.process_index)(index) for index in range(len(self.urls))
         )
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from math import pi
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 import torch
@@ -15,7 +15,6 @@ from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets.base import PointCloudDataset
 from matsciml.datasets.utils import (
     concatenate_keys,
-    element_types,
     point_cloud_featurization,
 )
 
@@ -234,4 +233,3 @@ class AlexandriaDataset(PointCloudDataset):
             pad_keys=["pc_features"],
             unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
         )
-
