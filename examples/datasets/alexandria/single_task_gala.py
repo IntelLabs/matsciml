@@ -8,8 +8,8 @@ from matsciml.models import GalaPotential
 from matsciml.models.base import ScalarRegressionTask
 
 model_args = {
-    "D_in": 110,
-    "hidden_dim": 10,
+    "D_in": 100,
+    "hidden_dim": 128,
     "merge_fun": "concat",
     "join_fun": "concat",
     "invariant_mode": "full",

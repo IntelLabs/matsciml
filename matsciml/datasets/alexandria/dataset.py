@@ -29,9 +29,9 @@ class AlexandriaDataset(PointCloudDataset):
         keys = getattr(self, "_target_keys", None)
         if not keys:
             # grab a sample from the data to set the keys
-            _ = self.__getitem__(0)
+            sample = self.__getitem__(0)
             if self.is_preprocessed:
-                self._target_keys = _["target_types"]
+                self._target_keys = sample["target_types"]
         return self._target_keys
 
     @target_keys.setter
@@ -77,7 +77,7 @@ class AlexandriaDataset(PointCloudDataset):
         pc_features = point_cloud_featurization(
             atom_numbers[src_nodes],
             atom_numbers[dst_nodes],
-            110,
+            100,
         )
         # keep atomic numbers for graph featurization
         return_dict["atomic_numbers"] = atom_numbers

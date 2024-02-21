@@ -3,7 +3,10 @@ from __future__ import annotations
 import pytorch_lightning as pl
 from torch.nn import LayerNorm, SiLU
 
-from matsciml.datasets.transforms import PointCloudToGraphTransform
+from matsciml.datasets.transforms import (
+    PointCloudToGraphTransform,
+    PeriodicPropertiesTransform,
+)
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import GraphConvModel
 from matsciml.models.base import ScalarRegressionTask
@@ -29,7 +32,12 @@ task = ScalarRegressionTask(
 dm = MatSciMLDataModule(
     "AlexandriaDataset",
     train_path="../../../matsciml/datasets/alexandria/devset",
-    dset_kwargs={"transforms": [PointCloudToGraphTransform("dgl", cutoff_dist=20.0)]},
+    dset_kwargs={
+        "transforms": [
+            PeriodicPropertiesTransform(20.0),
+            PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
+        ]
+    },
     val_split=0.2,
 )
 

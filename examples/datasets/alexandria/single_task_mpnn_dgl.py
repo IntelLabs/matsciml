@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytorch_lightning as pl
 
-from matsciml.datasets.transforms import DistancesTransform, PointCloudToGraphTransform
+from matsciml.datasets.transforms import (
+    DistancesTransform,
+    PointCloudToGraphTransform,
+    PeriodicPropertiesTransform,
+)
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import MPNN
 from matsciml.models.base import ScalarRegressionTask
@@ -23,6 +27,7 @@ dm = MatSciMLDataModule.from_devset(
     "AlexandriaDataset",
     dset_kwargs={
         "transforms": [
+            PeriodicPropertiesTransform(20.0),
             PointCloudToGraphTransform(
                 "dgl",
                 cutoff_dist=20.0,

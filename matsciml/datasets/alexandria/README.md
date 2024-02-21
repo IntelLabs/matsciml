@@ -5,8 +5,8 @@ The database comprises  ~4.5 million three-dimensional relaxed crystal structure
 the periodic table, in addition to over 100,000 two-dimensional and 10,000 one-dimensional crystal structures.
 Further ~400k of the three-dimensional crystal structures are also available at PBEsol geometries and with all properties
 calculated with the SCAN functional.
-Each structures has an associated total energy, band gap, magnetization, magnetic moments on each atom,
-distance to the convex hull per atom, formation energy per atom and density of states at the fermi level.
+Each structures has an associated total energy (eV), band gap (eV), magnetization (Bohr magneton), magnetic moments on each atom (Bohr magneton),
+distance to the convex hull per atom (eV/atom), formation energy per atom (eV/atom) and density of states at the fermi level (states/eV).
 A fixed training, validation and test split as well as a link to a FAIR repository will be added in the future
 with a further publication.
 

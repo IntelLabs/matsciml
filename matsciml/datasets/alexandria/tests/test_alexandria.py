@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 from matsciml.datasets import transforms
-from matsciml.datasets.alexandria import AlexandriaDataset
-from matsciml.datasets.alexandria.api import AlexandriaRequest
-from matsciml.datasets.transforms import PointCloudToGraphTransform
+from matsciml.datasets import AlexandriaDataset
+from matsciml.datasets.alexandria import AlexandriaRequest
+from matsciml.datasets.transforms import (
+    PointCloudToGraphTransform,
+    PeriodicPropertiesTransform,
+)
 
 
 def test_AlexandriaRequest():
     alexandria_request = AlexandriaRequest.devset(AlexandriaDataset.__devset__)
     alexandria_request.download_and_write(n_jobs=1)
     dset = AlexandriaDataset.from_devset()
-    assert len(dset) == 100
+    # 98 due to 2 single atom structures that were removed
+    assert len(dset) == 98
 
 
 def test_dataset_collate():
@@ -20,13 +24,17 @@ def test_dataset_collate():
     # check the nuclear coordinates and numbers match what is expected
     assert batch["pos"].shape[-1] == 3
     assert batch["pos"].ndim == 2
+    print(batch["atomic_numbers"])
     assert len(batch["atomic_numbers"]) == 10
 
 
 def test_dgl_dataset():
     dset = AlexandriaDataset(
         AlexandriaDataset.__devset__,
-        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
+        transforms=[
+            PeriodicPropertiesTransform(20.0),
+            PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
+        ],
     )
     for index in range(10):
         data = dset.__getitem__(index)
@@ -36,7 +44,10 @@ def test_dgl_dataset():
 def test_dgl_collate():
     dset = AlexandriaDataset(
         AlexandriaDataset.__devset__,
-        transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
+        transforms=[
+            PeriodicPropertiesTransform(20.0),
+            transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
+        ],
     )
     data = [dset.__getitem__(index) for index in range(10)]
     batch = dset.collate_fn(data)
@@ -96,7 +107,10 @@ def test_graph_transform():
     dset = AlexandriaDataset(
         AlexandriaDataset.__devset__,
         full_pairwise=False,
-        transforms=[PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
+        transforms=[
+            PeriodicPropertiesTransform(20.0),
+            PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
+        ],
     )
     sample = dset.__getitem__(10)
     assert "graph" in sample
