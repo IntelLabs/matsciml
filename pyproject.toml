@@ -29,7 +29,7 @@ dependencies = [
   "mp_api==0.33.3",
   "emmet-core==0.64.0",
   "pydantic==1.10.12",
-  "pymatgen==2023.7.20",
+  "pymatgen==2024.2.20",
   "schema>=0.7.5",
   "ase>=3.22.1",
   "matgl==1.0.0",
