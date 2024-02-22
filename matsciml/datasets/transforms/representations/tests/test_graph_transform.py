@@ -4,11 +4,8 @@ import pytest
 import torch
 
 from matsciml.common import package_registry
-from matsciml.datasets import IS2REDataset, S2EFDataset, is2re_devset, s2ef_devset
-from matsciml.datasets.materials_project import (
-    MaterialsProjectDataset,
-    materialsproject_devset,
-)
+from matsciml.datasets import IS2REDataset, S2EFDataset
+from matsciml.datasets.materials_project import MaterialsProjectDataset
 from matsciml.datasets.transforms import (
     GraphToPointCloudTransform,
     PointCloudToGraphTransform,
@@ -56,8 +53,7 @@ if package_registry["dgl"]:
         depends=["test_transform_init", "test_dgl_atom_center_transform"],
     )
     def test_dgl_pairwise_is2re():
-        dset = IS2REDataset(
-            is2re_devset,
+        dset = IS2REDataset.from_devset(
             transforms=[
                 PointCloudToGraphTransform(
                     "dgl",
@@ -75,8 +71,7 @@ if package_registry["dgl"]:
         depends=["test_transform_init", "test_dgl_atom_center_transform"],
     )
     def test_dgl_pairwise_s2ef():
-        dset = S2EFDataset(
-            s2ef_devset,
+        dset = S2EFDataset.from_devset(
             transforms=[
                 PointCloudToGraphTransform(
                     "dgl",
@@ -95,8 +90,7 @@ if package_registry["dgl"]:
     )
     def test_dgl_materials_project_fail():
         # makes sure this cannot be applied to a dataset with point clouds already
-        dset = MaterialsProjectDataset(
-            materialsproject_devset,
+        dset = MaterialsProjectDataset.from_devset(
             transforms=[GraphToPointCloudTransform("dgl", full_pairwise=True)],
         )
         with pytest.raises(

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import pytorch_lightning as pl
 
-from matsciml.datasets import IS2REDataset, S2EFDataset, is2re_devset, s2ef_devset
+from matsciml.datasets import IS2REDataset, S2EFDataset
 from matsciml.datasets.multi_dataset import MultiDataset
 from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.lightning.data_utils import MultiDataModule
@@ -61,8 +61,8 @@ def is2re_s2ef() -> MultiDataModule:
     dm = MultiDataModule(
         train_dataset=MultiDataset(
             [
-                IS2REDataset(is2re_devset, transforms=transforms),
-                S2EFDataset(s2ef_devset, transforms=transforms),
+                IS2REDataset.from_devset(transforms=transforms),
+                S2EFDataset.from_devset(transforms=transforms),
             ],
         ),
         batch_size=16,

@@ -4,12 +4,12 @@ from itertools import product
 
 import pytest
 
-from matsciml.datasets.lips import LiPSDataset, lips_devset
+from matsciml.datasets.lips import LiPSDataset
 from matsciml.datasets.transforms import PointCloudToGraphTransform
 
 
 def test_pairwise_pointcloud():
-    dset = LiPSDataset(lips_devset, full_pairwise=True)
+    dset = LiPSDataset.from_devset(full_pairwise=True)
     sample = dset.__getitem__(10)
     assert all(
         [
@@ -31,7 +31,7 @@ def test_pairwise_pointcloud():
 
 
 def test_sampled_pointcloud():
-    dset = LiPSDataset(lips_devset, full_pairwise=False)
+    dset = LiPSDataset.from_devset(full_pairwise=False)
     sample = dset.__getitem__(10)
     assert all(
         [
@@ -53,8 +53,7 @@ def test_sampled_pointcloud():
 
 
 def test_graph_representation():
-    dset = LiPSDataset(
-        lips_devset,
+    dset = LiPSDataset.from_devset(
         full_pairwise=True,
         transforms=[PointCloudToGraphTransform("dgl", cutoff_dist=15.0)],
     )
@@ -66,7 +65,7 @@ def test_graph_representation():
 
 @pytest.mark.parametrize("full_pairwise", [True, False])
 def test_batching_pointcloud(full_pairwise):
-    dset = LiPSDataset(lips_devset, full_pairwise=full_pairwise)
+    dset = LiPSDataset.from_devset(full_pairwise=full_pairwise)
     samples = [dset.__getitem__(i) for i in range(4)]
     batch = dset.collate_fn(samples)
     assert batch["pos"].shape[-1] == 3
@@ -78,8 +77,7 @@ test_matrix = product(["dgl", "pyg"], [True, False])
 
 @pytest.mark.parametrize("backend, full_pairwise", list(test_matrix))
 def test_batching_graph(backend, full_pairwise):
-    dset = LiPSDataset(
-        lips_devset,
+    dset = LiPSDataset.from_devset(
         full_pairwise=full_pairwise,
         transforms=[PointCloudToGraphTransform(backend, cutoff_dist=15.0)],
     )

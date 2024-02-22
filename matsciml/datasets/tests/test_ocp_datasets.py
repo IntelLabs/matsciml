@@ -2,9 +2,7 @@
 # SPDX-License-Identifier: MIT License
 from __future__ import annotations
 
-import dgl
 
-from matsciml.datasets import is2re_devset, s2ef_devset
 from matsciml.datasets.ocp_datasets import IS2REDataset, S2EFDataset
 
 
@@ -15,7 +13,7 @@ def test_base_s2ef_read():
     of the dataset.
     """
     # no transforms
-    dset = S2EFDataset(s2ef_devset)
+    dset = S2EFDataset.from_devset()
     # get the first entry
     data = dset.__getitem__(0)
     assert all([key in data for key in ["targets", "target_types"]])
@@ -27,7 +25,7 @@ def test_base_is2re_read():
     This test will try and obtain the first and last elements
     of the dev IS2RE dataset and check its length
     """
-    dset = IS2REDataset(is2re_devset)
+    dset = IS2REDataset.from_devset()
     # get the first entry
     data = dset.__getitem__(0)
     assert all([key in data for key in ["targets", "target_types"]])
@@ -40,7 +38,7 @@ def test_is2re_collate():
     This function tests for the ability for an IS2RE dataset
     to be properly batched.
     """
-    dset = IS2REDataset(is2re_devset)
+    dset = IS2REDataset.from_devset()
     unbatched = [dset.__getitem__(i) for i in range(5)]
     batched = dset.collate_fn(unbatched)
     # check there are 5 samples
@@ -54,7 +52,7 @@ def test_s2ef_collate():
     This function tests for the ability for an S2EF dataset
     to be properly batched.
     """
-    dset = S2EFDataset(s2ef_devset)
+    dset = S2EFDataset.from_devset()
     unbatched = [dset.__getitem__(i) for i in range(5)]
     batched = dset.collate_fn(unbatched)
     # check there are 5 graphs
@@ -66,10 +64,10 @@ def test_s2ef_collate():
 
 
 def test_s2ef_target_keys():
-    dset = S2EFDataset(s2ef_devset)
+    dset = S2EFDataset.from_devset()
     assert dset.target_keys == {"regression": ["energy", "force"]}
 
 
 def test_is2re_target_keys():
-    dset = IS2REDataset(is2re_devset)
+    dset = IS2REDataset.from_devset()
     assert dset.target_keys == {"regression": ["energy_init", "energy_relaxed"]}

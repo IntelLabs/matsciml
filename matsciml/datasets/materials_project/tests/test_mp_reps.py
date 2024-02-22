@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import pytest
 
-from matsciml.datasets.materials_project import (
-    MaterialsProjectDataset,
-    materialsproject_devset,
-)
+from matsciml.datasets.materials_project import MaterialsProjectDataset
 from matsciml.datasets.transforms import PointCloudToGraphTransform
 
 
 def test_pairwise_pointcloud():
-    dset = MaterialsProjectDataset(materialsproject_devset)
+    dset = MaterialsProjectDataset.from_devset()
     sample = dset.__getitem__(10)
     assert all(
         [
@@ -25,7 +21,7 @@ def test_pairwise_pointcloud():
 
 
 def test_sampled_pointcloud():
-    dset = MaterialsProjectDataset(materialsproject_devset, full_pairwise=False)
+    dset = MaterialsProjectDataset.from_devset(full_pairwise=False)
     sample = dset.__getitem__(10)
     assert all(
         [
@@ -40,8 +36,7 @@ def test_sampled_pointcloud():
 
 
 def test_graph_transform():
-    dset = MaterialsProjectDataset(
-        materialsproject_devset,
+    dset = MaterialsProjectDataset.from_devset(
         full_pairwise=False,
         transforms=[PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
     )

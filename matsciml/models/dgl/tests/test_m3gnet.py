@@ -17,7 +17,7 @@ import torch
 # across datasets
 @pytest.fixture
 def model_fixture() -> M3GNet:
-    model = M3GNet(element_types=element_types())
+    model = M3GNet(element_types=element_types(), return_all_layer_output=True)
     return model
 
 
