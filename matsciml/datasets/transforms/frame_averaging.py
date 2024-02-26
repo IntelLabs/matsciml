@@ -21,7 +21,9 @@ if package_registry["pyg"]:
     import torch_geometric
     from torch_geometric.transforms import LinearTransformation
 else:
-    raise Exception("torch_geometric is required for Frame Averaging transform.")
+    raise ModuleNotFoundError(
+        "Frame averaging transform is only currently implemented for PyG."
+    )
 
 
 def compute_frames(
