@@ -15,12 +15,16 @@ import torch
 from matsciml.common import package_registry
 from matsciml.datasets.transforms.base import AbstractDataTransform
 
-if package_registry["dgl"]:
-    import dgl
+__all__ = ["FrameAveraging"]
 
 if package_registry["pyg"]:
     import torch_geometric
     from torch_geometric.transforms import LinearTransformation
+else:
+    raise ModuleNotFoundError(
+        "Frame averaging transform is only currently implemented for PyG."
+    )
+
 
 def compute_frames(
     eigenvec,
