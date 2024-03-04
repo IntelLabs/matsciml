@@ -165,7 +165,7 @@ class AlexandriaDataset(PointCloudDataset):
         return_dict["force"] = self._standardize_values(data["force"])
         return_dict["magmoms"] = self._standardize_values(data["magmoms"])
 
-        targets = {
+        regression_targets = {
             key: self._standardize_values(data["targets"]["regression"][key])
             for key in data["targets"].get("regression", {}).keys()
         }
@@ -173,7 +173,7 @@ class AlexandriaDataset(PointCloudDataset):
             key: self._standardize_values(data["targets"]["classification"][key])
             for key in data["targets"].get("classification", {}).keys()
         }
-        targets = targets.update(classification_targets)
+        targets = regression_targets.update(classification_targets)
         return_dict["targets"] = targets
         target_types = {
             "classification": list(data["targets"].get("classification", {}).keys()),
