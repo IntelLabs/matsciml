@@ -242,7 +242,13 @@ class MaterialsProjectDataset(PointCloudDataset):
         self._parse_symmetry(data, return_dict)
         # assume every other key are targets
         not_targets = set(
-            ["structure", "symmetry", "fields_not_requested", "formula_pretty"]
+            [
+                "structure",
+                "symmetry",
+                "fields_not_requested",
+                "formula_pretty",
+                "magmom",
+            ]
             + data["fields_not_requested"],
         )
         # target_keys = getattr(self, "_target_keys", None)
@@ -260,7 +266,7 @@ class MaterialsProjectDataset(PointCloudDataset):
             item = targets.get(key)
             if isinstance(item, Iterable):
                 # check if the data is numeric first
-                if isinstance(item[0], (float, int)):
+                if isinstance(item[0], (float, int)) or torch.is_tensor(item):
                     target_types["regression"].append(key)
             else:
                 if isinstance(item, (float, int)):
@@ -333,7 +339,7 @@ class MaterialsProjectDataset(PointCloudDataset):
         # the atom-centered point cloud data
         return concatenate_keys(
             batch,
-            pad_keys=["pc_features"],
+            pad_keys=["pc_features", "force", "stress"],
             unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
         )
 
