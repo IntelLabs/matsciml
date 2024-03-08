@@ -44,7 +44,7 @@ class NomadDataset(PointCloudDataset):
             Dict[str, List[str]]: target keys
         """
         return {
-            "regression": ["energy_total", "efermi"],
+            "regression": ["relative_energy", "energy_total", "efermi"],
             "classification": ["spin_polarized"],
         }
 
@@ -205,5 +205,7 @@ class NomadDataset(PointCloudDataset):
         # data['energies'].keys()
         data = super().data_from_key(lmdb_index, subindex)
         return_dict = {}
+        for k in ["reference_energy", "reference_structure", "relative_energy"]:
+            return_dict[k] = data[k]
         self._parse_data(data, return_dict=return_dict)
         return return_dict
