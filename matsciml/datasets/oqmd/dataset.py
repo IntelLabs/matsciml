@@ -91,7 +91,6 @@ class OQMDDataset(PointCloudDataset):
         return_dict["pc_features"] = pc_features
         return_dict["sizes"] = system_size
         return_dict["cell"] = cell
-        return_dict["cell"] = cell
         lattice = Lattice(cell)
         lattice_params = torch.FloatTensor(
             lattice.abc + tuple(a * (torch.pi / 180.0) for a in lattice.angles),
