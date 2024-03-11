@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from importlib.util import find_spec
+from warnings import warn
+
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable
 
 import torch
-from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import IterableDataset
 
 from matsciml.common.registry import registry
@@ -28,6 +30,12 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         transforms: list[Callable] | None = None,
         max_types: int = 200,
     ) -> None:
+        _has_rowan = find_spec("rowan") is not None
+
+        if not _has_rowan:
+            warn(
+                "`rowan` dependency was not installed. To generate the symmetry dataset, please install matsciml with `pip install './[symmetry]'`.",
+            )
         super().__init__(lmdb_root_path, transforms)
         self.max_types = max_types
 
