@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from pymatgen.core import Lattice
 from matsciml.common.registry import registry
 from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets.base import PointCloudDataset
@@ -75,7 +76,7 @@ class OQMDDataset(PointCloudDataset):
         # coordinates remains the original particle positions
         coords = torch.tensor(data["cart_coords"])
         return_dict["pos"] = coords
-        unit_cell = data["unit_cell"]
+        cell = data["cell"]
         system_size = coords.size(0)
         node_choices = self.choose_dst_nodes(system_size, self.full_pairwise)
         src_nodes, dst_nodes = node_choices["src_nodes"], node_choices["dst_nodes"]
@@ -89,7 +90,14 @@ class OQMDDataset(PointCloudDataset):
         return_dict["atomic_numbers"] = atom_numbers
         return_dict["pc_features"] = pc_features
         return_dict["sizes"] = system_size
-        return_dict["unit_cell"] = unit_cell
+        return_dict["cell"] = cell
+        lattice = Lattice(cell)
+        lattice_params = torch.FloatTensor(
+            lattice.abc + tuple(a * (torch.pi / 180.0) for a in lattice.angles),
+        )
+        lattice_features = {
+            "lattice_params": lattice_params,
+        }
         return_dict.update(**node_choices)
 
         # delta_e is formation energy
@@ -104,6 +112,7 @@ class OQMDDataset(PointCloudDataset):
         return_dict = {
             key: self._standardize_values(return_dict[key]) for key in return_dict
         }
+        return_dict["lattice_features"] = lattice_features
         return_dict["targets"] = targets
         # only have spacegroup name
         return_dict["symmetry"] = {

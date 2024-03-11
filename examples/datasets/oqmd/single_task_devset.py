@@ -3,7 +3,10 @@ from __future__ import annotations
 import pytorch_lightning as pl
 from torch.nn import LayerNorm, SiLU
 
-from matsciml.datasets.transforms import PointCloudToGraphTransform
+from matsciml.datasets.transforms import (
+    PointCloudToGraphTransform,
+    PeriodicPropertiesTransform,
+)
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import PLEGNNBackbone
 from matsciml.models.base import ScalarRegressionTask
@@ -56,6 +59,7 @@ dm = MatSciMLDataModule.from_devset(
     "OQMDDataset",
     dset_kwargs={
         "transforms": [
+            PeriodicPropertiesTransform(cutoff_radius=6.0, adaptive_cutoff=True),
             PointCloudToGraphTransform(
                 "dgl",
                 cutoff_dist=20.0,
