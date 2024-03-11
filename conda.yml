@@ -16,3 +16,5 @@ dependencies:
   - setuptools
   - pybind11
   - pip
+  - pip:
+    - "-e './[all]'"
