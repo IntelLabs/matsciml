@@ -10,6 +10,7 @@ jobs:
     uses: ./.github/workflows/make_env.yml
   dataset-pytest:
     runs-on: ubuntu-latest
+    needs: init
     steps:
       - name: Install PyTest
         run: |
