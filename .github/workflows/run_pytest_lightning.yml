@@ -1,0 +1,29 @@
+name: Run PyTorch Lightning related PyTests
+on:
+  pull_request:
+    paths:
+      - 'matsciml/lightning/**'
+  workflow_dispatch:
+jobs:
+  lightning-pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create micromamba env
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          micromamba-version: '1.5.7-0'
+          environment-file: conda.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: 'all'
+          generate-run-shell: true
+      - name: Install PyTest
+        run: |
+          pip install pytest pytest-dependency
+        shell: micromamba-shell {0}
+      - name: Run pytest in lightning submodule
+        run: |
+          pytest -v -m "not lmdb and not slow and not remote_request" ./matsciml/lightning
+        shell: micromamba-shell {0}
