@@ -41,6 +41,7 @@ The examples outlined in the next section how to get started with Open MatSci ML
 
 - `Docker`: We provide a Dockerfile inside the `docker` that can be run to install a container using standard docker commands.
 - `Conda`: We have included a `conda` specification that provides a complete installation including XPU support for PyTorch. Run `conda env create -n matsciml --file conda.yml`, and in the newly created environment, run `pip install './[all]'` to install all of the dependencies.
+- `pip`: In some cases, you might want to install `matsciml` to an existing environment. Due to how DGL distributes wheels, you will need to add an extra index URL when installing via `pip`. As an example: `pip install -f https://data.dgl.ai/wheels/repo.html './[all]'` will install all the `matsciml` dependencies, in addition to telling `pip` where to look for CPU-only DGL wheels for your particular platform and Python version. Please consult the [DGL documentation](https://www.dgl.ai/pages/start.html) for additional help.
 
 Additionally, for a development install, one can specify the extra packages like `black` and `pytest` with `pip install './[dev]'`. These can be
 added to the commit workflow by running `pre-commit install` to generate `git` hooks.
