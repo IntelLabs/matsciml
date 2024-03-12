@@ -55,9 +55,8 @@ task = ScalarRegressionTask(
     task_keys=["band_gap_ind"],
 )
 
-dm = MatSciMLDataModule(
-    dataset="AlexandriaDataset",
-    train_path="../../../matsciml/datasets/alexandria/devset",
+dm = MatSciMLDataModule.from_devset(
+    "AlexandriaDataset",
     dset_kwargs={
         "transforms": [
             PeriodicPropertiesTransform(10.0),
@@ -68,7 +67,6 @@ dm = MatSciMLDataModule(
             ),
         ],
     },
-    val_split=0.2,
     batch_size=16,
     num_workers=0,
 )

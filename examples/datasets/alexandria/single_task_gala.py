@@ -46,11 +46,9 @@ task = ScalarRegressionTask(
 )
 
 
-dm = MatSciMLDataModule(
-    dataset="AlexandriaDataset",
-    train_path="../../../matsciml/datasets/alexandria/devset",
-    val_split=0.2,
-    batch_size=16,
+dm = MatSciMLDataModule.from_devset(
+    "AlexandriaDataset",
+    batch_size=5,
     num_workers=0,
 )
 

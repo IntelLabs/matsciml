@@ -29,16 +29,14 @@ task = ScalarRegressionTask(
 )
 
 
-dm = MatSciMLDataModule(
+dm = MatSciMLDataModule.from_devset(
     "AlexandriaDataset",
-    train_path="../../../matsciml/datasets/alexandria/devset",
     dset_kwargs={
         "transforms": [
             PeriodicPropertiesTransform(10.0),
             PointCloudToGraphTransform("dgl", cutoff_dist=10.0),
         ]
     },
-    val_split=0.2,
 )
 
 trainer = pl.Trainer(fast_dev_run=10)
