@@ -140,6 +140,7 @@ if package_registry["dgl"]:
         assert torch.isfinite(g_z.system_embedding).all()
 
     @pytest.mark.dependency()
+    @pytest.mark.slow
     def test_dpp_dgl(graph):
         model = DimeNetPP()
         with torch.no_grad():
