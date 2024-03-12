@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from os import getenv
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any
 
 import pytorch_lightning as pl
 import torch
@@ -14,6 +14,8 @@ from torch.utils.data import random_split
 
 from matsciml.common.registry import registry
 from matsciml.datasets import MultiDataset
+
+__all__ = ["MatSciMLDataModule", "MultiDataModule"]
 
 
 @registry.register_datamodule("MatSciMLDataModule")
@@ -110,12 +112,12 @@ class MatSciMLDataModule(pl.LightningDataModule):
         # make sure we have something to work with
         assert any(
             [i for i in [dataset, train_path, val_split, test_split]],
-        ), f"No splits provided to datamodule."
+        ), "No splits provided to datamodule."
         # if floats are passed to splits, make sure dataset is provided for inference
         if any([isinstance(i, float) for i in [val_split, test_split]]):
             assert (
                 dataset is not None
-            ), f"Float passed to split, but no dataset provided to split."
+            ), "Float passed to split, but no dataset provided to split."
         if isinstance(dataset, type):
             assert any(
                 [
@@ -231,7 +233,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             num_train = num_points - (num_val + num_test)
             assert (
                 num_train >= 0
-            ), f"More test/validation samples requested than available samples."
+            ), "More test/validation samples requested than available samples."
             splits_list = random_split(
                 self.dataset,
                 [num_train, num_val, num_test],
@@ -425,7 +427,7 @@ class MultiDataModule(pl.LightningDataModule):
         super().__init__()
         if not any([train_dataset, val_dataset, test_dataset, predict_dataset]):
             raise ValueError(
-                f"No datasets were passed for training, validation, testing, or predict.",
+                "No datasets were passed for training, validation, testing, or predict.",
             )
         self.save_hyperparameters(
             ignore=["train_dataset", "val_dataset", "test_dataset", "predict_dataset"],
@@ -523,4 +525,3 @@ class MultiDataModule(pl.LightningDataModule):
                 persistent_workers=self.persistent_workers,
             )
         return loader
-

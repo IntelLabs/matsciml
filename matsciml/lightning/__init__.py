@@ -3,4 +3,6 @@
 from __future__ import annotations
 
 from matsciml.lightning.ddp import *
-from matsciml.lightning.data_utils import MatSciMLDataModule, MultiDataModule
+from matsciml.lightning.data_utils import *
+
+__all__ = ["MatSciMLDataModule", "MultiDataModule"]
