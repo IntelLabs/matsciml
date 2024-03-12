@@ -9,6 +9,7 @@ else:
 
 import pytest
 import pytorch_lightning as pl
+from torch import distributed as dist
 
 from matsciml.datasets import transforms
 from matsciml.datasets.materials_project import MaterialsProjectDataset
@@ -17,6 +18,7 @@ from matsciml.models.base import ScalarRegressionTask
 
 
 @pytest.mark.skipif(not _has_ccl, reason="No working oneCCL installation.")
+@pytest.mark.skipif(not dist.is_initialized(), reason="Distributed is not initilaized.")
 @pytest.mark.distributed
 def test_ccl_is2re_ddp():
     devset = MaterialsProjectDataset.from_devset(
@@ -38,6 +40,7 @@ def test_ccl_is2re_ddp():
 
 
 @pytest.mark.skipif(not _has_ccl, reason="No working oneCCL installation.")
+@pytest.mark.skipif(not dist.is_initialized(), reason="Distributed is not initilaized.")
 @pytest.mark.distributed
 def test_ccl_materials_project():
     devset = MaterialsProjectDataset.from_devset(
