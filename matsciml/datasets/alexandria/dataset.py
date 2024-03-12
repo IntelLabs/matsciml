@@ -97,6 +97,8 @@ class AlexandriaDataset(PointCloudDataset):
         coords = torch.from_numpy(structure.cart_coords).float()
         system_size = len(coords)
         return_dict["pos"] = coords
+        cell = torch.from_numpy(structure.lattice.matrix).float()
+        return_dict["cell"] = cell
         chosen_nodes = self.choose_dst_nodes(system_size, self.full_pairwise)
         src_nodes, dst_nodes = chosen_nodes["src_nodes"], chosen_nodes["dst_nodes"]
         atom_numbers = torch.LongTensor(structure.atomic_numbers)
