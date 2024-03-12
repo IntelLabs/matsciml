@@ -3,20 +3,12 @@ on:
   pull_request:
     paths:
       - 'matsciml/lightning/**'
+  workflow_dispatch:
 jobs:
+  init:
+    uses: ./github/workflows/make_env.yml
   lightning-pytest:
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Create micromamba env
-        uses: mamba-org/setup-micromamba@v1
-        with:
-          micromamba-version: '1.5.7-0'
-          environment-file: conda.yml
-          init-shell: >-
-            bash
-          cache-environment: true
-          post-cleanup: 'all'
       - name: Run pytest in lightning submodule
         run: |
           pytest -v -m "not lmdb and not slow and not remote_request" ./matsciml/lightning
