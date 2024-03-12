@@ -11,7 +11,7 @@ on:
       - main
   workflow_dispatch:
 jobs:
-  models-pytest:
+  end-to-end-pytest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
