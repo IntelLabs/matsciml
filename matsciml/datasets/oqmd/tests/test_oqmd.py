@@ -89,7 +89,7 @@ def test_dataset_target_keys(devset_dir):
 
 
 def test_saved_devset():
-    dset = OQMDDataset(str(OQMDDataset.__devset__))
+    dset = OQMDDataset.from_devset()
     samples = [dset.__getitem__(i) for i in range(16)]
     batch = dset.collate_fn(samples)
     assert all([key in batch for key in ["pos", "pc_features", "mask", "targets"]])
