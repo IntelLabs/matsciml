@@ -18,6 +18,7 @@ def dev_request():
     return MaterialsProjectRequest.devset()
 
 
+@pytest.mark.remote_request
 @pytest.fixture(scope="session")
 def devset_dir(tmp_path_factory):
     devset_dir = tmp_path_factory.mktemp("test_lmdb")
@@ -26,7 +27,7 @@ def devset_dir(tmp_path_factory):
 
 
 @pytest.mark.dependency()
-@pytest.mark.mp_api
+@pytest.mark.remote_request
 def test_devset(dev_request):
     data = dev_request.retrieve_data()
     assert len(dev_request.data) != 0
@@ -37,14 +38,13 @@ def test_devset(dev_request):
 
 
 @pytest.mark.dependency(depends=["test_devset"])
-@pytest.mark.mp_api
+@pytest.mark.remote_request
 def test_serialize_lmdb(dev_request, devset_dir):
-    data = dev_request.retrieve_data()
+    _ = dev_request.retrieve_data()
     dev_request.to_lmdb(devset_dir)
 
 
 @pytest.mark.dependency(depends=["test_serialize_lmdb"])
-@pytest.mark.local
 def test_dataset_load(devset_dir):
     dset = MaterialsProjectDataset(devset_dir)
     for index in range(10):
@@ -58,7 +58,7 @@ def test_dataset_load(devset_dir):
 
 
 @pytest.mark.dependency(depends=["test_dataset_load"])
-@pytest.mark.local
+@pytest.mark.remote_request
 def test_dataset_collate(devset_dir):
     dset = MaterialsProjectDataset(devset_dir)
     data = [dset.__getitem__(index) for index in range(10)]
@@ -70,7 +70,7 @@ def test_dataset_collate(devset_dir):
 
 
 @pytest.mark.dependency(depends=["test_dataset_load"])
-@pytest.mark.local
+@pytest.mark.remote_request
 def test_dgl_dataset(devset_dir):
     dset = MaterialsProjectDataset(
         devset_dir,
@@ -82,7 +82,7 @@ def test_dgl_dataset(devset_dir):
 
 
 @pytest.mark.dependency(depends=["test_dgl_dataset"])
-@pytest.mark.local
+@pytest.mark.remote_request
 def test_dgl_collate(devset_dir):
     dset = MaterialsProjectDataset(
         devset_dir,
@@ -97,7 +97,7 @@ def test_dgl_collate(devset_dir):
 
 
 @pytest.mark.dependency(depends=["test_dataset_load"])
-@pytest.mark.local
+@pytest.mark.remote_request
 def test_dataset_target_keys(devset_dir):
     # this tests target key property without manually grabbing a batch
     dset = MaterialsProjectDataset(devset_dir)
