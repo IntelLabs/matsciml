@@ -1,0 +1,20 @@
+name: Run broad spectrum PyTest on demand
+on:
+  workflow_dispatch:
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Create micromamba env
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          micromamba-version: '1.5.7-0'
+          environment-file: conda.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: 'all'
+      - name: Run pytest in root directory
+        run: |
+          pytest -v -m "not lmdb and not slow and not remote_request"
