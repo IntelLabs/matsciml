@@ -14,6 +14,7 @@ unmonitored!
 """
 
 
+@pytest.mark.lmdb
 @pytest.mark.parametrize("dset", dsets)
 def test_dataset_serial_save(dset, tmp_path):
     if getattr(dset, "__devset__", None):
@@ -22,6 +23,7 @@ def test_dataset_serial_save(dset, tmp_path):
         devset.save_preprocessed_data(tmp_path, num_procs=1)
 
 
+@pytest.mark.lmdb
 @pytest.mark.parametrize("dset", dsets)
 def test_dataset_parallel_save(dset, tmp_path):
     if getattr(dset, "__devset__", None):
@@ -30,6 +32,7 @@ def test_dataset_parallel_save(dset, tmp_path):
         devset.save_preprocessed_data(tmp_path, num_procs=4)
 
 
+@pytest.mark.lmdb
 @pytest.mark.parametrize("dset", dsets)
 def test_dataset_cycle(dset, tmp_path):
     if getattr(dset, "__devset__", None):

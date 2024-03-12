@@ -36,6 +36,14 @@ Tests for each new model and datasets should be added to their respective tests 
 
 Model tests may be added [here](https://github.com/IntelLabs/matsciml/tree/main/matsciml/models/dgl/tests), and dataset tests may be added to their respective dataset folders when created.
 
+We have also defined a set of `pytest.mark`s for categorizing tests, which include:
+
+- `pytest.mark.slow` - for compute heavy tests, which we want to avoid for CI
+- `pytest.mark.remote_request` - for remote API requests, which we want to avoid for CI
+- `pytest.mark.lmdb` - for LMDB/IO based actions, which can be slow with CI
+
+Please decorate tests accordingly. If a particular case isn't captured, feel free to add new marks and append to this list.
+
 ## General Guidelines
 
 - Make your code readable and maintainable. Use meaningful variable and function names.

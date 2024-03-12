@@ -6,9 +6,7 @@ import torch
 from matsciml.common import package_registry
 from matsciml.datasets import IS2REDataset
 from matsciml.datasets.materials_project import MaterialsProjectDataset
-from matsciml.datasets.transforms import (
-    PointCloudToGraphTransform,
-)
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.datasets.utils import concatenate_keys
 
 
@@ -32,6 +30,7 @@ def test_collate_mp_pc():
 
 if package_registry["pyg"]:
 
+    @pytest.mark.torch_geometric
     @pytest.mark.dependency(depends=["test_collate_mp_pc"])
     def test_collate_mp_pyg():
         # uses graphs instead
@@ -50,6 +49,7 @@ if package_registry["pyg"]:
 
 if package_registry["dgl"]:
 
+    @pytest.mark.dgl
     @pytest.mark.dependency(depends=["test_collate_mp_pc"])
     def test_collate_mp_dgl():
         # uses graphs instead

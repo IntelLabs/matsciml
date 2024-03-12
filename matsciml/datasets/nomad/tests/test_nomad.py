@@ -17,6 +17,7 @@ TEST_IDS = {
 
 
 @pytest.fixture(scope="session")
+@pytest.mark.remote_request
 def devset_dir(tmp_path_factory):
     devset_dir = tmp_path_factory.mktemp("test_lmdb")
     yield devset_dir
@@ -25,6 +26,7 @@ def devset_dir(tmp_path_factory):
 
 @pytest.fixture
 @pytest.mark.dependency(depends=["devset_dir"])
+@pytest.mark.remote_request
 def nomad_module(devset_dir):
     cmd = NomadRequest(num_workers=1)
     cmd.material_ids = TEST_IDS
@@ -33,7 +35,7 @@ def nomad_module(devset_dir):
 
 
 @pytest.mark.dependency()
-@pytest.mark.carolina_api
+@pytest.mark.remote_request
 def test_download_data(nomad_module):
     data = nomad_module.nomad_request()
     assert None not in data
@@ -43,14 +45,14 @@ def test_download_data(nomad_module):
 
 
 @pytest.mark.dependency(depends=["test_download_dadta"])
-@pytest.mark.mp_api
+@pytest.mark.remote_request
 def test_serialize_lmdb(nomad_module):
-    data = nomad_module.nomad_request()
+    _ = nomad_module.nomad_request()
     nomad_module.to_lmdb(nomad_module.data_dir)
 
 
 @pytest.mark.dependency(depends=["test_serialize_lmdb"])
-@pytest.mark.local
+@pytest.mark.remote_request
 def test_dataset_load(devset_dir):
     dset = NomadDataset(devset_dir)
     for index in range(3):
@@ -64,7 +66,7 @@ def test_dataset_load(devset_dir):
 
 
 @pytest.mark.dependency(depends=["test_dataset_load"])
-@pytest.mark.local
+@pytest.mark.remote_request
 def test_dataset_collate(devset_dir):
     dset = NomadDataset(devset_dir)
     data = [dset.__getitem__(index) for index in range(len(TEST_IDS))]
@@ -77,7 +79,7 @@ def test_dataset_collate(devset_dir):
 
 
 @pytest.mark.dependency(depends=["test_dataset_load"])
-@pytest.mark.local
+@pytest.mark.remote_request
 def test_dataset_target_keys(devset_dir):
     # this tests target key property without manually grabbing a batch
     dset = NomadDataset(devset_dir)
