@@ -28,6 +28,7 @@ def test_batch():
 
 
 @torch.no_grad()
+@pytest.mark.slow
 def test_dimenet_pp_single(test_batch):
     # use the default settings
     model = DimeNetPP(out_emb_size=256)
