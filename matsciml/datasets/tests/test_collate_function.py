@@ -6,9 +6,7 @@ import torch
 from matsciml.common import package_registry
 from matsciml.datasets import IS2REDataset
 from matsciml.datasets.materials_project import MaterialsProjectDataset
-from matsciml.datasets.transforms import (
-    PointCloudToGraphTransform,
-)
+from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.datasets.utils import concatenate_keys
 
 
