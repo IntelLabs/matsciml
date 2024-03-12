@@ -6,6 +6,9 @@ on:
       - 'pyproject.toml'
       - 'conda.yml'
       - 'setup.py'
+  push:
+    branches:
+      - main
   workflow_dispatch:
 jobs:
   models-pytest:
