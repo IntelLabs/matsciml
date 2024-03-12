@@ -42,6 +42,8 @@ class AlexandriaRequest:
             Path to the directory where the LMDB file will be written.
         dataset : str
             Name of the dataset to download from. Must be one of '1D', '2D', '3D', 'scan' or 'pbesol'.
+            The 2D and 1D structures are peridioc in the "non-periodic" directions with a vacuum of 15 Å.
+            Cutoff distances during graph construction larger than this vacuum will  produce wrong neighborlists.
         target_keys : list[str]
             List of target keys to extract from the downloaded file. Atomic magnetic moments and
             forces will be added separately as they are per atom properties.
@@ -143,12 +145,13 @@ class AlexandriaRequest:
                 )
 
         data = download(self.urls[index])
+        if self.devset:
+            data["entries"] = data["entries"][0:100]
+
         computed_entry_dict = [
             self.get_data_dict(entry)
             for entry in tqdm(data["entries"], desc=f"Processing file {index}")
         ]
-        if self.devset:
-            computed_entry_dict = computed_entry_dict[0:100]
         lmdb_env = utils.connect_lmdb_write(
             os.path.join(self.target_dir, "data_00" + str(index)),
         )

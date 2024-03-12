@@ -41,6 +41,6 @@ dm = MatSciMLDataModule(
     val_split=0.2,
 )
 
-trainer = pl.Trainer(fast_dev_run=10, enable_checkpointing=False)
+trainer = pl.Trainer(fast_dev_run=10)
 
 trainer.fit(task, datamodule=dm)

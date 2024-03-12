@@ -54,10 +54,5 @@ dm = MatSciMLDataModule(
     num_workers=0,
 )
 
-trainer = pl.Trainer(
-    limit_train_batches=2,
-    limit_val_batches=2,
-    max_epochs=2,
-    accelerator="cpu",
-)
+trainer = pl.Trainer(fast_dev_run=10)
 trainer.fit(task, datamodule=dm)

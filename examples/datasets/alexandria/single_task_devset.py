@@ -19,13 +19,13 @@ dm = MatSciMLDataModule.from_devset(
     "AlexandriaDataset",
     dset_kwargs={
         "transforms": [
-            PeriodicPropertiesTransform(20.0),
+            PeriodicPropertiesTransform(20.0, adaptive_cutoff=True),
             PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
         ]
     },
 )
 
 # run 10 steps for funsies
-trainer = pl.Trainer(fast_dev_run=10, enable_checkpointing=False, logger=False)
+trainer = pl.Trainer(fast_dev_run=10)
 
 trainer.fit(task, datamodule=dm)

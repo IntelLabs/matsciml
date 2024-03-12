@@ -4,12 +4,12 @@ from collections.abc import Iterable
 from math import pi
 from pathlib import Path
 from typing import Any
-
 import numpy as np
 import torch
+import warnings
 from emmet.core.symmetry import SymmetryData
 from pymatgen.core.structure import Structure
-
+from typing import Callable
 from matsciml.common.registry import registry
 from matsciml.common.types import BatchDict, DataDict
 from matsciml.datasets.base import PointCloudDataset
@@ -22,6 +22,33 @@ from matsciml.datasets.utils import (
 @registry.register_dataset("AlexandriaDataset")
 class AlexandriaDataset(PointCloudDataset):
     __devset__ = Path(__file__).parents[0].joinpath("devset")
+
+    def __init__(
+        self,
+        lmdb_root_path: str | Path,
+        transforms: list[Callable[..., Any]] | None = None,
+        full_pairwise: bool = True,
+    ) -> None:
+        super().__init__(lmdb_root_path, transforms, full_pairwise)
+        if self.transforms:
+            for transform in self.transforms:
+                if (
+                    (
+                        hasattr(transform, "cutoff_radius")
+                        and transform.cutoff_radius > 15.0
+                    )
+                    or (
+                        hasattr(transform, "cutoff_dist")
+                        and transform.cutoff_dist > 15.0
+                    )
+                    or (
+                        hasattr(transform, "adaptive_cutoff")
+                        and transform.adaptive_cutoff > 15.0
+                    )
+                ):
+                    warnings.warn(
+                        f"Transform {transform} has a cutoff radius > 15.0 this will lead to wrong neighborlists for the two and one-dimensional datasets."
+                    )
 
     @property
     def target_keys(self) -> dict[str, list[str]]:
@@ -164,7 +191,6 @@ class AlexandriaDataset(PointCloudDataset):
         self._parse_symmetry(data, return_dict)
         return_dict["force"] = self._standardize_values(data["force"])
         return_dict["magmoms"] = self._standardize_values(data["magmoms"])
-
         regression_targets = {
             key: self._standardize_values(data["targets"]["regression"][key])
             for key in data["targets"].get("regression", {}).keys()
@@ -173,7 +199,8 @@ class AlexandriaDataset(PointCloudDataset):
             key: self._standardize_values(data["targets"]["classification"][key])
             for key in data["targets"].get("classification", {}).keys()
         }
-        targets = regression_targets.update(classification_targets)
+        regression_targets.update(classification_targets)
+        targets = regression_targets
         return_dict["targets"] = targets
         target_types = {
             "classification": list(data["targets"].get("classification", {}).keys()),

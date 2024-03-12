@@ -74,9 +74,6 @@ dm = MatSciMLDataModule(
 )
 
 trainer = pl.Trainer(
-    fast_dev_run=100,
-    accelerator="cpu",
-    devices=1,
+    fast_dev_run=10,
 )
-
 trainer.fit(task, datamodule=dm)

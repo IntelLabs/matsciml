@@ -5,6 +5,8 @@ The database comprises  ~4.5 million three-dimensional relaxed crystal structure
 the periodic table, in addition to over 100,000 two-dimensional and 10,000 one-dimensional crystal structures.
 Further ~400k of the three-dimensional crystal structures are also available at PBEsol geometries and with all properties
 calculated with the SCAN functional.
+**Warning: The 2D and 1D structures are peridioc in the "non-periodic" directions with a vacuum of 15 Å. Cutoff distances during
+graph construction larger than this vacuum will  produce wrong neighborlists.**
 Each structures has an associated total energy (eV), forces (eV/Å), band gap (eV), magnetization (Bohr magneton),
 magnetic moments on each atom (Bohr magneton),distance to the convex hull per atom (eV/atom),
 formation energy per atom (eV/atom) and density of states at the fermi level (states/eV).
