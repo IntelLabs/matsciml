@@ -9,7 +9,7 @@ jobs:
   dataset-pytest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Create/reuse micromamba env
         uses: mamba-org/setup-micromamba@v1
         with:
