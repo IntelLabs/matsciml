@@ -5,6 +5,7 @@ on:
       - 'pyproject.toml'
       - 'conda.yml'
   workflow_dispatch:
+  workflow_call:
 jobs:
   mamba-env:
     runs-on: ubuntu-latest
