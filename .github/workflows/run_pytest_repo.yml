@@ -15,11 +15,12 @@ jobs:
             bash
           cache-environment: true
           post-cleanup: 'all'
-      - run: |
-          micromamba activate matsciml
+          generate-run-shell: true
       - name: Install PyTest
         run: |
           pip install pytest pytest-dependency
+        shell: micromamba-shell {0}
       - name: Run pytest in root directory
         run: |
           pytest -v -m "not lmdb and not slow and not remote_request"
+        shell: micromamba-shell {0}
