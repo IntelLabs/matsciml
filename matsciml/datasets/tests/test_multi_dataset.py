@@ -19,7 +19,7 @@ def test_joint_dataset():
 
     joint = MultiDataset([is2re, mp])
     # try and grab a sample
-    sample = joint.__getitem__(0)
+    _ = joint.__getitem__(0)
 
 
 @pytest.mark.dependency(depends=["test_joint_dataset"])
