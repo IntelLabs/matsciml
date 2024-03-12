@@ -1,0 +1,21 @@
+name: Make a micromamba environment and install
+on:
+  pull_request:
+    paths:
+      - 'pyproject.toml'
+      - 'conda.yml'
+  workflow_dispatch:
+jobs:
+  mamba-env:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Create micromamba env
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          micromamba-version: '1.5.7-0'
+          environment-file: conda.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: 'all'
