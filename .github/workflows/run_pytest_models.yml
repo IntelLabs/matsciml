@@ -8,7 +8,11 @@ jobs:
   init:
     uses: ./.github/workflows/make_env.yml
   models-pytest:
+    runs-on: ubuntu-latest
     steps:
+      - name: Install PyTest
+        run: |
+          pip install pytest pytest-dependency
       - name: Run pytest in models
         run: |
           pytest -v -m "not lmdb and not slow and not remote_request" ./matsciml/models

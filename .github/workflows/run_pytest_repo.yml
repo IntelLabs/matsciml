@@ -15,6 +15,9 @@ jobs:
             bash
           cache-environment: true
           post-cleanup: 'all'
+      - name: Install PyTest
+        run: |
+          pip install pytest pytest-dependency
       - name: Run pytest in root directory
         run: |
           pytest -v -m "not lmdb and not slow and not remote_request"

@@ -17,6 +17,3 @@ jobs:
             bash
           cache-environment: true
           post-cleanup: 'all'
-      - name: Install pytest
-        run: |
-          pip install pytest pytest-dependency
