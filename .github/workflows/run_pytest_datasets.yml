@@ -20,7 +20,7 @@ jobs:
           cache-environment: true
           post-cleanup: 'all'
       - run: |
-          mamba activate matsciml
+          micromamba activate matsciml
       - name: Install PyTest
         run: |
           pip install pytest pytest-dependency
