@@ -2,11 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from matsciml.datasets import IS2REDataset, S2EFDataset, is2re_devset, s2ef_devset
-from matsciml.datasets.materials_project import (
-    MaterialsProjectDataset,
-    materialsproject_devset,
-)
+from matsciml.datasets import IS2REDataset, S2EFDataset
+from matsciml.datasets.materials_project import MaterialsProjectDataset
 from matsciml.datasets.multi_dataset import MultiDataset
 from matsciml.lightning.data_utils import MultiDataModule
 
@@ -15,9 +12,9 @@ from matsciml.lightning.data_utils import MultiDataModule
 def datamodule():
     dset = MultiDataset(
         [
-            S2EFDataset(s2ef_devset),
-            IS2REDataset(is2re_devset),
-            MaterialsProjectDataset(materialsproject_devset),
+            S2EFDataset.from_devset(),
+            IS2REDataset.from_devset(),
+            MaterialsProjectDataset.from_devset(),
         ],
     )
     dm = MultiDataModule(train_dataset=dset, batch_size=8)

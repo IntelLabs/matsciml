@@ -4,13 +4,9 @@ import pytest
 import torch
 
 from matsciml.common import package_registry
-from matsciml.datasets import IS2REDataset, is2re_devset
-from matsciml.datasets.materials_project import (
-    MaterialsProjectDataset,
-    materialsproject_devset,
-)
+from matsciml.datasets import IS2REDataset
+from matsciml.datasets.materials_project import MaterialsProjectDataset
 from matsciml.datasets.transforms import (
-    OCPGraphToPointCloudTransform,
     PointCloudToGraphTransform,
 )
 from matsciml.datasets.utils import concatenate_keys
@@ -19,7 +15,7 @@ from matsciml.datasets.utils import concatenate_keys
 @pytest.mark.dependency()
 def test_collate_mp_pc():
     # uses point clouds
-    dset = MaterialsProjectDataset(materialsproject_devset)
+    dset = MaterialsProjectDataset.from_devset()
     samples = [dset.__getitem__(i) for i in range(4)]
     batch = concatenate_keys(samples, pad_keys=["pc_features", "atomic_numbers"])
     pos = batch["pos"]
@@ -39,8 +35,7 @@ if package_registry["pyg"]:
     @pytest.mark.dependency(depends=["test_collate_mp_pc"])
     def test_collate_mp_pyg():
         # uses graphs instead
-        dset = MaterialsProjectDataset(
-            materialsproject_devset,
+        dset = MaterialsProjectDataset.from_devset(
             transforms=[PointCloudToGraphTransform("pyg")],
         )
         samples = [dset.__getitem__(i) for i in range(4)]
@@ -58,8 +53,7 @@ if package_registry["dgl"]:
     @pytest.mark.dependency(depends=["test_collate_mp_pc"])
     def test_collate_mp_dgl():
         # uses graphs instead
-        dset = MaterialsProjectDataset(
-            materialsproject_devset,
+        dset = MaterialsProjectDataset.from_devset(
             transforms=[PointCloudToGraphTransform("dgl")],
         )
         samples = [dset.__getitem__(i) for i in range(4)]
@@ -80,7 +74,7 @@ if package_registry["dgl"]:
 
 @pytest.mark.dependency(depends=["test_collate_is2re_dgl"])
 def test_collate_is2re_pc():
-    dset = IS2REDataset(is2re_devset)
+    dset = IS2REDataset.from_devset()
     samples = [dset.__getitem__(i) for i in range(4)]
     batch = dset.collate_fn(samples)
     assert len(batch["atomic_numbers"]) == 4

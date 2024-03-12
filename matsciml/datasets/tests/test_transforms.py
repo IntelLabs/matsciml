@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from matsciml.datasets import S2EFDataset, s2ef_devset, transforms
+from matsciml.datasets import S2EFDataset, transforms
 from matsciml.lightning.data_utils import MatSciMLDataModule
 
 
@@ -17,7 +17,7 @@ def test_distance_transform():
         ),
         transforms.DistancesTransform(),
     ]
-    dset = S2EFDataset(s2ef_devset, transforms=trans)
+    dset = S2EFDataset.from_devset(transforms=trans)
     batch = dset.__getitem__(0)
     assert "r" in batch.get("graph").edata
 
@@ -33,7 +33,7 @@ def test_graph_variable_transform():
         transforms.DistancesTransform(),
         transforms.GraphVariablesTransform(),
     ]
-    dset = S2EFDataset(s2ef_devset, transforms=trans)
+    dset = S2EFDataset.from_devset(transforms=trans)
     batch = dset.__getitem__(0)
     assert "graph_variables" in batch
 

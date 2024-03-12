@@ -4,17 +4,12 @@ import pytest
 import torch
 
 from matsciml.common import package_registry
-from matsciml.datasets import IS2REDataset, is2re_devset
-from matsciml.datasets.lips import LiPSDataset, lips_devset
-from matsciml.datasets.materials_project import (
-    MaterialsProjectDataset,
-    materialsproject_devset,
-)
-from matsciml.datasets.symmetry import SyntheticPointGroupDataset, symmetry_devset
+from matsciml.datasets.lips import LiPSDataset
+from matsciml.datasets.materials_project import MaterialsProjectDataset
+from matsciml.datasets.symmetry import SyntheticPointGroupDataset
 from matsciml.datasets.transforms import PointCloudToGraphTransform
 
 if package_registry["dgl"]:
-    import dgl
 
     @pytest.fixture()
     def pc_data():
@@ -59,8 +54,7 @@ if package_registry["dgl"]:
 
     @pytest.mark.dependency(depends=["test_transform_init", "test_dgl_create"])
     def test_dgl_materials_project():
-        dset = MaterialsProjectDataset(
-            materialsproject_devset,
+        dset = MaterialsProjectDataset.from_devset(
             transforms=[PointCloudToGraphTransform("dgl")],
         )
         sample = dset.__getitem__(0)
@@ -70,7 +64,7 @@ if package_registry["dgl"]:
 
     @pytest.mark.dependency(depends=["test_transform_init", "test_dgl_create"])
     def test_dgl_lips():
-        dset = LiPSDataset(lips_devset, transforms=[PointCloudToGraphTransform("dgl")])
+        dset = LiPSDataset.from_devset(transforms=[PointCloudToGraphTransform("dgl")])
         sample = dset.__getitem__(0)
         assert "graph" in sample.keys()
         g = sample.get("graph")
@@ -78,8 +72,7 @@ if package_registry["dgl"]:
 
     @pytest.mark.dependency(depends=["test_transform_init", "test_dgl_create"])
     def test_dgl_symmetry():
-        dset = SyntheticPointGroupDataset(
-            symmetry_devset,
+        dset = SyntheticPointGroupDataset.from_devset(
             transforms=[PointCloudToGraphTransform("dgl")],
         )
         sample = dset.__getitem__(0)
@@ -116,8 +109,7 @@ if package_registry["pyg"]:
 
     @pytest.mark.dependency(depends=["test_transform_pyg_init", "test_pyg_create"])
     def test_pyg_materials_project():
-        dset = MaterialsProjectDataset(
-            materialsproject_devset,
+        dset = MaterialsProjectDataset.from_devset(
             transforms=[PointCloudToGraphTransform("pyg")],
         )
         sample = dset.__getitem__(0)
@@ -127,8 +119,7 @@ if package_registry["pyg"]:
 
     @pytest.mark.dependency(depends=["test_transform_pyg_init", "test_pyg_create"])
     def test_pyg_lips():
-        dset = LiPSDataset(
-            lips_devset,
+        dset = LiPSDataset.from_devset(
             transforms=[PointCloudToGraphTransform("pyg", node_keys=["force"])],
         )
         sample = dset.__getitem__(0)
@@ -138,8 +129,7 @@ if package_registry["pyg"]:
 
     @pytest.mark.dependency(depends=["test_transform_pyg_init", "test_pyg_create"])
     def test_pyg_symmetry():
-        dset = SyntheticPointGroupDataset(
-            symmetry_devset,
+        dset = SyntheticPointGroupDataset.from_devset(
             transforms=[PointCloudToGraphTransform("pyg")],
         )
         # TODO output sample only contains 'coordinates' and nothing similar to 'atomic numbers'

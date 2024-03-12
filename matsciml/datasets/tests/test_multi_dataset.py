@@ -4,11 +4,8 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from matsciml.datasets import IS2REDataset, is2re_devset
-from matsciml.datasets.materials_project import (
-    MaterialsProjectDataset,
-    materialsproject_devset,
-)
+from matsciml.datasets import IS2REDataset
+from matsciml.datasets.materials_project import MaterialsProjectDataset
 from matsciml.datasets.multi_dataset import MultiDataset
 
 # make the test deterministic
@@ -17,8 +14,8 @@ torch.manual_seed(21515)
 
 @pytest.mark.dependency()
 def test_joint_dataset():
-    is2re = IS2REDataset(is2re_devset)
-    mp = MaterialsProjectDataset(materialsproject_devset)
+    is2re = IS2REDataset.from_devset()
+    mp = MaterialsProjectDataset.from_devset()
 
     joint = MultiDataset([is2re, mp])
     # try and grab a sample
@@ -27,8 +24,8 @@ def test_joint_dataset():
 
 @pytest.mark.dependency(depends=["test_joint_dataset"])
 def test_joint_batching():
-    is2re = IS2REDataset(is2re_devset)
-    mp = MaterialsProjectDataset(materialsproject_devset)
+    is2re = IS2REDataset.from_devset()
+    mp = MaterialsProjectDataset.from_devset()
 
     joint = MultiDataset([is2re, mp])
     # try and grab a sample
@@ -39,8 +36,8 @@ def test_joint_batching():
 
 @pytest.mark.dependency(depends=["test_joint_batching"])
 def test_joint_batching_shuffled():
-    is2re = IS2REDataset(is2re_devset)
-    mp = MaterialsProjectDataset(materialsproject_devset)
+    is2re = IS2REDataset.from_devset()
+    mp = MaterialsProjectDataset.from_devset()
 
     joint = MultiDataset([is2re, mp])
     # try and grab a sample
@@ -52,8 +49,8 @@ def test_joint_batching_shuffled():
 
 @pytest.mark.dependency(depends=["test_joint_dataset"])
 def test_target_keys():
-    is2re = IS2REDataset(is2re_devset)
-    mp = MaterialsProjectDataset(materialsproject_devset)
+    is2re = IS2REDataset.from_devset()
+    mp = MaterialsProjectDataset.from_devset()
 
     joint = MultiDataset([is2re, mp])
     keys = joint.target_keys
