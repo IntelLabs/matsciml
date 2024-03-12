@@ -1,9 +1,6 @@
 name: Build env
 on:
   pull_request:
-    paths:
-      - 'pyproject.toml'
-      - 'conda.yml'
   workflow_dispatch:
   workflow_call:
 jobs:
