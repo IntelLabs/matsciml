@@ -27,10 +27,10 @@ dm = MatSciMLDataModule.from_devset(
     "AlexandriaDataset",
     dset_kwargs={
         "transforms": [
-            PeriodicPropertiesTransform(20.0),
+            PeriodicPropertiesTransform(10.0),
             PointCloudToGraphTransform(
                 "dgl",
-                cutoff_dist=20.0,
+                cutoff_dist=10.0,
                 node_keys=["pos", "atomic_numbers"],
             ),
             DistancesTransform(),

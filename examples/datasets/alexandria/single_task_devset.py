@@ -19,8 +19,8 @@ dm = MatSciMLDataModule.from_devset(
     "AlexandriaDataset",
     dset_kwargs={
         "transforms": [
-            PeriodicPropertiesTransform(20.0, adaptive_cutoff=True),
-            PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
+            PeriodicPropertiesTransform(10.0, adaptive_cutoff=True),
+            PointCloudToGraphTransform("dgl", cutoff_dist=10.0),
         ]
     },
 )

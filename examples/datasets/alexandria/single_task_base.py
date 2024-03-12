@@ -34,8 +34,8 @@ dm = MatSciMLDataModule(
     train_path="../../../matsciml/datasets/alexandria/devset",
     dset_kwargs={
         "transforms": [
-            PeriodicPropertiesTransform(20.0),
-            PointCloudToGraphTransform("dgl", cutoff_dist=20.0),
+            PeriodicPropertiesTransform(10.0),
+            PointCloudToGraphTransform("dgl", cutoff_dist=10.0),
         ]
     },
     val_split=0.2,
