@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import os
 from datetime import timedelta
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable
 
 import torch
 from lightning_fabric.plugins.collectives.torch_collective import default_pg_timeout
+import pytorch_lightning as pl
 from pytorch_lightning.plugins import CheckpointIO
 from pytorch_lightning.plugins.environments import LightningEnvironment
 from pytorch_lightning.plugins.precision import PrecisionPlugin
 from pytorch_lightning.strategies import StrategyRegistry
 from pytorch_lightning.strategies.ddp import DDPStrategy
+
+__all__ = ["MPIEnvironment", "MPIDDPStrategy"]
 
 # majority of these imports are just for type hinting!
 
