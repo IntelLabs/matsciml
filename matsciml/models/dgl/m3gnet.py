@@ -27,7 +27,7 @@ class M3GNet(AbstractDGLModel):
         self.elemenet_types = element_types
         self.all_embeddings = return_all_layer_output
         self.model = matgl_m3gnet(element_types, *args, **kwargs)
-        self.atomic_embedding = self.model.embedding
+        self.atom_embedding = self.model.embedding.layer_node_embedding
 
     def _forward(
         self,

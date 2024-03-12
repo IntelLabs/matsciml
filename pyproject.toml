@@ -70,3 +70,6 @@ where = ["."]
 [tool.setuptools.dynamic]
 readme = {file = ["README.md"]}
 version = {attr = "matsciml.__version__"}
+
+[tool.ruff.lint]
+ignore = ["F403", "F405"]
