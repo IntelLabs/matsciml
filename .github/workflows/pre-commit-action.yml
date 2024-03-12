@@ -8,12 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - id: file_changes
-        name: Determine changed files in PR
-        uses: trilom/file-changes-action@v1.2.4
-        with:
-          prNumber: ${{ github.event.number }}
-          output: ' '
       - uses: actions/setup-python@v5
         name: Install Python 3.10
         with:
@@ -21,4 +15,6 @@ jobs:
           cache: 'pip'
       - run: pip install -U pip setuptools
       - uses: pre-commit/action@v3.0.1
-        name: Configure and run pre-commit
+        name: Configure and run pre-commit on changed files
+        with:
+          extra_args: --color=always --from-ref ${{ github.event.pull_request.base.sha }} --to-ref ${{ github.event.pull_request.head.sha }}
