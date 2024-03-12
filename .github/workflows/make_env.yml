@@ -1,4 +1,4 @@
-name: Make a micromamba environment and install
+name: Build env
 on:
   pull_request:
     paths:
