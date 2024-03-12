@@ -1,24 +1,23 @@
 from __future__ import annotations
 
-try:
-    import oneccl_bindings_for_pytorch
+from matsciml.common.packages import package_registry
 
+if package_registry["ccl"]:
     _has_ccl = True
-except ImportError:
+else:
     _has_ccl = False
 
 import pytest
 import pytorch_lightning as pl
-from pytorch_lightning.strategies.ddp import DDPStrategy
 
 from matsciml.datasets import transforms
 from matsciml.datasets.materials_project import MaterialsProjectDataset
-from matsciml.lightning.ddp import MPIEnvironment
 from matsciml.models import GraphConvModel
 from matsciml.models.base import ScalarRegressionTask
 
 
 @pytest.mark.skipif(not _has_ccl, reason="No working oneCCL installation.")
+@pytest.mark.distributed
 def test_ccl_is2re_ddp():
     devset = MaterialsProjectDataset.from_devset(
         transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
@@ -39,6 +38,7 @@ def test_ccl_is2re_ddp():
 
 
 @pytest.mark.skipif(not _has_ccl, reason="No working oneCCL installation.")
+@pytest.mark.distributed
 def test_ccl_materials_project():
     devset = MaterialsProjectDataset.from_devset(
         transforms=[transforms.PointCloudToGraphTransform("dgl", cutoff_dist=20.0)],
@@ -46,9 +46,6 @@ def test_ccl_materials_project():
 
     model = GraphConvModel(100, 1, encoder_only=True)
     task = ScalarRegressionTask(model, lr=1e-3)
-
-    env = MPIEnvironment()
-    ddp = DDPStrategy(cluster_environment=env, process_group_backend="ccl")
 
     trainer = pl.Trainer(
         max_epochs=1,
