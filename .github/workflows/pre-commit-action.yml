@@ -1,0 +1,25 @@
+# Snippets for how to only run on changed PR files can be found
+# here: https://github.com/pre-commit/action/issues/7#issuecomment-1251300704
+name: Run pre-commit workflow
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        name: Install Python 3.10
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      - run: pip install -U pip setuptools
+      - uses: pre-commit/action@v3.0.1
+        name: Configure and run pre-commit on changed files
+        with:
+          extra_args: --color=always --from-ref ${{ github.event.pull_request.base.sha }} --to-ref ${{ github.event.pull_request.head.sha }}
