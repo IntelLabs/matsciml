@@ -18,6 +18,8 @@ jobs:
             bash
           cache-environment: true
           post-cleanup: 'all'
+      - run: |
+          mamba activate matsciml
       - name: Install PyTest
         run: |
           pip install pytest pytest-dependency
