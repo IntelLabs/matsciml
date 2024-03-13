@@ -1,0 +1,35 @@
+name: Run end-to-end suites for full pipeline coverage
+on:
+  pull_request:
+    paths:
+      - 'matsciml/**'
+      - 'pyproject.toml'
+      - 'conda.yml'
+      - 'setup.py'
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  end-to-end-pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create micromamba env
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          micromamba-version: '1.5.7-0'
+          environment-file: conda.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: 'all'
+          generate-run-shell: true
+      - name: Install PyTest
+        run: |
+          pip install pytest pytest-dependency
+        shell: micromamba-shell {0}
+      - name: Run pytest in models
+        run: |
+          pytest -v -m "not lmdb and not slow and not remote_request" ./matsciml/tests
+        shell: micromamba-shell {0}
