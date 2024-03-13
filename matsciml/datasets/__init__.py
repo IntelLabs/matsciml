@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 
+from matsciml.datasets.alexandria import AlexandriaDataset
 from matsciml.datasets.carolina_db import CMDataset
 from matsciml.datasets.colabfit import ColabFitDataset
 from matsciml.datasets.lips import LiPSDataset
@@ -18,6 +19,7 @@ from matsciml.datasets.oqmd import OQMDDataset
 from matsciml.datasets.symmetry import SyntheticPointGroupDataset
 
 __all__ = [
+    "AlexandriaDataset",
     "IS2REDataset",
     "S2EFDataset",
     "CMDataset",
