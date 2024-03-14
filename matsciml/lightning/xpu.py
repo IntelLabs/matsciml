@@ -5,7 +5,6 @@ from datetime import timedelta
 from typing import Callable, Union, List, Dict, Any
 
 from pytorch_lightning.plugins import CheckpointIO, ClusterEnvironment
-from pytorch_lightning.plugins.collectives.torch_collective import default_pg_timeout
 from pytorch_lightning.plugins.precision import (
     PrecisionPlugin,
     NativeMixedPrecisionPlugin,
@@ -18,6 +17,8 @@ from pytorch_lightning.strategies import SingleDeviceStrategy
 from pytorch_lightning.strategies.ddp import DDPStrategy
 import torch
 from torch import distributed as dist
+
+default_pg_timeout = timedelta(seconds=1800)
 
 if package_registry["ipex"]:
     import intel_extension_for_pytorch as ipex  # noqa: F401
