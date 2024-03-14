@@ -20,7 +20,7 @@ import torch
 from torch import distributed as dist
 
 if package_registry["ipex"]:
-    import intel_extension_for_pytorch as ipex
+    import intel_extension_for_pytorch as ipex  # noqa: F401
 
     __all__ = ["XPUAccelerator", "SingleXPUStrategy", "DDPXPUStrategy"]
 
