@@ -5,10 +5,7 @@ from datetime import timedelta
 from typing import Callable, Union, List, Dict, Any
 
 from pytorch_lightning.plugins import CheckpointIO, ClusterEnvironment
-from pytorch_lightning.plugins.precision import (
-    PrecisionPlugin,
-    NativeMixedPrecisionPlugin,
-)
+from pytorch_lightning.plugins.precision import Precision
 
 from matsciml.common.packages import package_registry
 from matsciml.lightning.ddp import MPIEnvironment
@@ -175,7 +172,7 @@ if package_registry["ipex"]:
             parallel_devices: List[torch.device] | None = None,
             cluster_environment: ClusterEnvironment | None = None,
             checkpoint_io: CheckpointIO | None = None,
-            precision_plugin: PrecisionPlugin | None = None,
+            precision_plugin: Precision | None = None,
             ddp_comm_state: object | None = None,
             ddp_comm_hook: Callable[..., Any] | None = None,
             ddp_comm_wrapper: Callable[..., Any] | None = None,
@@ -209,18 +206,4 @@ if package_registry["ipex"]:
                 cls,
                 description=f"{cls.__class__.__name__} - uses distributed data parallelism"
                 " to divide data across multiple XPU tiles.",
-            )
-
-    class XPUBF16Plugin(NativeMixedPrecisionPlugin):
-        def __init__(self):
-            super().__init__(torch.bfloat16, "xpu")
-
-        def auto_cast_context_manager(self):
-            """
-            Overrides the default behavior, which relies on `torch.amp` where only
-            CPU and CUDA backends are supported. This uses the `xpu.amp` interface
-            explicitly, as done in the IPEX documentation.
-            """
-            return torch.xpu.amp.autocast(
-                self.device, enabled=True, dtype=torch.bfloat16
             )
