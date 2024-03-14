@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from inspect import signature
+from logging import getLogger
 from typing import Any
 
 from e3nn.o3 import Irreps
@@ -14,6 +15,9 @@ __mace_signature = signature(MACE)
 __mace_parameters = __mace_signature.parameters
 
 
+logger = getLogger(__file__)
+
+
 @registry.register_model("MACEWrapper")
 class MACEWrapper(AbstractPyGModel):
     def __init__(
@@ -24,6 +28,8 @@ class MACEWrapper(AbstractPyGModel):
         encoder_only: bool = True,
         **mace_kwargs,
     ) -> None:
+        if embedding_kwargs is not None:
+            logger.warning("`embedding_kwargs` is not used for MACE models.")
         super().__init__(atom_embedding_dim, num_atom_embedding, {}, encoder_only)
         for key in mace_kwargs:
             assert (
