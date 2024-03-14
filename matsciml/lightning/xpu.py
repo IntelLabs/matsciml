@@ -4,8 +4,8 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Callable, Union, List, Dict, Any
 
-from lightning_lite.plugins import CheckpointIO, ClusterEnvironment
-from lightning_lite.plugins.collectives.torch_collective import default_pg_timeout
+from pytorch_lightning.plugins import CheckpointIO, ClusterEnvironment
+from pytorch_lightning.plugins.collectives.torch_collective import default_pg_timeout
 from pytorch_lightning.plugins.precision import (
     PrecisionPlugin,
     NativeMixedPrecisionPlugin,
