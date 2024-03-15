@@ -20,6 +20,8 @@ __mace_all_args = get_model_all_args(MACE)
 
 logger = getLogger(__file__)
 
+__all__ = ["MACEWrapper"]
+
 
 @registry.register_model("MACEWrapper")
 class MACEWrapper(AbstractPyGModel):
