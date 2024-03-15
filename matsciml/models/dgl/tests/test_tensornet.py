@@ -1,4 +1,5 @@
 import pytest
+import pytorch_lightning as pl
 
 from matsciml.datasets.transforms import (
     PeriodicPropertiesTransform,
@@ -9,6 +10,7 @@ from matsciml.lightning import MatSciMLDataModule
 from matsciml.common.registry import registry
 from matsciml.models import TensorNet
 from matsciml.datasets.utils import element_types
+from matsciml.models.base import ForceRegressionTask, GradFreeForceRegressionTask
 
 import torch
 
@@ -19,6 +21,24 @@ import torch
 def model_fixture() -> TensorNet:
     model = TensorNet(element_types=element_types())
     return model
+
+
+@pytest.fixture
+def devset_fixture() -> MatSciMLDataModule:
+    devset = MatSciMLDataModule.from_devset(
+        "S2EFDataset",
+        dset_kwargs={
+            "transforms": [
+                PeriodicPropertiesTransform(cutoff_radius=10.0),
+                PointCloudToGraphTransform(
+                    "dgl",
+                    cutoff_dist=20.0,
+                    node_keys=["pos", "atomic_numbers"],
+                ),
+            ],
+        },
+    )
+    return devset
 
 
 # here we filter out datasets from the registry that don't make sense
@@ -59,3 +79,25 @@ def test_model_forward_nograd(dset_class_name: str, model_fixture: TensorNet):
         assert ~torch.isnan(z).all()  # check there are no NaNs
         assert torch.isfinite(z).all()
         assert torch.all(torch.abs(z) <= 1000)  # ensure reasonable values
+
+
+def test_force_regression(model_fixture, devset_fixture):
+    task = ForceRegressionTask(
+        model_fixture, output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64}
+    )
+    trainer = pl.Trainer(fast_dev_run=10)
+    trainer.fit(task, datamodule=devset_fixture)
+    # make sure losses are tracked
+    for key in ["energy", "force"]:
+        assert f"train_{key}" in trainer.logged_metrics
+
+
+def test_gradfree_force_regression(model_fixture, devset_fixture):
+    task = GradFreeForceRegressionTask(
+        model_fixture,
+        output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
+    )
+    trainer = pl.Trainer(fast_dev_run=10)
+    trainer.fit(task, datamodule=devset_fixture)
+    # make sure losses are tracked
+    assert "train_force" in trainer.logged_metrics
