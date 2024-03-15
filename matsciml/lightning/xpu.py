@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT License
 from __future__ import annotations
 from datetime import timedelta
+from logging import getLogger
 from typing import Callable, Union, List, Dict, Any
 
 from pytorch_lightning.plugins import CheckpointIO, ClusterEnvironment
@@ -17,8 +18,13 @@ from torch import distributed as dist
 
 default_pg_timeout = timedelta(seconds=1800)
 
+logger = getLogger(__file__)
+
 if package_registry["ipex"]:
-    import intel_extension_for_pytorch as ipex  # noqa: F401
+    try:
+        import intel_extension_for_pytorch as ipex  # noqa: F401
+    except ImportError as e:
+        logger.warning(f"Unable to import IPEX due to {e} - XPU may not function.")
 
     __all__ = ["XPUAccelerator", "SingleXPUStrategy", "DDPXPUStrategy"]
 
