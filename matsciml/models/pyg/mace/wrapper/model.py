@@ -9,7 +9,7 @@ from e3nn.o3 import Irreps
 from mace.modules import MACE
 
 from matsciml.models.base import AbstractPyGModel
-from matsciml.common.types import BatchDict, DataDict
+from matsciml.common.types import BatchDict, DataDict, AbstractGraph, Embeddings
 from matsciml.common.registry import registry
 from matsciml.common.inspection import get_model_required_args, get_model_all_args
 
@@ -98,14 +98,66 @@ class MACEWrapper(AbstractPyGModel):
                     f"Expected periodic property {key} to be in batch."
                     " Please include ``PeriodicPropertiesTransform``."
                 )
+        # the name of these keys matches up with our `_forward`, and
+        # later get remapped to MACE ones
         data.update(
             {
-                "positions": graph.pos,
+                "pos": graph.pos,
                 "edge_index": graph.edge_index,
-                "node_attrs": one_hot_atoms,
+                "node_feats": one_hot_atoms,
                 "ptr": graph.ptr,  # refers to pointers/node segments
                 "cell": batch["cell"],
                 "shifts": batch["offsets"],
             }
         )
         return data
+
+    def _forward(
+        self,
+        graph: AbstractGraph,
+        node_feats: torch.Tensor,
+        pos: torch.Tensor,
+        **kwargs,
+    ) -> Embeddings:
+        """
+        Takes arguments in the standardized format, and passes them into MACE
+        with some redundant mapping.
+
+        Parameters
+        ----------
+        graph : AbstractGraph
+            Graph structure containing node and graph properties
+
+        node_feats : torch.Tensor
+            Tensor containing one-hot node features, shape ``[num_nodes, num_elements]``
+
+        pos : torch.Tensor
+            2D tensor containing node positions, shape ``[num_nodes, 3]``
+
+        Returns
+        -------
+        Embeddings
+            MatSciML ``Embeddings`` structure
+        """
+        # repack data into MACE format
+        mace_data = {
+            "positions": pos,
+            "node_attrs": node_feats,
+            "ptr": kwargs["ptr"],
+            "cell": kwargs["cell"],
+            "shifts": kwargs["shifts"],
+            "batch": graph.batch,
+            "edge_index": graph.edge_index,
+        }
+        outputs = self.encoder(
+            mace_data,
+            training=self.training,
+            compute_force=False,
+            compute_virials=False,
+            compute_stress=False,
+            compute_displacement=False,
+        )
+        # TODO check that these are the correct things to unpack
+        node_embeddings = outputs["node_feats"]
+        graph_embeddings = outputs["contributions"]
+        return Embeddings(graph_embeddings, node_embeddings)
