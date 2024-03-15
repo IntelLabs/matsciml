@@ -15,10 +15,6 @@ from matsciml.common.registry import registry
 from matsciml.common.inspection import get_model_required_args, get_model_all_args
 
 
-__mace_required_args = get_model_required_args(MACE)
-__mace_all_args = get_model_all_args(MACE)
-
-
 logger = getLogger(__file__)
 
 __all__ = ["MACEWrapper"]
@@ -37,6 +33,9 @@ class MACEWrapper(AbstractPyGModel):
         if embedding_kwargs is not None:
             logger.warning("`embedding_kwargs` is not used for MACE models.")
         super().__init__(atom_embedding_dim, num_atom_embedding, {}, encoder_only)
+        # dynamically check to check which arguments are needed by MACE
+        __mace_required_args = get_model_required_args(MACE)
+        __mace_all_args = get_model_all_args(MACE)
         for key in mace_kwargs:
             assert (
                 key in __mace_all_args
