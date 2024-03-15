@@ -4,6 +4,9 @@ import pytorch_lightning as pl
 
 from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.lightning.data_utils import MatSciMLDataModule
+
+# this is needed to register strategy and accelerator
+from matsciml.lightning import xpu  # noqa: F401
 from matsciml.models.base import ScalarRegressionTask
 from matsciml.models.pyg import EGNN
 
@@ -33,5 +36,5 @@ dm = MatSciMLDataModule.from_devset(
 )
 
 # run a quick training loop on a single XPU device
-trainer = pl.Trainer(fast_dev_run=10, strategy="single_pvc")
+trainer = pl.Trainer(fast_dev_run=10, strategy="single_pvc", accelerator="xpu")
 trainer.fit(task, datamodule=dm)
