@@ -9,6 +9,7 @@ from e3nn.o3 import Irreps
 from mace.modules import MACE
 
 from matsciml.models.base import AbstractPyGModel
+from matsciml.common.types import BatchDict, DataDict
 from matsciml.common.registry import registry
 from matsciml.common.inspection import get_model_required_args, get_model_all_args
 
@@ -83,3 +84,28 @@ class MACEWrapper(AbstractPyGModel):
             2D tensor of one-hot vectors for each node.
         """
         return self._atom_eye[atomic_numbers.long()]
+
+    def read_batch(self, batch: BatchDict) -> DataDict:
+        data = super().read_batch(batch)
+        # expect a PyG graph already
+        graph = batch["graph"]
+        atomic_numbers = graph.atomic_numbers
+        one_hot_atoms = self.atomic_numbers_to_one_hot(atomic_numbers)
+        # check to make sure we have unit cell shifts
+        for key in ["cell", "offsets"]:
+            if key not in batch:
+                raise KeyError(
+                    f"Expected periodic property {key} to be in batch."
+                    " Please include ``PeriodicPropertiesTransform``."
+                )
+        data.update(
+            {
+                "positions": graph.pos,
+                "edge_index": graph.edge_index,
+                "node_attrs": one_hot_atoms,
+                "ptr": graph.ptr,  # refers to pointers/node segments
+                "cell": batch["cell"],
+                "shifts": batch["offsets"],
+            }
+        )
+        return data
