@@ -49,4 +49,8 @@ class MACEWrapper(AbstractPyGModel):
         # pack stuff into the mace kwargs
         mace_kwargs["num_elements"] = num_atom_embedding
         mace_kwargs["hidden_irreps"] = atom_embedding_dim
+        # check to make sure all that's required is
+        for key in __mace_required_args:
+            if key not in mace_kwargs:
+                raise KeyError(f"{key} is required by MACE, but was not found in kwargs.")
         self.encoder = MACE(**mace_kwargs)
