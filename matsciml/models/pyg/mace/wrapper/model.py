@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from inspect import signature
 from logging import getLogger
 from typing import Any
 
@@ -9,10 +8,10 @@ from mace.modules import MACE
 
 from matsciml.models.base import AbstractPyGModel
 from matsciml.common.registry import registry
+from matsciml.common.inspection import get_model_required_args
 
 
-__mace_signature = signature(MACE)
-__mace_parameters = __mace_signature.parameters
+__mace_required_args = get_model_required_args(MACE)
 
 
 logger = getLogger(__file__)
