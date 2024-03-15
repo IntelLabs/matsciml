@@ -92,7 +92,7 @@ class MACEWrapper(AbstractPyGModel):
         return self._atom_eye[atomic_numbers.long()]
 
     def read_batch(self, batch: BatchDict) -> DataDict:
-        data = super().read_batch(batch)
+        data = {}
         # expect a PyG graph already
         graph = batch["graph"]
         atomic_numbers = graph.atomic_numbers
