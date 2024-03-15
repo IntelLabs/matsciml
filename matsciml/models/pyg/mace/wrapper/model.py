@@ -8,10 +8,11 @@ from mace.modules import MACE
 
 from matsciml.models.base import AbstractPyGModel
 from matsciml.common.registry import registry
-from matsciml.common.inspection import get_model_required_args
+from matsciml.common.inspection import get_model_required_args, get_model_all_args
 
 
 __mace_required_args = get_model_required_args(MACE)
+__mace_all_args = get_model_all_args(MACE)
 
 
 logger = getLogger(__file__)
@@ -32,7 +33,7 @@ class MACEWrapper(AbstractPyGModel):
         super().__init__(atom_embedding_dim, num_atom_embedding, {}, encoder_only)
         for key in mace_kwargs:
             assert (
-                key in __mace_parameters
+                key in __mace_all_args
             ), f"{key} was passed as a MACE kwarg but does not match expected arguments."
         # remove the embedding table, as MACE uses e3nn layers
         del self.atom_embedding
