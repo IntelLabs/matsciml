@@ -108,6 +108,7 @@ class MACEWrapper(AbstractPyGModel):
         # later get remapped to MACE ones
         data.update(
             {
+                "graph": graph,
                 "pos": graph.pos,
                 "edge_index": graph.edge_index,
                 "node_feats": one_hot_atoms,
