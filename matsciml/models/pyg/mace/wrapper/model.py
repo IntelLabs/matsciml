@@ -117,15 +117,14 @@ class MACEWrapper(AbstractPyGModel):
                     f"Expected periodic property {key} to be in batch."
                     " Please include ``PeriodicPropertiesTransform``."
                 )
+        assert hasattr(graph, "ptr"), "Graph is missing the `ptr` attribute!"
         # the name of these keys matches up with our `_forward`, and
         # later get remapped to MACE ones
         data.update(
             {
                 "graph": graph,
                 "pos": graph.pos,
-                "edge_index": graph.edge_index,
                 "node_feats": one_hot_atoms,
-                "ptr": graph.ptr,  # refers to pointers/node segments
                 "cell": batch["cell"],
                 "shifts": batch["offsets"],
             }
@@ -163,7 +162,7 @@ class MACEWrapper(AbstractPyGModel):
         mace_data = {
             "positions": pos,
             "node_attrs": node_feats,
-            "ptr": kwargs["ptr"],
+            "ptr": graph.ptr,
             "cell": kwargs["cell"],
             "shifts": kwargs["shifts"],
             "batch": graph.batch,
