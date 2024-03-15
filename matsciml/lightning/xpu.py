@@ -10,7 +10,7 @@ from pytorch_lightning.plugins.precision import Precision
 from matsciml.common.packages import package_registry
 from matsciml.lightning.ddp import MPIEnvironment
 from pytorch_lightning.accelerators import Accelerator, AcceleratorRegistry
-from pytorch_lightning.strategies import SingleDeviceStrategy
+from pytorch_lightning.strategies import SingleDeviceStrategy, StrategyRegistry
 from pytorch_lightning.strategies.ddp import DDPStrategy
 import torch
 from torch import distributed as dist
@@ -165,7 +165,7 @@ if package_registry["ipex"]:
         distributed data parallelism.
         """
 
-        strategy_name = "ddp_with_pvc"
+        strategy_name = "ddp_with_xpu"
 
         def __init__(
             self,
@@ -207,3 +207,14 @@ if package_registry["ipex"]:
                 description=f"{cls.__class__.__name__} - uses distributed data parallelism"
                 " to divide data across multiple XPU tiles.",
             )
+
+    StrategyRegistry.register(
+        "single_xpu",
+        SingleXPUStrategy,
+        description="Strategy utilizing a single Intel GPU device or tile.",
+    )
+    StrategyRegistry.register(
+        "ddp_with_xpu",
+        DDPXPUStrategy,
+        description="Distributed data parallel strategy using multiple Intel GPU devices or tiles.",
+    )
