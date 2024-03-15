@@ -85,7 +85,7 @@ def test_force_regression(model_fixture, devset_fixture):
     task = ForceRegressionTask(
         model_fixture, output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64}
     )
-    trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
+    trainer = pl.Trainer(fast_dev_run=10)
     trainer.fit(task, datamodule=devset_fixture)
     # make sure losses are tracked
     for key in ["energy", "force"]:
@@ -97,7 +97,7 @@ def test_gradfree_force_regression(model_fixture, devset_fixture):
         model_fixture,
         output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
     )
-    trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
+    trainer = pl.Trainer(fast_dev_run=10)
     trainer.fit(task, datamodule=devset_fixture)
     # make sure losses are tracked
     assert "train_force" in trainer.logged_metrics
