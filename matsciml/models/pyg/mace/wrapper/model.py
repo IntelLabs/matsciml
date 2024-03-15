@@ -5,6 +5,7 @@ from typing import Any
 from functools import cache
 
 import torch
+import numpy as np
 from e3nn.o3 import Irreps
 from mace.modules import MACE
 
@@ -54,6 +55,10 @@ class MACEWrapper(AbstractPyGModel):
         # pack stuff into the mace kwargs
         mace_kwargs["num_elements"] = num_atom_embedding
         mace_kwargs["hidden_irreps"] = atom_embedding_dim
+        mace_kwargs["atomic_numbers"] = list(range(1, num_atom_embedding))
+        if "atomic_energies" not in mace_kwargs:
+            logger.warning("No ``atomic_energies`` provided, defaulting to ones.")
+            mace_kwargs["atomic_energies"] = np.ones(num_atom_embedding)
         # check to make sure all that's required is
         for key in __mace_required_args:
             if key not in mace_kwargs:
