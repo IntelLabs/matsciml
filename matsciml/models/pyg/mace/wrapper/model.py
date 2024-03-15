@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any
+from typing import Any, Callable
 from functools import cache
 
 import torch
 import numpy as np
 from e3nn.o3 import Irreps
 from mace.modules import MACE
+from torch_geometric.nn import pool
 
 from matsciml.models.base import AbstractPyGModel
 from matsciml.common.types import BatchDict, DataDict, AbstractGraph, Embeddings
@@ -28,6 +29,7 @@ class MACEWrapper(AbstractPyGModel):
         num_atom_embedding: int = 100,
         embedding_kwargs: Any = None,
         encoder_only: bool = True,
+        readout_method: str | Callable = "add",
         **mace_kwargs,
     ) -> None:
         if embedding_kwargs is not None:
@@ -65,6 +67,17 @@ class MACEWrapper(AbstractPyGModel):
                     f"{key} is required by MACE, but was not found in kwargs."
                 )
         self.encoder = MACE(**mace_kwargs)
+        # if a string is passed, grab the PyG builtins
+        if isinstance(readout_method, str):
+            readout_type = getattr(pool, f"global_{readout_method}_pool", None)
+            if not readout_type:
+                possible_methods = list(filter(lambda x: "global" in x, dir(pool)))
+                raise NotImplementedError(
+                    f"{readout_method} is not a valid function in PyG pooling."
+                    f" Supported methods are: {possible_methods}"
+                )
+            readout_method = readout_type
+        self.readout = readout_method
         self.save_hyperparameters()
 
     @property
@@ -164,7 +177,6 @@ class MACEWrapper(AbstractPyGModel):
             compute_stress=False,
             compute_displacement=False,
         )
-        # TODO check that these are the correct things to unpack
         node_embeddings = outputs["node_feats"]
-        graph_embeddings = outputs["contributions"]
+        graph_embeddings = self.readout(node_embeddings, graph.batch)
         return Embeddings(graph_embeddings, node_embeddings)
