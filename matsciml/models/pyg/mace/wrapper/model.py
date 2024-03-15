@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from logging import getLogger
 from typing import Any
+from functools import cache
 
+import torch
 from e3nn.o3 import Irreps
 from mace.modules import MACE
 
@@ -52,5 +54,32 @@ class MACEWrapper(AbstractPyGModel):
         # check to make sure all that's required is
         for key in __mace_required_args:
             if key not in mace_kwargs:
-                raise KeyError(f"{key} is required by MACE, but was not found in kwargs.")
+                raise KeyError(
+                    f"{key} is required by MACE, but was not found in kwargs."
+                )
         self.encoder = MACE(**mace_kwargs)
+        self.save_hyperparameters()
+
+    @property
+    @cache
+    def _atom_eye(self) -> torch.Tensor:
+        return torch.eye(
+            self.hparams.num_atom_embedding, device=self.device, dtype=self.dtype
+        )
+
+    def atomic_numbers_to_one_hot(self, atomic_numbers: torch.Tensor) -> torch.Tensor:
+        """
+        Convert discrete atomic numbers into one-hot vectors based
+        on some maximum number of elements possible.
+
+        Parameters
+        ----------
+        atomic_numbers : torch.Tensor
+            1D tensor of integers corresponding to atomic numbers.
+
+        Returns
+        -------
+        torch.Tensor
+            2D tensor of one-hot vectors for each node.
+        """
+        return self._atom_eye[atomic_numbers.long()]
