@@ -35,6 +35,8 @@ dm = MatSciMLDataModule.from_devset(
     },
 )
 
-# run a quick training loop on a single XPU device
-trainer = pl.Trainer(fast_dev_run=10, strategy="single_pvc", accelerator="xpu")
+# run a quick training loop on a single XPU device with BF16 automatic mixed precision
+trainer = pl.Trainer(
+    fast_dev_run=10, strategy="single_pvc", accelerator="xpu", precision="bf16-mixed"
+)
 trainer.fit(task, datamodule=dm)
