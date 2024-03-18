@@ -34,7 +34,7 @@ dependencies = [
   "ase>=3.22.1",
   "matgl==1.0.0",
   "einops==0.7.0",
-  "mendeleev==0.14.0",
+  "mendeleev==0.15.0",
   "e3nn",
   "mace-torch==0.3.4"
 ]

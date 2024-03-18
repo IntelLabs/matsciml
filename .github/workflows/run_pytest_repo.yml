@@ -16,9 +16,17 @@ jobs:
           cache-environment: true
           post-cleanup: 'all'
           generate-run-shell: true
+      - name: Install current version of matsciml
+        run: |
+          pip install .
+        shell: micromamba-shell {0}
       - name: Install PyTest
         run: |
           pip install pytest pytest-dependency
+        shell: micromamba-shell {0}
+      - name: Print out environment
+        run: |
+          micromamba env export && pip freeze
         shell: micromamba-shell {0}
       - name: Run pytest in root directory
         run: |
