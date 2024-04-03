@@ -38,5 +38,5 @@ dm = MatSciMLDataModule.from_devset(
 
 # run a quick training loop
 trainer = pl.Trainer(fast_dev_run=1000,
-                     callbacks=[SAM()],accelerator='cpu')
+                     callbacks=[SAM()])
 trainer.fit(task, datamodule=dm)
