@@ -8,15 +8,16 @@ from datetime import datetime
 from logging import DEBUG, getLogger
 from pathlib import Path
 from time import time
-from typing import Any, Callable
+from typing import Any, Callable , Dict ,Iterator, Optional
 
 import numpy as np
 import pytorch_lightning as pl
 import torch
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import BasePredictionWriter, Callback
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from torch import distributed as dist
-from torch import nn
+from torch import nn 
 from torch.optim import Optimizer
 
 from matsciml.common.packages import package_registry
@@ -683,3 +684,113 @@ if package_registry["codecarbon"]:
                 stage = ""
             self.teardown(trainer, pl_module, stage)
             super().on_exception(trainer, pl_module, exception)
+
+class SAM(Callback):
+    def __init__(self, rho: float = 0.05, adaptive: bool = False) -> None:
+        """
+        Set up the ``SAM (Sharpness Aware Minimization)`` callback.
+        https://arxiv.org/abs/2010.01412
+        
+        This implementation is adapted from https://github.com/davda54/sam.
+
+        Description:
+        SAM (Sharpness Aware Minimization) simultaneously minimizes loss value and loss sharpness 
+        it seeks parameters that lie in neighborhoods having uniformly low loss improving model generalization 
+        The training will run twice as slow because SAM needs two forward-backward passes to estimate the "sharpness-aware" gradient. 
+        If you're using gradient clipping, make sure to change only the magnitude of gradients, not their direction.
+
+        Parameters:
+        - rho (float): A hyperparameter determining the scale of regularization for sharpness-aware minimization. 
+                      Defaults to 0.05.
+        - adaptive (bool): A boolean flag indicating whether to adaptively normalize weights. 
+                           Defaults to False.
+
+        
+        Examples:
+        Add the writer as a callback to ``Trainer``
+
+        >>> import pytorch_lightning as pl
+        >>> from matsciml.lightning.callbacks import SAM
+        >>> trainer = pl.Trainer(callbacks=[SAM()])
+        >>> trainer.fit(...)
+        """
+        
+        super().__init__()
+        self.rho = rho
+        self.adaptive = adaptive
+
+    @staticmethod
+    def _get_params(optimizer: Optimizer) -> Iterator[ torch.Tensor]:
+        for group in optimizer.param_groups:
+            for param in group["params"]:
+                if not isinstance(param, torch.Tensor):
+                    raise TypeError(f"expected Tensor, but got: {type(param)}")
+                yield param
+
+    @staticmethod
+    def _get_loss(step_output: Any) -> Optional[torch.Tensor]:
+        if step_output is None:
+            return None
+        if isinstance(step_output, torch.Tensor):
+            return step_output
+        return step_output.get("loss")
+
+    def on_train_batch_start(
+        self,
+        trainer: Trainer,
+        pl_module: LightningModule,
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        self.batch = batch
+        self.batch_idx = batch_idx
+
+    @torch.no_grad()
+    def on_before_optimizer_step(
+        self,
+        trainer: Trainer,
+        pl_module: LightningModule,
+        optimizer: Optimizer,
+    ) -> None:
+        org_weights = self._first_step(optimizer)
+        with torch.enable_grad():
+            step_output = pl_module.training_step(self.batch, self.batch_idx)
+            loss = self._get_loss(step_output)
+            if loss is not None:
+                trainer.strategy.backward(
+                    loss, optimizer=optimizer
+                )
+        self._second_step(optimizer, org_weights)
+
+    def _norm_weights(self, p: torch.Tensor) -> torch.Tensor:
+        return torch.abs(p) if self.adaptive else torch.ones_like(p)
+
+    def _grad_norm(self, optimizer: Optimizer) -> torch.Tensor:
+        param_norms = torch.stack(
+            [
+                (self._norm_weights(p) * p.grad).norm()
+                for p in self._get_params(optimizer)
+                if isinstance(p.grad, torch.Tensor)
+            ]
+        )
+        return param_norms.norm()
+
+    def _first_step(self, optimizer: Optimizer) -> Dict[torch.Tensor, torch.Tensor]:
+        scale = self.rho / (self._grad_norm(optimizer) + 1e-5)
+        org_weights: Dict[torch.Tensor, torch.Tensor] = {}
+        for p in self._get_params(optimizer):
+            if p.grad is None:
+                continue
+            org_weights[p] = p.detach().clone()
+            e_w = (torch.pow(p, 2) if self.adaptive else 1.0) * p.grad * scale.to(p)
+            p.add_(e_w)  
+        optimizer.zero_grad()
+        return org_weights
+
+    def _second_step(
+        self, optimizer: Optimizer, org_weights: Dict[torch.Tensor, torch.Tensor]
+    ) -> None:
+        for p in self._get_params(optimizer):
+            if p.grad is None:
+                continue
+            p.data = org_weights[p]
