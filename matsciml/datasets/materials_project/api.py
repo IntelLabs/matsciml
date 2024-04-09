@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import lmdb
 import numpy as np
@@ -70,7 +70,7 @@ class MaterialsProjectRequest:
             value = os.getenv("MP_API_KEY", None)
         if not value:
             raise ValueError(
-                f"No Materials Project API key provided or found in environment variable MP_API_KEY.",
+                "No Materials Project API key provided or found in environment variable MP_API_KEY.",
             )
         self._api_key = value
 
@@ -255,7 +255,7 @@ class MaterialsProjectRequest:
                 write_lmdb_data(index, entry.__dict__, target_env)
         else:
             raise ValueError(
-                f"No data was available for serializing - did you run `retrieve_data`?",
+                "No data was available for serializing - did you run `retrieve_data`?",
             )
 
     def to_dict(self) -> dict[str, str | list[str]]:
