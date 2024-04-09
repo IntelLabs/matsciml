@@ -27,8 +27,12 @@ then pipeline this into a ``seaborn`` analysis.
 
 The ``utils.py`` module provides some rudimentary data classes that
 just makes packing and unpacking data more streamlined.
+
+Currently there is no usable interface, however if there is an interest
+in using these routines for new datasets, PRs are welcome.
 """
 
+# this is a hardcoded mapping; change paths to where datasets reside
 dataset_mapping = {
     "OQMDDataset": "/data/datasets/matsciml/oqmd/all",
     "NomadDataset": "/data/datasets/matsciml/nomad/all",
@@ -39,6 +43,8 @@ dataset_mapping = {
 
 summaries = []
 
+# loop over each dataset, construct graphs with nominal parameters
+# then compute the summary statistics
 for key, value in dataset_mapping.items():
     dset_class = registry.get_dataset_class(key)
     dset = dset_class(
