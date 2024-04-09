@@ -776,13 +776,16 @@ class SAM(Callback):
         return param_norms.norm()
 
     def _first_step(self, optimizer: Optimizer) -> Dict[torch.Tensor, torch.Tensor]:
+        """
+        org_weights dictionary stores original weights and perturbed weights
+        """
         scale = self.rho / (self._grad_norm(optimizer) + 1e-5)
-        org_weights: Dict[torch.Tensor, torch.Tensor] = {}
+        org_weights: Dict[torch.Tensor, torch.Tensor] = {} 
         for p in self._get_params(optimizer):
             if p.grad is None:
                 continue
             org_weights[p] = p.detach().clone()
-            e_w = (torch.pow(p, 2) if self.adaptive else 1.0) * p.grad * scale.to(p)
+            e_w = (torch.pow(p, 2) if self.adaptive else 1.0) * p.grad
             p.add_(e_w)  
         optimizer.zero_grad()
         return org_weights
