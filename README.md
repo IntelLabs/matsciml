@@ -70,6 +70,12 @@ The one major difference is for distributed data parallelism: Intel XPUs use the
 backend, which replaces `nccl`, `gloo`, or other backends typically passed to `torch.distributed`.
 Please see `examples/devices` for single XPU/tile and DDP use cases.
 
+**NOTE**: Currently there is a hard-coded `torch.cuda.stream` context in PyTorch Lightning's `DDPStrategy`.
+This [issue](https://github.com/Lightning-AI/pytorch-lightning/issues/19766) has been created to see if the maintainers would be happy to patch
+it so that the `cuda.Stream` context is only used if a CUDA device is being used. If you encounter
+a `RuntimeError: Tried to instantiate dummy base class Stream`, please just set `ctx = nullcontext()`
+in the line of code that raises the exception.
+
 ## Examples
 
 The `examples` folder contains simple, unit scripts that demonstrate how to use the pipeline in specific ways:
