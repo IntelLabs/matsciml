@@ -3,18 +3,22 @@ channels:
   - defaults
   - intel
   - dglteam
+  - conda-forge
 dependencies:
-  - intel::scipy
-  - intel::numba
-  - intel::mkl-devel
-  - intel::intel-openmp
-  - intel::impi-devel
+  - scipy
+  - numba
+  - numpy
+  - mkl-devel=2024.0.0
+  - intel-openmp=2024.0.0
+  - impi-devel=2021.12.0
+  - dpcpp-cpp-rt=2024.0.0
+  - oneccl-devel=2021.12.0
   - dglteam::dgl=2.0.0
+  - intel-extension-for-pytorch=2.0.120
+  - pytorch=2.0.1
   - setuptools
   - pybind11
   - pip
   - pip:
     - "--extra-index-url https://pytorch-extension.intel.com/release-whl-aitools/"
-    - torch==2.0.1.a0
-    - intel-extension-for-pytorch==2.0.120+xpu
     - oneccl_bind_pt==2.0.200+gpu
