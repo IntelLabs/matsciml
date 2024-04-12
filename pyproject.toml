@@ -28,7 +28,7 @@ dependencies = [
   "jsonargparse[signatures]>=4.13.1",
   "mp_api==0.41.2",
   "emmet-core==0.82.1",
-  "pydantic==2.6.4",
+  "pydantic==2.7.0",
   "pymatgen==2024.3.1",
   "schema>=0.7.5",
   "ase>=3.22.1",
