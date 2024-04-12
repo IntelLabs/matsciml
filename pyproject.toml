@@ -55,7 +55,7 @@ dev = [
   "pytest"
 ]
 pyg = [
-  "torch_geometric==2.4.0",
+  "torch_geometric==2.5.2",
   "torch_scatter==2.1.2",
   "torch_sparse==0.6.18",
   "pybind11"
