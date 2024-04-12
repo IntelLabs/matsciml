@@ -13,6 +13,7 @@ dependencies:
   - dglteam::dgl=2.0.0
   - setuptools
   - pybind11
+  - python=3.10
   - pip
   - pip:
     - "--extra-index-url https://pytorch-extension.intel.com/release-whl-aitools/"
