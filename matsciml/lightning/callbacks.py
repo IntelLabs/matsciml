@@ -757,7 +757,7 @@ class SAM(Callback):
         with torch.enable_grad():
             step_output = pl_module.training_step(self.batch, self.batch_idx)
             loss = self._get_loss(step_output)
-            if loss is not None:
+            if torch.isfinite(loss):
                 trainer.strategy.backward(loss, optimizer=optimizer)
         with torch.no_grad():
             self._second_step(optimizer, org_weights)
