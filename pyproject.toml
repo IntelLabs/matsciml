@@ -52,7 +52,9 @@ all = [
 dev = [
   "ruff==0.3.6",
   "pre-commit",
-  "pytest"
+  "pytest",
+  "sphinx==7.2.6",
+  "sphinx-theme-pd==0.8.3"
 ]
 pyg = [
   "torch_geometric==2.4.0",
