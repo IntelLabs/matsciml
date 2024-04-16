@@ -253,9 +253,7 @@ def test_gradfree_force_regression():
         encoder_class=PLEGNNBackbone,
         encoder_kwargs=model_args,
     )
-    trainer = pl.Trainer(
-        max_steps=5, logger=False, enable_checkpointing=False, callbacks=[SAM()]
-    )
+    trainer = pl.Trainer(fast_dev_run=5, callbacks=[SAM()])
     trainer.fit(task, datamodule=devset)
     # make sure losses are tracked
     assert "train_force" in trainer.logged_metrics
