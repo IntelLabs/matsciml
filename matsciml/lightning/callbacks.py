@@ -22,6 +22,7 @@ from torch.optim import Optimizer
 
 from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
+from matsciml.models.base import AbstractTask
 
 
 class LeaderboardWriter(BasePredictionWriter):
@@ -755,14 +756,14 @@ class SAM(Callback):
     def on_before_optimizer_step(
         self,
         trainer: Trainer,
-        pl_module: LightningModule,
+        task: AbstractTask,
         optimizer: Optimizer,
     ) -> None:
         with torch.no_grad():
             org_weights = self._first_step(optimizer)
         with torch.enable_grad():
-            step_output = pl_module.training_step(self.batch, self.batch_idx)
-            loss = self._get_loss(step_output)
+            loss = task._compute_losses(self.batch)
+            loss = self._get_loss(loss)
             if torch.isfinite(loss):
                 trainer.strategy.backward(loss, optimizer=optimizer)
         with torch.no_grad():
