@@ -197,8 +197,7 @@ def test_force_regression_with_SAM():
         "encoder_only": True,
     }
 
-    model = PLEGNNBackbone(**model_args)
-    task = ForceRegressionTask(model)
+    task = ForceRegressionTask(encoder_class=PLEGNNBackbone, encoder_kwargs=model_args)
     trainer = pl.Trainer(fast_dev_run=5, callbacks=[SAM()])
     trainer.fit(task, datamodule=devset)
     # make sure losses are tracked
