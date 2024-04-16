@@ -694,21 +694,27 @@ class SAM(Callback):
 
         This implementation is adapted from https://github.com/davda54/sam.
 
-        Description:
-        SAM (Sharpness Aware Minimization) simultaneously minimizes loss value and loss sharpness
-        it seeks parameters that lie in neighborhoods having uniformly low loss improving model generalization
-        The training will run twice as slow because SAM needs two forward-backward passes to estimate the "sharpness-aware" gradient.
-        If you're using gradient clipping, make sure to change only the magnitude of gradients, not their direction.
+        SAM (Sharpness Aware Minimization) simultaneously minimizes loss
+        value and loss sharpness it seeks parameters that lie in neighborhoods
+        having uniformly low loss improving model generalization.
 
-        Parameters:
-        - rho (float): A hyperparameter determining the scale of regularization for sharpness-aware minimization.
-                      Defaults to 0.05.
-        - adaptive (bool): A boolean flag indicating whether to adaptively normalize weights.
-                           Defaults to False.
+        The training will run twice as slow because SAM needs two forward-backward
+        passes to estimate the "sharpness-aware" gradient.
 
+        If you're using gradient clipping, make sure to change only the magnitude
+        of gradients, not their direction.
 
-        Examples:
-        Add the writer as a callback to ``Trainer``
+        Parameters
+        ----------
+        rho : float
+            A hyperparameter determining the scale of regularization for
+            sharpness-aware minimization. Defaults to 0.05.
+        adaptive : bool
+            A boolean flag indicating whether to adaptively normalize weights.
+            Defaults to False.
+
+        Examples
+        --------
 
         >>> import pytorch_lightning as pl
         >>> from matsciml.lightning.callbacks import SAM
