@@ -22,7 +22,7 @@ from torch.optim import Optimizer
 
 from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
-from matsciml.models.base import AbstractTask
+from matsciml.models.base import BaseTaskModule
 
 
 class LeaderboardWriter(BasePredictionWriter):
@@ -756,7 +756,7 @@ class SAM(Callback):
     def on_before_optimizer_step(
         self,
         trainer: Trainer,
-        task: AbstractTask,
+        task: BaseTaskModule,
         optimizer: Optimizer,
     ) -> None:
         with torch.no_grad():
