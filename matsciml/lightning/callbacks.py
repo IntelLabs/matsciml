@@ -22,6 +22,7 @@ from torch.optim import Optimizer
 
 from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
+from matsciml.models.base import BaseTaskModule
 
 
 class LeaderboardWriter(BasePredictionWriter):
@@ -694,21 +695,27 @@ class SAM(Callback):
 
         This implementation is adapted from https://github.com/davda54/sam.
 
-        Description:
-        SAM (Sharpness Aware Minimization) simultaneously minimizes loss value and loss sharpness
-        it seeks parameters that lie in neighborhoods having uniformly low loss improving model generalization
-        The training will run twice as slow because SAM needs two forward-backward passes to estimate the "sharpness-aware" gradient.
-        If you're using gradient clipping, make sure to change only the magnitude of gradients, not their direction.
+        SAM (Sharpness Aware Minimization) simultaneously minimizes loss
+        value and loss sharpness it seeks parameters that lie in neighborhoods
+        having uniformly low loss improving model generalization.
 
-        Parameters:
-        - rho (float): A hyperparameter determining the scale of regularization for sharpness-aware minimization.
-                      Defaults to 0.05.
-        - adaptive (bool): A boolean flag indicating whether to adaptively normalize weights.
-                           Defaults to False.
+        The training will run twice as slow because SAM needs two forward-backward
+        passes to estimate the "sharpness-aware" gradient.
 
+        If you're using gradient clipping, make sure to change only the magnitude
+        of gradients, not their direction.
 
-        Examples:
-        Add the writer as a callback to ``Trainer``
+        Parameters
+        ----------
+        rho : float
+            A hyperparameter determining the scale of regularization for
+            sharpness-aware minimization. Defaults to 0.05.
+        adaptive : bool
+            A boolean flag indicating whether to adaptively normalize weights.
+            Defaults to False.
+
+        Examples
+        --------
 
         >>> import pytorch_lightning as pl
         >>> from matsciml.lightning.callbacks import SAM
@@ -749,14 +756,14 @@ class SAM(Callback):
     def on_before_optimizer_step(
         self,
         trainer: Trainer,
-        pl_module: LightningModule,
+        task: BaseTaskModule,
         optimizer: Optimizer,
     ) -> None:
         with torch.no_grad():
             org_weights = self._first_step(optimizer)
         with torch.enable_grad():
-            step_output = pl_module.training_step(self.batch, self.batch_idx)
-            loss = self._get_loss(step_output)
+            loss = task._compute_losses(self.batch)
+            loss = self._get_loss(loss)
             if torch.isfinite(loss):
                 trainer.strategy.backward(loss, optimizer=optimizer)
         with torch.no_grad():
