@@ -779,7 +779,8 @@ class SAM(Callback):
             org_weights = self._first_step(optimizer)
         with torch.enable_grad():
             loss = task._compute_losses(self.batch)
-            loss = self.extract_optimizer_specific_loss(trainer, optimizer, loss)
+            if len(trainer.optimizers) > 1:
+                loss = self.extract_optimizer_specific_loss(trainer, optimizer, loss)
             loss = self._get_loss(loss)
             if torch.isfinite(loss):
                 trainer.strategy.backward(loss, optimizer=optimizer)
