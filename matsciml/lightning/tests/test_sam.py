@@ -365,5 +365,5 @@ def test_multitask_sam():
         ("IS2REDataset", is2re),
         ("S2EFDataset", s2ef),
     )
-    trainer = pl.Trainer(fast_dev_run=10)
+    trainer = pl.Trainer(fast_dev_run=10, callbacks=SAM())
     trainer.fit(task, datamodule=dm)
