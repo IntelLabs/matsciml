@@ -2906,3 +2906,150 @@ class S2EFInference(OpenCatalystInference):
     ) -> None:
         # reset gradients to ensure no contamination between batches
         self.zero_grad(set_to_none=True)
+
+
+class NodeDenoisingTask(BaseTaskModule):
+    __task__ = "pretraining"
+    """
+    This implements a node position denoising task, as described by Zaidi _et al._,
+    ICLR 2023.
+
+    This task is paired with the `NoisyPositions` pretraining data transform,
+    which generates the noise. A single output head is used to predict the noise
+    for every atom, using the MSE between the predicted and actual noise as the
+    loss function.
+    """
+
+    def __init__(
+        self,
+        encoder: nn.Module | None = None,
+        encoder_class: type[nn.Module] | None = None,
+        encoder_kwargs: dict[str, Any] | None = None,
+        loss_func: type[nn.Module] | nn.Module | None = None,
+        task_keys: list[str] | None = None,
+        output_kwargs: dict[str, Any] = {},
+        lr: float = 0.0001,
+        weight_decay: float = 0,
+        embedding_reduction_type: str = "mean",
+        normalize_kwargs: dict[str, float] | None = None,
+        scheduler_kwargs: dict[str, dict[str, Any]] | None = None,
+        **kwargs,
+    ) -> None:
+        if task_keys is not None:
+            warn("Task keys were passed to NodeDenoisingTask, but is not used.")
+            task_keys = ["denoise"]
+        super().__init__(
+            encoder,
+            encoder_class,
+            encoder_kwargs,
+            loss_func,
+            task_keys,
+            output_kwargs,
+            lr,
+            weight_decay,
+            embedding_reduction_type,
+            normalize_kwargs,
+            scheduler_kwargs,
+            **kwargs,
+        )
+        self.loss_func = nn.MSELoss()
+
+    def _make_output_heads(self) -> nn.ModuleDict:
+        # make a single output head for noise prediction applied to nodes
+        denoise = OutputHead(3, **self.output_kwargs).to(self.device)
+        return nn.ModuleDict({"denoise": denoise})
+
+    def _filter_task_keys(
+        self,
+        keys: list[str],
+        batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
+    ) -> list[str]:
+        """
+        For the denoising task, we will only ever target the "denoise" key.
+
+        Parameters
+        ----------
+        keys : List[str]
+            List of task keys
+        batch : Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]]
+            Batch of training samples to inspect.
+
+        Returns
+        -------
+        List[str]
+            List of filtered task keys
+        """
+        return ["denoise"]
+
+    def process_embedding(self, embeddings: Embeddings) -> dict[str, torch.Tensor]:
+        """
+        Override the base process embedding method, since we are assumed to only
+        have a single output head and we need to use the point/node-level embeddings.
+
+        Parameters
+        ----------
+        embeddings : Embeddings
+            Embeddings data structure containing graph and node-level embeddings.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary with a single 'denoise' key, corresponding to the
+            predicted noise.
+        """
+        head = self.output_heads["denoise"]
+        # prediction node noise
+        pred_noise = head(embeddings.point_embedding)
+        return {"denoise": pred_noise}
+
+    def forward(
+        self,
+        batch: BatchDict,
+    ) -> dict[str, torch.Tensor]:
+        """
+        Modified forward call for denoising positions.
+
+        The goal of this task is to predict noise, given noisy coordinates,
+        and for this to happen we substitute the noise-free positions temporarily
+        for the noisy ones to prevent interference with other tasks.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of data samples
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary output from ``process_embedding``
+
+        Raises
+        ------
+        KeyError:
+            Raises a ``KeyError`` ff the noisy positions are not found
+            in either the graph or point cloud dictionary.
+        """
+        if "graph" in batch:
+            graph = batch["graph"]
+            if hasattr(graph, "ndata"):
+                target = graph.ndata
+            else:
+                target = graph
+        else:
+            target = batch
+        if "noisy_pos" not in target:
+            raise KeyError(
+                "'noisy_pos' was not found in data structure, please add the"
+                " NoisyPositions pretraining transform, and/or check that"
+                " 'noisy_pos' is included in the graph transform ``node_keys``."
+            )
+        temp_pos = target["pos"].clone().detach()
+        # swap out positions for the noisy ones
+        target["pos"] = target["noisy_pos"]
+        if "embeddings" in batch:
+            embedding = batch.get("embeddings")
+        else:
+            embedding = self.encoder(batch)
+        outputs = self.process_embedding(embedding)
+        target["pos"] = temp_pos
+        return outputs
