@@ -782,8 +782,8 @@ class SAM(Callback):
         # gradients will be None.
         optimizer_names = copy(task.optimizer_names)
         opt_idx = [opt.optimizer == optimizer for opt in task.optimizers()].index(True)
-        used_optimzer_names = self.batch.keys()
-        if optimizer_names[opt_idx][0] in list(used_optimzer_names):
+        used_optimizer_names = self.batch.keys()
+        if optimizer_names[opt_idx][0] in list(used_optimizer_names):
             return True
         else:
             return False
@@ -794,8 +794,8 @@ class SAM(Callback):
         task: BaseTaskModule,
         optimizer: Optimizer,
     ) -> None:
-        optimzer_is_used = self.is_optimizer_used(task, optimizer)
-        if optimzer_is_used:
+        optimizer_is_used = self.is_optimizer_used(task, optimizer)
+        if optimizer_is_used:
             with torch.no_grad():
                 org_weights = self._first_step(optimizer)
             with torch.enable_grad():
