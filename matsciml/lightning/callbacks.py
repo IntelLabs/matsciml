@@ -783,6 +783,7 @@ class SAM(Callback):
             org_weights = self._first_step(optimizer)
         with torch.enable_grad():
             loss = task._compute_losses(self.batch)
+            # this is for the multitask case where there is more than on optimizer
             if len(task.optimizers()) > 1:
                 loss = self.extract_optimizer_specific_loss(task, optimizer, loss)
             loss = self._get_loss(loss)
