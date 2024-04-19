@@ -75,6 +75,8 @@ def test_noisy_pointcloud_datamodule(dset_name):
     batch = next(iter(loader))
     assert "noisy_pos" in batch
     assert torch.isfinite(batch["noisy_pos"]).all()
+    assert "pretraining" in batch["target_types"]
+    assert "denoise" in batch["target_types"]["pretraining"]
 
 
 @pytest.mark.parametrize("dset_name", valid_dsets)
@@ -104,3 +106,5 @@ def test_noisy_graph_datamodule(dset_name, graph_type):
         target = graph
     assert "noisy_pos" in target
     assert torch.isfinite(target["noisy_pos"]).all()
+    assert "pretraining" in batch["target_types"]
+    assert "denoise" in batch["target_types"]["pretraining"]
