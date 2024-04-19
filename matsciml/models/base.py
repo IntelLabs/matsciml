@@ -2,12 +2,11 @@
 # SPDX-License-Identifier: MIT License
 from __future__ import annotations
 
-import logging
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from contextlib import ExitStack, nullcontext
 from pathlib import Path
-from typing import Any, ContextManager, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, ContextManager, Dict, List, Optional, Type, Union
 from warnings import warn
 
 import pytorch_lightning as pl
@@ -247,8 +246,7 @@ class AbstractTask(ABC, pl.LightningModule):
         ...
 
     @abstractmethod
-    def read_batch_size(self, batch: BatchDict) -> int | None:
-        ...
+    def read_batch_size(self, batch: BatchDict) -> int | None: ...
 
     @abstractmethod
     def _forward(self, *args, **kwargs) -> Embeddings:
@@ -324,7 +322,7 @@ class AbstractPointCloudModel(AbstractTask):
         assert isinstance(
             batch["pos"],
             torch.Tensor,
-        ), f"Expect 'pos' data to be a packed tensor of shape [N, 3]"
+        ), "Expect 'pos' data to be a packed tensor of shape [N, 3]"
         data = {key: batch.get(key) for key in ["pc_features", "pos"]}
         # split the stacked positions into each individual point cloud
         temp_pos = batch["pos"].split(batch["sizes"])
@@ -347,7 +345,7 @@ class AbstractPointCloudModel(AbstractTask):
         feat_shape = data.get("pc_features").shape
         assert (
             pc_pos.shape[:-1] == feat_shape[:-1]
-        ), f"Shape of point cloud neighborhood positions is different from features!"
+        ), "Shape of point cloud neighborhood positions is different from features!"
         data["pc_pos"] = pc_pos
         data["mask"] = mask
         data["sizes"] = sizes
@@ -622,7 +620,6 @@ if package_registry["pyg"]:
 
 
 class AbstractEnergyModel(pl.LightningModule):
-
     """
     At a minimum, the point of this is to help register associated models
     with PyTorch Lightning ModelRegistry; the expectation is that you get
@@ -691,7 +688,7 @@ class BaseTaskModule(pl.LightningModule):
         if encoder is not None:
             self.encoder = encoder
         else:
-            raise ValueError(f"No valid encoder passed.")
+            raise ValueError("No valid encoder passed.")
         if isinstance(loss_func, type):
             loss_func = loss_func()
         self.loss_func = loss_func
@@ -745,8 +742,7 @@ class BaseTaskModule(pl.LightningModule):
         return True
 
     @abstractmethod
-    def _make_output_heads(self) -> nn.ModuleDict:
-        ...
+    def _make_output_heads(self) -> nn.ModuleDict: ...
 
     @property
     def output_heads(self) -> nn.ModuleDict:
@@ -757,7 +753,7 @@ class BaseTaskModule(pl.LightningModule):
         assert isinstance(
             heads,
             nn.ModuleDict,
-        ), f"Output heads must be an instance of `nn.ModuleDict`."
+        ), "Output heads must be an instance of `nn.ModuleDict`."
         assert len(heads) > 0, f"No output heads in {heads}."
         assert all(
             [key in self.task_keys for key in heads.keys()],
@@ -851,7 +847,7 @@ class BaseTaskModule(pl.LightningModule):
             A flat dictionary containing target tensors.
         """
         target_dict = {}
-        assert len(self.task_keys) != 0, f"No target keys were set!"
+        assert len(self.task_keys) != 0, "No target keys were set!"
         for key in self.task_keys:
             target_dict[key] = batch["targets"][key]
         return target_dict
@@ -959,7 +955,7 @@ class BaseTaskModule(pl.LightningModule):
         self,
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         batch_idx: int,
-    ):  
+    ):
         loss_dict = self._compute_losses(batch)
         metrics = {}
         # prepending training flag for
@@ -1058,7 +1054,7 @@ class BaseTaskModule(pl.LightningModule):
             task_ckpt_path = Path(task_ckpt_path)
         assert (
             task_ckpt_path.exists()
-        ), f"Encoder checkpoint filepath specified but does not exist."
+        ), "Encoder checkpoint filepath specified but does not exist."
         ckpt = torch.load(task_ckpt_path)
         for key in ["encoder_class", "encoder_kwargs"]:
             assert (
@@ -1112,7 +1108,7 @@ class ScalarRegressionTask(BaseTaskModule):
     def _make_output_heads(self) -> nn.ModuleDict:
         modules = {}
         for key in self.task_keys:
-            modules[key] = OutputHead(1,**self.output_kwargs).to(self.device)
+            modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
         return nn.ModuleDict(modules)
 
     def _filter_task_keys(
@@ -1194,13 +1190,12 @@ class ScalarRegressionTask(BaseTaskModule):
         self.on_train_batch_start(batch, batch_idx)
 
 
-
 @registry.register_task("MaceEnergyForceTask")
 class MaceEnergyForceTask(BaseTaskModule):
     __task__ = "regression"
     """
     Class for training MACE on energy and forces
-    
+
     """
 
     def __init__(
@@ -1209,7 +1204,7 @@ class MaceEnergyForceTask(BaseTaskModule):
         encoder_class: Optional[Type[nn.Module]] = None,
         encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
-        loss_coeff: Optional[Dict[str,Any]] = None, 
+        loss_coeff: Optional[Dict[str, Any]] = None,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         **kwargs: Any,
@@ -1224,7 +1219,7 @@ class MaceEnergyForceTask(BaseTaskModule):
             **kwargs,
         )
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
-        self.loss_coeff=loss_coeff
+        self.loss_coeff = loss_coeff
 
     def process_embedding(self, embeddings: Embeddings) -> Dict[str, torch.Tensor]:
         """
@@ -1249,7 +1244,6 @@ class MaceEnergyForceTask(BaseTaskModule):
             results[key] = output
         return results
 
-    
     def _compute_losses(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
@@ -1280,17 +1274,18 @@ class MaceEnergyForceTask(BaseTaskModule):
             target_val = targets[key]
             if self.uses_normalizers:
                 target_val = self.normalizers[key].norm(target_val)
-            if self.loss_coeff==None:
-                coefficient=1.0
+            if self.loss_coeff == None:
+                coefficient = 1.0
             else:
-                coefficient=self.loss_coeff[key]
+                coefficient = self.loss_coeff[key]
 
-            losses[key] = self.loss_func(predictions[key], target_val)*(coefficient/predictions[key].numel())
-        
+            losses[key] = self.loss_func(predictions[key], target_val) * (
+                coefficient / predictions[key].numel()
+            )
+
         total_loss: torch.Tensor = sum(losses.values())
         return {"loss": total_loss, "log": losses}
 
-    
     def _make_output_heads(self) -> nn.ModuleDict:
         modules = {}
         for key in self.task_keys:
@@ -1338,8 +1333,8 @@ class MaceEnergyForceTask(BaseTaskModule):
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
         batch_idx: int,
-    ):  
-        with torch.enable_grad(): #Enabled gradient for Force computation
+    ):
+        with torch.enable_grad():  # Enabled gradient for Force computation
             loss_dict = self._compute_losses(batch)
         metrics = {}
         # prepending training flag for
@@ -1360,7 +1355,7 @@ class MaceEnergyForceTask(BaseTaskModule):
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
         batch_idx: int,
     ):
-        with torch.enable_grad(): #Enabled gradient for Force computation
+        with torch.enable_grad():  # Enabled gradient for Force computation
             loss_dict = self._compute_losses(batch)
         metrics = {}
         # prepending training flag for
@@ -1375,7 +1370,6 @@ class MaceEnergyForceTask(BaseTaskModule):
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
         return loss_dict
-
 
     def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
         """
@@ -1414,7 +1408,6 @@ class MaceEnergyForceTask(BaseTaskModule):
         self, batch: any, batch_idx: int, dataloader_idx: int = 0
     ):
         self.on_train_batch_start(batch, batch_idx)
-
 
 
 @registry.register_task("BinaryClassificationTask")
@@ -1554,7 +1547,7 @@ class ForceRegressionTask(BaseTaskModule):
                 fa_rot = None
             if pos is None:
                 raise ValueError(
-                    f"No atomic positions were found in batch - neither as standalone tensor nor graph.",
+                    "No atomic positions were found in batch - neither as standalone tensor nor graph.",
                 )
             if isinstance(pos, torch.Tensor):
                 pos.requires_grad_(True)
@@ -1963,7 +1956,7 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         subdict = batch.get("symmetry", None)
         if subdict is None:
             raise ValueError(
-                f"'symmetry' key is missing from batch, which is needed for space group classification.",
+                "'symmetry' key is missing from batch, which is needed for space group classification.",
             )
         labels: torch.Tensor = subdict.get("number", None)
         if labels is None:
@@ -2003,7 +1996,7 @@ class MultiTaskLitModule(pl.LightningModule):
             be ('MaterialsProjectDataset', RegressionTask).
         """
         super().__init__()
-        assert len(tasks) > 0, f"No tasks provided."
+        assert len(tasks) > 0, "No tasks provided."
         # hold a set of dataset mappings
         task_map = nn.ModuleDict()
         self.encoder = tasks[0][1].encoder
@@ -2113,7 +2106,7 @@ class MultiTaskLitModule(pl.LightningModule):
                     index += 1
         assert (
             len(self.optimizer_names) > 1
-        ), f"Only one optimizer was found for multi-task training."
+        ), "Only one optimizer was found for multi-task training."
         if ("Global", "Encoder") not in self.optimizer_names:
             opt_kwargs = {"lr": 1e-4}
             opt_kwargs.update(self.encoder_opt_kwargs)
@@ -2151,7 +2144,7 @@ class MultiTaskLitModule(pl.LightningModule):
             values = [1.0 for _ in range(self.num_tasks)]
         assert (
             len(values) == self.num_tasks
-        ), f"Number of provided task scaling values not equal to number of tasks."
+        ), "Number of provided task scaling values not equal to number of tasks."
         self._task_scaling = values
 
     @property
@@ -2738,7 +2731,7 @@ class MultiTaskLitModule(pl.LightningModule):
         **kwargs: Any,
     ):
         raise NotImplementedError(
-            f"MultiTask should be reloaded using the `matsciml.models.multitask_from_checkpoint` function instead.",
+            "MultiTask should be reloaded using the `matsciml.models.multitask_from_checkpoint` function instead.",
         )
 
     @classmethod
@@ -2781,7 +2774,7 @@ class MultiTaskLitModule(pl.LightningModule):
             task_ckpt_path = Path(task_ckpt_path)
         assert (
             task_ckpt_path.exists()
-        ), f"Encoder checkpoint filepath specified but does not exist."
+        ), "Encoder checkpoint filepath specified but does not exist."
         ckpt = torch.load(task_ckpt_path)
         for key in ["encoder_class", "encoder_kwargs"]:
             assert (
@@ -2829,8 +2822,9 @@ class OpenCatalystInference(ABC, pl.LightningModule):
         self._raise_inference_error()
 
     @abstractmethod
-    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
-        ...
+    def predict_step(
+        self, batch: Any, batch_idx: int, dataloader_idx: int = 0
+    ) -> Any: ...
 
 
 @registry.register_task("IS2REInference")
@@ -2842,7 +2836,7 @@ class IS2REInference(OpenCatalystInference):
         assert isinstance(
             pretrained_model,
             (AbstractEnergyModel, ScalarRegressionTask),
-        ), f"IS2REInference expects a pretrained energy model or 'ScalarRegressionTask' as input."
+        ), "IS2REInference expects a pretrained energy model or 'ScalarRegressionTask' as input."
         super().__init__(pretrained_model)
 
     def forward(self, batch: BatchDict) -> DataDict:
@@ -2856,7 +2850,7 @@ class S2EFInference(OpenCatalystInference):
         assert isinstance(
             pretrained_model,
             ForceRegressionTask,
-        ), f"S2EFInference expects a pretrained 'ForceRegressionTask' instance as input."
+        ), "S2EFInference expects a pretrained 'ForceRegressionTask' instance as input."
         super().__init__(pretrained_model)
 
     def forward(self, batch: BatchDict) -> DataDict:
