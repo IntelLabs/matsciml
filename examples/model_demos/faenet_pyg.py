@@ -15,7 +15,7 @@ This example script runs through a fast development run of the IS2RE devset
 in combination with a PyG implementation of FAENet.
 """
 
-# construct IS2RE relaxed energy regression with PyG implementation of FAENet
+# construct S2EF force regression task with PyG implementation of FAENet
 task = ForceRegressionTask(
     encoder_class=FAENet,
     encoder_kwargs={
@@ -46,5 +46,5 @@ dm = MatSciMLDataModule.from_devset(
 
 
 # run a quick training loop
-trainer = pl.Trainer(enable_checkpointing=False, logger=False, devices=1)
+trainer = pl.Trainer(fast_dev_run=10)
 trainer.fit(task, datamodule=dm)

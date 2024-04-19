@@ -1590,7 +1590,9 @@ class ForceRegressionTask(BaseTaskModule):
     ) -> dict[str, torch.Tensor]:
         outputs = {}
 
-        def energy_and_force(pos, system_embedding):
+        def energy_and_force(
+            pos: torch.Tensor, system_embedding: torch.Tensor
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
             energy = self.output_heads["energy"](system_embedding)
             # now use autograd for force calculation
             force = (
