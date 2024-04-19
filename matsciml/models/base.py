@@ -681,7 +681,7 @@ class BaseTaskModule(pl.LightningModule):
         if encoder_class is not None and encoder_kwargs:
             try:
                 encoder = encoder_class(**encoder_kwargs)
-            except:
+            except:  # noqa: E722
                 raise ValueError(
                     f"Unable to instantiate encoder {encoder_class} with kwargs: {encoder_kwargs}.",
                 )
@@ -943,7 +943,7 @@ class BaseTaskModule(pl.LightningModule):
             metrics[f"train_{key}"] = value
         try:
             batch_size = self.encoder.read_batch_size(batch)
-        except:
+        except:  # noqa: E722
             warn(
                 "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
@@ -963,7 +963,7 @@ class BaseTaskModule(pl.LightningModule):
             metrics[f"val_{key}"] = value
         try:
             batch_size = self.encoder.read_batch_size(batch)
-        except:
+        except:  # noqa: E722
             warn(
                 "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
@@ -983,7 +983,7 @@ class BaseTaskModule(pl.LightningModule):
             metrics[f"test_{key}"] = value
         try:
             batch_size = self.encoder.read_batch_size(batch)
-        except:
+        except:  # noqa: E722
             warn(
                 "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
@@ -1274,7 +1274,7 @@ class MaceEnergyForceTask(BaseTaskModule):
             target_val = targets[key]
             if self.uses_normalizers:
                 target_val = self.normalizers[key].norm(target_val)
-            if self.loss_coeff == None:
+            if self.loss_coeff is None:
                 coefficient = 1.0
             else:
                 coefficient = self.loss_coeff[key]
@@ -1342,7 +1342,7 @@ class MaceEnergyForceTask(BaseTaskModule):
             metrics[f"val_{key}"] = value
         try:
             batch_size = self.encoder.read_batch_size(batch)
-        except:
+        except:  # noqa: E722
             warn(
                 "Unable to parse batch size from data, defaulting to `None` for logging."
             )
@@ -1363,7 +1363,7 @@ class MaceEnergyForceTask(BaseTaskModule):
             metrics[f"test_{key}"] = value
         try:
             batch_size = self.encoder.read_batch_size(batch)
-        except:
+        except:  # noqa: E722
             warn(
                 "Unable to parse batch size from data, defaulting to `None` for logging."
             )
@@ -1732,7 +1732,7 @@ class ForceRegressionTask(BaseTaskModule):
             metrics[f"train_{key}"] = value
         try:
             batch_size = self.encoder.read_batch_size(batch)
-        except:
+        except:  # noqa: E722
             warn(
                 "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
