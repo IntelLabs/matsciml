@@ -157,6 +157,7 @@ def test_gradfree_force_regression():
 
 
 def test_denoising_task(egnn_config):
+    """Tests the denoising task on materials project with EGNN"""
     dm = MatSciMLDataModule.from_devset(
         "MaterialsProjectDataset",
         dset_kwargs={
