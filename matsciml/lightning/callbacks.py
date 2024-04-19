@@ -774,7 +774,7 @@ class SAM(Callback):
         return loss
 
     def is_optimizer_used(self, task, optimizer):
-        # Check if only one optimizer is used (singel task)
+        # Check if only one optimizer is used (single task)
         if isinstance(task.optimizers(), Optimizer):
             return True
         # Otherwise, see if the specific optimizer we are looking at is used in the current batch.
