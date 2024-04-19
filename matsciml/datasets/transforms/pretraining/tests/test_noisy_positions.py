@@ -33,6 +33,8 @@ def test_noisy_pointcloud(dset_name):
         sample = dset.__getitem__(index)
         assert "noisy_pos" in sample
         assert torch.isfinite(sample["noisy_pos"]).all()
+        assert "pretraining" in sample["target_types"]
+        assert "denoise" in sample["target_types"]["pretraining"]
 
 
 @pytest.mark.parametrize("dset_name", valid_dsets)
@@ -58,6 +60,8 @@ def test_noisy_graph(dset_name, graph_type):
             target = graph
         assert "noisy_pos" in target
         assert torch.isfinite(target["noisy_pos"]).all()
+        assert "pretraining" in sample["target_types"]
+        assert "denoise" in sample["target_types"]["pretraining"]
 
 
 @pytest.mark.parametrize("dset_name", valid_dsets)
