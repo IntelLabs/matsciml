@@ -64,8 +64,7 @@ def test_noisy_graph(dset_name, graph_type):
 def test_noisy_pointcloud_datamodule(dset_name):
     """Test the transform on point cloud types with batching."""
     dm = MatSciMLDataModule.from_devset(
-        dset_name,
-        batch_size=4,
+        dset_name, batch_size=4, dset_kwargs={"transforms": [NoisyPositions()]}
     )
     dm.setup("fit")
     loader = dm.train_dataloader()

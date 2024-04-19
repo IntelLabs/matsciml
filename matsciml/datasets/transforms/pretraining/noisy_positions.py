@@ -57,4 +57,10 @@ class NoisyPositions(AbstractDataTransform):
                 setattr(graph, "noisy_pos", noisy_pos)
         else:
             data["noisy_pos"] = noisy_pos
+        # set targets so that tasks know what to do
+        data["targets"]["denoise"] = pos
+        if "pretraining" in data["target_types"]:
+            data["target_types"]["pretraining"].append(pos)
+        else:
+            data["target_types"]["pretraining"] = [pos]
         return data
