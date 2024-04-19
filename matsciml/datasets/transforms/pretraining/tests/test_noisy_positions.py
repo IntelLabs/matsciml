@@ -61,6 +61,20 @@ def test_noisy_graph(dset_name, graph_type):
 
 
 @pytest.mark.parametrize("dset_name", valid_dsets)
+def test_noisy_pointcloud_datamodule(dset_name):
+    """Test the transform on point cloud types with batching."""
+    dm = MatSciMLDataModule.from_devset(
+        dset_name,
+        batch_size=4,
+    )
+    dm.setup("fit")
+    loader = dm.train_dataloader()
+    batch = next(iter(loader))
+    assert "noisy_pos" in batch
+    assert torch.isfinite(batch["noisy_pos"]).all()
+
+
+@pytest.mark.parametrize("dset_name", valid_dsets)
 @pytest.mark.parametrize("graph_type", ["pyg", "dgl"])
 def test_noisy_graph_datamodule(dset_name, graph_type):
     """Test the transform on graph types with batching."""
