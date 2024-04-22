@@ -18,6 +18,12 @@ pretraining task, as described in:
 Pre-training via denoising for molecular property prediction
 
 by Zaidi _et al._, ICLR 2023; https://openreview.net/pdf?id=tYIMtogyee
+
+The permutation of transforms is not fully invariant, based on how
+it is currently implemented. This configuration is the recommended one,
+where positions are noised _after_ generating the periodic properties;
+this is to ensure that the periodic offsets are generated based on
+the noise-free positions.
 """
 
 # construct IS2RE relaxed energy regression with PyG implementation of E(n)-GNN
@@ -30,10 +36,10 @@ dm = MatSciMLDataModule.from_devset(
     "AlexandriaDataset",
     dset_kwargs={
         "transforms": [
+            PeriodicPropertiesTransform(6.0, True),
             NoisyPositions(
                 scale=1e-3
             ),  # this sets the scale of the Gaussian noise added
-            PeriodicPropertiesTransform(6.0, True),
             PointCloudToGraphTransform(
                 "pyg",
                 node_keys=[
