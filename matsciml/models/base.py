@@ -959,7 +959,7 @@ class BaseTaskModule(pl.LightningModule):
         self,
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
         batch_idx: int,
-    ):  
+    ):
         loss_dict = self._compute_losses(batch)
         metrics = {}
         # prepending training flag for
@@ -1200,7 +1200,7 @@ class MaceEnergyForceTask(BaseTaskModule):
     __task__ = "regression"
     """
     Class for training MACE on energy and forces
-    
+
     """
 
     def __init__(
@@ -1209,7 +1209,7 @@ class MaceEnergyForceTask(BaseTaskModule):
         encoder_class: Optional[Type[nn.Module]] = None,
         encoder_kwargs: Optional[Dict[str, Any]] = None,
         loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
-        loss_coeff: Optional[Dict[str,Any]] = None, 
+        loss_coeff: Optional[Dict[str,Any]] = None,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
         **kwargs: Any,
@@ -1249,7 +1249,7 @@ class MaceEnergyForceTask(BaseTaskModule):
             results[key] = output
         return results
 
-    
+
     def _compute_losses(
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
@@ -1286,11 +1286,11 @@ class MaceEnergyForceTask(BaseTaskModule):
                 coefficient=self.loss_coeff[key]
 
             losses[key] = self.loss_func(predictions[key], target_val)*(coefficient/predictions[key].numel())
-        
+
         total_loss: torch.Tensor = sum(losses.values())
         return {"loss": total_loss, "log": losses}
 
-    
+
     def _make_output_heads(self) -> nn.ModuleDict:
         modules = {}
         for key in self.task_keys:
@@ -1338,7 +1338,7 @@ class MaceEnergyForceTask(BaseTaskModule):
         self,
         batch: Dict[str, Union[torch.Tensor, dgl.DGLGraph, Dict[str, torch.Tensor]]],
         batch_idx: int,
-    ):  
+    ):
         with torch.enable_grad(): #Enabled gradient for Force computation
             loss_dict = self._compute_losses(batch)
         metrics = {}
@@ -1543,18 +1543,22 @@ class ForceRegressionTask(BaseTaskModule):
                     pos: torch.Tensor = graph.ndata.get("pos")
                     # for frame averaging
                     fa_rot = graph.ndata.get("fa_rot", None)
+                    fa_pos = graph.ndata.get("fa_pos", None)
                 else:
                     # otherwise assume it's PyG
                     pos: torch.Tensor = graph.pos
+                    # for frame averaging
                     fa_rot = getattr(graph, "fa_rot", None)
+                    fa_pos = getattr(graph, "fa_pos", None)
             else:
                 # assume point cloud otherwise
                 pos: torch.Tensor = batch.get("pos")
                 # no frame averaging architecture yet for point clouds
                 fa_rot = None
+                fa_pos = None
             if pos is None:
                 raise ValueError(
-                    f"No atomic positions were found in batch - neither as standalone tensor nor graph.",
+                    "No atomic positions were found in batch - neither as standalone tensor nor graph.",
                 )
             if isinstance(pos, torch.Tensor):
                 pos.requires_grad_(True)
@@ -1564,11 +1568,16 @@ class ForceRegressionTask(BaseTaskModule):
                 raise ValueError(
                     f"'pos' data is required for force calculation, but isn't a tensor or a list of tensors: {type(pos)}.",
                 )
+            if isinstance(fa_pos, torch.Tensor):
+                fa_pos.requires_grad_(True)
+            elif isinstance(fa_pos, list):
+                [f_p.requires_grad_(True) for f_p in fa_pos]
             if "embeddings" in batch:
                 embeddings = batch.get("embeddings")
             else:
                 embeddings = self.encoder(batch)
-            outputs = self.process_embedding(embeddings, pos, fa_rot)
+            natoms = batch.get("natoms", None)
+            outputs = self.process_embedding(embeddings, pos, fa_rot, fa_pos, natoms)
         return outputs
 
     def process_embedding(
@@ -1576,41 +1585,56 @@ class ForceRegressionTask(BaseTaskModule):
         embeddings: Embeddings,
         pos: torch.Tensor,
         fa_rot: None | torch.Tensor = None,
+        fa_pos: None | torch.Tensor = None,
+        natoms: None | torch.Tensor = None,
     ) -> dict[str, torch.Tensor]:
         outputs = {}
-        energy = self.output_heads["energy"](embeddings.system_embedding)
-        # now use autograd for force calculation
-        force = (
-            -1
-            * torch.autograd.grad(
-                energy,
-                pos,
-                grad_outputs=torch.ones_like(energy),
-                create_graph=True,
-            )[0]
-        )
+
+        def energy_and_force(
+            pos: torch.Tensor, system_embedding: torch.Tensor
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
+            energy = self.output_heads["energy"](system_embedding)
+            # now use autograd for force calculation
+            force = (
+                -1
+                * torch.autograd.grad(
+                    energy,
+                    pos,
+                    grad_outputs=torch.ones_like(energy),
+                    create_graph=True,
+                )[0]
+            )
+            return energy, force
+
+        if fa_pos is None:
+            energy, force = energy_and_force(pos, embeddings.system_embedding)
+        else:
+            energy = []
+            force = []
+            for idx, pos in enumerate(fa_pos):
+                frame_embedding = embeddings.system_embedding[:, idx, :]
+                frame_energy, frame_force = energy_and_force(pos, frame_embedding)
+                force.append(frame_force)
+                energy.append(frame_energy)
+
         # check to see if we are frame averaging
-        if isinstance(fa_rot, torch.Tensor):
-            natoms = pos.size(0)
+        if fa_rot is not None:
             all_forces = []
             # loop over each frame prediction, and transform to guarantee
             # equivariance of frame averaging method
-            for frame_idx, frame_rot in fa_rot:
+            natoms = natoms.squeeze(-1).to(int)
+            for frame_idx, frame_rot in enumerate(fa_rot):
                 repeat_rot = torch.repeat_interleave(
                     frame_rot,
                     natoms,
                     dim=0,
                 ).to(self.device)
                 rotated_forces = (
-                    force[:, frame_idx, :]
-                    .view(-1, 1, 3)
-                    .bmm(
-                        repeat_rot.transpose(1, 2),
-                    )
+                    force[frame_idx].view(-1, 1, 3).bmm(repeat_rot.transpose(1, 2))
                 )
-                all_forces.append(rotated_forces.view(natoms, 3))
+                all_forces.append(rotated_forces)
             # combine all the force data into a single tensor
-            force = torch.stack(all_forces, dim=1)
+            force = torch.cat(all_forces, dim=1)
         # reduce outputs to what are expected shapes
         outputs["force"] = reduce(
             force,
