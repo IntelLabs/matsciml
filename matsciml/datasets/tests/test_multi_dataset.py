@@ -71,11 +71,10 @@ def test_target_keys():
         (keys["MaterialsProjectDataset"], expected_mp),
     ]:
         assert (
-            result_keys.keys() == expected_keys.keys(),
-            f"Expected target key types {expected_keys.keys()}, got {result_keys.keys()}",
-        )
+            result_keys.keys() == expected_keys.keys()
+        ), f"Expected target key types {expected_keys.keys()}, got {result_keys.keys()}"
+
         for key, target_values in expected_keys.items():
-            assert (
-                sorted(target_values) == sorted(result_keys[key]),
-                f"Expected target keys {target_values}, got {expected_keys[key]}",
-            )
+            assert sorted(target_values) == sorted(
+                result_keys[key]
+            ), f"Expected target keys {target_values}, got {expected_keys[key]}"
