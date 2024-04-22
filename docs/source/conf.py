@@ -5,25 +5,15 @@
 #
 import sphinx_theme_pd
 
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-
 project = "Open MatSciML Toolkit"
 copyright = "2024, Intel Corporation"
 author = "Intel Corporation"
 
-# -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
-
-extensions = []
+extensions = ["sphinxawesome_theme.highlighting"]
 
 templates_path = ["_templates"]
 exclude_patterns = []
 
-
-# -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
-
-html_theme = "sphinx_theme_pd"
+html_theme = "sphinxawesome_theme"
 html_theme_path = [sphinx_theme_pd.get_html_theme_path()]
 html_static_path = ["_static"]
