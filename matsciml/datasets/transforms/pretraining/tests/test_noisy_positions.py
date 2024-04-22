@@ -44,8 +44,8 @@ def test_noisy_graph(dset_name, graph_type):
     dset_class = registry.get_dataset_class(dset_name)
     dset = dset_class.from_devset(
         transforms=[
-            NoisyPositions(),
             PeriodicPropertiesTransform(6.0, adaptive_cutoff=True),
+            NoisyPositions(),
             PointCloudToGraphTransform(
                 graph_type, node_keys=["atomic_numbers", "pos", "noisy_pos"]
             ),
@@ -87,8 +87,8 @@ def test_noisy_graph_datamodule(dset_name, graph_type):
         dset_name,
         dset_kwargs=dict(
             transforms=[
-                NoisyPositions(),
                 PeriodicPropertiesTransform(6.0, adaptive_cutoff=True),
+                NoisyPositions(),
                 PointCloudToGraphTransform(
                     graph_type, node_keys=["atomic_numbers", "pos", "noisy_pos"]
                 ),
