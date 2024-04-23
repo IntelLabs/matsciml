@@ -165,7 +165,7 @@ class MPIDDPStrategy(DDPStrategy):
             )
         # this is to force initialization of distributed backend
         dummy = torch.ones((5, 2), device=self.root_device)
-        dist.all_reduce(dummy)
+        dist.broadcast(dummy, src=0)
 
     def _setup_model(self, model: nn.Module) -> DistributedDataParallel:
         device_ids = self.determine_ddp_device_ids()
