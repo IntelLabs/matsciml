@@ -135,3 +135,11 @@ StrategyRegistry.register(
     description="Run distributed data parallel with an CCL environment.",
     process_group_backend="ccl",
 )
+
+StrategyRegistry.register(
+    "ddp_with_xpu",
+    MPIDDPStrategy,
+    description="Run distributed data parallel on Intel XPUs.",
+    process_group_backend="ccl",
+    accelerator="xpu",
+)
