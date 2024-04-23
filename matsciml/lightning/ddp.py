@@ -124,9 +124,11 @@ class MPIDDPStrategy(DDPStrategy):
         model_averaging_period: int | None = None,
         process_group_backend: str | None = None,
         timeout: timedelta | None = default_pg_timeout,
+        cluster_environment: MPIEnvironment | None = None,
         **kwargs: Any,
     ) -> None:
-        cluster_environment = MPIEnvironment()
+        if not cluster_environment:
+            cluster_environment = MPIEnvironment()
         if process_group_backend:
             assert process_group_backend in [
                 "ccl",
