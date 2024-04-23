@@ -86,7 +86,7 @@ class MPIEnvironment(LightningEnvironment):
 
     @staticmethod
     def _validate_address_port(addr: str, port: int) -> bool:
-        obj = socket.socket(socket.AF_INT, socket.SOCK_STREAM)
+        obj = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         result = obj.connect_ex((addr, port)) == 0
         obj.close()
         return result
