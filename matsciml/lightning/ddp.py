@@ -43,7 +43,7 @@ class MPIEnvironment(LightningEnvironment):
     utilization.
     """
 
-    def __init__(self, main_address: str | None, main_port: int | None):
+    def __init__(self, main_address: str | None = None, main_port: int | None = None):
         self.main_address = main_address
         self.main_port = main_port
 
