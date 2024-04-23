@@ -42,7 +42,7 @@ ddp = MPIDDPStrategy(
 # get MPI information to pass to pl.Trainer later
 num_devices = ddp.cluster_environment.local_world_size
 num_nodes = ddp.cluster_environment.num_nodes
-world_size = ddp.cluster_environment.world_size
+world_size = ddp.cluster_environment.world_size()
 
 # configure MACE architecture to perform scalar regression
 # predicting the system energy, the formation energy, and the
