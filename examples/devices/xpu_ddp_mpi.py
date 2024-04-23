@@ -2,20 +2,22 @@ from __future__ import annotations
 
 
 import pytorch_lightning as pl
+from torch import nn
+from torch import distributed as dist
+from mace.modules import RealAgnosticInteractionBlock
+from e3nn.o3 import Irreps
+
 from matsciml.datasets.transforms import (
     PointCloudToGraphTransform,
     PeriodicPropertiesTransform,
 )
 from matsciml.lightning.data_utils import MatSciMLDataModule
-from torch import nn
 
 # this is needed to register strategy and accelerator
 from matsciml.lightning import xpu  # noqa: F401
-from matsciml.lightning.ddp import MPIDDPStrategy
+from matsciml.lightning.ddp import MPIDDPStrategy, MPIEnvironment
 from matsciml.models.base import ScalarRegressionTask
 from matsciml.models.pyg.mace.wrapper.model import MACEWrapper
-from mace.modules import RealAgnosticInteractionBlock
-from e3nn.o3 import Irreps
 
 """
 This script demonstrates how to dispatch distributed data
@@ -32,6 +34,9 @@ for single instance training; the changes:
 - The learning rate is scaled by the square root of the total number of workers
 - We pass this information into `pl.Trainer`.
 """
+
+env = MPIEnvironment()
+dist.init_process_group("ccl", world_size=env.world_size, rank=env.global_rank)
 
 # use Slurm to manage processes; spawning and affinity
 ddp = MPIDDPStrategy(
