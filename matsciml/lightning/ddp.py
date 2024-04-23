@@ -122,7 +122,7 @@ class MPIDDPStrategy(DDPStrategy):
     def _setup_model(self, model: nn.Module) -> DistributedDataParallel:
         device_ids = self.determine_ddp_device_ids()
         # this enforces an XPU stream, instead of CUDA
-        if device_ids is not None:
+        if device_ids is not None and hasattr(torch, "xpu"):
             ctx = torch.xpu.StreamContext(torch.xpu.current_stream())
         else:
             ctx = nullcontext()
