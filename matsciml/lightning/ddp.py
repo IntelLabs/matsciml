@@ -69,6 +69,7 @@ class MPIEnvironment(LightningEnvironment):
                 "No main address passed, and MPI did not set HYDRA_BSTRAP_LOCALHOST."
             )
         self._main_address = value
+        os.environ["MASTER_ADDR"] = self._main_address
 
     @property
     def main_port(self) -> int:
@@ -84,6 +85,7 @@ class MPIEnvironment(LightningEnvironment):
         if not check:
             raise OSError(f"Unable to connect to {self.main_address}:{value}.")
         self._main_port = value
+        os.environ["MASTER_PORT"] = str(self._main_port)
 
     @staticmethod
     def _validate_address_port(addr: str, port: int) -> bool:
