@@ -13,9 +13,9 @@ from torch import nn
 from torch.nn.parallel.distributed import DistributedDataParallel
 import pytorch_lightning as pl
 from pytorch_lightning.plugins import CheckpointIO
-from lightning_fabric.plugins.environments import LightningEnvironment
 from lightning_fabric.plugins.environments.lightning import find_free_network_port
-from lightning_fabric.strategies.ddp import DDPStrategy
+from pytorch_lightning.plugins.strategies.ddp import DDPStrategy
+from pytorch_lightning.plugins.environments import LightningEnvironment
 from pytorch_lightning.plugins.precision import Precision
 from pytorch_lightning.strategies import StrategyRegistry
 
