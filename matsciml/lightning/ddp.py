@@ -7,9 +7,11 @@ from datetime import timedelta
 from typing import Any, Callable
 
 import torch
+from torch import distributed as dist
 import pytorch_lightning as pl
 from pytorch_lightning.plugins import CheckpointIO
 from pytorch_lightning.plugins.environments import LightningEnvironment
+from pytorch_lightning.plugins.environments.lightning import find_free_network_port
 from pytorch_lightning.plugins.precision import Precision
 from pytorch_lightning.strategies import StrategyRegistry
 from pytorch_lightning.strategies.ddp import DDPStrategy
@@ -50,7 +52,8 @@ class MPIEnvironment(LightningEnvironment):
 
     @property
     def main_port(self) -> int:
-        port = int(os.getenv("MASTER_PORT", "12345"))
+        # find an open port
+        port = int(os.getenv("MASTER_PORT", find_free_network_port()))
         return port
 
     @property
@@ -97,6 +100,26 @@ class MPIDDPStrategy(DDPStrategy):
             timeout,
             **kwargs,
         )
+
+    def setup_distributed(self):
+        """Overrides base method so we can perform dummy all_reduce."""
+        port = self.cluster_environment.main_port
+        addr = self.cluster_environment.main_address
+        dist.init_process_group(
+            self.process_group_backend,
+            init_method=f"tcp://{addr}:{port}",
+            world_size=self.cluster_environment.world_size(),
+            rank=self.cluster_environment.global_rank(),
+        )
+        # this is to force initialization of distributed backend
+        dummy = torch.ones((5, 2), device=self.root_devce)
+        dist.all_reduce(dummy)
+
+    def teardown(self):
+        """Ensure that distributed processes close gracefully."""
+        super().teardown()
+        if dist.is_initialized():
+            dist.destroy_process_group()
 
 
 StrategyRegistry.register(
