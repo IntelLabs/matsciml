@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import socket
 from datetime import timedelta
 from typing import Any, Callable
 from contextlib import nullcontext
@@ -13,7 +14,6 @@ from torch import nn
 from torch.nn.parallel.distributed import DistributedDataParallel
 import pytorch_lightning as pl
 from pytorch_lightning.plugins import CheckpointIO
-from lightning_fabric.plugins.environments.lightning import find_free_network_port
 from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.plugins.environments import LightningEnvironment
 from pytorch_lightning.plugins.precision import Precision
@@ -43,6 +43,10 @@ class MPIEnvironment(LightningEnvironment):
     utilization.
     """
 
+    def __init__(self, main_address: str | None, main_port: int | None):
+        self.main_address = main_address
+        self.main_port = main_port
+
     def world_size(self) -> int:
         return int(os.environ["PMI_SIZE"])
 
@@ -54,13 +58,38 @@ class MPIEnvironment(LightningEnvironment):
 
     @property
     def main_address(self) -> str:
-        return os.environ["HYDRA_BSTRAP_LOCALHOST"]
+        return self._main_address
+
+    @main_address.setter
+    def main_address(self, value: str | None):
+        if not value:
+            value = os.getenv("HYDRA_BSTRAP_LOCALHOST", None)
+        if not value:
+            raise ValueError(
+                "No main address passed, and MPI did not set HYDRA_BSTRAP_LOCALHOST."
+            )
+        self._main_address = value
 
     @property
     def main_port(self) -> int:
-        # find an open port
-        port = int(os.getenv("MASTER_PORT", find_free_network_port()))
-        return port
+        return self._main_port
+
+    @main_port.setter
+    def main_port(self, value: int | None):
+        if not value:
+            value = 30256
+        # check to make sure port and address are accessible
+        check = self._validate_address_port(self.main_address, value)
+        if not check:
+            raise OSError(f"Unable to connect to {self.main_address}:{value}.")
+        self._main_port = value
+
+    @staticmethod
+    def _validate_address_port(addr: str, port: int) -> bool:
+        obj = socket.socket(socket.AF_INT, socket.SOCK_STREAM)
+        result = obj.connect_ex((addr, port)) == 0
+        obj.close()
+        return result
 
     @property
     def creates_processes_externally(self) -> bool:
