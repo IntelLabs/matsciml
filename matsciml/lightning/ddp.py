@@ -70,6 +70,17 @@ class MPIEnvironment(LightningEnvironment):
         """
         return True
 
+    @property
+    def local_world_size(self) -> int:
+        """Return the number of devices per node."""
+        return int(os.environ["MPI_LOCALNRANKS"])
+
+    @property
+    def num_nodes(self) -> int:
+        """Return the of numbers, based on ranks per node and global world size."""
+        num_nodes = self.world_size() // self.local_world_size
+        return num_nodes
+
 
 class MPIDDPStrategy(DDPStrategy):
     def __init__(
