@@ -154,12 +154,13 @@ class MPIDDPStrategy(DDPStrategy):
         """Overrides base method so we can perform dummy all_reduce."""
         port = self.cluster_environment.main_port
         addr = self.cluster_environment.main_address
-        dist.init_process_group(
-            self.process_group_backend,
-            init_method=f"tcp://{addr}:{port}",
-            world_size=self.cluster_environment.world_size(),
-            rank=self.cluster_environment.global_rank(),
-        )
+        if not dist.is_initialized():
+            dist.init_process_group(
+                self.process_group_backend,
+                init_method=f"tcp://{addr}:{port}",
+                world_size=self.cluster_environment.world_size(),
+                rank=self.cluster_environment.global_rank(),
+            )
         # this is to force initialization of distributed backend
         dummy = torch.ones((5, 2), device=self.root_device)
         dist.all_reduce(dummy)
