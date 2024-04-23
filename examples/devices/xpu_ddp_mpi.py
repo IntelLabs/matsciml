@@ -36,7 +36,7 @@ for single instance training; the changes:
 """
 
 env = MPIEnvironment()
-dist.init_process_group("ccl", world_size=env.world_size, rank=env.global_rank)
+dist.init_process_group("ccl", world_size=env.world_size(), rank=env.global_rank())
 
 # use Slurm to manage processes; spawning and affinity
 ddp = MPIDDPStrategy(
