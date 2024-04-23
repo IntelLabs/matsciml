@@ -16,7 +16,7 @@ dependencies:
   - python=3.10
   - pip
   - pip:
-    - "--extra-index-url https://pytorch-extension.intel.com/release-whl-aitools/"
-    - intel-extension-for-pytorch=2.0.120
-    - pytorch=2.0.1
-    - oneccl_bind_pt==2.0.200+gpu
+    - "--extra-index-url https://pytorch-extension.intel.com/release-whl/stable/xpu/us/"
+    - intel-extension-for-pytorch==2.1.10+xpu
+    - torch==2.1.0a0
+    - oneccl_bind_pt==2.1.100+xpu
