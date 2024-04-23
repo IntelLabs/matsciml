@@ -5,9 +5,12 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 from typing import Any, Callable
+from contextlib import nullcontext
 
 import torch
 from torch import distributed as dist
+from torch import nn
+from torch.nn.parallel.distributed import DistributedDataParallel
 import pytorch_lightning as pl
 from pytorch_lightning.plugins import CheckpointIO
 from pytorch_lightning.plugins.environments import LightningEnvironment
@@ -15,6 +18,7 @@ from pytorch_lightning.plugins.environments.lightning import find_free_network_p
 from pytorch_lightning.plugins.precision import Precision
 from pytorch_lightning.strategies import StrategyRegistry
 from pytorch_lightning.strategies.ddp import DDPStrategy
+
 
 __all__ = ["MPIEnvironment", "MPIDDPStrategy"]
 
@@ -114,6 +118,18 @@ class MPIDDPStrategy(DDPStrategy):
         # this is to force initialization of distributed backend
         dummy = torch.ones((5, 2), device=self.root_devce)
         dist.all_reduce(dummy)
+
+    def _setup_model(self, model: nn.Module) -> DistributedDataParallel:
+        device_ids = self.determine_ddp_device_ids()
+        # this enforces an XPU stream, instead of CUDA
+        if device_ids is not None:
+            ctx = torch.xpu.StreamContext(torch.xpu.current_stream())
+        else:
+            ctx = nullcontext()
+        with ctx:
+            return DistributedDataParallel(
+                module=model, device_ids=device_ids, **self._ddp_kwargs
+            )
 
     def teardown(self):
         """Ensure that distributed processes close gracefully."""
