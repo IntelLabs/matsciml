@@ -19,6 +19,8 @@ from pytorch_lightning.plugins.precision import Precision
 from pytorch_lightning.strategies import StrategyRegistry
 from pytorch_lightning.strategies.ddp import DDPStrategy
 
+from matsciml.common.packages import package_registry
+
 
 __all__ = ["MPIEnvironment", "MPIDDPStrategy"]
 
@@ -152,10 +154,11 @@ StrategyRegistry.register(
     process_group_backend="ccl",
 )
 
-StrategyRegistry.register(
-    "ddp_with_xpu",
-    MPIDDPStrategy,
-    description="Run distributed data parallel on Intel XPUs.",
-    process_group_backend="ccl",
-    accelerator="xpu",
-)
+if package_registry["ipex"] and hasattr(torch, "xpu"):
+    StrategyRegistry.register(
+        "ddp_with_xpu",
+        MPIDDPStrategy,
+        description="Run distributed data parallel on Intel XPUs.",
+        process_group_backend="ccl",
+        accelerator="xpu",
+    )
