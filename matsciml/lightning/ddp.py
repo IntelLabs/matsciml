@@ -118,7 +118,7 @@ class MPIDDPStrategy(DDPStrategy):
             rank=self.cluster_environment.global_rank(),
         )
         # this is to force initialization of distributed backend
-        dummy = torch.ones((5, 2), device=self.root_devce)
+        dummy = torch.ones((5, 2), device=self.root_device)
         dist.all_reduce(dummy)
 
     def _setup_model(self, model: nn.Module) -> DistributedDataParallel:
