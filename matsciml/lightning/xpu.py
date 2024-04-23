@@ -29,7 +29,6 @@ if package_registry["ipex"]:
     __all__ = ["XPUAccelerator", "SingleXPUStrategy", "DDPXPUStrategy"]
 
     class XPUAccelerator(Accelerator):
-
         """
         Implements a Lightning Accelerator class for Intel GPU usage. Depends
         on Intel Extension for PyTorch to be installed.
@@ -49,9 +48,8 @@ if package_registry["ipex"]:
                 List of device numbers to use
             """
             if isinstance(devices, int):
-                devices = [
-                    devices,
-                ]
+                # assume that this is the number of devices to use
+                devices = list(range(devices))
             return devices
 
         def setup_device(self, device: torch.device) -> None:
@@ -123,7 +121,6 @@ if package_registry["ipex"]:
     AcceleratorRegistry.register("xpu", XPUAccelerator)
 
     class SingleXPUStrategy(SingleDeviceStrategy):
-
         """
         This class implements the strategy for using a single PVC tile.
         """
