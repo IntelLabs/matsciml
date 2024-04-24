@@ -23,6 +23,6 @@ dependencies:
     - oneccl_bind_pt==2.1.100+xpu
 variables:
   # append to library path for dynamic libraries
-  LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+  LD_LIBRARY_PATH: "'$LD_LIBRARY_PATH:$CONDA_PREFIX/lib'"
   # use Intel OpenMP
-  LD_PRELOAD: $LD_PRELOAD:$CONDA_PREFIX/lib/libiomp5.so
+  LD_PRELOAD: "'$LD_PRELOAD:$CONDA_PREFIX/lib/libiomp5.so'"
