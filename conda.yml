@@ -4,6 +4,7 @@ channels:
   - intel
   - dglteam
   - conda-forge
+  - pyg
 dependencies:
   - scipy
   - numba
@@ -14,6 +15,9 @@ dependencies:
   - setuptools
   - pybind11
   - python=3.10
+  - pyg::pyg=2.4.0
+  - pyg::pytorch-scatter=2.1.2
+  - pyg::pytorch-sparse=0.6.18
   - pip
   - pip:
     - "--index-url https://download.pytorch.org/whl/cpu"
