@@ -4,6 +4,7 @@ channels:
   - intel
   - dglteam
   - conda-forge
+  - pyg
 dependencies:
   - scipy
   - numba
@@ -13,6 +14,9 @@ dependencies:
   - intel-openmp=2024.0.0
   - dglteam::dgl=2.0.0
   - setuptools
+  - pyg::pyg=2.4.0
+  - pyg::pytorch-scatter=2.1.2
+  - pyg::pytorch-sparse=0.6.18
   - pybind11
   - python=3.10
   - pip
