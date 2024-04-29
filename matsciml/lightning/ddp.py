@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 import os
+import socket
 from datetime import timedelta
 from typing import Any, Callable
+from contextlib import nullcontext
 
 import torch
+from torch import distributed as dist
+from torch import nn
+from torch.nn.parallel.distributed import DistributedDataParallel
 import pytorch_lightning as pl
 from pytorch_lightning.plugins import CheckpointIO
+from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.plugins.environments import LightningEnvironment
 from pytorch_lightning.plugins.precision import Precision
 from pytorch_lightning.strategies import StrategyRegistry
-from pytorch_lightning.strategies.ddp import DDPStrategy
+
+from matsciml.common.packages import package_registry
+
 
 __all__ = ["MPIEnvironment", "MPIDDPStrategy"]
 
@@ -35,6 +43,10 @@ class MPIEnvironment(LightningEnvironment):
     utilization.
     """
 
+    def __init__(self, main_address: str | None = None, main_port: int | None = None):
+        self.main_address = main_address
+        self.main_port = main_port
+
     def world_size(self) -> int:
         return int(os.environ["PMI_SIZE"])
 
@@ -46,12 +58,37 @@ class MPIEnvironment(LightningEnvironment):
 
     @property
     def main_address(self) -> str:
-        return os.environ["HYDRA_BSTRAP_LOCALHOST"]
+        return self._main_address
+
+    @main_address.setter
+    def main_address(self, value: str | None):
+        if not value:
+            value = os.getenv("HYDRA_BSTRAP_LOCALHOST", None)
+        if not value:
+            raise ValueError(
+                "No main address passed, and MPI did not set HYDRA_BSTRAP_LOCALHOST."
+            )
+        self._main_address = value
+        os.environ["MASTER_ADDR"] = self._main_address
 
     @property
     def main_port(self) -> int:
-        port = int(os.getenv("MASTER_PORT", "12345"))
-        return port
+        return self._main_port
+
+    @main_port.setter
+    def main_port(self, value: int | None):
+        if not value:
+            value = 30256
+        # check to make sure port and address are accessible
+        self._main_port = value
+        os.environ["MASTER_PORT"] = str(self._main_port)
+
+    @staticmethod
+    def _validate_address_port(addr: str, port: int) -> bool:
+        obj = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = obj.connect_ex((addr, port)) == 0
+        obj.close()
+        return result
 
     @property
     def creates_processes_externally(self) -> bool:
@@ -60,6 +97,17 @@ class MPIEnvironment(LightningEnvironment):
         the process spawning.
         """
         return True
+
+    @property
+    def local_world_size(self) -> int:
+        """Return the number of devices per node."""
+        return int(os.environ["MPI_LOCALNRANKS"])
+
+    @property
+    def num_nodes(self) -> int:
+        """Return the of numbers, based on ranks per node and global world size."""
+        num_nodes = self.world_size() // self.local_world_size
+        return num_nodes
 
 
 class MPIDDPStrategy(DDPStrategy):
@@ -75,9 +123,11 @@ class MPIDDPStrategy(DDPStrategy):
         model_averaging_period: int | None = None,
         process_group_backend: str | None = None,
         timeout: timedelta | None = default_pg_timeout,
+        cluster_environment: MPIEnvironment | None = None,
         **kwargs: Any,
     ) -> None:
-        cluster_environment = MPIEnvironment()
+        if not cluster_environment:
+            cluster_environment = MPIEnvironment()
         if process_group_backend:
             assert process_group_backend in [
                 "ccl",
@@ -98,6 +148,39 @@ class MPIDDPStrategy(DDPStrategy):
             **kwargs,
         )
 
+    def setup_distributed(self):
+        """Overrides base method so we can perform dummy all_reduce."""
+        port = self.cluster_environment.main_port
+        addr = self.cluster_environment.main_address
+        if not dist.is_initialized():
+            dist.init_process_group(
+                self.process_group_backend,
+                init_method=f"tcp://{addr}:{port}",
+                world_size=self.cluster_environment.world_size(),
+                rank=self.cluster_environment.global_rank(),
+            )
+        # this is to force initialization of distributed backend
+        dummy = torch.ones((5, 2), device=self.root_device)
+        dist.broadcast(dummy, src=0)
+
+    def _setup_model(self, model: nn.Module) -> DistributedDataParallel:
+        device_ids = self.determine_ddp_device_ids()
+        # this enforces an XPU stream, instead of CUDA
+        if device_ids is not None and hasattr(torch, "xpu"):
+            ctx = torch.xpu.StreamContext(torch.xpu.current_stream())
+        else:
+            ctx = nullcontext()
+        with ctx:
+            return DistributedDataParallel(
+                module=model, device_ids=device_ids, **self._ddp_kwargs
+            )
+
+    def teardown(self):
+        """Ensure that distributed processes close gracefully."""
+        super().teardown()
+        if dist.is_initialized():
+            dist.destroy_process_group()
+
 
 StrategyRegistry.register(
     "ddp_with_mpi",
@@ -112,3 +195,12 @@ StrategyRegistry.register(
     description="Run distributed data parallel with an CCL environment.",
     process_group_backend="ccl",
 )
+
+if package_registry["ipex"] and hasattr(torch, "xpu"):
+    StrategyRegistry.register(
+        "ddp_with_xpu",
+        MPIDDPStrategy,
+        description="Run distributed data parallel on Intel XPUs.",
+        process_group_backend="ccl",
+        accelerator="xpu",
+    )

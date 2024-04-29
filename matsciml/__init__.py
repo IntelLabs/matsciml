@@ -16,4 +16,9 @@ if package_registry["ipex"]:
     except ImportError as e:
         logger.warning(f"Unable to load IPEX because of {e} - XPU may not function.")
 if package_registry["ccl"]:
-    import oneccl_bindings_for_pytorch  # noqa: F401
+    try:
+        import oneccl_bindings_for_pytorch  # noqa: F401
+    except ImportError as e:
+        logger.warning(
+            f"Unable to load CCL bindings because of {e} - DDP XPU may not function."
+        )
