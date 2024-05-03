@@ -1600,23 +1600,25 @@ class ForceRegressionTask(BaseTaskModule):
                     create_graph=True,
                 )[0]
             )
-            return energy, force
+            return energy, force, node_energies
 
         # not using frame averaging
         if fa_pos is None:
-            energy, force = energy_and_force(
+            energy, force, node_energies = energy_and_force(
                 pos, embeddings.point_embedding, self.embedding_reduction_type
             )
         else:
             energy = []
             force = []
+            node_energies = []
             for idx, pos in enumerate(fa_pos):
                 frame_embedding = embeddings.point_embedding[:, idx, :]
-                frame_energy, frame_force = energy_and_force(
+                frame_energy, frame_force, frame_node_energies = energy_and_force(
                     pos, frame_embedding, self.embedding_reduction_type
                 )
                 force.append(frame_force)
                 energy.append(frame_energy)
+                node_energies.append(frame_node_energies)
 
         # check to see if we are frame averaging
         if fa_rot is not None:
