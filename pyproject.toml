@@ -37,7 +37,11 @@ dependencies = [
   "mendeleev==0.15.0",
   "e3nn",
   "mace-torch==0.3.4",
-  "monty==2024.2.2"
+  "monty==2024.2.2",
+  "torch_geometric==2.4.0",
+  "torch_scatter==2.1.2",
+  "torch_sparse==0.6.18",
+  "pybind11"
 ]
 description = "PyTorch Lightning and Deep Graph Library enabled materials science deep learning pipeline"
 dynamic = ["version", "readme"]
@@ -48,19 +52,14 @@ requires-python = ">=3.8"
 
 [project.optional-dependencies]
 all = [
-  "matsciml[dev,symmetry,pyg]",
+  "matsciml[dev,symmetry]",
 ]
 dev = [
   "ruff==0.4.0",
   "pre-commit",
   "pytest"
 ]
-pyg = [
-  "torch_geometric==2.4.0",
-  "torch_scatter==2.1.2",
-  "torch_sparse==0.6.18",
-  "pybind11"
-]
+
 symmetry = [
   "rowan==1.3.0.post1",
 ]
