@@ -1583,9 +1583,10 @@ class ForceRegressionTask(BaseTaskModule):
         outputs = {}
 
         def energy_and_force(
-            pos: torch.Tensor, system_embedding: torch.Tensor
+            pos: torch.Tensor, point_embeddings: torch.Tensor, reduction_method: str
         ) -> tuple[torch.Tensor, torch.Tensor]:
-            energy = self.output_heads["energy"](system_embedding)
+            node_energies = self.output_heads["energy"](point_embeddings)
+            energy = reduce(node_energies, "b ... -> b d", reduction_method, d=1)
             # now use autograd for force calculation
             force = (
                 -1
