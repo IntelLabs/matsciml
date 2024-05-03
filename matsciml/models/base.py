@@ -1655,9 +1655,7 @@ class ForceRegressionTask(BaseTaskModule):
         )
         # this ensures that we get a scalar value for every node
         # representing the energy contribution
-        outputs["node_energies"] = reduce(
-            node_energies, "n ... d -> n ()", self.embedding_reduction_type
-        )
+        outputs["node_energies"] = node_energies
         return outputs
 
     def _get_targets(
