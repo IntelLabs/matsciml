@@ -8,9 +8,10 @@ from matsciml.datasets.transforms import (
     PointCloudToGraphTransform,
     PeriodicPropertiesTransform,
     NoisyPositions,
+    FrameAveraging,
 )
 from matsciml.lightning.data_utils import MatSciMLDataModule
-from matsciml.models import PLEGNNBackbone
+from matsciml.models import PLEGNNBackbone, FAENet
 from matsciml.models.base import (
     ForceRegressionTask,
     GradFreeForceRegressionTask,
@@ -56,6 +57,18 @@ def egnn_config():
     return {"encoder_class": PLEGNNBackbone, "encoder_kwargs": model_args}
 
 
+@pytest.fixture
+def faenet_config():
+    model_args = {
+        "average_frame_embeddings": False,
+        "pred_as_dict": False,
+        "hidden_channels": 128,
+        "out_dim": 128,
+        "tag_hidden_channels": 0,
+    }
+    return {"encoder_class": FAENet, "encoder_kwargs": model_args}
+
+
 def test_force_regression(egnn_config):
     devset = MatSciMLDataModule.from_devset(
         "S2EFDataset",
@@ -70,6 +83,28 @@ def test_force_regression(egnn_config):
         },
     )
     task = ForceRegressionTask(**egnn_config)
+    trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
+    trainer.fit(task, datamodule=devset)
+    # make sure losses are tracked
+    for key in ["energy", "force"]:
+        assert f"train_{key}" in trainer.logged_metrics
+
+
+def test_fa_force_regression(faenet_config):
+    devset = MatSciMLDataModule.from_devset(
+        "S2EFDataset",
+        dset_kwargs={
+            "transforms": [
+                PeriodicPropertiesTransform(6.0, True),
+                PointCloudToGraphTransform(
+                    "pyg",
+                    node_keys=["pos", "force", "atomic_numbers"],
+                ),
+                FrameAveraging(frame_averaging="3D", fa_method="stochastic"),
+            ],
+        },
+    )
+    task = ForceRegressionTask(**faenet_config)
     trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
     trainer.fit(task, datamodule=devset)
     # make sure losses are tracked

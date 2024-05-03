@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from contextlib import ExitStack, nullcontext
 from pathlib import Path
-from typing import Any, ContextManager, Dict, List, Optional, Type, Union
+from typing import Any, Callable, ContextManager, Dict, List, Optional, Type, Union
 from warnings import warn
 
 import pytorch_lightning as pl
@@ -1501,6 +1501,7 @@ class ForceRegressionTask(BaseTaskModule):
         loss_func: type[nn.Module] | nn.Module = nn.L1Loss,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
+        embedding_reduction_type: str = "sum",
         **kwargs,
     ) -> None:
         super().__init__(
@@ -1510,6 +1511,7 @@ class ForceRegressionTask(BaseTaskModule):
             loss_func,
             task_keys,
             output_kwargs,
+            embedding_reduction_type=embedding_reduction_type,
             **kwargs,
         )
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
@@ -1543,6 +1545,7 @@ class ForceRegressionTask(BaseTaskModule):
                     fa_rot = getattr(graph, "fa_rot", None)
                     fa_pos = getattr(graph, "fa_pos", None)
             else:
+                graph = None
                 # assume point cloud otherwise
                 pos: torch.Tensor = batch.get("pos")
                 # no frame averaging architecture yet for point clouds
@@ -1569,7 +1572,9 @@ class ForceRegressionTask(BaseTaskModule):
             else:
                 embeddings = self.encoder(batch)
             natoms = batch.get("natoms", None)
-            outputs = self.process_embedding(embeddings, pos, fa_rot, fa_pos, natoms)
+            outputs = self.process_embedding(
+                embeddings, pos, fa_rot, fa_pos, natoms, graph
+            )
         return outputs
 
     def process_embedding(
@@ -1579,13 +1584,47 @@ class ForceRegressionTask(BaseTaskModule):
         fa_rot: None | torch.Tensor = None,
         fa_pos: None | torch.Tensor = None,
         natoms: None | torch.Tensor = None,
+        graph: None | AbstractGraph = None,
     ) -> dict[str, torch.Tensor]:
         outputs = {}
+        # compute node-level contributions to the energy
+        node_energies = self.output_heads["energy"](embeddings.point_embedding)
+        # figure out how we're going to reduce node level energies
+        # depending on the representation and/or the graph framework
+        if graph is not None:
+            if isinstance(graph, dgl.DGLGraph):
+                graph.ndata["node_energies"] = node_energies
+
+                def readout(node_energies: torch.Tensor):
+                    return dgl.readout_nodes(
+                        graph, "node_energies", op=self.embedding_reduction_type
+                    )
+            else:
+                # assumes a batched pyg graph
+                batch = graph.batch
+                from torch_geometric.utils import scatter
+
+                def readout(node_energies: torch.Tensor):
+                    return scatter(
+                        node_energies,
+                        batch,
+                        dim=-2,
+                        reduce=self.embedding_reduction_type,
+                    )
+        else:
+
+            def readout(node_energies: torch.Tensor):
+                return reduce(
+                    node_energies, "b ... d -> b ()", self.embedding_reduction_type
+                )
 
         def energy_and_force(
-            pos: torch.Tensor, system_embedding: torch.Tensor
+            pos: torch.Tensor, node_energies: torch.Tensor, readout: Callable
         ) -> tuple[torch.Tensor, torch.Tensor]:
-            energy = self.output_heads["energy"](system_embedding)
+            # we sum over points and keep dimension as 1
+            energy = readout(node_energies)
+            if energy.ndim == 1:
+                energy.unsqueeze(-1)
             # now use autograd for force calculation
             force = (
                 -1
@@ -1598,14 +1637,17 @@ class ForceRegressionTask(BaseTaskModule):
             )
             return energy, force
 
+        # not using frame averaging
         if fa_pos is None:
-            energy, force = energy_and_force(pos, embeddings.system_embedding)
+            energy, force = energy_and_force(pos, node_energies, readout)
         else:
             energy = []
             force = []
             for idx, pos in enumerate(fa_pos):
-                frame_embedding = embeddings.system_embedding[:, idx, :]
-                frame_energy, frame_force = energy_and_force(pos, frame_embedding)
+                frame_embedding = node_energies[:, idx, :]
+                frame_energy, frame_force = energy_and_force(
+                    pos, frame_embedding, readout
+                )
                 force.append(frame_force)
                 energy.append(frame_energy)
 
@@ -1634,12 +1676,17 @@ class ForceRegressionTask(BaseTaskModule):
             self.embedding_reduction_type,
             d=3,
         )
+        # this may not do anything if we aren't frame averaging
+        # since the reduction is also done in the energy_and_force call
         outputs["energy"] = reduce(
             energy,
             "b ... d -> b d",
             self.embedding_reduction_type,
             d=1,
         )
+        # this ensures that we get a scalar value for every node
+        # representing the energy contribution
+        outputs["node_energies"] = node_energies
         return outputs
 
     def _get_targets(
