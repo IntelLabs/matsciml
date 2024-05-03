@@ -1588,6 +1588,7 @@ class ForceRegressionTask(BaseTaskModule):
             pos: torch.Tensor, point_embeddings: torch.Tensor, reduction_method: str
         ) -> tuple[torch.Tensor, torch.Tensor]:
             node_energies = self.output_heads["energy"](point_embeddings)
+            # we sum over points and keep dimension as 1
             energy = reduce(node_energies, "b ... -> b d", reduction_method, d=1)
             # now use autograd for force calculation
             force = (
@@ -1601,14 +1602,19 @@ class ForceRegressionTask(BaseTaskModule):
             )
             return energy, force
 
+        # not using frame averaging
         if fa_pos is None:
-            energy, force = energy_and_force(pos, embeddings.system_embedding)
+            energy, force = energy_and_force(
+                pos, embeddings.point_embedding, self.embedding_reduction_type
+            )
         else:
             energy = []
             force = []
             for idx, pos in enumerate(fa_pos):
-                frame_embedding = embeddings.system_embedding[:, idx, :]
-                frame_energy, frame_force = energy_and_force(pos, frame_embedding)
+                frame_embedding = embeddings.point_embedding[:, idx, :]
+                frame_energy, frame_force = energy_and_force(
+                    pos, frame_embedding, self.embedding_reduction_type
+                )
                 force.append(frame_force)
                 energy.append(frame_energy)
 
