@@ -1643,6 +1643,8 @@ class ForceRegressionTask(BaseTaskModule):
             self.embedding_reduction_type,
             d=3,
         )
+        # this may not do anything if we aren't frame averaging
+        # since the reduction is also done in the energy_and_force call
         outputs["energy"] = reduce(
             energy,
             "b ... d -> b d",
