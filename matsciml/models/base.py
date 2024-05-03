@@ -1501,6 +1501,7 @@ class ForceRegressionTask(BaseTaskModule):
         loss_func: type[nn.Module] | nn.Module = nn.L1Loss,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
+        embedding_reduction_type: str = "sum",
         **kwargs,
     ) -> None:
         super().__init__(
@@ -1510,6 +1511,7 @@ class ForceRegressionTask(BaseTaskModule):
             loss_func,
             task_keys,
             output_kwargs,
+            embedding_reduction_type=embedding_reduction_type,
             **kwargs,
         )
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
