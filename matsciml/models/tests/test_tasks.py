@@ -8,6 +8,7 @@ from matsciml.datasets.transforms import (
     PointCloudToGraphTransform,
     PeriodicPropertiesTransform,
     NoisyPositions,
+    FrameAveraging,
 )
 from matsciml.lightning.data_utils import MatSciMLDataModule
 from matsciml.models import PLEGNNBackbone, FAENet
@@ -61,9 +62,9 @@ def faenet_config():
     model_args = {
         "average_frame_embeddings": False,
         "pred_as_dict": False,
-        # "hidden_channels": 128,
-        # "out_dim": 128,
-        # "tag_hidden_channels": 32,
+        "hidden_channels": 128,
+        "out_dim": 128,
+        "tag_hidden_channels": 0,
     }
     return {"encoder_class": FAENet, "encoder_kwargs": model_args}
 
@@ -99,6 +100,7 @@ def test_fa_force_regression(faenet_config):
                     "pyg",
                     node_keys=["pos", "force", "atomic_numbers"],
                 ),
+                FrameAveraging(frame_averaging="3D", fa_method="stochastic"),
             ],
         },
     )
