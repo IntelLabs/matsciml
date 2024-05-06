@@ -251,7 +251,6 @@ class FAENet(AbstractPyGModel):
         DataDict
             Input data for FAENet as a dictionary.
         """
-
         data = {"graph": batch.get("graph")}
         graph = batch.get("graph")
         for key in ["edge_feats", "graph_feats"]:
@@ -259,7 +258,12 @@ class FAENet(AbstractPyGModel):
         pos: torch.Tensor = getattr(graph, "pos")
         data["pos"] = pos
         data["graph"].cell = batch["cell"]
-        data["graph"].natoms = batch["natoms"].squeeze(-1).to(torch.int32)
+        if "natoms" not in batch:
+            _, natoms = torch.unique(graph.batch, return_counts=True)
+            data["graph"].natoms = natoms
+        else:
+            data["graph"].natoms = batch["natoms"].squeeze(-1).to(torch.int32)
+
         edge_index, cell_offsets, neighbors = radius_graph_pbc(
             data["graph"],
             self.cutoff,
