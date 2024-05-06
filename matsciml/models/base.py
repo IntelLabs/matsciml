@@ -1649,7 +1649,7 @@ class ForceRegressionTask(BaseTaskModule):
                     pos, frame_embedding, readout
                 )
                 force.append(frame_force)
-                energy.append(frame_energy)
+                energy.append(frame_energy.unsqueeze(-1))
 
         # check to see if we are frame averaging
         if fa_rot is not None:
@@ -1667,8 +1667,12 @@ class ForceRegressionTask(BaseTaskModule):
                     force[frame_idx].view(-1, 1, 3).bmm(repeat_rot.transpose(1, 2))
                 )
                 all_forces.append(rotated_forces)
-            # combine all the force data into a single tensor
+            # combine all the force and energy data into a single tensor
+            # using frame averaging, the expected shapes after concatenation are:
+            # force - [num positions, num frames, 3]
+            # energy - [batch size, num frames, 1]
             force = torch.cat(all_forces, dim=1)
+            energy = torch.cat(energy, dim=1)
         # reduce outputs to what are expected shapes
         outputs["force"] = reduce(
             force,
