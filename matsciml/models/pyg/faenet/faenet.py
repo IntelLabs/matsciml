@@ -259,9 +259,8 @@ class FAENet(AbstractPyGModel):
         data["pos"] = pos
         data["graph"].cell = batch["cell"]
         if "natoms" not in batch:
-            data["graph"].natoms = batch["graph"].ptr[1:] - batch["graph"].ptr[:-1].to(
-                torch.int32
-            )
+            _, natoms = torch.unique(graph.batch, return_counts=True)
+            data["graph"].natoms = natoms
         else:
             data["graph"].natoms = batch["natoms"].squeeze(-1).to(torch.int32)
 
