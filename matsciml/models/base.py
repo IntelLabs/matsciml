@@ -1668,6 +1668,9 @@ class ForceRegressionTask(BaseTaskModule):
                 )
                 all_forces.append(rotated_forces)
             # combine all the force and energy data into a single tensor
+            # using frame averaging, the expected shapes after concatenation are:
+            # force - [num positions, num frames, 3]
+            # energy - [batch size, num frames, 1]
             force = torch.cat(all_forces, dim=1)
             energy = torch.cat(energy, dim=1)
         # reduce outputs to what are expected shapes
