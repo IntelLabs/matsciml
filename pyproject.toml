@@ -14,7 +14,7 @@ classifiers = [
 ]
 dependencies = [
   "psutil",
-  "pytorch_lightning==2.2.2",
+  "pytorch_lightning==2.2.4",
   "dgl==2.0.0",
   "dgllife==0.3.2",
   "rdkit==2023.9.5",
@@ -34,7 +34,7 @@ dependencies = [
   "ase>=3.22.1",
   "matgl==1.0.0",
   "einops==0.7.0",
-  "mendeleev==0.15.0",
+  "mendeleev==0.16.0",
   "e3nn",
   "mace-torch==0.3.4",
   "monty==2024.2.2"

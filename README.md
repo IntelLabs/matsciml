@@ -46,6 +46,38 @@ The examples outlined in the next section how to get started with Open MatSci ML
 Additionally, for a development install, one can specify the extra packages like `black` and `pytest` with `pip install './[dev]'`. These can be
 added to the commit workflow by running `pre-commit install` to generate `git` hooks.
 
+### Intel XPU capabilities
+
+There are currently extra requirements in getting a complete software environment in order to run
+on Intel XPUs, namely runtime libraries that can't be packaged cohesively together (yet). While
+`conda.yml` provides all of the high performance Python requirements (i.e. PyTorch and IPEX),
+we assume you have downloaded and sourced the oneAPI base toolkit (==2024.0.0). On managed
+clusters, sysadmins will usually provide modules (i.e. `module avail`/`module load oneapi`);
+on free clusters or workstations, please refer to instructions found [here](https://intel.github.io/intel-extension-for-pytorch/index.html#installation?platform=gpu) with
+the appropriate version (currently `2.1.0`). Specific requirements are MKL==2024.0,
+and oneCCL==2021.11.0 with the current IPEX (2.1.10+xpu) and `oneccl_bind_pt` (2.1.100+xpu).
+MKL>=2024.1, at the time of writing, is incompatiable with the IPEX version.
+
+The module `matsciml.lightning.xpu` implements interfaces for Intel XPU to Lightning abstractions, including
+the `XPUAccelerator` and two strategies for deployment (single XPU/tile and distributed data parallel).
+Because we use PyTorch Lightning, there aren't many marked differences in running on Intel XPU, or GPUs
+from other vendors. The abstractions we mentioned are registered in the various Lightning registries,
+and should be accessible simply through `pl.Trainer` arguments, e.g.:
+
+```python
+trainer = pl.Trainer(accelerator='xpu')
+```
+
+The one major difference is for distributed data parallelism: Intel XPUs use the oneCCL communication
+backend, which replaces `nccl`, `gloo`, or other backends typically passed to `torch.distributed`.
+Please see `examples/devices` for single XPU/tile and DDP use cases.
+
+**NOTE**: Currently there is a hard-coded `torch.cuda.stream` context in PyTorch Lightning's `DDPStrategy`.
+This [issue](https://github.com/Lightning-AI/pytorch-lightning/issues/19766) has been created to see if the maintainers would be happy to patch
+it so that the `cuda.Stream` context is only used if a CUDA device is being used. If you encounter
+a `RuntimeError: Tried to instantiate dummy base class Stream`, please just set `ctx = nullcontext()`
+in the line of code that raises the exception.
+
 ## Examples
 
 The `examples` folder contains simple, unit scripts that demonstrate how to use the pipeline in specific ways:

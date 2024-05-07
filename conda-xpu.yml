@@ -9,22 +9,22 @@ dependencies:
   - scipy
   - numba
   - numpy
+  - dpnp=0.13
   - mkl-devel=2024.0.0
   - intel-openmp=2024.0.0
   - dglteam::dgl=2.0.0
   - setuptools
-  - pybind11
-  - python=3.10
   - pyg::pyg=2.4.0
   - pyg::pytorch-scatter=2.1.2
   - pyg::pytorch-sparse=0.6.18
+  - pybind11
+  - python=3.10
   - pip
   - pip:
-    - "--index-url https://download.pytorch.org/whl/cpu"
-    - intel-extension-for-pytorch==2.1.100
-    - torch==2.1.2
-    - "--extra-index-url https://pytorch-extension.intel.com/release-whl/stable/cpu/us/"
-    - oneccl_bind_pt==2.1.0
+    - "--extra-index-url https://pytorch-extension.intel.com/release-whl/stable/xpu/us/"
+    - intel-extension-for-pytorch==2.1.10+xpu
+    - torch==2.1.0a0
+    - oneccl_bind_pt==2.1.100+xpu
 variables:
   # append to library path for dynamic libraries
   LD_LIBRARY_PATH: "'$LD_LIBRARY_PATH:$CONDA_PREFIX/lib'"
