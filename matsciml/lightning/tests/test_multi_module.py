@@ -48,5 +48,3 @@ def test_target_keys(datamodule):
         assert sorted(target_values) == sorted(
             keys[key]
         ), f"Expected target keys {target_values}, got {keys[key]}"
-
-    # assert keys == expected
