@@ -33,7 +33,7 @@ dependencies = [
   "schema>=0.7.5",
   "ase>=3.22.1",
   "matgl==1.0.0",
-  "einops==0.7.0",
+  "einops==0.8.0",
   "mendeleev==0.16.0",
   "e3nn",
   "mace-torch==0.3.4",
