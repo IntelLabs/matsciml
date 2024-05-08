@@ -20,7 +20,7 @@ def test_collate_mp_pc():
     assert pos.ndim == 2
     # batch size of 4 and 3 dimensions for xyz
     assert pos.size(-1) == 3
-    assert pos.size(0) == 8
+    assert pos.size(0) == torch.count_nonzero(batch["atomic_numbers"])
     assert "mask" in batch
     # now try and collate with the class method
     new_batch = dset.collate_fn(samples)

@@ -55,10 +55,26 @@ def test_target_keys():
     joint = MultiDataset([is2re, mp])
     keys = joint.target_keys
     expected_is2re = {"regression": ["energy_init", "energy_relaxed"]}
-    expected_mp = {"regression": ["band_gap"]}
-    assert (
-        keys["IS2REDataset"] == expected_is2re
-    ), f"IS2REDataset expected {expected_is2re}, got {keys['IS2REDataset']}"
-    assert (
-        keys["MaterialsProjectDataset"] == expected_mp
-    ), f"MaterialsProjectDataset expected {expected_mp}, got {keys['MaterialsProjectDataset']}"
+    expected_mp = {
+        "classification": ["is_metal", "is_magnetic", "is_stable"],
+        "regression": [
+            "uncorrected_energy_per_atom",
+            "efermi",
+            "energy_per_atom",
+            "band_gap",
+            "formation_energy_per_atom",
+        ],
+    }
+
+    for result_keys, expected_keys in [
+        (keys["IS2REDataset"], expected_is2re),
+        (keys["MaterialsProjectDataset"], expected_mp),
+    ]:
+        assert (
+            result_keys.keys() == expected_keys.keys()
+        ), f"Expected target key types {expected_keys.keys()}, got {result_keys.keys()}"
+
+        for key, target_values in expected_keys.items():
+            assert sorted(target_values) == sorted(
+                result_keys[key]
+            ), f"Expected target keys {target_values}, got {expected_keys[key]}"
