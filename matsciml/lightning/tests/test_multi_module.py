@@ -32,6 +32,19 @@ def test_target_keys(datamodule):
     expected = {
         "S2EFDataset": {"regression": ["energy", "force"]},
         "IS2REDataset": {"regression": ["energy_init", "energy_relaxed"]},
-        "MaterialsProjectDataset": {"regression": ["band_gap"]},
+        "MaterialsProjectDataset": {
+            "classification": ["is_metal", "is_magnetic", "is_stable"],
+            "regression": [
+                "uncorrected_energy_per_atom",
+                "efermi",
+                "energy_per_atom",
+                "band_gap",
+                "formation_energy_per_atom",
+            ],
+        },
     }
-    assert keys == expected
+    assert keys.keys() == expected.keys()
+    for key, target_values in expected.items():
+        assert sorted(target_values) == sorted(
+            keys[key]
+        ), f"Expected target keys {target_values}, got {keys[key]}"

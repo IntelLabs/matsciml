@@ -26,7 +26,19 @@ map directly onto the class'.
 
 presets = {
     "devset": {
-        "fields": ["band_gap", "structure"],
+        "fields": [
+            "band_gap",
+            "structure",
+            "formula_pretty",
+            "efermi",
+            "symmetry",
+            "is_metal",
+            "is_magnetic",
+            "is_stable",
+            "formation_energy_per_atom",
+            "uncorrected_energy_per_atom",
+            "energy_per_atom",
+        ],
         "api_kwargs": {"num_sites": (2, 100), "num_chunks": 2, "chunk_size": 100},
     },
     "base": {
