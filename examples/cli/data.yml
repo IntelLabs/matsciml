@@ -1,0 +1,16 @@
+data:
+  class_path: matsciml.lightning.data_utils.MatSciMLDataModule
+  init_args:
+    dataset: "MaterialsProjectDataset"
+    # not as convenient as you have to specify the full path
+    train_path: /home/kinlongk/Repos/matsciml/matsciml/datasets/materials_project/devset
+    dset_kwargs:
+      transforms:
+        - class_path: matsciml.datasets.transforms.PeriodicPropertiesTransform
+          init_args:
+            cutoff_radius: 6.0
+            adaptive_cutoff: true
+        - class_path: matsciml.datasets.transforms.PointCloudToGraphTransform
+          init_args:
+            backend: "pyg"
+            node_keys: ["pos", "atomic_numbers"]
