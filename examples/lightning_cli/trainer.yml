@@ -1,0 +1,16 @@
+# pytorch_lightning==2.2.4
+seed_everything: true
+trainer:
+  accelerator: auto
+  strategy: auto
+  devices: auto
+  num_nodes: 1
+  precision: null
+  logger: null
+  callbacks: null
+  fast_dev_run: 10
+  max_epochs: null
+  min_epochs: null
+  gradient_clip_val: null
+  gradient_clip_algorithm: null
+  inference_mode: false

@@ -25,7 +25,7 @@ dependencies = [
   "lmdb==1.4.1",
   "geometric-algebra-attention>=0.3.0",
   "sympy>=1.10.1",
-  "jsonargparse[signatures]>=4.13.1",
+  "jsonargparse[signatures]>=4.27.7",
   "mp_api==0.41.2",
   "emmet-core==0.83.6",
   "pydantic==2.7.1",
