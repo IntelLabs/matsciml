@@ -53,7 +53,9 @@ all = [
 dev = [
   "ruff==0.4.0",
   "pre-commit",
-  "pytest"
+  "pytest",
+  "pytest-pretty",
+  "pytest-dependency"
 ]
 pyg = [
   "torch_geometric==2.4.0",
@@ -75,3 +77,6 @@ version = {attr = "matsciml.__version__"}
 
 [tool.ruff.lint]
 ignore = ["F403", "F405"]
+
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
