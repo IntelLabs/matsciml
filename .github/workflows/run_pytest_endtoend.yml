@@ -1,4 +1,6 @@
 name: Run end-to-end suites for full pipeline coverage
+env:
+  COLUMNS: 120
 on:
   pull_request:
     paths:
@@ -31,7 +33,7 @@ jobs:
         shell: micromamba-shell {0}
       - name: Install PyTest
         run: |
-          pip install pytest pytest-dependency
+          pip install pytest pytest-dependency pytest-pretty
         shell: micromamba-shell {0}
       - name: Print out environment
         run: |
