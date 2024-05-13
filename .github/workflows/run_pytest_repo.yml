@@ -1,4 +1,6 @@
 name: Run broad spectrum PyTest on demand
+env:
+  COLUMNS: 120
 on:
   workflow_dispatch:
 jobs:
@@ -22,7 +24,7 @@ jobs:
         shell: micromamba-shell {0}
       - name: Install PyTest
         run: |
-          pip install pytest pytest-dependency
+          pip install pytest pytest-dependency pytest-pretty
         shell: micromamba-shell {0}
       - name: Print out environment
         run: |
