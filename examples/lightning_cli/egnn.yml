@@ -1,0 +1,9 @@
+model:
+  class_path: matsciml.models.base.ScalarRegressionTask
+  init_args:
+    encoder_class: matsciml.models.pyg.EGNN
+    encoder_kwargs:
+      hidden_dim: 128
+      output_dim: 64
+    task_keys:   # this matches the dataset
+      - "band_gap"

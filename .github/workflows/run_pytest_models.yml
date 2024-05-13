@@ -1,4 +1,6 @@
 name: Run model and task related PyTests
+env:
+  COLUMNS: 120
 on:
   pull_request:
     paths:
@@ -25,7 +27,7 @@ jobs:
         shell: micromamba-shell {0}
       - name: Install PyTest
         run: |
-          pip install pytest pytest-dependency
+          pip install pytest pytest-dependency pytest-pretty
         shell: micromamba-shell {0}
       - name: Print out environment
         run: |
