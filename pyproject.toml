@@ -75,3 +75,6 @@ version = {attr = "matsciml.__version__"}
 
 [tool.ruff.lint]
 ignore = ["F403", "F405"]
+
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
