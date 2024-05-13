@@ -2,8 +2,7 @@ data:
   class_path: matsciml.lightning.data_utils.MatSciMLDataModule
   init_args:
     dataset: "MaterialsProjectDataset"
-    # not as convenient as you have to specify the full path
-    train_path: /home/kinlongk/Repos/matsciml/matsciml/datasets/materials_project/devset
+    train_path: null   # this needs to be changed to match your dataset path!
     dset_kwargs:
       transforms:
         - class_path: matsciml.datasets.transforms.PeriodicPropertiesTransform
