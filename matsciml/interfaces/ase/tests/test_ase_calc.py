@@ -44,6 +44,7 @@ def egnn_config():
 
 
 def test_egnn_energy_forces(egnn_config: dict, test_pbc: Atoms, pbc_transform: list):
+    """Just get the energy and force out of a ForceRegressionTask."""
     task = ForceRegressionTask(
         encoder_class=EGNN, encoder_kwargs=egnn_config, output_kwargs={"hidden_dim": 32}
     )
@@ -57,6 +58,7 @@ def test_egnn_energy_forces(egnn_config: dict, test_pbc: Atoms, pbc_transform: l
 
 
 def test_egnn_dynamics(egnn_config: dict, test_pbc: Atoms, pbc_transform: list):
+    """Run a few timesteps of MD to test the workflow end-to-end."""
     task = ForceRegressionTask(
         encoder_class=EGNN, encoder_kwargs=egnn_config, output_kwargs={"hidden_dim": 32}
     )
