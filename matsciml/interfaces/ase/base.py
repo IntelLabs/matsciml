@@ -122,10 +122,13 @@ class MatSciMLCalculator(Calculator):
         properties: list[Literal["energy", "forces"]] = ["energy"],
         system_changes=...,
     ):
+        # retrieve atoms even if not passed
         Calculator.calculate(self, atoms)
         # get into format ready for matsciml model
         data_dict = self._format_pipeline(atoms)
+        # run the data structure through the model
         output = self.task_module(data_dict)
+        # add outputs to self.results as expected by ase
         for key in ["energy", "forces"]:
             tensor = output.get(key, None)
             if tensor is not None:
