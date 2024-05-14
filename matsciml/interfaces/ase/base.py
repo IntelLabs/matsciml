@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 
 from typing import Callable, Literal
 
@@ -141,3 +142,25 @@ class MatSciMLCalculator(Calculator):
             raise RuntimeError(
                 f"No expected properties were written. Output dict: {output}"
             )
+
+    @classmethod
+    def from_pretrained_force_regression(
+        cls, ckpt_path: str | Path, *args, **kwargs
+    ) -> MatSciMLCalculator:
+        if isinstance(ckpt_path, str):
+            ckpt_path = Path(ckpt_path)
+        if not ckpt_path.exists():
+            raise FileNotFoundError(f"Checkpoint file not found; passed {ckpt_path}")
+        task = ForceRegressionTask.load_from_checkpoint(ckpt_path)
+        return cls(task, *args, **kwargs)
+
+    @classmethod
+    def from_pretrained_gradfree_task(
+        cls, ckpt_path: str | Path, *args, **kwargs
+    ) -> MatSciMLCalculator:
+        if isinstance(ckpt_path, str):
+            ckpt_path = Path(ckpt_path)
+        if not ckpt_path.exists():
+            raise FileNotFoundError(f"Checkpoint file not found; passed {ckpt_path}")
+        task = GradFreeForceRegressionTask.load_from_checkpoint(ckpt_path)
+        return cls(task, *args, **kwargs)
