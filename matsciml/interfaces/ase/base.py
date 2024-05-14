@@ -132,4 +132,4 @@ class MatSciMLCalculator(Calculator):
         if "energy" in output:
             self.results["energy"] = output["energy"].item()
         if "force" in output:
-            self.results["forces"] = output["force"].numpy()
+            self.results["forces"] = output["force"].detach().numpy()
