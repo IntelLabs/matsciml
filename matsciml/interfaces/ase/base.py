@@ -130,6 +130,6 @@ class MatSciMLCalculator(Calculator):
         output = self.task_module(data_dict)
         # add outputs to self.results as expected by ase
         if "energy" in output:
-            self.results["energy"] = output["energy"].item()
+            self.results["energy"] = output["energy"].detach().item()
         if "force" in output:
             self.results["forces"] = output["force"].detach().numpy()
