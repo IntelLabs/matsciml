@@ -15,6 +15,8 @@ from matsciml.models.base import (
 )
 from matsciml.datasets.transforms.base import AbstractDataTransform
 
+__all__ = ["MatSciMLCalculator"]
+
 
 def recursive_type_cast(
     data_dict: DataDict,
