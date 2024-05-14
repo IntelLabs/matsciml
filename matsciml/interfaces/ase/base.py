@@ -109,6 +109,16 @@ class MatSciMLCalculator(Calculator):
         return data_dict
 
     def _format_pipeline(self, atoms: Atoms) -> DataDict:
+        """
+        Main function that takes an ``ase.Atoms`` object and gets it
+        ready for matsciml model consumption.
+
+        We call ``_format_atoms`` to get the data in a format that
+        is similar to what comes out datasets implemented in matsciml,
+        so that the remainder of the transform pipeline can be used
+        to obtain nominally the same behavior as you would in the
+        rest of the pipeline.
+        """
         # initial formatting to get something akin to dataset outputs
         data_dict = self._format_atoms(atoms)
         # type cast into the type expected by the model
