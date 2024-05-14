@@ -119,9 +119,9 @@ class MatSciMLCalculator(Calculator):
     def calculate(
         self,
         atoms=None,
-        properties: list[Literal["energy", "forces"]] = ["energy"],
+        properties: list[Literal["energy", "forces"]] = ["energy", "forces"],
         system_changes=...,
-    ):
+    ) -> None:
         # retrieve atoms even if not passed
         Calculator.calculate(self, atoms)
         # get into format ready for matsciml model
@@ -129,11 +129,7 @@ class MatSciMLCalculator(Calculator):
         # run the data structure through the model
         output = self.task_module(data_dict)
         # add outputs to self.results as expected by ase
-        for key in ["energy", "forces"]:
-            tensor = output.get(key, None)
-            if tensor is not None:
-                if len(tensor) == 1:
-                    self.results[key] = tensor.item()
-                else:
-                    # convert to NumPy array
-                    self.results[key] = tensor.numpy()
+        if "energy" in output:
+            self.results["energy"] = output["energy"].item()
+        if "force" in output:
+            self.results["forces"] = output["force"].numpy()
