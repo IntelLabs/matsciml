@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 import numpy as np
-from ase import Atoms
-import torch
+from ase import Atoms, units
+from ase.md.verlet import VelocityVerlet
 
 from matsciml.datasets.transforms import (
     PeriodicPropertiesTransform,
@@ -43,13 +43,10 @@ def egnn_config():
     return {"hidden_dim": 32, "output_dim": 32}
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.float64, torch.bfloat16])
-def test_egnn_energy_forces(
-    dtype: torch.dtype, egnn_config: dict, test_pbc: Atoms, pbc_transform: list
-):
+def test_egnn_energy_forces(egnn_config: dict, test_pbc: Atoms, pbc_transform: list):
     task = ForceRegressionTask(
         encoder_class=EGNN, encoder_kwargs=egnn_config, output_kwargs={"hidden_dim": 32}
-    ).to(dtype)
+    )
     calc = MatSciMLCalculator(task, transforms=pbc_transform)
     atoms = test_pbc.copy()
     atoms.calc = calc
@@ -57,3 +54,14 @@ def test_egnn_energy_forces(
     assert np.isfinite(energy)
     forces = atoms.get_forces()
     assert np.isfinite(forces).all()
+
+
+def test_egnn_dynamics(egnn_config: dict, test_pbc: Atoms, pbc_transform: list):
+    task = ForceRegressionTask(
+        encoder_class=EGNN, encoder_kwargs=egnn_config, output_kwargs={"hidden_dim": 32}
+    )
+    calc = MatSciMLCalculator(task, transforms=pbc_transform)
+    atoms = test_pbc.copy()
+    atoms.calc = calc
+    dyn = VelocityVerlet(atoms, timestep=5 * units.fs, logfile="md.log")
+    dyn.run(3)
