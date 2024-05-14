@@ -84,6 +84,10 @@ class MatSciMLCalculator(Calculator):
         super().__init__(
             restart, label=label, atoms=atoms, directory=directory, **kwargs
         )
+        assert isinstance(
+            task_module,
+            (ForceRegressionTask, ScalarRegressionTask, GradFreeForceRegressionTask),
+        ), f"Expected task to be one that is capable of energy/force prediction. Got {task_module.__type__}."
         self.task_module = task_module
         self.transforms = transforms
 
