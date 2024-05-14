@@ -76,14 +76,13 @@ class MatSciMLCalculator(Calculator):
         | ForceRegressionTask,
         transforms: list[AbstractDataTransform | Callable] | None = None,
         restart=None,
-        ignore_bad_restart_file=...,
         label=None,
         atoms: Atoms | None = None,
         directory=".",
         **kwargs,
     ):
         super().__init__(
-            restart, ignore_bad_restart_file, label, atoms, directory, **kwargs
+            restart, label=label, atoms=atoms, directory=directory, **kwargs
         )
         self.task_module = task_module
         self.transforms = transforms
