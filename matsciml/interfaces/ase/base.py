@@ -133,3 +133,7 @@ class MatSciMLCalculator(Calculator):
             self.results["energy"] = output["energy"].detach().item()
         if "force" in output:
             self.results["forces"] = output["force"].detach().numpy()
+        if len(self.results) == 0:
+            raise RuntimeError(
+                f"No expected properties were written. Output dict: {output}"
+            )
