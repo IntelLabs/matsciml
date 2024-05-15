@@ -96,6 +96,20 @@ class MatSciMLCalculator(Calculator):
                 MultiTaskLitModule,
             ),
         ), f"Expected task to be one that is capable of energy/force prediction. Got {task_module.__type__}."
+        if isinstance(task_module, MultiTaskLitModule):
+            assert any(
+                [
+                    isinstance(
+                        subtask,
+                        (
+                            ForceRegressionTask,
+                            ScalarRegressionTask,
+                            GradFreeForceRegressionTask,
+                        ),
+                    )
+                    for subtask in task_module.task_list
+                ]
+            ), "Expected at least one subtask to be energy/force predictor."
         self.task_module = task_module
         self.transforms = transforms
 
