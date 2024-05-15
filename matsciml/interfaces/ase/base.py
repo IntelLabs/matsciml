@@ -85,6 +85,55 @@ class MatSciMLCalculator(Calculator):
         conversion_factor: float | dict[str, float] = 1.0,
         **kwargs,
     ):
+        """
+        Initialize an instance of the ``MatSciMLCalculator`` used by ``ase``
+        simulations.
+
+        This class essentially acts as an adaptor to a select number of
+        ``matsciml`` tasks by converting ``Atoms`` data structures into
+        those expected by ``matsciml`` models, and then extracting the
+        output of the forward pass into the expected results dictionary
+        for ``ase``.
+
+        The recommended mode of usage of this class is to use one of the
+        constructor methods, e.g. ``MatSciMLCalculator.from_pretrained_force_regression``,
+        to set up the calculator based on one of the supported tasks.
+        A list of transforms can be passed as well in order to reuse the
+        same transformation pipeline as the rest of ``matsciml``.
+
+        Examples
+        ---------
+        Create from a pretrained ``ForceRegressionTask``
+
+        >>> calc = MatSciMLCalculator.from_pretrained_force_regression(
+            "lightning_logs/version_10/checkpoints/epoch=10-step=3000.ckpt",
+            transforms=[PeriodicPropertiesTransform(6.0), PointCloudToGraphTransform("pyg")]
+        )
+
+        Parameters
+        ----------
+        task_module
+            Instance of a supported ``matsciml`` task. What is 'supported' is
+            intended to reflect the kinds of modeling tasks, e.g. energy/force
+            prediction.
+        transforms : list[AbstractDataTransform | Callable] | None, default None
+            An optional list of transforms, similar to what is used in the rest
+            of the ``matsciml`` pipeline.
+        restart
+            Argument passed into ``ase`` Calculator base class.
+        label
+            Argument passed into ``ase`` Calculator base class.
+        atoms : Atoms | None, default None
+            Optional ``Atoms`` object to attach this calculator to.
+        directory
+            Argument passed into ``ase`` Calculator base class.
+        conversion_factor : float | dict[str, float]
+            Conversion factors to each property, specified as key/value
+            pairs where keys refer to data in ``self.results`` reported
+            to ``ase``. If a single ``float`` is passed, we assume that
+            the conversion is applied to the energy output. Each factor
+            is multiplied with the result.
+        """
         super().__init__(
             restart, label=label, atoms=atoms, directory=directory, **kwargs
         )
