@@ -69,7 +69,7 @@ def recursive_type_cast(
 
 
 class MatSciMLCalculator(Calculator):
-    implemented_properties = ["energy", "forces"]
+    implemented_properties = ["energy", "forces", "stress", "dipole"]
 
     def __init__(
         self,
@@ -169,6 +169,10 @@ class MatSciMLCalculator(Calculator):
             self.results["energy"] = output["energy"].detach().item()
         if "force" in output:
             self.results["forces"] = output["force"].detach().numpy()
+        if "stress" in output:
+            self.results["stress"] = output["stress"].detach().numpy()
+        if "dipole" in output:
+            self.results["dipole"] = output["dipole"].detach().numpy()
         if len(self.results) == 0:
             raise RuntimeError(
                 f"No expected properties were written. Output dict: {output}"
