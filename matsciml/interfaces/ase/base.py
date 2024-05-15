@@ -82,6 +82,7 @@ class MatSciMLCalculator(Calculator):
         label=None,
         atoms: Atoms | None = None,
         directory=".",
+        conversion_factor: float | dict[str, float] = 1.0,
         **kwargs,
     ):
         super().__init__(
@@ -112,6 +113,22 @@ class MatSciMLCalculator(Calculator):
             ), "Expected at least one subtask to be energy/force predictor."
         self.task_module = task_module
         self.transforms = transforms
+        self.conversion_factor = conversion_factor
+
+    @property
+    def conversion_factor(self) -> dict[str, float]:
+        return self._conversion_factor
+
+    @conversion_factor.setter
+    def conversion_factor(self, factor: float | dict[str, float]) -> None:
+        if isinstance(factor, float):
+            factor = {"energy": factor}
+        for key in factor.keys():
+            if key not in self.implemented_properties:
+                raise KeyError(
+                    f"Conversion factor {key} is not in `implemented_properties`."
+                )
+        self._conversion_factor = factor
 
     @property
     def dtype(self) -> torch.dtype | str:
