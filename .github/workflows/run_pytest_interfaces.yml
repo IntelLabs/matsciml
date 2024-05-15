@@ -1,0 +1,39 @@
+name: Run interface related PyTests
+env:
+  COLUMNS: 120
+on:
+  pull_request:
+    paths:
+      - 'matsciml/interfaces/**'
+  workflow_dispatch:
+jobs:
+  interfaces-pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create/reuse micromamba env
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          micromamba-version: '1.5.7-0'
+          environment-file: conda.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: 'all'
+          generate-run-shell: true
+      - name: Install current version of matsciml
+        run: |
+          pip install .
+        shell: micromamba-shell {0}
+      - name: Install PyTest
+        run: |
+          pip install pytest pytest-dependency pytest-pretty
+        shell: micromamba-shell {0}
+      - name: Print out environment
+        run: |
+          micromamba env export && pip freeze
+        shell: micromamba-shell {0}
+      - name: Run pytest in data
+        run: |
+          pytest -v -m "not lmdb and not slow and not remote_request" ./matsciml/interfaces
+        shell: micromamba-shell {0}

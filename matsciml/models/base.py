@@ -37,6 +37,7 @@ __all__ = [
     "OpenCatalystInference",
     "IS2REInference",
     "S2EFInference",
+    "BaseTaskModule",
 ]
 
 """
@@ -1108,7 +1109,9 @@ class ScalarRegressionTask(BaseTaskModule):
     def _make_output_heads(self) -> nn.ModuleDict:
         modules = {}
         for key in self.task_keys:
-            modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
+            modules[key] = OutputHead(1, **self.output_kwargs).to(
+                self.device, dtype=self.dtype
+            )
         return nn.ModuleDict(modules)
 
     def _filter_task_keys(
@@ -1288,7 +1291,9 @@ class MaceEnergyForceTask(BaseTaskModule):
     def _make_output_heads(self) -> nn.ModuleDict:
         modules = {}
         for key in self.task_keys:
-            modules[key] = OutputHead(**self.output_kwargs[key]).to(self.device)
+            modules[key] = OutputHead(**self.output_kwargs[key]).to(
+                self.device, dtype=self.dtype
+            )
         return nn.ModuleDict(modules)
 
     def _filter_task_keys(
@@ -1445,7 +1450,9 @@ class BinaryClassificationTask(BaseTaskModule):
     def _make_output_heads(self) -> nn.ModuleDict:
         modules = {}
         for key in self.task_keys:
-            modules[key] = OutputHead(1, **self.output_kwargs).to(self.device)
+            modules[key] = OutputHead(1, **self.output_kwargs).to(
+                self.device, dtype=self.dtype
+            )
         return nn.ModuleDict(modules)
 
     def on_train_batch_start(self, batch: Any, batch_idx: int) -> int | None:
@@ -1520,7 +1527,11 @@ class ForceRegressionTask(BaseTaskModule):
 
     def _make_output_heads(self) -> nn.ModuleDict:
         # this task only utilizes one output head
-        modules = {"energy": OutputHead(1, **self.output_kwargs).to(self.device)}
+        modules = {
+            "energy": OutputHead(1, **self.output_kwargs).to(
+                self.device, dtype=self.dtype
+            )
+        }
         return nn.ModuleDict(modules)
 
     def forward(
@@ -1601,7 +1612,9 @@ class ForceRegressionTask(BaseTaskModule):
                     )
             else:
                 # assumes a batched pyg graph
-                batch = graph.batch
+                batch = getattr(graph, "batch", None)
+                if batch is None:
+                    batch = torch.zeros_like(graph.atomic_numbers)
                 from torch_geometric.utils import scatter
 
                 def readout(node_energies: torch.Tensor):
@@ -1843,7 +1856,11 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         )
 
     def _make_output_heads(self) -> nn.ModuleDict:
-        modules = {"force": OutputHead(3, **self.output_kwargs).to(self.device)}
+        modules = {
+            "force": OutputHead(3, **self.output_kwargs).to(
+                self.device, dtype=self.dtype
+            )
+        }
         return nn.ModuleDict(modules)
 
     def _get_targets(
@@ -1979,7 +1996,11 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
 
     def _make_output_heads(self) -> nn.ModuleDict:
         # this task only utilizes one output head; 230 possible space groups
-        modules = {"spacegroup": OutputHead(230, **self.output_kwargs).to(self.device)}
+        modules = {
+            "spacegroup": OutputHead(230, **self.output_kwargs).to(
+                self.device, dtype=self.dtype
+            )
+        }
         return nn.ModuleDict(modules)
 
     def on_train_batch_start(self, batch: Any, batch_idx: int) -> int | None:
@@ -3030,7 +3051,7 @@ class NodeDenoisingTask(BaseTaskModule):
 
     def _make_output_heads(self) -> nn.ModuleDict:
         # make a single output head for noise prediction applied to nodes
-        denoise = OutputHead(3, **self.output_kwargs).to(self.device)
+        denoise = OutputHead(3, **self.output_kwargs).to(self.device, dtype=self.dtype)
         return nn.ModuleDict({"denoise": denoise})
 
     def _filter_task_keys(
