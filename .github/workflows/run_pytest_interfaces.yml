@@ -7,7 +7,7 @@ on:
       - 'matsciml/interfaces/**'
   workflow_dispatch:
 jobs:
-  dataset-pytest:
+  interfaces-pytest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
