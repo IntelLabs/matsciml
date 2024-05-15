@@ -13,6 +13,7 @@ from matsciml.models.base import (
     ScalarRegressionTask,
     GradFreeForceRegressionTask,
     ForceRegressionTask,
+    MultiTaskLitModule,
 )
 from matsciml.datasets.transforms.base import AbstractDataTransform
 
@@ -74,7 +75,8 @@ class MatSciMLCalculator(Calculator):
         self,
         task_module: ScalarRegressionTask
         | GradFreeForceRegressionTask
-        | ForceRegressionTask,
+        | ForceRegressionTask
+        | MultiTaskLitModule,
         transforms: list[AbstractDataTransform | Callable] | None = None,
         restart=None,
         label=None,
@@ -87,7 +89,12 @@ class MatSciMLCalculator(Calculator):
         )
         assert isinstance(
             task_module,
-            (ForceRegressionTask, ScalarRegressionTask, GradFreeForceRegressionTask),
+            (
+                ForceRegressionTask,
+                ScalarRegressionTask,
+                GradFreeForceRegressionTask,
+                MultiTaskLitModule,
+            ),
         ), f"Expected task to be one that is capable of energy/force prediction. Got {task_module.__type__}."
         self.task_module = task_module
         self.transforms = transforms
