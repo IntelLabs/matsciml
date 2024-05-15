@@ -220,3 +220,14 @@ class MatSciMLCalculator(Calculator):
             raise FileNotFoundError(f"Checkpoint file not found; passed {ckpt_path}")
         task = GradFreeForceRegressionTask.load_from_checkpoint(ckpt_path)
         return cls(task, *args, **kwargs)
+
+    @classmethod
+    def from_pretrained_scalar_task(
+        cls, ckpt_path: str | Path, *args, **kwargs
+    ) -> MatSciMLCalculator:
+        if isinstance(ckpt_path, str):
+            ckpt_path = Path(ckpt_path)
+        if not ckpt_path.exists():
+            raise FileNotFoundError(f"Checkpoint file not found; passed {ckpt_path}")
+        task = ScalarRegressionTask.load_from_checkpoint(ckpt_path)
+        return cls(task, *args, **kwargs)
