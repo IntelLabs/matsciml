@@ -68,6 +68,15 @@ def recursive_type_cast(
     return data_dict
 
 
+def __checkpoint_conversion_exist_check(ckpt_path: str | Path) -> Path:
+    """Standardizes and checks for checkpoint path existence."""
+    if isinstance(ckpt_path, str):
+        ckpt_path = Path(ckpt_path)
+    if not ckpt_path.exists():
+        raise FileNotFoundError(f"Checkpoint file not found; passed {ckpt_path}")
+    return ckpt_path
+
+
 class MatSciMLCalculator(Calculator):
     implemented_properties = ["energy", "forces", "stress", "dipole"]
 
@@ -252,10 +261,7 @@ class MatSciMLCalculator(Calculator):
     def from_pretrained_force_regression(
         cls, ckpt_path: str | Path, *args, **kwargs
     ) -> MatSciMLCalculator:
-        if isinstance(ckpt_path, str):
-            ckpt_path = Path(ckpt_path)
-        if not ckpt_path.exists():
-            raise FileNotFoundError(f"Checkpoint file not found; passed {ckpt_path}")
+        ckpt_path = __checkpoint_conversion_exist_check(ckpt_path)
         task = ForceRegressionTask.load_from_checkpoint(ckpt_path)
         return cls(task, *args, **kwargs)
 
@@ -263,10 +269,7 @@ class MatSciMLCalculator(Calculator):
     def from_pretrained_gradfree_task(
         cls, ckpt_path: str | Path, *args, **kwargs
     ) -> MatSciMLCalculator:
-        if isinstance(ckpt_path, str):
-            ckpt_path = Path(ckpt_path)
-        if not ckpt_path.exists():
-            raise FileNotFoundError(f"Checkpoint file not found; passed {ckpt_path}")
+        ckpt_path = __checkpoint_conversion_exist_check(ckpt_path)
         task = GradFreeForceRegressionTask.load_from_checkpoint(ckpt_path)
         return cls(task, *args, **kwargs)
 
@@ -274,9 +277,6 @@ class MatSciMLCalculator(Calculator):
     def from_pretrained_scalar_task(
         cls, ckpt_path: str | Path, *args, **kwargs
     ) -> MatSciMLCalculator:
-        if isinstance(ckpt_path, str):
-            ckpt_path = Path(ckpt_path)
-        if not ckpt_path.exists():
-            raise FileNotFoundError(f"Checkpoint file not found; passed {ckpt_path}")
+        ckpt_path = __checkpoint_conversion_exist_check(ckpt_path)
         task = ScalarRegressionTask.load_from_checkpoint(ckpt_path)
         return cls(task, *args, **kwargs)
