@@ -194,6 +194,10 @@ class MatSciMLCalculator(Calculator):
             raise RuntimeError(
                 f"No expected properties were written. Output dict: {output}"
             )
+        # perform optional unit conversions
+        for key, value in self.conversion_factor.items():
+            if key in self.results:
+                self.results[key] *= value
 
     @classmethod
     def from_pretrained_force_regression(
