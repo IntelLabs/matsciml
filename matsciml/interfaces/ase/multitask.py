@@ -26,7 +26,10 @@ class AbstractStrategy(ABC):
 
     def parse_outputs(
         self, output_dict: DataDict, task: MultiTaskLitModule, *args, **kwargs
-    ) -> dict[str, dict[str, float | torch.Tensor]]:
+    ) -> tuple[
+        dict[str, dict[str, float | torch.Tensor]],
+        dict[str, list[float | torch.Tensor]],
+    ]:
         """
         Map the task results into their appropriate fields.
 
@@ -49,6 +52,10 @@ class AbstractStrategy(ABC):
             Dictionary mapping of results per dataset. The subdicts
             correspond to the extracted outputs, per subtask (e.g.
             energy/force from the IS2REDataset head).
+        dict[str, list[float | torch.Tensor]]
+            For convenience, this provides the same data without
+            differentiating between datasets, and instead, sorts
+            them by the property name (e.g. {"energy": [...]}).
 
         Raises
         ------
@@ -60,6 +67,7 @@ class AbstractStrategy(ABC):
             anything, something is wrong.
         """
         results = {}
+        per_key_results = {}
         # loop over the task map
         for dset_name in task.task_map.keys():
             for subtask_name, subtask in task.task_map[dset_name].items():
@@ -73,15 +81,21 @@ class AbstractStrategy(ABC):
                         if key == "energy":
                             output = output.item()
                         sub_results[key] = output
+                        # add to per_key_results as another sorting
+                        if key not in per_key_results:
+                            per_key_results[key] = []
+                        per_key_results[key].append(output)
                 if len(sub_results) == 0:
                     raise RuntimeError(
                         f"Expected {subtask_name} to have {pos_fields} but got nothing."
                     )
                 results[dset_name] = sub_results
-        return results
+        return results, per_key_results
 
 
 class AverageTasks(AbstractStrategy):
     def merge_outputs(
         self, outputs: dict[str, dict[str, float | torch.Tensor]], *args, **kwargs
-    ) -> dict[str, float | np.ndarray]: ...
+    ) -> dict[str, float | np.ndarray]:
+        for dset, results in outputs.items():
+            ...
