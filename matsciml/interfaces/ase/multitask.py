@@ -105,7 +105,11 @@ class AbstractStrategy(ABC):
     def __call__(
         self, output_dict: DataDict, task: MultiTaskLitModule, *args, **kwargs
     ) -> dict[str, float | np.ndarray]:
-        return self.run(output_dict, task, *args, **kwargs)
+        aggregated_results = self.run(output_dict, task, *args, **kwargs)
+        # TODO: homogenize keys so we don't have to do stuff like this :P
+        if "force" in aggregated_results:
+            aggregated_results["forces"] = aggregated_results["force"]
+        return aggregated_results
 
 
 class AverageTasks(AbstractStrategy):
