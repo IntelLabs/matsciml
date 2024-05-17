@@ -103,6 +103,9 @@ def test_average_single_data(single_data_multi_task_combo):
     end = strat(output, task)
     assert end
     assert agg_results
+    for key in ["energy", "forces"]:
+        assert key in end, f"{key} was missing from agg results"
+    assert end["forces"].shape == (32, 3)
 
 
 def test_average_multi_data(multi_data_multi_task_combo):
@@ -115,3 +118,6 @@ def test_average_multi_data(multi_data_multi_task_combo):
     end = strat(output, task)
     assert end
     assert agg_results
+    for key in ["energy", "forces"]:
+        assert key in end, f"{key} was missing from agg results"
+    assert end["forces"].shape == (32, 3)
