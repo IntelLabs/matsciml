@@ -21,7 +21,11 @@ __task_property_mapping__ = {
 class AbstractStrategy(ABC):
     @abstractmethod
     def merge_outputs(
-        self, outputs: dict[str, dict[str, float | torch.Tensor]], *args, **kwargs
+        self,
+        outputs: dict[str, dict[str, float | torch.Tensor]]
+        | dict[str, list[float | torch.Tensor]],
+        *args,
+        **kwargs,
     ) -> dict[str, float | np.ndarray]: ...
 
     def parse_outputs(
@@ -91,6 +95,14 @@ class AbstractStrategy(ABC):
                     )
                 results[dset_name] = sub_results
         return results, per_key_results
+
+    @abstractmethod
+    def run(self, output_dict: DataDict, task: MultiTaskLitModule, *args, **kwargs): ...
+
+    def __call__(
+        self, output_dict: DataDict, task: MultiTaskLitModule, *args, **kwargs
+    ) -> dict[str, float | np.ndarray]:
+        return self.run(output_dict, task, *args, **kwargs)
 
 
 class AverageTasks(AbstractStrategy):
