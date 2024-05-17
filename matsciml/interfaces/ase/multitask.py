@@ -122,3 +122,10 @@ class AverageTasks(AbstractStrategy):
                 )
             joined_results[key] = merged_results
         return joined_results
+
+    def run(
+        self, output_dict: DataDict, task: MultiTaskLitModule, *args, **kwargs
+    ) -> dict[str, float | np.ndarray]:
+        _, per_key_results = self.parse_outputs(output_dict, task)
+        aggregated_results = self.merge_outputs(per_key_results)
+        return aggregated_results
