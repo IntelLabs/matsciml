@@ -249,19 +249,24 @@ class MatSciMLCalculator(Calculator):
         data_dict = self._format_pipeline(atoms)
         # run the data structure through the model
         output = self.task_module(data_dict)
-        # add outputs to self.results as expected by ase
-        if "energy" in output:
-            self.results["energy"] = output["energy"].detach().item()
-        if "force" in output:
-            self.results["forces"] = output["force"].detach().numpy()
-        if "stress" in output:
-            self.results["stress"] = output["stress"].detach().numpy()
-        if "dipole" in output:
-            self.results["dipole"] = output["dipole"].detach().numpy()
-        if len(self.results) == 0:
-            raise RuntimeError(
-                f"No expected properties were written. Output dict: {output}"
-            )
+        # use a more complicated parser for multitasks
+        if isinstance(self.task_module, MultiTaskLitModule):
+            results = self.multitask_strategy(output, self.task_module)
+            self.results = results
+        else:
+            # add outputs to self.results as expected by ase
+            if "energy" in output:
+                self.results["energy"] = output["energy"].detach().item()
+            if "force" in output:
+                self.results["forces"] = output["force"].detach().numpy()
+            if "stress" in output:
+                self.results["stress"] = output["stress"].detach().numpy()
+            if "dipole" in output:
+                self.results["dipole"] = output["dipole"].detach().numpy()
+            if len(self.results) == 0:
+                raise RuntimeError(
+                    f"No expected properties were written. Output dict: {output}"
+                )
         # perform optional unit conversions
         for key, value in self.conversion_factor.items():
             if key in self.results:
