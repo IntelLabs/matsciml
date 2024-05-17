@@ -107,7 +107,18 @@ class AbstractStrategy(ABC):
 
 class AverageTasks(AbstractStrategy):
     def merge_outputs(
-        self, outputs: dict[str, dict[str, float | torch.Tensor]], *args, **kwargs
+        self, outputs: dict[str, list[float | torch.Tensor]], *args, **kwargs
     ) -> dict[str, float | np.ndarray]:
-        for dset, results in outputs.items():
-            ...
+        joined_results = {}
+        for key, results in outputs.items():
+            if isinstance(results[0], float):
+                merged_results = sum(results) / len(results)
+            elif isinstance(results[0], torch.Tensor):
+                results = torch.stack(results, dim=0)
+                merged_results = results.mean(dim=0).numpy()
+            else:
+                raise TypeError(
+                    f"Only floats and tensors are supported for merging; got {type(results[0])} for key {key}."
+                )
+            joined_results[key] = merged_results
+        return joined_results
