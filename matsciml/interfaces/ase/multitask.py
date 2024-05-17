@@ -18,6 +18,9 @@ __task_property_mapping__ = {
 }
 
 
+__all__ = ["AverageTasks"]
+
+
 class AbstractStrategy(ABC):
     @abstractmethod
     def merge_outputs(
