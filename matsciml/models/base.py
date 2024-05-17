@@ -2107,7 +2107,7 @@ class MultiTaskLitModule(pl.LightningModule):
             if index != 0:
                 task.encoder = self.encoder
             # nest the task based on its category
-            task_map[dset_name][task.__task__] = task
+            task_map[dset_name][task.__class__.__name__] = task
             # add dataset names to determine forward logic
             dset_names.add(dset_name)
             # save hyperparameters from subtasks

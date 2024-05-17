@@ -13,8 +13,8 @@ from matsciml.common.types import DataDict
 
 __task_property_mapping__ = {
     "ScalarRegressionTask": ["energy", "dipole"],
-    "ForceRegressionTask": ["energy", "forces"],
-    "GradFreeForceRegressionTask": ["forces"],
+    "ForceRegressionTask": ["energy", "force"],
+    "GradFreeForceRegressionTask": ["force"],
 }
 
 
@@ -79,14 +79,22 @@ class AbstractStrategy(ABC):
         for dset_name in task.task_map.keys():
             for subtask_name, subtask in task.task_map[dset_name].items():
                 sub_results = {}
-                pos_fields = __task_property_mapping__.get(subtask, None)
+                pos_fields = __task_property_mapping__.get(subtask_name, None)
                 if pos_fields is None:
                     continue
                 else:
                     for key in pos_fields:
-                        output = output_dict[dset_name][subtask_name].detach()
+                        output = output_dict[dset_name][subtask_name].get(key, None)
+                        # this means the task _can_ output the key but was
+                        # not included in the actual training task keys
+                        if output is None:
+                            continue
+                        if isinstance(output, torch.Tensor):
+                            output = output.detach()
                         if key == "energy":
-                            output = output.item()
+                            # squeeze is applied just in case we have too many
+                            # extra dimensions
+                            output = output.squeeze().item()
                         sub_results[key] = output
                         # add to per_key_results as another sorting
                         if key not in per_key_results:
