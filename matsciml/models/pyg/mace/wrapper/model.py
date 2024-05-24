@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, Callable
+from typing import Any, Callable, Type
 from functools import cache
 
 import torch
@@ -26,7 +26,7 @@ class MACEWrapper(AbstractPyGModel):
     def __init__(
         self,
         atom_embedding_dim: int,
-        mace_module=MACE,
+        mace_module: Type[MACE] = MACE,
         num_atom_embedding: int = 100,
         embedding_kwargs: Any = None,
         encoder_only: bool = True,
