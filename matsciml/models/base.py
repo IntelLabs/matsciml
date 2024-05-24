@@ -2469,6 +2469,53 @@ class MultiTaskLitModule(pl.LightningModule):
                     results[task_type] = subtask(batch)
             return results
 
+    def ase_calculate(self, batch: BatchDict) -> dict[str, dict[str, torch.Tensor]]:
+        """
+        Currently "specialized" function that runs a set of data through
+        every single output head, ignoring the nominal dataset/subtask
+        unique mapping.
+
+        This is designed for ASE usage primarily, but ostensibly could be
+        used as _the_ inference call for a multitask module. Basically,
+        when the input data doesn't come from the same "datasets" used
+        for initialization/training, and we want to provide a "mixture of
+        experts" response.
+
+        TODO: this could potentially be used as a template to redesign
+        the forward call to substantially simplify the multitask mapping.
+
+        Parameters
+        ----------
+        batch
+            Input data dictionary, which should correspond to a formatted
+            ase.Atoms sample.
+
+        Returns
+        -------
+        dict[str, dict[str, torch.Tensor]]
+            Nested results dictionary, following a dataset/subtask structure.
+            For example, {'IS2REDataset': {'ForceRegressionTask': ..., 'ScalarRegressionTask': ...}}
+        """
+        results = {}
+        _grads = getattr(
+            self,
+            "needs_dynamic_grads",
+            False,
+        )  # default to not needing grads
+        with dynamic_gradients_context(_grads, self.has_rnn):
+            # this function switches of `requires_grad_` for input tensors that need them
+            self._toggle_input_grads(batch)
+            batch["embedding"] = self.encoder(batch)
+            # now loop through every dataset/output head pair
+            for dset_name, subtask_name in self.dataset_task_pairs:
+                subtask = self.task_map[dset_name][subtask_name]
+                output = subtask(batch)
+                # now add it to the rest of the results
+                if dset_name not in results:
+                    results[dset_name] = {}
+                results[dset_name][subtask_name] = output
+        return results
+
     def on_train_batch_start(self, batch: Any, batch_idx: int) -> None:
         """
         This callback is used to dynamically initialize output heads.
