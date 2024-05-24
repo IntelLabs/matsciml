@@ -2390,17 +2390,17 @@ class MultiTaskLitModule(pl.LightningModule):
                 input_keys = list(self.input_grad_keys.values()).pop(0)
                 for key in input_keys:
                     # set require grad for both point cloud and graph tensors
-                    if "graph" in data:
-                        g = data.get("g")
+                    if "graph" in batch:
+                        g = batch.get("graph")
                         if isinstance(g, dgl.DGLGraph):
                             if key in g.ndata:
-                                data["graph"].ndata[key].requires_grad_(True)
+                                batch["graph"].ndata[key].requires_grad_(True)
                         else:
                             # assume it's a PyG graph
                             if key in g:
                                 getattr(g, key).requires_grad_(True)
-                    if key in data:
-                        target = data.get(key)
+                    if key in batch:
+                        target = batch.get(key)
                         # for tensors just set them directly
                         if isinstance(target, torch.Tensor):
                             target.requires_grad_(True)
