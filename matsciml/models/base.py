@@ -2365,7 +2365,7 @@ class MultiTaskLitModule(pl.LightningModule):
                     for key in input_keys:
                         # set require grad for both point cloud and graph tensors
                         if "graph" in data:
-                            g = data.get("g")
+                            g = data.get("graph")
                             if isinstance(g, dgl.DGLGraph):
                                 if key in g.ndata:
                                     data["graph"].ndata[key].requires_grad_(True)
