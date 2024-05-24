@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, Callable
+from typing import Any, Callable, Type
 from functools import cache
 
 import torch
@@ -26,6 +26,7 @@ class MACEWrapper(AbstractPyGModel):
     def __init__(
         self,
         atom_embedding_dim: int,
+        mace_module: Type[MACE] = MACE,
         num_atom_embedding: int = 100,
         embedding_kwargs: Any = None,
         encoder_only: bool = True,
@@ -38,9 +39,16 @@ class MACEWrapper(AbstractPyGModel):
         # dynamically check to check which arguments are needed by MACE
         __mace_required_args = get_model_required_args(MACE)
         __mace_all_args = get_model_all_args(MACE)
+
+        __mace_submodule_required_args = get_model_required_args(mace_module)
+        __mace_submodule_all_args = get_model_all_args(mace_module)
+        if "kwargs" in __mace_submodule_required_args:
+            __mace_submodule_required_args.remove("kwargs")
+        if "kwargs" in __mace_submodule_all_args:
+            __mace_submodule_all_args.remove("kwargs")
         for key in mace_kwargs:
             assert (
-                key in __mace_all_args
+                key in __mace_all_args + __mace_submodule_all_args
             ), f"{key} was passed as a MACE kwarg but does not match expected arguments."
         # remove the embedding table, as MACE uses e3nn layers
         del self.atom_embedding
@@ -56,17 +64,17 @@ class MACEWrapper(AbstractPyGModel):
         # pack stuff into the mace kwargs
         mace_kwargs["num_elements"] = num_atom_embedding
         mace_kwargs["hidden_irreps"] = atom_embedding_dim
-        mace_kwargs["atomic_numbers"] = list(range(1, num_atom_embedding))
+        mace_kwargs["atomic_numbers"] = list(range(1, num_atom_embedding + 1))
         if "atomic_energies" not in mace_kwargs:
             logger.warning("No ``atomic_energies`` provided, defaulting to ones.")
             mace_kwargs["atomic_energies"] = np.ones(num_atom_embedding)
         # check to make sure all that's required is
-        for key in __mace_required_args:
+        for key in __mace_required_args + __mace_submodule_required_args:
             if key not in mace_kwargs:
                 raise KeyError(
                     f"{key} is required by MACE, but was not found in kwargs."
                 )
-        self.encoder = MACE(**mace_kwargs)
+        self.encoder = mace_module(**mace_kwargs)
         # if a string is passed, grab the PyG builtins
         if isinstance(readout_method, str):
             readout_type = getattr(pool, f"global_{readout_method}_pool", None)
