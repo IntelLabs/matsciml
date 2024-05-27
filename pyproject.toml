@@ -37,7 +37,7 @@ dependencies = [
   "mendeleev==0.16.0",
   "e3nn",
   "mace-torch==0.3.4",
-  "monty==2024.2.2"
+  "monty==2024.5.24"
 ]
 description = "PyTorch Lightning and Deep Graph Library enabled materials science deep learning pipeline"
 dynamic = ["version", "readme"]
