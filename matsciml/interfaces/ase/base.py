@@ -16,6 +16,7 @@ from matsciml.models.base import (
     MultiTaskLitModule,
 )
 from matsciml.datasets.transforms.base import AbstractDataTransform
+from matsciml.interfaces.ase import multitask as mt
 
 __all__ = ["MatSciMLCalculator"]
 
@@ -92,6 +93,7 @@ class MatSciMLCalculator(Calculator):
         atoms: Atoms | None = None,
         directory=".",
         conversion_factor: float | dict[str, float] = 1.0,
+        multitask_strategy: str | Callable | mt.AbstractStrategy = "AverageTasks",
         **kwargs,
     ):
         """
@@ -172,6 +174,14 @@ class MatSciMLCalculator(Calculator):
         self.task_module = task_module
         self.transforms = transforms
         self.conversion_factor = conversion_factor
+        if isinstance(multitask_strategy, str):
+            cls_name = getattr(mt, multitask_strategy, None)
+            if cls_name is None:
+                raise NameError(
+                    f"Invalid multitask strategy name; supported strategies are {mt.__all__}"
+                )
+            multitask_strategy = cls_name()
+        self.multitask_strategy = multitask_strategy
 
     @property
     def conversion_factor(self) -> dict[str, float]:
@@ -238,20 +248,26 @@ class MatSciMLCalculator(Calculator):
         # get into format ready for matsciml model
         data_dict = self._format_pipeline(atoms)
         # run the data structure through the model
-        output = self.task_module(data_dict)
-        # add outputs to self.results as expected by ase
-        if "energy" in output:
-            self.results["energy"] = output["energy"].detach().item()
-        if "force" in output:
-            self.results["forces"] = output["force"].detach().numpy()
-        if "stress" in output:
-            self.results["stress"] = output["stress"].detach().numpy()
-        if "dipole" in output:
-            self.results["dipole"] = output["dipole"].detach().numpy()
-        if len(self.results) == 0:
-            raise RuntimeError(
-                f"No expected properties were written. Output dict: {output}"
-            )
+        if isinstance(self.task_module, MultiTaskLitModule):
+            output = self.task_module.ase_calculate(data_dict)
+            # use a more complicated parser for multitasks
+            results = self.multitask_strategy(output, self.task_module)
+            self.results = results
+        else:
+            output = self.task_module(data_dict)
+            # add outputs to self.results as expected by ase
+            if "energy" in output:
+                self.results["energy"] = output["energy"].detach().item()
+            if "force" in output:
+                self.results["forces"] = output["force"].detach().numpy()
+            if "stress" in output:
+                self.results["stress"] = output["stress"].detach().numpy()
+            if "dipole" in output:
+                self.results["dipole"] = output["dipole"].detach().numpy()
+            if len(self.results) == 0:
+                raise RuntimeError(
+                    f"No expected properties were written. Output dict: {output}"
+                )
         # perform optional unit conversions
         for key, value in self.conversion_factor.items():
             if key in self.results:
