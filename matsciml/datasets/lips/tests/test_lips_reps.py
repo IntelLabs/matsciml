@@ -18,8 +18,8 @@ def test_pairwise_pointcloud():
                 "pos",
                 "pc_features",
                 "sizes",
-                "src_nodes",
-                "dst_nodes",
+                "pc_src_nodes",
+                "pc_dst_nodes",
                 "force",
             ]
         ],
@@ -40,8 +40,8 @@ def test_sampled_pointcloud():
                 "pos",
                 "pc_features",
                 "sizes",
-                "src_nodes",
-                "dst_nodes",
+                "pc_src_nodes",
+                "pc_dst_nodes",
                 "force",
             ]
         ],
