@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-import dgl
 import torch
 
 from matsciml.common.registry import registry
@@ -44,7 +43,10 @@ class S2EFDataset(PointCloudDataset):
         data = super().data_from_key(lmdb_index, subindex)
         system_size = data["pos"].size(0)
         node_choices = self.choose_dst_nodes(system_size, self.full_pairwise)
-        src_nodes, dst_nodes = node_choices["src_nodes"], node_choices["dst_nodes"]
+        src_nodes, dst_nodes = (
+            node_choices["pc_src_nodes"],
+            node_choices["pc_dst_nodes"],
+        )
         atom_numbers = data["atomic_numbers"].to(torch.int)
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(
@@ -95,7 +97,10 @@ class IS2REDataset(PointCloudDataset):
         data = super().data_from_key(lmdb_index, subindex)
         system_size = data["pos"].size(0)
         node_choices = self.choose_dst_nodes(system_size, self.full_pairwise)
-        src_nodes, dst_nodes = node_choices["src_nodes"], node_choices["dst_nodes"]
+        src_nodes, dst_nodes = (
+            node_choices["pc_src_nodes"],
+            node_choices["pc_dst_nodes"],
+        )
         atom_numbers = data["atomic_numbers"].to(torch.int)
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(

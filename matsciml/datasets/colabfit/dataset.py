@@ -67,7 +67,10 @@ class ColabFitDataset(PointCloudDataset):
         assert coords.size(-1) == 3
         system_size = coords.size(0)
         node_choices = self.choose_dst_nodes(system_size, self.full_pairwise)
-        src_nodes, dst_nodes = node_choices["src_nodes"], node_choices["dst_nodes"]
+        src_nodes, dst_nodes = (
+            node_choices["pc_src_nodes"],
+            node_choices["pc_dst_nodes"],
+        )
         # typecast atomic numbers
         atom_numbers = torch.LongTensor(data["atomic_numbers"])
         # uses one-hot encoding featurization
@@ -102,5 +105,5 @@ class ColabFitDataset(PointCloudDataset):
         return concatenate_keys(
             batch,
             pad_keys=["pc_features"],
-            unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
+            unpacked_keys=["sizes", "pc_src_nodes", "pc_dst_nodes"],
         )

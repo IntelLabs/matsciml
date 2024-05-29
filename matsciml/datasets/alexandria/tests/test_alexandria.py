@@ -78,7 +78,7 @@ def test_pairwise_pointcloud():
     assert all(
         [
             key in sample
-            for key in ["pos", "pc_features", "sizes", "src_nodes", "dst_nodes"]
+            for key in ["pos", "pc_features", "sizes", "pc_src_nodes", "pc_dst_nodes"]
         ],
     )
     # for a pairwise point cloud sizes should be equal
@@ -93,7 +93,7 @@ def test_sampled_pointcloud():
     assert all(
         [
             key in sample
-            for key in ["pos", "pc_features", "sizes", "src_nodes", "dst_nodes"]
+            for key in ["pos", "pc_features", "sizes", "pc_src_nodes", "pc_dst_nodes"]
         ],
     )
     # for a pairwise point cloud sizes should be equal

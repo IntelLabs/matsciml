@@ -100,7 +100,10 @@ class AlexandriaDataset(PointCloudDataset):
         cell = torch.from_numpy(structure.lattice.matrix.copy()).float()
         return_dict["cell"] = cell
         chosen_nodes = self.choose_dst_nodes(system_size, self.full_pairwise)
-        src_nodes, dst_nodes = chosen_nodes["src_nodes"], chosen_nodes["dst_nodes"]
+        src_nodes, dst_nodes = (
+            chosen_nodes["pc_src_nodes"],
+            chosen_nodes["pc_dst_nodes"],
+        )
         atom_numbers = torch.LongTensor(structure.atomic_numbers)
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(
@@ -261,5 +264,5 @@ class AlexandriaDataset(PointCloudDataset):
         return concatenate_keys(
             batch,
             pad_keys=["pc_features"],
-            unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
+            unpacked_keys=["sizes", "pc_src_nodes", "pc_dst_nodes"],
         )

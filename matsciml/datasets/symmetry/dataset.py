@@ -65,8 +65,8 @@ class SyntheticPointGroupDataset(BaseLMDBDataset):
         # get number of particles in the original system
         sample["sizes"] = len(sample["pos"])
         # these are meant to correspond to indices
-        sample["src_nodes"] = torch.arange(sample["num_centers"])
-        sample["dst_nodes"] = torch.arange(sample["num_centers"])
+        sample["pc_src_nodes"] = torch.arange(sample["num_centers"])
+        sample["pc_dst_nodes"] = torch.arange(sample["num_centers"])
         # clean up keys
         for key in ["label"]:
             del sample[key]
