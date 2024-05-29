@@ -9,7 +9,7 @@ from matsciml.datasets.colabfit import ColabFitDataset
 @pytest.mark.dependency()
 def test_devset_init():
     """Test whether or not the dataset can be created from devset"""
-    dset = ColabFitDataset.from_devset()
+    _ = ColabFitDataset.from_devset()
 
 
 @pytest.mark.dependency(depends=["test_devset_init"])
@@ -18,7 +18,7 @@ def test_devset_read():
     dset = ColabFitDataset.from_devset()
     num_samples = len(dset)
     for index in range(num_samples):
-        sample = dset.__getitem__(index)
+        _ = dset.__getitem__(index)
 
 
 @pytest.mark.dependency(depends=["test_devset_read"])
