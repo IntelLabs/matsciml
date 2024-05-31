@@ -1,4 +1,6 @@
 name: Run PyTorch Lightning related PyTests
+permissions: {}
+
 env:
   COLUMNS: 120
 on:

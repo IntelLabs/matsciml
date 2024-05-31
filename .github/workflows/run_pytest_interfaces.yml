@@ -1,4 +1,6 @@
 name: Run interface related PyTests
+permissions: {}
+
 env:
   COLUMNS: 120
 on:

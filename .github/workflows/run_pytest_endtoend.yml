@@ -1,4 +1,6 @@
 name: Run end-to-end suites for full pipeline coverage
+permissions: {}
+
 env:
   COLUMNS: 120
 on:
