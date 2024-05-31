@@ -1,4 +1,6 @@
 name: Run model and task related PyTests
+permissions: {}
+
 env:
   COLUMNS: 120
 on:

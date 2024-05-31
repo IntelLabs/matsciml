@@ -1,4 +1,6 @@
 name: Run broad spectrum PyTest on demand
+permissions: {}
+
 env:
   COLUMNS: 120
 on:
