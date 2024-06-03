@@ -2573,7 +2573,8 @@ class MultiTaskLitModule(pl.LightningModule):
             # now loop through every dataset/output head pair
             for dset_name, subtask_name in self.dataset_task_pairs:
                 subtask = self.task_map[dset_name][subtask_name]
-                output = subtask(batch)
+                # use the predict method to get rescaled outputs
+                output = subtask.predict(batch)
                 # now add it to the rest of the results
                 if dset_name not in results:
                     results[dset_name] = {}
