@@ -2533,20 +2533,18 @@ class MultiTaskLitModule(pl.LightningModule):
                     results[task_type] = subtask(batch)
             return results
 
-    def ase_calculate(self, batch: BatchDict) -> dict[str, dict[str, torch.Tensor]]:
+    def predict(self, batch: BatchDict) -> dict[str, dict[str, torch.Tensor]]:
         """
-        Currently "specialized" function that runs a set of data through
-        every single output head, ignoring the nominal dataset/subtask
-        unique mapping.
+        Similar logic to the `BaseTaskModule.predict` method, but implemented
+        for the multitask setting.
 
-        This is designed for ASE usage primarily, but ostensibly could be
-        used as _the_ inference call for a multitask module. Basically,
-        when the input data doesn't come from the same "datasets" used
-        for initialization/training, and we want to provide a "mixture of
-        experts" response.
+        The workflow is a linear combination of the two: we run the joint
+        embedder once, and then subsequently rely on the `predict` method
+        for each subtask to get outputs at their expected scales.
 
-        TODO: this could potentially be used as a template to redesign
-        the forward call to substantially simplify the multitask mapping.
+        This method also behaves a little differently from the other multitask
+        operations, as it runs a set of data through every single output head,
+        ignoring the nominal dataset/subtask unique mapping.
 
         Parameters
         ----------
