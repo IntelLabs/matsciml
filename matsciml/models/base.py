@@ -1015,6 +1015,38 @@ class BaseTaskModule(pl.LightningModule):
             normalizers[key] = Normalizer(mean=mean, std=std, device=self.device)
         return normalizers
 
+    def predict(self, batch: BatchDict) -> dict[str, torch.Tensor]:
+        """
+        Implements what is effectively the 'inference' logic of the task,
+        where run the forward pass on a batch of samples, and if normalizers
+        were used for training, we also apply the inverse operation to get
+        values in the right scale.
+
+        Not to be confused with `predict_step`, which is used by Lightning as
+        part of the prediction workflow. Since there is no one-size-fits-all
+        inference workflow we can define, this provides a convenient function
+        for users to call as a replacement.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of samples to pass to the model.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Output dictionary as provided by the forward pass, but if
+            normalizers are available for a given task, we apply the
+            inverse norm on the value.
+        """
+        outputs = self(batch)
+        if self.uses_normalizers:
+            for key in self.task_keys:
+                if key in self.normalizers:
+                    # apply the inverse transform if provided
+                    outputs[key] = self.normalizers[key].denorm(outputs[key])
+        return outputs
+
     @classmethod
     def from_pretrained_encoder(cls, task_ckpt_path: str | Path, **kwargs):
         """
@@ -1705,6 +1737,36 @@ class ForceRegressionTask(BaseTaskModule):
         # representing the energy contribution
         outputs["node_energies"] = node_energies
         return outputs
+
+    def predict(self, batch: BatchDict) -> dict[str, torch.Tensor]:
+        """
+        Similar to the base method, but we make two minor modifications to
+        the denormalization logic as we want to potentially apply the same
+        energy normalization rescaling to the forces and node-level energies.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of samples to evaluate on.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Output dictionary as provided by the forward call. For this task in
+            particular, we may also apply the energy rescaling to forces and
+            node energies if separate keys for them are not provided.
+        """
+        output = super().predict(batch)
+        # for forces, in the event that a dedicated normalizer wasn't provided
+        # but we have an energy normalizer, we apply the same factors to the force
+        if self.uses_normalizers:
+            if "force" not in self.normalizers and "energy" in self.normalizers:
+                output["force"] = self.normalizers["energy"].denorm(output["force"])
+            if "node_energies" not in self.normalizers and "energy" in self.normalizers:
+                output["node_energies"] = self.normalizers["energy"].denorm(
+                    output["node_energies"]
+                )
+        return output
 
     def _get_targets(
         self,
@@ -2471,20 +2533,18 @@ class MultiTaskLitModule(pl.LightningModule):
                     results[task_type] = subtask(batch)
             return results
 
-    def ase_calculate(self, batch: BatchDict) -> dict[str, dict[str, torch.Tensor]]:
+    def predict(self, batch: BatchDict) -> dict[str, dict[str, torch.Tensor]]:
         """
-        Currently "specialized" function that runs a set of data through
-        every single output head, ignoring the nominal dataset/subtask
-        unique mapping.
+        Similar logic to the `BaseTaskModule.predict` method, but implemented
+        for the multitask setting.
 
-        This is designed for ASE usage primarily, but ostensibly could be
-        used as _the_ inference call for a multitask module. Basically,
-        when the input data doesn't come from the same "datasets" used
-        for initialization/training, and we want to provide a "mixture of
-        experts" response.
+        The workflow is a linear combination of the two: we run the joint
+        embedder once, and then subsequently rely on the `predict` method
+        for each subtask to get outputs at their expected scales.
 
-        TODO: this could potentially be used as a template to redesign
-        the forward call to substantially simplify the multitask mapping.
+        This method also behaves a little differently from the other multitask
+        operations, as it runs a set of data through every single output head,
+        ignoring the nominal dataset/subtask unique mapping.
 
         Parameters
         ----------
@@ -2511,7 +2571,8 @@ class MultiTaskLitModule(pl.LightningModule):
             # now loop through every dataset/output head pair
             for dset_name, subtask_name in self.dataset_task_pairs:
                 subtask = self.task_map[dset_name][subtask_name]
-                output = subtask(batch)
+                # use the predict method to get rescaled outputs
+                output = subtask.predict(batch)
                 # now add it to the rest of the results
                 if dset_name not in results:
                     results[dset_name] = {}

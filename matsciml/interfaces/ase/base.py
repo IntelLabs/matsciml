@@ -248,13 +248,12 @@ class MatSciMLCalculator(Calculator):
         # get into format ready for matsciml model
         data_dict = self._format_pipeline(atoms)
         # run the data structure through the model
+        output = self.task_module.predict(data_dict)
         if isinstance(self.task_module, MultiTaskLitModule):
-            output = self.task_module.ase_calculate(data_dict)
             # use a more complicated parser for multitasks
             results = self.multitask_strategy(output, self.task_module)
             self.results = results
         else:
-            output = self.task_module(data_dict)
             # add outputs to self.results as expected by ase
             if "energy" in output:
                 self.results["energy"] = output["energy"].detach().item()
