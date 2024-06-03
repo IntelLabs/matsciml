@@ -254,7 +254,8 @@ class MatSciMLCalculator(Calculator):
             results = self.multitask_strategy(output, self.task_module)
             self.results = results
         else:
-            output = self.task_module(data_dict)
+            # use the specialized predict method, which will rescale data
+            output = self.task_module.predict(data_dict)
             # add outputs to self.results as expected by ase
             if "energy" in output:
                 self.results["energy"] = output["energy"].detach().item()
