@@ -1738,6 +1738,36 @@ class ForceRegressionTask(BaseTaskModule):
         outputs["node_energies"] = node_energies
         return outputs
 
+    def predict(self, batch: BatchDict) -> dict[str, torch.Tensor]:
+        """
+        Similar to the base method, but we make two minor modifications to
+        the denormalization logic as we want to potentially apply the same
+        energy normalization rescaling to the forces and node-level energies.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of samples to evaluate on.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Output dictionary as provided by the forward call. For this task in
+            particular, we may also apply the energy rescaling to forces and
+            node energies if separate keys for them are not provided.
+        """
+        output = super().predict(batch)
+        # for forces, in the event that a dedicated normalizer wasn't provided
+        # but we have an energy normalizer, we apply the same factors to the force
+        if self.uses_normalizers:
+            if "force" not in self.normalizers and "energy" in self.normalizers:
+                output["force"] = self.normalizers["energy"].denorm(output["force"])
+            if "node_energies" not in self.normalizers and "energy" in self.normalizers:
+                output["node_energies"] = self.normalizers["energy"].denorm(
+                    output["node_energies"]
+                )
+        return output
+
     def _get_targets(
         self,
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
