@@ -1015,6 +1015,38 @@ class BaseTaskModule(pl.LightningModule):
             normalizers[key] = Normalizer(mean=mean, std=std, device=self.device)
         return normalizers
 
+    def predict(self, batch: BatchDict) -> dict[str, torch.Tensor]:
+        """
+        Implements what is effectively the 'inference' logic of the task,
+        where run the forward pass on a batch of samples, and if normalizers
+        were used for training, we also apply the inverse operation to get
+        values in the right scale.
+
+        Not to be confused with `predict_step`, which is used by Lightning as
+        part of the prediction workflow. Since there is no one-size-fits-all
+        inference workflow we can define, this provides a convenient function
+        for users to call as a replacement.
+
+        Parameters
+        ----------
+        batch : BatchDict
+            Batch of samples to pass to the model.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Output dictionary as provided by the forward pass, but if
+            normalizers are available for a given task, we apply the
+            inverse norm on the value.
+        """
+        outputs = self(batch)
+        if self.uses_normalizers:
+            for key in self.task_keys:
+                if key in self.normalizers:
+                    # apply the inverse transform if provided
+                    outputs[key] = self.normalizers[key].denorm(outputs[key])
+        return outputs
+
     @classmethod
     def from_pretrained_encoder(cls, task_ckpt_path: str | Path, **kwargs):
         """
