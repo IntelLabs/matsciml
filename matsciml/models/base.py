@@ -698,6 +698,8 @@ class BaseTaskModule(pl.LightningModule):
         self.output_kwargs = default_heads
         self.normalize_kwargs = normalize_kwargs
         self.task_keys = task_keys
+        breakpoint()
+        self.task_loss_scaling = None
         self.embedding_reduction_type = embedding_reduction_type
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
@@ -741,6 +743,31 @@ class BaseTaskModule(pl.LightningModule):
         # some tasks like ForceRegressionTask doesn't actually use an output
         # head for the forces
         return True
+
+    @property
+    def task_loss_scaling(self) -> list[str]:
+        return self._task_loss_scaling
+
+    @task_loss_scaling.setter
+    def task_loss_scaling(self, loss_scaling_dict: dict[str, float] | None) -> None:
+        """
+        Adds loss scaling per task. Ensures task loss scaling key is present in the 
+        task loss keys.
+
+        Parameters
+        ----------
+        loss_scaling_dict : dict[str, float]
+            Dictionary used to map a task key to a scaling value.
+        """
+
+        # Check if task loss scaling key is present in task keys.
+
+        if loss_scaling_dict is None:
+            loss_scaling_dict = {}
+        if not isinstance(loss_scaling_dict, dict):
+            raise TypeError(f"task_loss_scaling {loss_scaling_dict} must be a dictionary, got type {type(loss_scaling_dict)}.")
+        self._task_loss_scaling = loss_scaling_dict
+        self.hparams["task_loss_scaling"] = self._task_loss_scaling
 
     @abstractmethod
     def _make_output_heads(self) -> nn.ModuleDict: ...
