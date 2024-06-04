@@ -760,25 +760,30 @@ class BaseTaskModule(pl.LightningModule):
         loss_scaling_dict : dict[str, float]
             Dictionary used to map a task key to a scaling value.
         """
-        if loss_scaling_dict is None:
-            loss_scaling_dict = {1: key for key in self._task_keys}
-
         if not isinstance(loss_scaling_dict, dict):
             raise TypeError(
                 f"task_loss_scaling {loss_scaling_dict} must be a dictionary, got type {type(loss_scaling_dict)}."
             )
 
-        for scaling_key in loss_scaling_dict.keys():
-            assert (
-                scaling_key in self._task_keys
-            ), f"Loss scaling key {scaling_key} not in available task keys {self._task_keys}."
+        keys = set(loss_scaling_dict.keys()).union(set(self._task_keys))
+        not_in_scaling = []
+        not_in_tasks = []
+        final_scaling_dict = {}
+        for key in keys:
+            if key not in loss_scaling_dict:
+                not_in_scaling.append(key)
+            if key not in self._task_keys:
+                not_in_tasks.append(keys)
+            final_scaling_dict[key] = loss_scaling_dict.get(key, 1.0)
 
-        for task_key in self._task_keys:
-            if task_key not in loss_scaling_dict.keys():
-                warn(f"Task key f{task_key} has no scaling provided. Defaulting to 1.")
-                loss_scaling_dict[task_key] = 1
+        if len(not_in_scaling) != 0:
+            warn(f"Unspecified tasks will have a scaling of 1: {not_in_scaling}")
+        if len(not_in_tasks) != 0:
+            warn(
+                f"Task scaling keys passed that are not actually tasks: {not_in_tasks}"
+            )
 
-        self._task_loss_scaling = loss_scaling_dict
+        self._task_loss_scaling = final_scaling_dict
         self.hparams["task_loss_scaling"] = self._task_loss_scaling
 
     @abstractmethod
