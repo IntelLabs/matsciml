@@ -698,8 +698,9 @@ class BaseTaskModule(pl.LightningModule):
         self.output_kwargs = default_heads
         self.normalize_kwargs = normalize_kwargs
         self.task_keys = task_keys
-        breakpoint()
-        self.task_loss_scaling = None
+        self._task_loss_scaling = kwargs.get("task_loss_scaling", None)
+        if self.task_keys != []:
+            self.task_loss_scaling = self._task_loss_scaling
         self.embedding_reduction_type = embedding_reduction_type
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
@@ -751,7 +752,7 @@ class BaseTaskModule(pl.LightningModule):
     @task_loss_scaling.setter
     def task_loss_scaling(self, loss_scaling_dict: dict[str, float] | None) -> None:
         """
-        Adds loss scaling per task. Ensures task loss scaling key is present in the 
+        Adds loss scaling per task. Ensures task loss scaling key is present in the
         task loss keys.
 
         Parameters
@@ -759,13 +760,24 @@ class BaseTaskModule(pl.LightningModule):
         loss_scaling_dict : dict[str, float]
             Dictionary used to map a task key to a scaling value.
         """
-
-        # Check if task loss scaling key is present in task keys.
-
         if loss_scaling_dict is None:
-            loss_scaling_dict = {}
+            loss_scaling_dict = {1: key for key in self._task_keys}
+
         if not isinstance(loss_scaling_dict, dict):
-            raise TypeError(f"task_loss_scaling {loss_scaling_dict} must be a dictionary, got type {type(loss_scaling_dict)}.")
+            raise TypeError(
+                f"task_loss_scaling {loss_scaling_dict} must be a dictionary, got type {type(loss_scaling_dict)}."
+            )
+
+        for scaling_key in loss_scaling_dict.keys():
+            assert (
+                scaling_key in self._task_keys
+            ), f"Loss scaling key {scaling_key} not in available task keys {self._task_keys}."
+
+        for task_key in self._task_keys:
+            if task_key not in loss_scaling_dict.keys():
+                warn(f"Task key f{task_key} has no scaling provided. Defaulting to 1.")
+                loss_scaling_dict[task_key] = 1
+
         self._task_loss_scaling = loss_scaling_dict
         self.hparams["task_loss_scaling"] = self._task_loss_scaling
 
@@ -934,7 +946,9 @@ class BaseTaskModule(pl.LightningModule):
             target_val = targets[key]
             if self.uses_normalizers:
                 target_val = self.normalizers[key].norm(target_val)
-            losses[key] = self.loss_func(predictions[key], target_val)
+            loss = self.loss_func(predictions[key], target_val)
+            losses[key] = loss * self.task_loss_scaling[key]
+
         total_loss: torch.Tensor = sum(losses.values())
         return {"loss": total_loss, "log": losses}
 
@@ -1241,6 +1255,8 @@ class ScalarRegressionTask(BaseTaskModule):
             opt.add_param_group({"params": self.output_heads.parameters()})
             # create normalizers for each target
             self.normalizers = self._make_normalizers()
+            self.task_loss_scaling = self._task_loss_scaling
+
         return status
 
     def on_validation_batch_start(
@@ -1543,6 +1559,8 @@ class BinaryClassificationTask(BaseTaskModule):
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
+            self.task_loss_scaling = self._task_loss_scaling
+
         return status
 
     def on_validation_batch_start(
@@ -1866,6 +1884,8 @@ class ForceRegressionTask(BaseTaskModule):
             opt.add_param_group({"params": self.output_heads.parameters()})
             # create normalizers for each target
             self.normalizers = self._make_normalizers()
+            self.task_loss_scaling = self._task_loss_scaling
+
         return status
 
     def training_step(
@@ -2122,6 +2142,8 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
+            self.task_loss_scaling = self._task_loss_scaling
+
         return status
 
     def on_validation_batch_start(
