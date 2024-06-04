@@ -8,6 +8,7 @@ from contextlib import ExitStack, nullcontext
 from pathlib import Path
 from typing import Any, Callable, ContextManager, Dict, List, Optional, Type, Union
 from warnings import warn
+from logging import getLogger
 
 import pytorch_lightning as pl
 import torch
@@ -20,6 +21,9 @@ from matsciml.common.registry import registry
 from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
 from matsciml.models.common import OutputHead
 from matsciml.modules.normalizer import Normalizer
+
+logger = getLogger("matsciml")
+logger.setLevel("INFO")
 
 if package_registry["dgl"]:
     import dgl
@@ -1761,7 +1765,8 @@ class ForceRegressionTask(BaseTaskModule):
         # but we have an energy normalizer, we apply the same factors to the force
         if self.uses_normalizers:
             if "force" not in self.normalizers and "energy" in self.normalizers:
-                output["force"] = self.normalizers["energy"].denorm(output["force"])
+                # for force only std is used to rescale
+                output["force"] = output["force"] * self.normalizers["energy"].std
             if "node_energies" not in self.normalizers and "energy" in self.normalizers:
                 output["node_energies"] = self.normalizers["energy"].denorm(
                     output["node_energies"]
@@ -1888,6 +1893,36 @@ class ForceRegressionTask(BaseTaskModule):
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
         return loss_dict
+
+    def _make_normalizers(self) -> dict[str, Normalizer]:
+        """
+        Applies force specific logic, where we check for the case
+        when an energy normalizer is provided by not force. To make
+        sure things are consistent, this will automatically add the
+        force normalizer with zero mean, and copies the std value from
+        the energy normalizer.
+
+        Returns
+        -------
+        Dict[str, Normalizer]
+            Normalizers for each target
+        """
+        normalizers = super()._make_normalizers()
+        if "energy" in normalizers and "force" not in normalizers:
+            energy_std = normalizers["energy"].std
+            if isinstance(energy_std, torch.Tensor):
+                std = energy_std.clone()
+                mean = torch.zeros_like(std)
+            else:
+                # assume it's a float otherwise
+                std = energy_std
+                mean = 0.0
+            force_norm = Normalizer(mean=mean, std=std, device=self.device)
+            normalizers["force"] = force_norm
+            logger.warning(
+                "Energy normalization was specified, but not force. I'm adding it for you."
+            )
+        return normalizers
 
 
 @registry.register_task("GradFreeForceRegressionTask")
