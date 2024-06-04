@@ -698,7 +698,7 @@ class BaseTaskModule(pl.LightningModule):
         self.output_kwargs = default_heads
         self.normalize_kwargs = normalize_kwargs
         self.task_keys = task_keys
-        self._task_loss_scaling = kwargs.get("task_loss_scaling", None)
+        self._task_loss_scaling = kwargs.get("task_loss_scaling", {})
         if self.task_keys != []:
             self.task_loss_scaling = self._task_loss_scaling
         self.embedding_reduction_type = embedding_reduction_type

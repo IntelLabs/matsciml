@@ -124,3 +124,13 @@ def test_scalar_regression(egnn_config):
     # make sure losses are tracked
     for key in ["efermi", "energy_total"]:
         assert f"train_{key}" in trainer.logged_metrics
+
+    task = ScalarRegressionTask(
+        **egnn_config,
+        task_keys=["efermi", "energy_total", "relative_energy"],
+    )
+    trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
+    trainer.fit(task, datamodule=devset)
+    # make sure losses are tracked
+    for key in ["efermi", "energy_total"]:
+        assert f"train_{key}" in trainer.logged_metrics
