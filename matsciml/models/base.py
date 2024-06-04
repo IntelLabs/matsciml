@@ -1761,7 +1761,8 @@ class ForceRegressionTask(BaseTaskModule):
         # but we have an energy normalizer, we apply the same factors to the force
         if self.uses_normalizers:
             if "force" not in self.normalizers and "energy" in self.normalizers:
-                output["force"] = self.normalizers["energy"].denorm(output["force"])
+                # for force only std is used to rescale
+                output["force"] = output["force"] * self.normalizers["energy"].std
             if "node_energies" not in self.normalizers and "energy" in self.normalizers:
                 output["node_energies"] = self.normalizers["energy"].denorm(
                     output["node_energies"]
