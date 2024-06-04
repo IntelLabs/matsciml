@@ -746,7 +746,7 @@ class BaseTaskModule(pl.LightningModule):
         return True
 
     @property
-    def task_loss_scaling(self) -> list[str]:
+    def task_loss_scaling(self) -> dict[str, float]:
         return self._task_loss_scaling
 
     @task_loss_scaling.setter
