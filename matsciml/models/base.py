@@ -11,6 +11,7 @@ from warnings import warn
 from logging import getLogger
 
 import pytorch_lightning as pl
+from pytorch_lightning import loggers as pl_loggers
 import torch
 from einops import reduce
 from torch import Tensor, nn
@@ -676,6 +677,7 @@ class BaseTaskModule(pl.LightningModule):
         embedding_reduction_type: str = "mean",
         normalize_kwargs: dict[str, float] | None = None,
         scheduler_kwargs: dict[str, dict[str, Any]] | None = None,
+        log_embeddings: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -706,6 +708,7 @@ class BaseTaskModule(pl.LightningModule):
         if len(self.task_keys) > 0:
             self.task_loss_scaling = self._task_loss_scaling
         self.embedding_reduction_type = embedding_reduction_type
+        self.log_embeddings = log_embeddings
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     @property
@@ -872,6 +875,40 @@ class BaseTaskModule(pl.LightningModule):
             )
             results[key] = output
         return results
+
+    def _log_embedding(self, embeddings: Embeddings) -> None:
+        """
+        This maps the appropriate logging function depending on what
+        logger was used, and saves the graph and node level embeddings.
+
+        Some services like ``wandb`` are able to do some nifty embedding
+        analyses online using these embeddings.
+
+        Parameters
+        ----------
+        embeddings : Embeddings
+            Data structure containing embeddings from the encoder.
+        """
+        if self.logger is not None:
+            exp = self.logger.experiment
+            if isinstance(self.logger, pl_loggers.WandbLogger):
+                exp.log(
+                    {"graph_embeddings": embeddings.system_embedding.detach().cpu()}
+                )
+                if isinstance(embeddings.point_embedding, torch.Tensor):
+                    exp.log(
+                        {"node_embeddings": embeddings.point_embedding.detach().cpu()}
+                    )
+            elif isinstance(self.logger, pl_loggers.TensorBoardLogger):
+                exp.add_embedding(
+                    embeddings.system_embedding.detach().cpu(), tag="graph_embeddings"
+                )
+                if isinstance(embeddings.point_embedding, torch.Tensor):
+                    exp.add_embedding(
+                        embeddings.point_embedding.detach().cpu(), tag="node_embeddings"
+                    )
+            else:
+                pass
 
     def _get_targets(
         self,
