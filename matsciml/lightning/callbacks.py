@@ -17,6 +17,7 @@ import torch
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import BasePredictionWriter, Callback
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
+from pytorch_lightning import loggers as pl_loggers
 from torch import distributed as dist
 from torch import nn
 from torch.optim import Optimizer
@@ -967,7 +968,10 @@ class TrainingHelperCallback(Callback):
 
     @staticmethod
     def encoder_head_comparison(
-        pl_module: pl.LightningModule, log_history, python_logger
+        pl_module: pl.LightningModule,
+        log_history,
+        python_logger,
+        global_step: int | None = None,
     ):
         """
         Make a comparison of weight norms in the encoder and output head stack.
@@ -1007,21 +1011,20 @@ class TrainingHelperCallback(Callback):
                 " output head: {output_median:.3e}"
             )
         # optionally record to service as well
-        if log_history:
-            pl_module.log(
-                "encoder_weight_norm",
-                torch.from_numpy(encoder_norm_vals).float(),
-                prog_bar=False,
-                on_step=True,
-                on_epoch=False,
-            )
-            pl_module.log(
-                "outputhead_weight_norm",
-                torch.from_numpy(output_norm_vals).float(),
-                prog_bar=False,
-                on_step=True,
-                on_epoch=False,
-            )
+        if log_history and pl_module.logger is not None:
+            log_service = pl_module.logger.experiment
+            encoder_norm_vals = torch.from_numpy(encoder_norm_vals).float()
+            output_norm_vals = torch.from_numpy(output_norm_vals).float()
+            if isinstance(log_service, pl_loggers.TensorBoardLogger):
+                log_service.add_histogram(
+                    "encoder_weight_norm", encoder_norm_vals, global_step
+                )
+                log_service.add_histogram(
+                    "outputhead_weight_norm", output_norm_vals, global_step
+                )
+            elif isinstance(log_service, pl_loggers.WandbLogger):
+                log_service.log({"encoder_weight_norm": encoder_norm_vals})
+                log_service.log({"outputhead_weight_norm": output_norm_vals})
 
     def on_before_optimizer_step(
         self,
@@ -1030,6 +1033,7 @@ class TrainingHelperCallback(Callback):
         optimizer: Optimizer,
     ) -> None:
         if self.is_active:
+            log_service = pl_module.logger
             # loop through parameter related checks
             grad_norm_vals = []
             for name, parameter in pl_module.named_parameters():
@@ -1046,13 +1050,18 @@ class TrainingHelperCallback(Callback):
                             )
                         grad_norm_vals.append(grad_norm.detach().cpu().item())
             # track gradient norm for the whole model
-            pl_module.log(
-                "gradient_norms",
-                torch.FloatTensor(grad_norm_vals),
-                prog_bar=False,
-                on_step=True,
-                on_epoch=False,
-            )
+            grad_norm_vals = torch.FloatTensor(grad_norm_vals)
+            if isinstance(log_service, pl_loggers.TensorBoardLogger):
+                log_service.experiment.add_histogram(
+                    "gradient_norms", grad_norm_vals, global_step=trainer.global_step
+                )
+            elif isinstance(log_service, pl_loggers.WandbLogger):
+                log_service.experiment.log(
+                    {"gradient_norms": torch.FloatTensor(grad_norm_vals)}
+                )
             self.encoder_head_comparison(
-                pl_module, self.record_param_norm_history, self.logger
+                pl_module,
+                self.record_param_norm_history,
+                self.logger,
+                trainer.global_step,
             )
