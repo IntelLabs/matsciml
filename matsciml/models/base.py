@@ -902,11 +902,15 @@ class BaseTaskModule(pl.LightningModule):
                     )
             elif isinstance(self.logger, pl_loggers.TensorBoardLogger):
                 exp.add_embedding(
-                    embeddings.system_embedding.detach().cpu(), tag="graph_embeddings"
+                    embeddings.system_embedding.detach().cpu(),
+                    tag="graph_embeddings",
+                    global_step=self.trainer.global_step,
                 )
                 if isinstance(embeddings.point_embedding, torch.Tensor):
                     exp.add_embedding(
-                        embeddings.point_embedding.detach().cpu(), tag="node_embeddings"
+                        embeddings.point_embedding.detach().cpu(),
+                        tag="node_embeddings",
+                        global_step=self.trainer.global_step,
                     )
             else:
                 pass
