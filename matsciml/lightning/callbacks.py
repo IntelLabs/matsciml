@@ -20,10 +20,12 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from torch import distributed as dist
 from torch import nn
 from torch.optim import Optimizer
+from dgl import DGLGraph
 
 from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
 from matsciml.models.base import BaseTaskModule
+from matsciml.common.types import Embeddings, BatchDict
 
 
 class LeaderboardWriter(BasePredictionWriter):
@@ -845,3 +847,108 @@ class SAM(Callback):
             if p.grad is None:
                 continue
             p.data = org_weights[p]
+
+
+
+def embedding_magnitude_hook(module: nn.Module, input: BatchDict, output: Embeddings) -> None:
+    """
+    Forward hook that will inspect an embedding output.
+
+    This checks for two properties of graph-level and node-level embeddings:
+    the magnitude of the median tells us if the values are a lot larger than
+    what we might typically expect, and the variance tells us if the embeddings
+    are effectively collapsing.
+
+    Parameters
+    ----------
+    module : nn.Module
+        Nominally a PyTorch module, but we actually expect an encoder.
+    input : BatchDict
+        Batch of samples to process
+    output : Embeddings
+        Expected to be an embedding data structure. If not, we don't
+        fail the run, but posts a critical message.
+    """
+    logger = getLogger("matsciml.helper")
+    logger.setLevel("INFO")
+    if isinstance(output, Embeddings):
+        # check the magnitude of both node and system level embeddings
+        if output.system_embedding is not None:
+            sys_z = output.system_embedding.detach().cpu()
+            # calculate representative statistics
+            sys_z_med = sys_z.median().item()
+            sys_z_var = sys_z.var().item()
+            if sys_z_med > 10.:
+                logger.warning(
+                    f"Median system/graph embedding value is greater than 10 ({sys_z_med})"
+                )
+            if sys_z_var <= 1e-2:
+                logger.warning(
+                    f"Variance in system/graph embedding is quite small ({sys_z_var})"
+                )
+        if output.point_embedding is not None:
+            node_z = output.point_embedding.detach().cpu()
+            # calculate representative statistics
+            node_z_med = node_z.median().item()
+            node_z_var = node_z.var().item()
+            if node_z_med > 10.:
+                logger.warning(
+                    f"Median node embedding value is greater than 10 ({node_z_med})"
+                )
+            if node_z_var <= 1e-2:
+                logger.warning(
+                    f"Variance in node embedding is quite small ({node_z_var})"
+                )
+    else:
+        logger.critical(
+            f"Hooked module does not produce an embedding data structure! {module}"
+        )
+
+
+class TrainingHelperCallback(Callback):
+    def __init__(self, 
+        small_grad_thres: float = 1e-3, param_norm_thres: float = 10., update_freq: int = 50
+    ) -> None:
+        super().__init__()
+        self.logger = getLogger("matsciml.helper")
+        self.logger.setLevel("INFO")
+        self.small_grad_thres = small_grad_thres
+        self.update_freq = update_freq
+
+    def on_train_epoch_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        self.batch_idx = 0
+
+    def on_train_batch_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", batch: Any, batch_idx: int) -> None:
+        self.batch_idx = batch_idx
+        if self.is_active:
+            # look at atom positions for irregularities
+            if "graph" in batch:
+                g = batch["graph"]
+                if isinstance(g, DGLGraph):
+                    pos = g.ndata["pos"]
+                else:
+                    pos = g.pos
+            else:
+                # we assume there are positions, otherwise there are bigger
+                # problems than running this check
+                pos = batch["pos"]
+            min_pos, max_pos = pos.min().item(), pos.max().item()
+            if min_pos >= 0. and max_pos <= 1.:
+                self.logger.warning("Coordinates are small and might be fractional, which may not be intended.")
+
+    @property
+    def is_active(self) -> bool:
+        return (self.batch_idx % self.update_freq) == 0
+
+    def on_before_optimizer_step(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", optimizer: Optimizer) -> None:
+        if self.is_active:
+            # loop through parameter related checks
+            for name, parameter in pl_module.named_parameters():
+                if parameter.requires_grad:
+                    if parameter.grad is None:
+                        self.logger.warning(f"Parameter {name} has no gradients, but should!")
+                    else:
+                        grad_norm = parameter.grad.norm()
+                        if grad_norm.abs() < self.small_grad_thres:
+                            self.logger.warning(f"Parameter {name} has small gradient norm - {grad_norm}")
+                param_norm = parameter.norm()
