@@ -874,6 +874,8 @@ class BaseTaskModule(pl.LightningModule):
                 reduction=self.embedding_reduction_type,
             )
             results[key] = output
+        if self.log_embeddings:
+            self._log_embedding(embeddings)
         return results
 
     def _log_embedding(self, embeddings: Embeddings) -> None:
@@ -1366,6 +1368,8 @@ class MaceEnergyForceTask(BaseTaskModule):
             output = head(embeddings.system_embedding[key])
             output = reduce(output, "b ... d -> b d", reduction="mean")
             results[key] = output
+        if self.log_embeddings:
+            self._log_embedding(embeddings)
         return results
 
     def _compute_losses(
@@ -1827,6 +1831,8 @@ class ForceRegressionTask(BaseTaskModule):
         # this ensures that we get a scalar value for every node
         # representing the energy contribution
         outputs["node_energies"] = node_energies
+        if self.log_embeddings:
+            self._log_embedding(embeddings)
         return outputs
 
     def predict(self, batch: BatchDict) -> dict[str, torch.Tensor]:
