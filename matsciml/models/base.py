@@ -708,7 +708,6 @@ class BaseTaskModule(pl.LightningModule):
         if len(self.task_keys) > 0:
             self.task_loss_scaling = self._task_loss_scaling
         self.embedding_reduction_type = embedding_reduction_type
-        self.log_embeddings = log_embeddings
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     @property
@@ -874,7 +873,7 @@ class BaseTaskModule(pl.LightningModule):
                 reduction=self.embedding_reduction_type,
             )
             results[key] = output
-        if self.log_embeddings:
+        if self.hparams.log_embeddings:
             self._log_embedding(embeddings)
         return results
 
@@ -1368,7 +1367,7 @@ class MaceEnergyForceTask(BaseTaskModule):
             output = head(embeddings.system_embedding[key])
             output = reduce(output, "b ... d -> b d", reduction="mean")
             results[key] = output
-        if self.log_embeddings:
+        if self.hparams.log_embeddings:
             self._log_embedding(embeddings)
         return results
 
@@ -1831,7 +1830,7 @@ class ForceRegressionTask(BaseTaskModule):
         # this ensures that we get a scalar value for every node
         # representing the energy contribution
         outputs["node_energies"] = node_energies
-        if self.log_embeddings:
+        if self.hparams.log_embeddings:
             self._log_embedding(embeddings)
         return outputs
 
