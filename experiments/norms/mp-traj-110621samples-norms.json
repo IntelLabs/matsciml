@@ -1,0 +1,18 @@
+{
+    "ef_per_atom_relaxed_mean": -6.229282871981618,
+    "ef_per_atom_relaxed_std": 1.8395217663898826,
+    "corrected_total_energy_mean": -202.79426006491903,
+    "corrected_total_energy_std": 205.18613142401196,
+    "bandgap_mean": 0.2109862413104203,
+    "bandgap_std": 0.7995890120419287,
+    "energy_per_atom_mean": -6.1961591014906094,
+    "energy_per_atom_std": 1.8424880919971969,
+    "uncorrected_total_energy_mean": -190.03622552355714,
+    "uncorrected_total_energy_std": 192.4759500539512,
+    "e_per_atom_relaxed_mean": -6.229282871981618,
+    "e_per_atom_relaxed_std": 1.8395217663898826,
+    "ef_per_atom_mean": -1.4549737165968193,
+    "ef_per_atom_std": 1.1933094427455249,
+    "energy_mean": -202.79426006491903,
+    "energy_std": 205.18613142401196
+}

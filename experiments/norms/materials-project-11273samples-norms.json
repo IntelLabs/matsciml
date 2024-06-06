@@ -1,0 +1,18 @@
+{
+    "band_gap_mean": 1.051629974274816,
+    "band_gap_std": 1.500929497959958,
+    "energy_per_atom_mean": -6.251698899770176,
+    "energy_per_atom_std": 1.8707090319265982,
+    "is_stable_mean": 0.2326798545196487,
+    "is_stable_std": 0.42253986772890895,
+    "formation_energy_per_atom_mean": -1.4557447383685151,
+    "formation_energy_per_atom_std": 1.1918680084111597,
+    "is_metal_mean": 0.47059345338419234,
+    "is_metal_std": 0.49913450593615777,
+    "efermi_mean": 3.072481025598332,
+    "efermi_std": 2.741221830566996,
+    "uncorrected_energy_per_atom_mean": -5.891579697212071,
+    "uncorrected_energy_per_atom_std": 1.7532234986281905,
+    "is_magnetic_mean": 0.46234365297613766,
+    "is_magnetic_std": 0.49857998308076756
+}
