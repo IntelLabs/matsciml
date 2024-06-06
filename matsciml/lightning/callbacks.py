@@ -884,7 +884,7 @@ def embedding_magnitude_hook(
                 logger.warning(
                     f"Median system/graph embedding value is greater than 10 ({sys_z_med})"
                 )
-            if sys_z_var <= 1e-2:
+            if sys_z_var <= 1e-5:
                 logger.warning(
                     f"Variance in system/graph embedding is quite small ({sys_z_var})"
                 )
@@ -897,7 +897,7 @@ def embedding_magnitude_hook(
                 logger.warning(
                     f"Median node embedding value is greater than 10 ({node_z_med})"
                 )
-            if node_z_var <= 1e-2:
+            if node_z_var <= 1e-5:
                 logger.warning(
                     f"Variance in node embedding is quite small ({node_z_var})"
                 )
