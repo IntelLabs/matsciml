@@ -849,8 +849,9 @@ class SAM(Callback):
             p.data = org_weights[p]
 
 
-
-def embedding_magnitude_hook(module: nn.Module, input: BatchDict, output: Embeddings) -> None:
+def embedding_magnitude_hook(
+    module: nn.Module, input: BatchDict, output: Embeddings
+) -> None:
     """
     Forward hook that will inspect an embedding output.
 
@@ -878,7 +879,7 @@ def embedding_magnitude_hook(module: nn.Module, input: BatchDict, output: Embedd
             # calculate representative statistics
             sys_z_med = sys_z.median().item()
             sys_z_var = sys_z.var().item()
-            if sys_z_med > 10.:
+            if sys_z_med > 10.0:
                 logger.warning(
                     f"Median system/graph embedding value is greater than 10 ({sys_z_med})"
                 )
@@ -891,7 +892,7 @@ def embedding_magnitude_hook(module: nn.Module, input: BatchDict, output: Embedd
             # calculate representative statistics
             node_z_med = node_z.median().item()
             node_z_var = node_z.var().item()
-            if node_z_med > 10.:
+            if node_z_med > 10.0:
                 logger.warning(
                     f"Median node embedding value is greater than 10 ({node_z_med})"
                 )
@@ -906,19 +907,39 @@ def embedding_magnitude_hook(module: nn.Module, input: BatchDict, output: Embedd
 
 
 class TrainingHelperCallback(Callback):
-    def __init__(self, 
-        small_grad_thres: float = 1e-3, param_norm_thres: float = 10., update_freq: int = 50
+    def __init__(
+        self,
+        small_grad_thres: float = 1e-3,
+        param_norm_thres: float = 10.0,
+        update_freq: int = 50,
+        encoder_hook: bool = True,
     ) -> None:
         super().__init__()
         self.logger = getLogger("matsciml.helper")
         self.logger.setLevel("INFO")
         self.small_grad_thres = small_grad_thres
         self.update_freq = update_freq
+        self.encoder_hook = encoder_hook
 
-    def on_train_epoch_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        if self.encoder_hook:
+            pl_module.encoder.register_forward_hook(embedding_magnitude_hook)
+            self.logger.info("Registered embedding monitor")
+
+    def on_train_epoch_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
         self.batch_idx = 0
 
-    def on_train_batch_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", batch: Any, batch_idx: int) -> None:
+    def on_train_batch_start(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
         self.batch_idx = batch_idx
         if self.is_active:
             # look at atom positions for irregularities
@@ -933,22 +954,33 @@ class TrainingHelperCallback(Callback):
                 # problems than running this check
                 pos = batch["pos"]
             min_pos, max_pos = pos.min().item(), pos.max().item()
-            if min_pos >= 0. and max_pos <= 1.:
-                self.logger.warning("Coordinates are small and might be fractional, which may not be intended.")
+            if min_pos >= 0.0 and max_pos <= 1.0:
+                self.logger.warning(
+                    "Coordinates are small and might be fractional, which may not be intended."
+                )
 
     @property
     def is_active(self) -> bool:
         return (self.batch_idx % self.update_freq) == 0
 
-    def on_before_optimizer_step(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", optimizer: Optimizer) -> None:
+    def on_before_optimizer_step(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        optimizer: Optimizer,
+    ) -> None:
         if self.is_active:
             # loop through parameter related checks
             for name, parameter in pl_module.named_parameters():
                 if parameter.requires_grad:
                     if parameter.grad is None:
-                        self.logger.warning(f"Parameter {name} has no gradients, but should!")
+                        self.logger.warning(
+                            f"Parameter {name} has no gradients, but should!"
+                        )
                     else:
                         grad_norm = parameter.grad.norm()
                         if grad_norm.abs() < self.small_grad_thres:
-                            self.logger.warning(f"Parameter {name} has small gradient norm - {grad_norm}")
-                param_norm = parameter.norm()
+                            self.logger.warning(
+                                f"Parameter {name} has small gradient norm - {grad_norm}"
+                            )
+                _ = parameter.norm()
