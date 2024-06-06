@@ -913,6 +913,7 @@ class TrainingHelperCallback(Callback):
         param_norm_thres: float = 10.0,
         update_freq: int = 50,
         encoder_hook: bool = True,
+        record_param_norm_history: bool = True,
     ) -> None:
         super().__init__()
         self.logger = getLogger("matsciml.helper")
@@ -920,6 +921,7 @@ class TrainingHelperCallback(Callback):
         self.small_grad_thres = small_grad_thres
         self.update_freq = update_freq
         self.encoder_hook = encoder_hook
+        self.record_param_norm_history = record_param_norm_history
 
     def on_fit_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
@@ -963,6 +965,64 @@ class TrainingHelperCallback(Callback):
     def is_active(self) -> bool:
         return (self.batch_idx % self.update_freq) == 0
 
+    @staticmethod
+    def encoder_head_comparison(
+        pl_module: pl.LightningModule, log_history, python_logger
+    ):
+        """
+        Make a comparison of weight norms in the encoder and output head stack.
+
+        The heuristic being checked here is if the encoder weights are a lot smaller
+        than the output head, the encoder may end up being ignored entirely and
+        the output heads are just overfitting to the data. This check doesn't prove
+        that is happening, but provides an indication of it.
+
+        Parameters
+        ----------
+        pl_module
+            Nominally a generic ``LightningModule``, but we expect the
+            model to have an encoder and an output head module dict.
+        log_history : bool
+            Default True, whether to log the weight norm values to an
+            experiment tracker.
+        python_logger : Logger
+            Logger for the Python side to raise the warning message.
+        """
+        # compare encoder and output head weights
+        encoder_norm_vals = []
+        output_norm_vals = []
+        for parameter in pl_module.encoder.parameters():
+            encoder_norm_vals.append(parameter.detach().norm().cpu().item())
+        for head in pl_module.output_heads.values():
+            for parameter in head.parameters():
+                output_norm_vals.append(parameter.detach().norm().cpu().item())
+        encoder_norm_vals = np.array(encoder_norm_vals)
+        output_norm_vals = np.array(output_norm_vals)
+        encoder_median = np.median(encoder_norm_vals)
+        output_median = np.median(output_norm_vals)
+        if encoder_median < (2.0 * output_median):
+            python_logger.warning(
+                "Median encoder weights are significantly smaller than output heads:"
+                " encoder median norm: {encoder_median:.3e},"
+                " output head: {output_median:.3e}"
+            )
+        # optionally record to service as well
+        if log_history:
+            pl_module.log(
+                "encoder_weight_norm",
+                torch.from_numpy(encoder_norm_vals).float(),
+                prog_bar=False,
+                on_step=True,
+                on_epoch=False,
+            )
+            pl_module.log(
+                "outputhead_weight_norm",
+                torch.from_numpy(output_norm_vals).float(),
+                prog_bar=False,
+                on_step=True,
+                on_epoch=False,
+            )
+
     def on_before_optimizer_step(
         self,
         trainer: "pl.Trainer",
@@ -971,6 +1031,7 @@ class TrainingHelperCallback(Callback):
     ) -> None:
         if self.is_active:
             # loop through parameter related checks
+            grad_norm_vals = []
             for name, parameter in pl_module.named_parameters():
                 if parameter.requires_grad:
                     if parameter.grad is None:
@@ -983,4 +1044,15 @@ class TrainingHelperCallback(Callback):
                             self.logger.warning(
                                 f"Parameter {name} has small gradient norm - {grad_norm}"
                             )
-                _ = parameter.norm()
+                        grad_norm_vals.append(grad_norm.detach().cpu().item())
+            # track gradient norm for the whole model
+            pl_module.log(
+                "gradient_norms",
+                torch.FloatTensor(grad_norm_vals),
+                prog_bar=False,
+                on_step=True,
+                on_epoch=False,
+            )
+            self.encoder_head_comparison(
+                pl_module, self.record_param_norm_history, self.logger
+            )
