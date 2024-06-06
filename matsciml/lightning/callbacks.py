@@ -911,7 +911,6 @@ class TrainingHelperCallback(Callback):
     def __init__(
         self,
         small_grad_thres: float = 1e-3,
-        param_norm_thres: float = 10.0,
         update_freq: int = 50,
         encoder_hook: bool = True,
         record_param_norm_history: bool = True,
@@ -927,6 +926,11 @@ class TrainingHelperCallback(Callback):
     def on_fit_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
+        """
+        This attaches the embedding hook, which inspects the embeddings
+        to make sure there is sufficient variance, or if the values are
+        too big.
+        """
         if self.encoder_hook:
             pl_module.encoder.register_forward_hook(embedding_magnitude_hook)
             self.logger.info("Registered embedding monitor")
@@ -934,6 +938,7 @@ class TrainingHelperCallback(Callback):
     def on_train_epoch_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
+        """Sets an internal batch index tracker for activity."""
         self.batch_idx = 0
 
     def on_train_batch_start(
@@ -943,6 +948,13 @@ class TrainingHelperCallback(Callback):
         batch: Any,
         batch_idx: int,
     ) -> None:
+        """
+        Triggering at the beginning of a training batch, this is where all
+        the checks pertaining to input data should be made. For now,
+        we check whether or not the coordinates are bounded between 0,1
+        which may indicate that the coordinates are fractional which may
+        not be intended.
+        """
         self.batch_idx = batch_idx
         if self.is_active:
             # look at atom positions for irregularities
@@ -964,6 +976,7 @@ class TrainingHelperCallback(Callback):
 
     @property
     def is_active(self) -> bool:
+        """Determines whether or not to perform an update."""
         return (self.batch_idx % self.update_freq) == 0
 
     @staticmethod
@@ -1032,6 +1045,13 @@ class TrainingHelperCallback(Callback):
         pl_module: "pl.LightningModule",
         optimizer: Optimizer,
     ) -> None:
+        """
+        This stage checks for problems pertaining to parameter weights
+        and gradients, triggering before the optimizer is stepped.
+        We check to make sure the gradient norm is reasonably sized,
+        as well as making sure that the output head weigts don't get
+        significantly larger than the encoder.
+        """
         if self.is_active:
             log_service = pl_module.logger
             # loop through parameter related checks
