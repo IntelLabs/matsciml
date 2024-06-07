@@ -10,6 +10,7 @@ from pathlib import Path
 from time import time
 from copy import copy
 from typing import Any, Callable, Dict, Iterator, Optional
+from queue import Queue
 
 import numpy as np
 import pytorch_lightning as pl
@@ -22,6 +23,7 @@ from torch import distributed as dist
 from torch import nn
 from torch.optim import Optimizer
 from dgl import DGLGraph
+from scipy.signal import correlate
 
 from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
@@ -1085,3 +1087,158 @@ class TrainingHelperCallback(Callback):
                 self.logger,
                 trainer.global_step,
             )
+
+
+class ModelAutocorrelation(Callback):
+    def __init__(
+        self,
+        buffer_size: int = 100,
+        sampled: bool = True,
+        sample_frac: float = 0.05,
+        analyze_grads: bool = True,
+        analyze_every_n_steps: int = 50,
+    ) -> None:
+        super().__init__()
+        self.buffer_size = buffer_size
+        if not sampled:
+            raise NotImplementedError(
+                "Only sampled analysis mode is currently supported."
+            )
+        self.sampled = sampled
+        self.sample_frac = sample_frac
+        self.analyze_grads = analyze_grads
+        self.analyze_every_n_steps = analyze_every_n_steps
+
+    @staticmethod
+    def sample_parameters(
+        model: nn.Module, indices: dict[str, torch.Tensor], collect_grads: bool
+    ) -> tuple[np.ndarray, np.ndarray | None]:
+        collected_params = []
+        collected_grads = []
+        for name, parameter in model.named_parameters():
+            idx = indices.get(name, None)
+            if idx is not None:
+                elements = parameter.flatten()[idx].detach().cpu().numpy()
+                collected_params.append(elements)
+                if collect_grads and parameter.grad is not None:
+                    collected_grads.append(
+                        parameter.grad.flatten()[idx].detach().cpu().numpy()
+                    )
+        if collect_grads and len(collected_grads) > 0:
+            return np.hstack(collected_params), np.hstack(collected_grads)
+        else:
+            return np.hstack(collected_params), None
+
+    def run_analysis(self, logger):
+        param_history = np.vstack(self.history["params"].queue)
+        param_corr = self._calculate_autocorrelation(param_history)
+        # now log the spectrum
+        if isinstance(logger, pl_loggers.WandbLogger):
+            from wandb.plot import line_series
+
+            logger.experiment.log(
+                {
+                    "param_autocorrelation": line_series(
+                        xs=[i for i in range(param_history.shape[0])],
+                        ys=param_corr.tolist(),
+                        title="Parameter autocorrelation",
+                        xname="Steps",
+                    )
+                }
+            )
+        elif isinstance(logger, pl_loggers.TensorBoardLogger):
+            logger.experiment.add_image(
+                "param_autocorrelation",
+                param_corr,
+                global_step=self.global_step,
+                dataformats="WH",
+            )
+
+        if self.analyze_grads:
+            grad_history = np.vstack(self.history["grads"].queue)
+            grad_corr = self._calculate_autocorrelation(grad_history)
+            if isinstance(logger, pl_loggers.WandbLogger):
+                from wandb.plot import line_series
+
+                logger.experiment.log(
+                    {
+                        "grad_autocorrelation": line_series(
+                            xs=[i for i in range(grad_history.shape[0])],
+                            ys=grad_corr.tolist(),
+                            title="Gradient autocorrelation",
+                            xname="Steps",
+                        )
+                    }
+                )
+            elif isinstance(logger, pl_loggers.TensorBoardLogger):
+                logger.experiment.add_image(
+                    "grad_autocorrelation",
+                    grad_corr,
+                    global_step=self.global_step,
+                    dataformats="WH",
+                )
+
+    @staticmethod
+    def _calculate_autocorrelation(history: np.ndarray) -> np.ndarray:
+        assert history.ndim == 2, "Expected history to be 2D!"
+        # normalizing by variance explodes, so just make it relative
+        corr = correlate(history, history, mode="same")
+        corr = (corr - corr.min(axis=0)) / (corr.max(axis=0) - corr.min(axis=0))
+        return corr
+
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        if self.sampled:
+            indices = {}
+            for name, parameter in pl_module.named_parameters():
+                if not isinstance(parameter, torch.nn.UninitializedParameter):
+                    numel = parameter.numel()
+                    indices[name] = torch.randperm(numel)[
+                        : int(numel * self.sample_frac)
+                    ]
+            self.indices = indices
+        self.history = {
+            "params": Queue(self.buffer_size),
+            "grads": Queue(self.buffer_size),
+        }
+
+    @property
+    def global_step(self) -> int:
+        return self._global_step
+
+    @global_step.setter
+    def global_step(self, value: int) -> None:
+        self._global_step = value
+
+    @property
+    def is_active(self) -> bool:
+        return (
+            self.global_step % self.analyze_every_n_steps
+        ) == 0 and self.global_step != 0
+
+    def on_train_batch_start(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        self.global_step = trainer.global_step
+
+    def on_before_optimizer_step(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", loss: torch.Tensor
+    ) -> None:
+        params, grads = self.sample_parameters(
+            pl_module, self.indices, self.analyze_grads
+        )
+        self.history["params"].put(params)
+        if self.analyze_grads:
+            self.history["grads"].put(grads)
+        # remove the oldest part of history first if we're full
+        if self.history["params"].full():
+            _ = self.history["params"].get()
+        if self.history["grads"].full():
+            _ = self.history["grads"].get()
+        if self.is_active:
+            self.run_analysis(pl_module.logger)
