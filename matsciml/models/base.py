@@ -678,6 +678,7 @@ class BaseTaskModule(pl.LightningModule):
         normalize_kwargs: dict[str, float] | None = None,
         scheduler_kwargs: dict[str, dict[str, Any]] | None = None,
         log_embeddings: bool = False,
+        log_embeddings_every_n_steps: int = 50,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -889,7 +890,9 @@ class BaseTaskModule(pl.LightningModule):
         embeddings : Embeddings
             Data structure containing embeddings from the encoder.
         """
-        if self.logger is not None:
+        log_freq = self.hparams.log_embeddings_every_n_steps
+        global_step = self.trainer.global_step
+        if self.logger is not None and (global_step % log_freq) == 0:
             exp = self.logger.experiment
             if isinstance(self.logger, pl_loggers.WandbLogger):
                 exp.log(
