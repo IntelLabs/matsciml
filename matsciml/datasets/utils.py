@@ -735,12 +735,13 @@ def calculate_periodic_shifts(
     cell = torch.from_numpy(cell.copy()).float()
     # get coordinates as well, for standardization
     frac_coords = torch.from_numpy(structure.frac_coords).float()
+    coords = torch.from_numpy(structure.cart_coords).float()
     return_dict = {
         "src_nodes": torch.LongTensor(all_src),
         "dst_nodes": torch.LongTensor(all_dst),
         "images": torch.FloatTensor(all_images),
         "cell": cell,
-        "pos": frac_coords,
+        "pos": coords,
     }
     # now calculate offsets based on each image for a lattice
     return_dict["offsets"] = einsum(return_dict["images"], cell, "v i, n i j -> v j")
