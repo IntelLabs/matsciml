@@ -1061,6 +1061,8 @@ class BaseTaskModule(pl.LightningModule):
             )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return loss_dict
 
     def test_step(
@@ -1081,6 +1083,8 @@ class BaseTaskModule(pl.LightningModule):
             )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return loss_dict
 
     def _make_normalizers(self) -> dict[str, Normalizer]:
