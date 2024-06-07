@@ -892,24 +892,37 @@ class BaseTaskModule(pl.LightningModule):
         """
         log_freq = self.hparams.log_embeddings_every_n_steps
         global_step = self.trainer.global_step
+        # only log embeddings at the same cadence as everything else
         if self.logger is not None and (global_step % log_freq) == 0:
             exp = self.logger.experiment
+            sys_z = embeddings.system_embedding.detach().cpu()
+            node_z = embeddings.point_embedding.detach().cpu()
             if isinstance(self.logger, pl_loggers.WandbLogger):
+                # this import is okay here since we need it for the logger anyway
+                import wandb
+
+                cols = [f"D{i}" for i in range(sys_z.size(-1))]
                 exp.log(
-                    {"graph_embeddings": embeddings.system_embedding.detach().cpu()}
+                    {"graph_embeddings": wandb.Table(columns=cols, data=sys_z.tolist())}
                 )
                 if isinstance(embeddings.point_embedding, torch.Tensor):
+                    # TODO: should add labels to the nodes based on graph index
                     exp.log(
-                        {"node_embeddings": embeddings.point_embedding.detach().cpu()}
+                        {
+                            "node_embeddings": wandb.Table(
+                                columns=cols, data=node_z.tolist()
+                            )
+                        }
                     )
             elif isinstance(self.logger, pl_loggers.TensorBoardLogger):
                 exp.add_embedding(
-                    embeddings.system_embedding.detach().cpu(),
+                    sys_z,
                     tag=f"graph_embeddings_{self.trainer.global_step}",
                 )
                 if isinstance(embeddings.point_embedding, torch.Tensor):
+                    # TODO: should add labels to the nodes based on graph index
                     exp.add_embedding(
-                        embeddings.point_embedding.detach().cpu(),
+                        node_z,
                         tag=f"node_embeddings_{self.trainer.global_step}",
                     )
             else:
