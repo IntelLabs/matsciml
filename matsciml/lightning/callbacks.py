@@ -1098,6 +1098,45 @@ class ModelAutocorrelation(Callback):
         analyze_grads: bool = True,
         analyze_every_n_steps: int = 50,
     ) -> None:
+        """
+        Initializes a ``ModelAutocorrelation`` callback.
+
+        The purpose of this callback is to track parameters and optionally
+        gradients over time, and periodically calculate the autocorrelation
+        spectrum to see how correlated parameters and gradients are throughout
+        the training process.
+
+        Parameters
+        ----------
+        buffer_size : int, default 100
+            Number of steps worth of parameters/gradients to keep in
+            the correlation window. If the buffer is too small, the
+            autocorrelation might not be particularly meaningful; if
+            it's too big, it may impact training throughput.
+        sampled : bool, default True
+            If True, we ``sample_frac`` worth of elements from every
+            parameter tensor. The False case has not yet been implemented,
+            but is intended to track the whole model.
+        sample_frac : float, default 0.05
+            Fraction of a given parameter/gradient tensor to track.
+            Larger values give a better picture for how the whole
+            model is behaving, while fewer samples mean less impact
+            but a poorer description.
+        analyze_grads : bool, default True
+            If True, perform the autocorrelation procedure for gradients
+            as well as parameters. This may give a better indication of
+            dynamics over parameters alone.
+        analyze_every_n_steps : int, default 50
+            Frequency to carry out the autocorrelation analysis. Note
+            that sampling is done at every training step, regardless
+            of this value. Instead, this determines how often we do the
+            autocorrelation calculation and logging.
+
+        Raises
+        ------
+        NotImplementedError
+            If ``sampled=False``, which has not yet been implemented.
+        """
         super().__init__()
         self.buffer_size = buffer_size
         if not sampled:
@@ -1113,6 +1152,32 @@ class ModelAutocorrelation(Callback):
     def sample_parameters(
         model: nn.Module, indices: dict[str, torch.Tensor], collect_grads: bool
     ) -> tuple[np.ndarray, np.ndarray | None]:
+        """
+        Collect elements from parameter and gradient tensors of the
+        target model based on a dictionary of indices.
+
+        Indices are expected to run over the number elements flattened
+        tensors (i.e. ``Tensor.numel``).
+
+        Parameters
+        ----------
+        model : nn.Module
+            PyTorch model to track
+        indices : dict[str, torch.Tensor]
+            Dictionary mapping for layer name and corresponding
+            parameter tensor
+        collect_grads
+            If True, gradients will also be recorded. Evidently
+            this means twice the storage requirement.
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray | None]
+            If ``collect_grads`` is True, a 2-tuple of arrays
+            will be returned, corresponding to the sampled
+            parameters and gradients. If False, the latter will
+            just be None.
+        """
         collected_params = []
         collected_grads = []
         for name, parameter in model.named_parameters():
@@ -1129,7 +1194,22 @@ class ModelAutocorrelation(Callback):
         else:
             return np.hstack(collected_params), None
 
-    def run_analysis(self, logger):
+    def run_analysis(self, logger: pl_loggers.Logger):
+        """
+        Perform the autocorrelation analysis.
+
+        This function will convert the history buffer into arrays
+        and pass them to ``_calculate_autocorrelation``. If we have
+        a logger (either ``wandb`` or ``tensorboard``), we will
+        log the correlation spectra to these services as well.
+
+        Parameters
+        ----------
+        logger : pl_loggers.Logger
+            Abstract PyTorch Lightning logger instance. While it is
+            technically abstract, only ``WandbLogger`` and ``TensorBoardLogger``
+            are supported right now
+        """
         param_history = np.vstack(self.history["params"].queue)
         param_corr = self._calculate_autocorrelation(param_history)
         # now log the spectrum
@@ -1152,6 +1232,10 @@ class ModelAutocorrelation(Callback):
                 param_corr,
                 global_step=self.global_step,
                 dataformats="WH",
+            )
+        else:
+            raise NotImplementedError(
+                "Only WandbLogger and TensorBoardLogger are currently supported."
             )
 
         if self.analyze_grads:
@@ -1180,6 +1264,27 @@ class ModelAutocorrelation(Callback):
 
     @staticmethod
     def _calculate_autocorrelation(history: np.ndarray) -> np.ndarray:
+        """
+        Use ``scipy.signal.correlate`` to calculate the autocorrelation
+        for parameters and optionally gradients.
+
+        This spectrum tells you the degree of correlation between training
+        steps in the recent history for every parameter/gradient element
+        being tracked. The rescaling is done unintelligently, and for
+        purely aesthetic reasons.
+
+        Parameters
+        ----------
+        history : np.ndarray
+            NumPy 2D array; the first dimension is time step, and the
+            second is parameter/gradient element.
+
+        Returns
+        -------
+        np.ndarray
+            NumPy 2D array; the first dimension is time step, and the
+            second corresponds to autocorrelation power/signal.
+        """
         assert history.ndim == 2, "Expected history to be 2D!"
         # normalizing by variance explodes, so just make it relative
         corr = correlate(history, history, mode="same")
@@ -1189,6 +1294,19 @@ class ModelAutocorrelation(Callback):
     def on_fit_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
+        """
+        Setup the callback tracking. For sampling mode, we generate random
+        indices for every parameter in the model (that isn't lazy) that
+        corresponds to parameters/gradients we will consistently track
+        throughout training.
+
+        Parameters
+        ----------
+        trainer : pl.Trainer
+            PyTorch Lightning trainer instance
+        pl_module : pl.LightningModule
+            PyTorch Lightning module to track
+        """
         if self.sampled:
             indices = {}
             for name, parameter in pl_module.named_parameters():
@@ -1198,6 +1316,8 @@ class ModelAutocorrelation(Callback):
                         : int(numel * self.sample_frac)
                     ]
             self.indices = indices
+        # queue structure is used to manage the history with a finite
+        # number of elements
         self.history = {
             "params": Queue(self.buffer_size),
             "grads": Queue(self.buffer_size),
@@ -1213,6 +1333,7 @@ class ModelAutocorrelation(Callback):
 
     @property
     def is_active(self) -> bool:
+        """Used to determine whether the correlation analysis will be carried out."""
         return (
             self.global_step % self.analyze_every_n_steps
         ) == 0 and self.global_step != 0
@@ -1229,6 +1350,22 @@ class ModelAutocorrelation(Callback):
     def on_before_optimizer_step(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", loss: torch.Tensor
     ) -> None:
+        """
+        Triggers before the optimizer is stepped, adding the parameters and
+        optionally gradients to the history.
+
+        If the current step matches the analysis frequency, carry out the
+        autocorrelation analysis and log the spectrum.
+
+        Parameters
+        ----------
+        trainer : pl.Trainer
+            PyTorch Lightning trainer instance
+        pl_module : pl.LightningModule
+            PyTorch Lightning module to track
+        loss : torch.Tensor
+            Loss value; unused
+        """
         params, grads = self.sample_parameters(
             pl_module, self.indices, self.analyze_grads
         )
