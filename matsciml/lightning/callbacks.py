@@ -917,6 +917,37 @@ class TrainingHelperCallback(Callback):
         encoder_hook: bool = True,
         record_param_norm_history: bool = True,
     ) -> None:
+        """
+        Initializes a ``TrainingHelperCallback``.
+
+        The purpose of this callback is to provide some typical
+        heuristics that are useful for diagnosing how training
+        is progressing. The behavior of this callback is twofold:
+        (1) emit warning messages to the user, indicating that
+        there are irregularities like missing gradients, and low
+        variance in embeddings; (2) send some of these observations
+        to loggers like ``TensorBoardLogger`` and ``WandbLogger``
+        for asynchronous viewing.
+
+        Parameters
+        ----------
+        small_grad_thres : float, default 1e-3
+            Threshold for detecting when gradients for particular
+            parameters are considered small. This helps identify
+            layers that could benefit with some residual connections.
+        update_freq : int, default 50
+            Frequency of which to run checks with this callback.
+            This can be increased to make messages less spammy.
+        encoder_hook : bool, default True
+            If True, we register a forward hook with the model's
+            encoder that is specifically designed for ``matsciml``
+            usage. This hook will inspect graph and node level
+            embeddings, particularly variance in dimensions, to
+            identify feature collapse.
+        record_param_norm_history : bool, default True
+            If True, will log tensor norms to ``tensorboard`` or
+            ``wandb`` services.
+        """
         super().__init__()
         self.logger = getLogger("matsciml.helper")
         self.logger.setLevel("INFO")
