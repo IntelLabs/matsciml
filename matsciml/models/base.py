@@ -842,10 +842,11 @@ class BaseTaskModule(pl.LightningModule):
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
     ) -> dict[str, torch.Tensor]:
         if "embeddings" in batch:
-            embedding = batch.get("embeddings")
+            embeddings = batch.get("embeddings")
         else:
-            embedding = self.encoder(batch)
-        outputs = self.process_embedding(embedding)
+            embeddings = self.encoder(batch)
+            batch["embeddings"] = embeddings
+        outputs = self.process_embedding(embeddings)
         return outputs
 
     def process_embedding(self, embeddings: Embeddings) -> dict[str, torch.Tensor]:
@@ -873,8 +874,6 @@ class BaseTaskModule(pl.LightningModule):
                 reduction=self.embedding_reduction_type,
             )
             results[key] = output
-        if self.hparams.log_embeddings:
-            self._log_embedding(embeddings)
         return results
 
     def _log_embedding(self, embeddings: Embeddings) -> None:
