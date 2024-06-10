@@ -1974,6 +1974,16 @@ class ForceRegressionTask(BaseTaskModule):
             logger.warning(
                 "Energy normalization was specified, but not force. I'm adding it for you."
             )
+        # in the case where the energy and force std values are mismatched,
+        # we override the force one with the energy one
+        if "energy" in normalizers and "force" in normalizers:
+            energy_std = normalizers["energy"].std
+            force_std = normalizers["force"].std
+            if energy_std != force_std:
+                normalizers["force"].std = energy_std
+                logger.warning(
+                    "Force normalization std is overridden with the energy std."
+                )
         return normalizers
 
 
