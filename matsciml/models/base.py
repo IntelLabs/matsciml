@@ -1944,6 +1944,21 @@ class ForceRegressionTask(BaseTaskModule):
             )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
+        # step learning rate schedulers at the end of epochs
+        if self.trainer.is_last_batch:
+            schedulers = self.lr_schedulers()
+            if isinstance(schedulers, list):
+                for s in schedulers:
+                    # for schedulers that need a metric
+                    if isinstance(s, lr_scheduler.ReduceLROnPlateau):
+                        s.step(loss, self.current_epoch)
+                    else:
+                        s.step(epoch=self.current_epoch)
+            else:
+                if isinstance(schedulers, lr_scheduler.ReduceLROnPlateau):
+                    schedulers.step(loss, self.current_epoch)
+                else:
+                    schedulers.step(epoch=self.current_epoch)
         return loss_dict
 
     def _make_normalizers(self) -> dict[str, Normalizer]:
