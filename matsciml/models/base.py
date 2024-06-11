@@ -702,6 +702,9 @@ class BaseTaskModule(pl.LightningModule):
         self.output_kwargs = default_heads
         self.normalize_kwargs = normalize_kwargs
         self.task_keys = task_keys
+        self._task_loss_scaling = kwargs.get("task_loss_scaling", {})
+        if len(self.task_keys) > 0:
+            self.task_loss_scaling = self._task_loss_scaling
         self.embedding_reduction_type = embedding_reduction_type
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
@@ -745,6 +748,47 @@ class BaseTaskModule(pl.LightningModule):
         # some tasks like ForceRegressionTask doesn't actually use an output
         # head for the forces
         return True
+
+    @property
+    def task_loss_scaling(self) -> dict[str, float]:
+        return self._task_loss_scaling
+
+    @task_loss_scaling.setter
+    def task_loss_scaling(self, loss_scaling_dict: dict[str, float] | None) -> None:
+        """
+        Adds loss scaling per task. Ensures task loss scaling key is present in the
+        task loss keys.
+
+        Parameters
+        ----------
+        loss_scaling_dict : dict[str, float]
+            Dictionary used to map a task key to a scaling value.
+        """
+        if not isinstance(loss_scaling_dict, dict):
+            raise TypeError(
+                f"task_loss_scaling {loss_scaling_dict} must be a dictionary, got type {type(loss_scaling_dict)}."
+            )
+
+        keys = set(loss_scaling_dict.keys()).union(set(self._task_keys))
+        not_in_scaling = []
+        not_in_tasks = []
+        final_scaling_dict = {}
+        for key in keys:
+            if key not in loss_scaling_dict:
+                not_in_scaling.append(key)
+            if key not in self._task_keys:
+                not_in_tasks.append(keys)
+            final_scaling_dict[key] = loss_scaling_dict.get(key, 1.0)
+
+        if len(not_in_scaling) != 0:
+            warn(f"Unspecified tasks will have a scaling of 1: {not_in_scaling}")
+        if len(not_in_tasks) != 0:
+            warn(
+                f"Task scaling keys passed that are not actually tasks: {not_in_tasks}"
+            )
+
+        self._task_loss_scaling = final_scaling_dict
+        self.hparams["task_loss_scaling"] = self._task_loss_scaling
 
     @abstractmethod
     def _make_output_heads(self) -> nn.ModuleDict: ...
@@ -911,7 +955,9 @@ class BaseTaskModule(pl.LightningModule):
             target_val = targets[key]
             if self.uses_normalizers:
                 target_val = self.normalizers[key].norm(target_val)
-            losses[key] = self.loss_func(predictions[key], target_val)
+            loss = self.loss_func(predictions[key], target_val)
+            losses[key] = loss * self.task_loss_scaling[key]
+
         total_loss: torch.Tensor = sum(losses.values())
         return {"loss": total_loss, "log": losses}
 
@@ -1218,6 +1264,8 @@ class ScalarRegressionTask(BaseTaskModule):
             opt.add_param_group({"params": self.output_heads.parameters()})
             # create normalizers for each target
             self.normalizers = self._make_normalizers()
+            self.task_loss_scaling = self._task_loss_scaling
+
         return status
 
     def on_validation_batch_start(
@@ -1520,6 +1568,8 @@ class BinaryClassificationTask(BaseTaskModule):
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
+            self.task_loss_scaling = self._task_loss_scaling
+
         return status
 
     def on_validation_batch_start(
@@ -1844,6 +1894,8 @@ class ForceRegressionTask(BaseTaskModule):
             opt.add_param_group({"params": self.output_heads.parameters()})
             # create normalizers for each target
             self.normalizers = self._make_normalizers()
+            self.task_loss_scaling = self._task_loss_scaling
+
         return status
 
     def training_step(
@@ -1922,6 +1974,16 @@ class ForceRegressionTask(BaseTaskModule):
             logger.warning(
                 "Energy normalization was specified, but not force. I'm adding it for you."
             )
+        # in the case where the energy and force std values are mismatched,
+        # we override the force one with the energy one
+        if "energy" in normalizers and "force" in normalizers:
+            energy_std = normalizers["energy"].std
+            force_std = normalizers["force"].std
+            if energy_std != force_std:
+                normalizers["force"].std = energy_std
+                logger.warning(
+                    "Force normalization std is overridden with the energy std."
+                )
         return normalizers
 
 
@@ -2130,6 +2192,8 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
             # now add the parameters to our task's optimizer
             opt = self.optimizers()
             opt.add_param_group({"params": self.output_heads.parameters()})
+            self.task_loss_scaling = self._task_loss_scaling
+
         return status
 
     def on_validation_batch_start(
