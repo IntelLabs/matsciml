@@ -880,7 +880,7 @@ def embedding_magnitude_hook(
         if output.system_embedding is not None:
             sys_z = output.system_embedding.detach().cpu()
             # calculate representative statistics
-            sys_z_med = sys_z.median().item()
+            sys_z_med = sys_z.median().abs().item()
             sys_z_var = sys_z.var().item()
             if sys_z_med > 10.0:
                 logger.warning(
@@ -893,7 +893,7 @@ def embedding_magnitude_hook(
         if output.point_embedding is not None:
             node_z = output.point_embedding.detach().cpu()
             # calculate representative statistics
-            node_z_med = node_z.median().item()
+            node_z_med = node_z.median().abs().item()
             node_z_var = node_z.var().item()
             if node_z_med > 10.0:
                 logger.warning(
