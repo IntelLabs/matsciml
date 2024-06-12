@@ -5,7 +5,6 @@ from typing import Any, Callable, Type
 from functools import cache
 
 import torch
-import numpy as np
 from e3nn.o3 import Irreps
 from mace.modules import MACE
 from torch_geometric.nn import pool
@@ -92,7 +91,7 @@ class MACEWrapper(AbstractPyGModel):
         mace_kwargs["atomic_numbers"] = list(range(1, num_atom_embedding + 1))
         if "atomic_energies" not in mace_kwargs:
             logger.warning("No ``atomic_energies`` provided, defaulting to ones.")
-            mace_kwargs["atomic_energies"] = np.ones(num_atom_embedding)
+            mace_kwargs["atomic_energies"] = free_ion_energy_table(num_atom_embedding)
         # check to make sure all that's required is
         for key in __mace_required_args + __mace_submodule_required_args:
             if key not in mace_kwargs:
