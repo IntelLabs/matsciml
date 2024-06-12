@@ -842,11 +842,8 @@ class BaseTaskModule(pl.LightningModule):
         self,
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
     ) -> dict[str, torch.Tensor]:
-        if "embeddings" in batch:
-            embeddings = batch.get("embeddings")
-        else:
-            embeddings = self.encoder(batch)
-            batch["embeddings"] = embeddings
+        embeddings = self.encoder(batch)
+        batch["embeddings"] = embeddings
         outputs = self.process_embedding(embeddings)
         return outputs
 
