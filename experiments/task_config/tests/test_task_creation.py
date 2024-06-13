@@ -9,6 +9,7 @@ from experiments.task_config.task_config import (
 from experiments.utils.utils import instantiate_arg_dict
 
 import matsciml
+import matsciml.datasets.transforms  # noqa: F401
 
 
 single_task = {"dataset": {"oqmd": {"sr": ["energy"]}}}
