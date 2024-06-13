@@ -1,0 +1,9 @@
+model: FAENet
+dataset:
+  is2re:
+    sr:
+      - energy_init
+      - energy_final
+  s2ef:
+    fr:
+      - force

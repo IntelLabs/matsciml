@@ -6,6 +6,8 @@ logs
 *.traj
 experimental
 lightning_logs
+*.ckpt
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
