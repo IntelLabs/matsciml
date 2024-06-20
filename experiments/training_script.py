@@ -1,5 +1,40 @@
-opt_target = "val_energy"
-log_path = "./TEMP"
+import os
+import yaml
+
+from experiments.datasets.data_module_config import setup_datamodule
+from experiments.task_config.task_config import setup_task
+from experiments.trainer_config.trainer_config import setup_trainer
+
+from experiments.utils.utils import setup_log_dir
+
+from argparse import ArgumentParser
+
+
+def main(config, log_path):
+    # if len(args.targets) > 1:
+    #     opt_target = "val.total_loss"
+    # else:
+    #     if args.targets[0] == "symmetry_group":
+    #         opt_target = "val_spacegroup"
+    #     else:
+    #         opt_target = f"val_{args.targets[0]}"
+    os.makedirs(log_path, exist_ok=True)
+
+    dm = setup_datamodule(config)
+    task = setup_task(config)
+    trainer = setup_trainer(config)
+    trainer.fit(task, datamodule=dm)
+
+
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--training_config", required=True)
+    args = parser.parse_args()
+    config = yaml.safe_load(open(args.training_config))
+    log_path = setup_log_dir(config)
+    config["run_type"] = run_type = "debug" if args.debug else "experiment"
+    main(config, log_path=log_path)
 
 # from __future__ import annotations
 
@@ -82,11 +117,11 @@ log_path = "./TEMP"
 #     #     "-".join(args.data),
 #     #     "-".join(args.targets),
 #     # )
-
 #     try:
 #         main(args, log_path)
 #     except Exception as e:
 #         error_log(e, log_path)
+
 
 # # Examples
 
