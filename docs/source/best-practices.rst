@@ -93,10 +93,12 @@ For Lightning supported accelerators, consult the Lightning documentation for
 how to configure strategies for distributed data parallelism.
 
 For Intel CPUs and XPUs, ``matsciml`` provides the :py:func:`matsciml.lightning.ddp.MPIEnvironment`
-class that inherits from ``LightningEnvironment``; effectively, this class
-informs ``Trainer`` how to parse environment variables for information about
-distributed workers (i.e. rank and world size) from Intel MPI. To use this
-class, processes must be launched by wrapping the ``python`` script execution
+and :py:func:`matsciml.lightning.ddp.MPIDDPStrategy` classes that inherit from ``LightningEnvironment``
+and ``DDPStrategy`` respectively. Effectively, these classes
+inform ``Trainer`` how to parse environment variables for information about
+distributed workers (i.e. rank and world size) from Intel®️ MPI, and to wrap the model and
+data samplers in their respective distributed classes. To use these
+classes, processes must be launched by wrapping the ``python`` script execution
 with ``mpirun``::
 
   mpirun -n 4 -map-by socket python <script to run>.py
@@ -116,7 +118,7 @@ script, either by reading from environment variables, or with ``scontrol`` and
 similar tools. If Slurm has been properly configured, the Lightning ``SlurmEnvironment``
 can also be used; the ``MPIEnvironment`` in ``matsciml`` is intended mainly for
 bare-metal or lower level usage. This functionality is wrapped by a custom
-strategy.
+strategy:
 
 .. autofunction:: matsciml.lightning.ddp.MPIDDPStrategy
 
