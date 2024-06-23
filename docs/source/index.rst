@@ -15,6 +15,7 @@ The Open MatSciML Toolkit
    transforms
    models
    training
+   best-practices
    how-to
 
 The Open MatSciML Toolkit comprises a framework and benchmark suite for AI-accelerated materials discovery, with a strong emphasis on a low barrier to entry and continuity across laptops to high performance computing clusters. The toolkit provides access to state-of-the-art model architectures like MACE, FAENet, and GemNet, coupled with a broad range of datasets including but not limited to `Open Catalyst`_, the `Materials Project`_, and `NOMAD`_, and alongside an end-to-end modular pipeline for experimentation and development.
