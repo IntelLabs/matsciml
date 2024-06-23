@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
-import numpy as np
 import torch
 
 from matsciml.common.registry import registry
@@ -54,7 +53,7 @@ class LiPSDataset(PointCloudDataset):
         return concatenate_keys(
             batch,
             pad_keys=["pc_features"],
-            unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
+            unpacked_keys=["sizes", "pc_src_nodes", "pc_dst_nodes"],
         )
 
     def data_from_key(
@@ -86,7 +85,10 @@ class LiPSDataset(PointCloudDataset):
         coords = data["pos"]
         system_size = coords.size(0)
         node_choices = self.choose_dst_nodes(system_size, self.full_pairwise)
-        src_nodes, dst_nodes = node_choices["src_nodes"], node_choices["dst_nodes"]
+        src_nodes, dst_nodes = (
+            node_choices["pc_src_nodes"],
+            node_choices["pc_dst_nodes"],
+        )
         atom_numbers = torch.LongTensor(data["atomic_numbers"])
         # uses one-hot encoding featurization
         pc_features = point_cloud_featurization(

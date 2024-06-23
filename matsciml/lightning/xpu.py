@@ -3,16 +3,12 @@
 from __future__ import annotations
 from datetime import timedelta
 from logging import getLogger
-from typing import Callable, Union, List, Dict, Any
+from typing import Union, List, Dict, Any
 
-from pytorch_lightning.plugins import CheckpointIO, ClusterEnvironment
-from pytorch_lightning.plugins.precision import Precision
 
 from matsciml.common.packages import package_registry
-from matsciml.lightning.ddp import MPIEnvironment
 from pytorch_lightning.accelerators import Accelerator, AcceleratorRegistry
 from pytorch_lightning.strategies import SingleDeviceStrategy, StrategyRegistry
-from pytorch_lightning.strategies.ddp import DDPStrategy
 import torch
 from torch import distributed as dist
 
@@ -26,10 +22,9 @@ if package_registry["ipex"]:
     except ImportError as e:
         logger.warning(f"Unable to import IPEX due to {e} - XPU may not function.")
 
-    __all__ = ["XPUAccelerator", "SingleXPUStrategy", "DDPXPUStrategy"]
+    __all__ = ["XPUAccelerator", "SingleXPUStrategy"]
 
     class XPUAccelerator(Accelerator):
-
         """
         Implements a Lightning Accelerator class for Intel GPU usage. Depends
         on Intel Extension for PyTorch to be installed.
@@ -49,9 +44,8 @@ if package_registry["ipex"]:
                 List of device numbers to use
             """
             if isinstance(devices, int):
-                devices = [
-                    devices,
-                ]
+                # assume that this is the number of devices to use
+                devices = list(range(devices))
             return devices
 
         def setup_device(self, device: torch.device) -> None:
@@ -123,7 +117,6 @@ if package_registry["ipex"]:
     AcceleratorRegistry.register("xpu", XPUAccelerator)
 
     class SingleXPUStrategy(SingleDeviceStrategy):
-
         """
         This class implements the strategy for using a single PVC tile.
         """
@@ -165,62 +158,8 @@ if package_registry["ipex"]:
                 description=f"{cls.__class__.__name__} - uses a single XPU tile for compute.",
             )
 
-    class DDPXPUStrategy(DDPStrategy):
-        """
-        Defines a strategy that uses multiple XPU devices with
-        distributed data parallelism.
-        """
-
-        strategy_name = "ddp_with_xpu"
-
-        def __init__(
-            self,
-            parallel_devices: List[torch.device] | None = None,
-            cluster_environment: ClusterEnvironment | None = None,
-            checkpoint_io: CheckpointIO | None = None,
-            precision_plugin: Precision | None = None,
-            ddp_comm_state: object | None = None,
-            ddp_comm_hook: Callable[..., Any] | None = None,
-            ddp_comm_wrapper: Callable[..., Any] | None = None,
-            model_averaging_period: int | None = None,
-            process_group_backend: str | None = "ccl",
-            timeout: timedelta | None = default_pg_timeout,
-            **kwargs: Any,
-        ) -> None:
-            accelerator = XPUAccelerator()
-            if cluster_environment is None:
-                cluster_environment = MPIEnvironment()
-            super().__init__(
-                accelerator,
-                parallel_devices,
-                cluster_environment,
-                checkpoint_io,
-                precision_plugin,
-                ddp_comm_state,
-                ddp_comm_hook,
-                ddp_comm_wrapper,
-                model_averaging_period,
-                process_group_backend,
-                timeout,
-                **kwargs,
-            )
-
-        @classmethod
-        def register_strategies(cls, strategy_registry) -> None:
-            strategy_registry.register(
-                cls.strategy_name,
-                cls,
-                description=f"{cls.__class__.__name__} - uses distributed data parallelism"
-                " to divide data across multiple XPU tiles.",
-            )
-
     StrategyRegistry.register(
         "single_xpu",
         SingleXPUStrategy,
         description="Strategy utilizing a single Intel GPU device or tile.",
-    )
-    StrategyRegistry.register(
-        "ddp_with_xpu",
-        DDPXPUStrategy,
-        description="Distributed data parallel strategy using multiple Intel GPU devices or tiles.",
     )

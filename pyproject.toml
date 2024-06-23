@@ -14,7 +14,7 @@ classifiers = [
 ]
 dependencies = [
   "psutil",
-  "pytorch_lightning==2.2.1",
+  "pytorch_lightning==2.2.4",
   "dgl==2.0.0",
   "dgllife==0.3.2",
   "rdkit==2023.9.5",
@@ -25,18 +25,19 @@ dependencies = [
   "lmdb==1.4.1",
   "geometric-algebra-attention>=0.3.0",
   "sympy>=1.10.1",
-  "jsonargparse[signatures]>=4.13.1",
+  "jsonargparse[signatures]>=4.27.7",
   "mp_api==0.41.2",
-  "emmet-core==0.82.1",
-  "pydantic==2.7.0",
+  "emmet-core==0.83.6",
+  "pydantic==2.7.1",
   "pymatgen==2024.3.1",
   "schema>=0.7.5",
   "ase>=3.22.1",
   "matgl==1.0.0",
-  "einops==0.7.0",
-  "mendeleev==0.15.0",
+  "einops==0.8.0",
+  "mendeleev==0.16.0",
   "e3nn",
-  "mace-torch==0.3.4"
+  "mace-torch==0.3.4",
+  "monty==2024.2.2"
 ]
 description = "PyTorch Lightning and Deep Graph Library enabled materials science deep learning pipeline"
 dynamic = ["version", "readme"]
@@ -50,11 +51,14 @@ all = [
   "matsciml[dev,symmetry,pyg]",
 ]
 dev = [
-  "ruff==0.3.6",
+  "ruff==0.4.0",
   "pre-commit",
   "pytest",
   "sphinx==7.2.6",
   "sphinx-theme-pd==0.8.3"
+  "pytest",
+  "pytest-pretty",
+  "pytest-dependency"
 ]
 pyg = [
   "torch_geometric==2.4.0",
@@ -76,3 +80,6 @@ version = {attr = "matsciml.__version__"}
 
 [tool.ruff.lint]
 ignore = ["F403", "F405"]
+
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]

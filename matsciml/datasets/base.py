@@ -6,7 +6,7 @@ import functools
 from abc import abstractmethod
 from pathlib import Path
 from random import sample
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -253,13 +253,11 @@ class BaseLMDBDataset(Dataset):
         self._representation = value
 
     @property
-    def pad_keys(self) -> list[str]:
-        ...
+    def pad_keys(self) -> list[str]: ...
 
     @pad_keys.setter
     @abstractmethod
-    def pad_keys(self, keys: list[str]) -> None:
-        ...
+    def pad_keys(self, keys: list[str]) -> None: ...
 
     @classmethod
     def from_devset(cls, transforms: list[Callable] | None = None, **kwargs):
@@ -355,4 +353,4 @@ class PointCloudDataset(BaseLMDBDataset):
             dst_indices = torch.randperm(size)[:num_neighbors].sort().values
         else:
             dst_indices = src_indices
-        return {"src_nodes": src_indices, "dst_nodes": dst_indices}
+        return {"pc_src_nodes": src_indices, "pc_dst_nodes": dst_indices}

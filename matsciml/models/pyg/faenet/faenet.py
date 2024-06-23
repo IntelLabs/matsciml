@@ -2,6 +2,7 @@
 FAENet: Frame Averaging Equivariant graph neural Network
 Simple, scalable and expressive model for property prediction on 3D atomic systems.
 """
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -250,7 +251,6 @@ class FAENet(AbstractPyGModel):
         DataDict
             Input data for FAENet as a dictionary.
         """
-
         data = {"graph": batch.get("graph")}
         graph = batch.get("graph")
         for key in ["edge_feats", "graph_feats"]:
@@ -258,7 +258,12 @@ class FAENet(AbstractPyGModel):
         pos: torch.Tensor = getattr(graph, "pos")
         data["pos"] = pos
         data["graph"].cell = batch["cell"]
-        data["graph"].natoms = batch["natoms"].squeeze(-1).to(torch.int32)
+        if "natoms" not in batch:
+            _, natoms = torch.unique(graph.batch, return_counts=True)
+            data["graph"].natoms = natoms
+        else:
+            data["graph"].natoms = batch["natoms"].squeeze(-1).to(torch.int32)
+
         edge_index, cell_offsets, neighbors = radius_graph_pbc(
             data["graph"],
             self.cutoff,
@@ -354,17 +359,8 @@ class FAENet(AbstractPyGModel):
         Returns:
             (dict): predicted energy, forces and final atomic hidden states
         """
-        if self.training:
-            mode = "train"
-        else:
-            mode = "inference"
-        preproc = True
+        preproc = False
         data = graph
-
-        # energy gradient w.r.t. positions will be computed
-        if mode == "train" or self.regress_forces == "from_energy":
-            data.pos.requires_grad_(True)
-
         # produce final embeddings after going through model
         embeddings = self.energy_forward(data, preproc)
         return embeddings

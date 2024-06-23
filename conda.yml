@@ -4,6 +4,7 @@ channels:
   - intel
   - dglteam
   - conda-forge
+  - pyg
 dependencies:
   - scipy
   - numba
@@ -14,9 +15,18 @@ dependencies:
   - setuptools
   - pybind11
   - python=3.10
+  - pyg::pyg=2.4.0
+  - pyg::pytorch-scatter=2.1.2
+  - pyg::pytorch-sparse=0.6.18
   - pip
   - pip:
-    - "--extra-index-url https://pytorch-extension.intel.com/release-whl-aitools/"
-    - intel-extension-for-pytorch=2.0.120
-    - pytorch=2.0.1
-    - oneccl_bind_pt==2.0.200+gpu
+    - "--index-url https://download.pytorch.org/whl/cpu"
+    - intel-extension-for-pytorch==2.1.100
+    - torch==2.1.2
+    - "--extra-index-url https://pytorch-extension.intel.com/release-whl/stable/cpu/us/"
+    - oneccl_bind_pt==2.1.0
+variables:
+  # append to library path for dynamic libraries
+  LD_LIBRARY_PATH: "'$LD_LIBRARY_PATH:$CONDA_PREFIX/lib'"
+  # use Intel OpenMP
+  LD_PRELOAD: "'$LD_PRELOAD:$CONDA_PREFIX/lib/libiomp5.so'"

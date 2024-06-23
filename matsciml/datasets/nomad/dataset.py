@@ -29,7 +29,7 @@ class NomadDataset(PointCloudDataset):
         return concatenate_keys(
             batch,
             pad_keys=["pc_features"],
-            unpacked_keys=["sizes", "src_nodes", "dst_nodes"],
+            unpacked_keys=["sizes", "pc_src_nodes", "pc_dst_nodes"],
         )
 
     def raw_sample(self, idx):
@@ -112,7 +112,10 @@ class NomadDataset(PointCloudDataset):
         system_size = len(cart_coords)
         return_dict["pos"] = cart_coords
         chosen_nodes = self.choose_dst_nodes(system_size, self.full_pairwise)
-        src_nodes, dst_nodes = chosen_nodes["src_nodes"], chosen_nodes["dst_nodes"]
+        src_nodes, dst_nodes = (
+            chosen_nodes["pc_src_nodes"],
+            chosen_nodes["pc_dst_nodes"],
+        )
 
         atomic_numbers = torch.LongTensor(
             [
