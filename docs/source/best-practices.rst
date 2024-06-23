@@ -1,5 +1,5 @@
 Best practices
-============
+==============
 
 Thanks to the flexibility of the Open MatSciML Toolkit, there is a need
 to document regular usage patterns, or what one may consider as "best practices".
@@ -52,7 +52,7 @@ have not been tested yet, but presumably should work with the same
 abstractions.
 
 Intel®️ XPU usage
-^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 Currently, in order to use Intel GPUs with PyTorch and ``matsciml``,
 the XPU version of ``intel_extension_for_pytorch`` (IPEX) must be installed
@@ -65,7 +65,7 @@ The current version pinned in ``matsciml`` is PyTorch 2.1.0, and
 
 
 Training
-----------
+--------
 
 .. _e3nn documentation: https://docs.e3nn.org/en/latest/
 
