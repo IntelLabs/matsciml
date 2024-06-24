@@ -17,7 +17,7 @@ from matsciml.models.base import (
 
 from experiments.datasets import available_data
 from experiments.models import available_models
-from experiments.utils.utils import instantiate_arg_dict
+from experiments.utils.utils import instantiate_arg_dict, update_arg_dict
 
 
 task_map = {
@@ -35,10 +35,12 @@ def setup_task(config: dict[str, Any]) -> pl.LightningModule:
     data_task_dict = config["dataset"]
     run_type = config["run_type"]
     model = instantiate_arg_dict(deepcopy(available_models[model]))
+    model = update_arg_dict("model", model, config["cli_args"])
     tasks = []
     data_task_list = []
     for dataset_name, task_dict in data_task_dict.items():
         dset_args = deepcopy(available_data[dataset_name])
+        dset_args = update_arg_dict("dataset", dset_args, config["cli_args"])
         for task_type, task_keys in task_dict.items():
             task_args = deepcopy(available_models["generic"])
             normalize_kwargs = dset_args[run_type].pop("normalize_kwargs", None)

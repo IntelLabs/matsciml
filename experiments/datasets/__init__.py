@@ -6,7 +6,7 @@ yaml_dir = yaml_dir = os.path.dirname(os.path.abspath(__file__))
 available_data = {
     "generic": {
         "experiment": {"batch_size": 32, "num_workers": 16},
-        "debug": {"batch_size": 2, "num_workers": 0},
+        "debug": {"batch_size": 4, "num_workers": 0},
     },
 }
 

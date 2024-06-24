@@ -61,3 +61,32 @@ def _get_next_version(root_dir):
         return "version_0"
 
     return f"version_{max(existing_versions) + 1}"
+
+
+def convert_string(input_str):
+    # not sure if there is a better way to do this
+    try:
+        return int(input_str)
+    except ValueError:
+        pass
+    try:
+        return float(input_str)
+    except ValueError:
+        pass
+    return input_str
+
+
+def update_arg_dict(
+    dict_name: str, arg_dict: dict[str, Any], new_args: list[list[str]]
+):
+    updated_arg_dict = arg_dict
+    new_args = [arg_list for arg_list in new_args if dict_name in arg_list]
+    for new_arg in new_args:
+        value = new_arg[-1]
+        for key in new_arg[1:-1]:
+            if key not in updated_arg_dict:
+                updated_arg_dict[key] = {}
+            if key != new_arg[-2]:
+                updated_arg_dict = updated_arg_dict[key]
+        updated_arg_dict[key] = convert_string(value)
+    return arg_dict

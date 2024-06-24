@@ -15,7 +15,7 @@ from matsciml.lightning.data_utils import MultiDataModule
 
 from experiments.datasets import available_data
 from experiments.models import available_models
-from experiments.utils.utils import instantiate_arg_dict
+from experiments.utils.utils import instantiate_arg_dict, update_arg_dict
 
 
 def setup_datamodule(config: dict[str, Any]) -> pl.LightningModule:
@@ -23,9 +23,11 @@ def setup_datamodule(config: dict[str, Any]) -> pl.LightningModule:
     data_task_dict = config["dataset"]
     run_type = config["run_type"]
     model = instantiate_arg_dict(deepcopy(available_models[model]))
+    model = update_arg_dict("model", model, config["cli_args"])
     datasets = list(data_task_dict.keys())
     if len(datasets) == 1:
         dset = deepcopy(available_data[datasets[0]])
+        dset = update_arg_dict("dataset", dset, config["cli_args"])
         dm_kwargs = deepcopy(available_data["generic"]["experiment"])
         dset[run_type].pop("normalize_kwargs", None)
         dset[run_type].pop("task_loss_scaling", None)
@@ -46,6 +48,7 @@ def setup_datamodule(config: dict[str, Any]) -> pl.LightningModule:
         dset_list = {"train": [], "val": [], "test": []}
         for dataset in datasets:
             dset = deepcopy(available_data[dataset])
+            dset = update_arg_dict("dataset", dset, config["cli_args"])
             dm_kwargs = deepcopy(available_data["generic"]["experiment"])
             dset[run_type].pop("normalize_kwargs", None)
             dm_kwargs.update(dset[run_type])
