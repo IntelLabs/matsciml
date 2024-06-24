@@ -18,17 +18,30 @@ from experiments.models import available_models
 from experiments.utils.utils import instantiate_arg_dict
 
 
-def setup_datamodule(
-    run_type: str, model: str, data_task_dict: dict[str, Any]
-) -> pl.LightningModule:
+def setup_datamodule(config: dict[str, Any]) -> pl.LightningModule:
+    model = config["model"]
+    data_task_dict = config["dataset"]
+    run_type = config["run_type"]
     model = instantiate_arg_dict(deepcopy(available_models[model]))
-    datasets = list(data_task_dict["dataset"].keys())
+    datasets = list(data_task_dict.keys())
     if len(datasets) == 1:
         dset = deepcopy(available_data[datasets[0]])
         dm_kwargs = deepcopy(available_data["generic"]["experiment"])
         dset[run_type].pop("normalize_kwargs", None)
         dset[run_type].pop("task_loss_scaling", None)
         dm_kwargs.update(dset[run_type])
+        if run_type == "debug":
+            dm = MatSciMLDataModule.from_devset(
+                dataset=dset["dataset"],
+                dset_kwargs={"transforms": model["transforms"]},
+                **dm_kwargs,
+            )
+        else:
+            dm = MatSciMLDataModule(
+                dataset=dset["dataset"],
+                dset_kwargs={"transforms": model["transforms"]},
+                **dm_kwargs,
+            )
     else:
         dset_list = {"train": [], "val": [], "test": []}
         for dataset in datasets:
@@ -63,23 +76,10 @@ def setup_datamodule(
                         dataset(dm_kwargs["test_split"], transforms=model_transforms)
                     )
         dm = MultiDataModule(
-            train_dataset=dset_list["train"],
-            val_dataset=dset_list["val"],
-            test_dataset=dset_list["test"],
+            train_dataset=MultiDataset(dset_list["train"]),
+            val_dataset=MultiDataset(dset_list["val"]),
+            test_dataset=MultiDataset(dset_list["test"]),
             batch_size=dm_kwargs["batch_size"],
             num_workers=dm_kwargs["num_workers"],
-        )
-
-    if run_type == "debug":
-        dm = MatSciMLDataModule.from_devset(
-            dataset=dset["dataset"],
-            dset_kwargs={"transforms": model["transforms"]},
-            **dm_kwargs,
-        )
-    else:
-        dm = MatSciMLDataModule(
-            dataset=dset["dataset"],
-            dset_kwargs={"transforms": model["transforms"]},
-            **dm_kwargs,
         )
     return dm

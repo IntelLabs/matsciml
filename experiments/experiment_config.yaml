@@ -1,9 +1,9 @@
-model: FAENet
+model: m3gnet_dgl
 dataset:
   is2re:
     sr:
       - energy_init
-      - energy_final
+      - energy_relaxed
   s2ef:
     fr:
       - force

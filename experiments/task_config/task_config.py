@@ -30,13 +30,14 @@ task_map = {
 
 
 # getattr(matsciml.datasets, available_data[dataset_name]["dataset"])
-def setup_task(
-    run_type: str, model: str, data_task_dict: dict[str, Any]
-) -> pl.LightningModule:
+def setup_task(config: dict[str, Any]) -> pl.LightningModule:
+    model = config["model"]
+    data_task_dict = config["dataset"]
+    run_type = config["run_type"]
     model = instantiate_arg_dict(deepcopy(available_models[model]))
     tasks = []
     data_task_list = []
-    for dataset_name, task_dict in data_task_dict["dataset"].items():
+    for dataset_name, task_dict in data_task_dict.items():
         dset_args = deepcopy(available_data[dataset_name])
         for task_type, task_keys in task_dict.items():
             task_args = deepcopy(available_models["generic"])

@@ -4,6 +4,8 @@ import os
 import pytorch_lightning  # noqa: F401
 import matsciml  # noqa: F401
 from matsciml.models import *  # noqa: F401
+from matsciml.datasets.transforms import *  # noqa: F401
+from matsciml.lightning.callbacks import *  # noqa: F401
 
 
 def instantiate_arg_dict(input: dict[str, Any]) -> dict[str, Any]:

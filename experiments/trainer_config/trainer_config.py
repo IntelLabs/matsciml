@@ -1,14 +1,33 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import Any
 
 import pytorch_lightning as pl
 
 from experiments.utils.utils import instantiate_arg_dict
 
 
-def setup_trainer(input_args, experiment_type):
-    trainer_args = instantiate_arg_dict(deepcopy(input_args))
+def setup_extra_trainer_args(log_path, trainer_args):
+    if "loggers" in trainer_args:
+        for logger in trainer_args["loggers"]:
+            if "CSVLogger" in logger["class_path"]:
+                logger.setdefault("init_args", {})
+                if "save_dir" not in logger["init_args"]:
+                    logger["init_args"].update({"save_dir": log_path})
+            if "WandbLogger" in logger["class_path"]:
+                logger.setdefault("init_args", {})
+                if "name" not in logger["init_args"]:
+                    logger["init_args"].update({"name": log_path})
+    return trainer_args
+
+
+def setup_trainer(
+    config: dict[str, Any], trainer_args: dict[str, Any]
+) -> pl.LightningModule:
+    run_type = config["run_type"]
+    trainer_args = setup_extra_trainer_args(config["log_path"], trainer_args)
+    trainer_args = instantiate_arg_dict(deepcopy(trainer_args))
     if "loggers" in trainer_args:
         loggers = []
         for logger in trainer_args["loggers"]:
@@ -20,7 +39,7 @@ def setup_trainer(input_args, experiment_type):
             callbacks.append(callback)
         trainer_args.pop("callbacks")
 
-    trainer_kwargs = input_args["generic"]
-    trainer_kwargs.update(input_args[experiment_type])
+    trainer_kwargs = trainer_args["generic"]
+    trainer_kwargs.update(trainer_args[run_type])
     trainer = pl.Trainer(logger=loggers, callbacks=callbacks, **trainer_kwargs)
     return trainer
