@@ -19,4 +19,6 @@ multi_data = {
 
 @pytest.mark.parametrize("task_dict", [single_task, multi_task, multi_data])
 def test_task_setup(task_dict):
-    setup_datamodule(run_type="debug", model="m3gnet_dgl", data_task_dict=task_dict)
+    other_args = {"run_type": "debug", "model": "m3gnet_dgl"}
+    task_dict.update(other_args)
+    setup_datamodule(config=task_dict)

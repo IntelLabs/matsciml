@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+import tempfile
 
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.callbacks import EarlyStopping
@@ -51,7 +52,11 @@ def trainer_args() -> dict:
 
 @pytest.mark.dependency(depends=["trainer_args"])
 def test_trainer_setup(trainer_args):
-    trainer = setup_trainer(trainer_args, "debug")
+    temp_dir = tempfile.TemporaryDirectory()
+    trainer = setup_trainer(
+        {"run_type": "debug", "log_path": f"{temp_dir}"}, trainer_args
+    )
     assert any([CSVLogger == logger.__class__ for logger in trainer.loggers])
     assert any([EarlyStopping == logger.__class__ for logger in trainer.callbacks])
     assert trainer.max_epochs == 2
+    temp_dir.cleanup()
