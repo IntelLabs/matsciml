@@ -56,14 +56,12 @@ class MACEWrapper(AbstractPyGModel):
             raise KeyError(
                 "Please use `num_atom_embedding` instead of passing `num_elements`."
             )
-        if "hidden_irreps" in mace_kwargs:
-            raise KeyError(
-                "Please use `atom_embedding_dim` instead of passing `hidden_irreps`."
-            )
-        atom_embedding_dim = Irreps(f"{atom_embedding_dim}x0e")
+        hidden_irreps = mace_kwargs.get(
+            "hidden_irreps", Irreps(f"{atom_embedding_dim}x0e")
+        )
         # pack stuff into the mace kwargs
         mace_kwargs["num_elements"] = num_atom_embedding
-        mace_kwargs["hidden_irreps"] = atom_embedding_dim
+        mace_kwargs["hidden_irreps"] = hidden_irreps
         mace_kwargs["atomic_numbers"] = list(range(1, num_atom_embedding + 1))
         if "atomic_energies" not in mace_kwargs:
             logger.warning("No ``atomic_energies`` provided, defaulting to ones.")
