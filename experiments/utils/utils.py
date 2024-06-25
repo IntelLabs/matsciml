@@ -1,16 +1,15 @@
 from typing import Any
 import os
 
-import pytorch_lightning  # noqa: F401
 import matsciml  # noqa: F401
-from matsciml.models import *  # noqa: F401
-from matsciml.datasets.transforms import *  # noqa: F401
-from matsciml.lightning.callbacks import *  # noqa: F401
+from matsciml.models.common import get_class_from_name
 
 
 def instantiate_arg_dict(input: dict[str, Any]) -> dict[str, Any]:
     if isinstance(input, dict):
         for key, value in list(input.items()):
+            if key == "class_instance":
+                return get_class_from_name(value)
             if key == "class_path":
                 class_path = value
                 transform_args = {}
@@ -20,13 +19,15 @@ def instantiate_arg_dict(input: dict[str, Any]) -> dict[str, Any]:
                         transform_args.update(input)
                 else:
                     transform_args = input_args
-                return eval(f"{class_path}(**{transform_args})")
+                class_path = get_class_from_name(class_path)
+                return class_path(**transform_args)
             if key == "encoder_class":
                 input[key] = eval(f"{value['class_path']}")
             elif isinstance(value, dict) and "class_path" in value:
                 class_path = value["class_path"]
+                class_path = get_class_from_name(class_path)
                 input_args = value.get("init_args", {})
-                input[key] = eval(f"{class_path}(**{input_args})")
+                input[key] = class_path(**input_args)
             else:
                 input[key] = instantiate_arg_dict(value)
     elif isinstance(input, list):
@@ -79,6 +80,8 @@ def convert_string(input_str):
 def update_arg_dict(
     dict_name: str, arg_dict: dict[str, Any], new_args: list[list[str]]
 ):
+    if new_args is None:
+        return arg_dict
     updated_arg_dict = arg_dict
     new_args = [arg_list for arg_list in new_args if dict_name in arg_list]
     for new_arg in new_args:

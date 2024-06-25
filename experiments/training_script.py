@@ -24,10 +24,12 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--training_config", required=True)
-    parser.add_argument("--cli_args", nargs="+")
+    parser.add_argument("--cli_args", nargs="+", default=None)
     args = parser.parse_args()
     config = yaml.safe_load(open(args.training_config))
-    config["cli_args"] = [arg.split(".") for arg in args.cli_args]
+    config["cli_args"] = (
+        [arg.split(".") for arg in args.cli_args] if args.cli_args else None
+    )
     log_path = setup_log_dir(config)
     config["log_path"] = log_path
     config["run_type"] = run_type = "debug" if args.debug else "experiment"

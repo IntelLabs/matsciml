@@ -14,13 +14,13 @@ callbacks:
   - class_path: pytorch_lightning.callbacks.EarlyStopping
     init_args:
       patience: 5
-      monitor: val.total_loss
+      monitor: val_energy
       mode: min
       verbose: True
       check_finite: False
   - class_path: pytorch_lightning.callbacks.ModelCheckpoint
     init_args:
-      monitor: val.total_loss
+      monitor: val_energy
       save_top_k: 3
   - class_path: matsciml.lightning.callbacks.GradientCheckCallback
   - class_path: matsciml.lightning.callbacks.SAM

@@ -1,9 +1,5 @@
-model: m3gnet_dgl
+model: faenet
 dataset:
-  is2re:
+  oqmd:
     sr:
-      - energy_init
-      - energy_relaxed
-  s2ef:
-    fr:
-      - force
+      - energy

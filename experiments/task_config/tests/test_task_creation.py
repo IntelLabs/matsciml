@@ -63,6 +63,6 @@ def test_build_model() -> dict[str, Any]:
 @pytest.mark.dependency(depends=["test_build_model"])
 @pytest.mark.parametrize("task_dict", [single_task, multi_task, multi_data])
 def test_task_setup(task_dict):
-    other_args = {"run_type": "debug", "model": "m3gnet_dgl"}
+    other_args = {"run_type": "debug", "model": "m3gnet_dgl", "cli_args": None}
     task_dict.update(other_args)
     setup_task(config=task_dict)

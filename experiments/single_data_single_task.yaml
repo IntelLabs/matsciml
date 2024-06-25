@@ -1,0 +1,9 @@
+model: gala
+dataset:
+  # is2re:
+  #   sr:
+  #     - energy_init
+  #     - energy_relaxed
+  oqmd:
+    sr:
+      - energy
