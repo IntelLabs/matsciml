@@ -49,7 +49,9 @@ def setup_task(config: dict[str, Any]) -> pl.LightningModule:
             task_args = deepcopy(available_models["generic"])
             task_args.update(model)
             task_args.update({"task_keys": task_keys})
-            task_args.update(dset_args["task_args"])
+            additonal_task_args = dset_args.get("task_args", None)
+            if additonal_task_args is not None:
+                task_args.update(additonal_task_args)
             task = task_map[task_type](**task_args)
             tasks.append(task)
             data_task_list.append([available_data[dataset_name]["dataset"], task])
