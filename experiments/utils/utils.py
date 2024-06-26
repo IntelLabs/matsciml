@@ -93,3 +93,16 @@ def update_arg_dict(
                 updated_arg_dict = updated_arg_dict[key]
         updated_arg_dict[key] = convert_string(value)
     return arg_dict
+
+
+def config_help():
+    from experiments.datasets import available_data
+    from experiments.models import available_models
+
+    print("Models:")
+    _ = [print("\t", m) for m in available_models.keys() if m != "generic"]
+    print()
+    print("Datasets and Target Keys:")
+    for k, v in available_data.items():
+        if k != "generic":
+            print(f"\t{k}: {v['target_keys']}")

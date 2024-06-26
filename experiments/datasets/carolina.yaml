@@ -10,3 +10,9 @@ target_keys:
 - energy
 - symmetry_number
 - symmetry_symbol
+task_args:
+  normalize_kwargs:
+    energy_mean: 1
+    energy_std: 1
+  task_loss_scaling:
+    energy: 1

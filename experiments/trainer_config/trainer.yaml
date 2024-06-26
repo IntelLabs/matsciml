@@ -1,3 +1,6 @@
+generic:
+  min_epochs: 15
+  max_epochs: 100
 debug:
   accelerator: cpu
   limit_train_batches: 10
@@ -7,9 +10,6 @@ debug:
 experiment:
   accelerator: gpu
   strategy: ddp_find_unused_parameters_true
-generic:
-  min_epochs: 15
-  max_epochs: 100
 callbacks:
   - class_path: pytorch_lightning.callbacks.EarlyStopping
     init_args:

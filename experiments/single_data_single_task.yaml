@@ -1,9 +1,5 @@
-model: gala
+model: egnn_dgl
 dataset:
-  # is2re:
-  #   sr:
-  #     - energy_init
-  #     - energy_relaxed
   oqmd:
     sr:
-      - energy
+      - band_gap

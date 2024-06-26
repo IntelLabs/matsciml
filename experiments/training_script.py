@@ -6,7 +6,7 @@ from experiments.task_config.task_config import setup_task
 from experiments.trainer_config.trainer_config import setup_trainer
 from experiments.trainer_config import trainer_args
 
-from experiments.utils.utils import setup_log_dir
+from experiments.utils.utils import setup_log_dir, config_help
 
 from argparse import ArgumentParser
 
@@ -22,11 +22,15 @@ def main(config):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--training_config", required=True)
-    parser.add_argument("--cli_args", nargs="+", default=None)
+    parser.add_argument("-o", "--options", action="store_true")
+    parser.add_argument("-d", "--debug", action="store_true")
+    parser.add_argument("-e", "--experiment_config")
+    parser.add_argument("-c", "--cli_args", nargs="+", default=None)
     args = parser.parse_args()
-    config = yaml.safe_load(open(args.training_config))
+    if args.options:
+        config_help()
+        os._exit(0)
+    config = yaml.safe_load(open(args.experiment_config))
     config["cli_args"] = (
         [arg.split(".") for arg in args.cli_args] if args.cli_args else None
     )

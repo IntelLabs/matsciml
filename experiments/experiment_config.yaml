@@ -1,5 +1,5 @@
-model: faenet
+model: faenet_pyg
 dataset:
-  oqmd:
+  carolina:
     sr:
       - energy
