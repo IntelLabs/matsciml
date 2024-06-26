@@ -55,7 +55,7 @@ dev = [
   "pre-commit",
   "pytest",
   "sphinx==7.2.6",
-  "sphinx-theme-pd==0.8.3"
+  "sphinx-theme-pd==0.8.3",
   "pytest",
   "pytest-pretty",
   "pytest-dependency"
