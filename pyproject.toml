@@ -27,7 +27,7 @@ dependencies = [
   "sympy>=1.10.1",
   "jsonargparse[signatures]>=4.27.7",
   "mp_api==0.41.2",
-  "emmet-core==0.83.6",
+  "emmet-core==0.84.1",
   "pydantic==2.7.1",
   "pymatgen==2024.3.1",
   "schema>=0.7.5",
