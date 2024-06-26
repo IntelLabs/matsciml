@@ -1,5 +1,6 @@
 import os
 import yaml
+from typing import Any
 
 from experiments.datasets.data_module_config import setup_datamodule
 from experiments.task_config.task_config import setup_task
@@ -11,7 +12,7 @@ from experiments.utils.utils import setup_log_dir, config_help
 from argparse import ArgumentParser
 
 
-def main(config):
+def main(config: dict[str, Any]) -> None:
     os.makedirs(config["log_path"], exist_ok=True)
 
     dm = setup_datamodule(config)

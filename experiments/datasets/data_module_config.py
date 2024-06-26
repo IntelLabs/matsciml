@@ -29,8 +29,6 @@ def setup_datamodule(config: dict[str, Any]) -> pl.LightningModule:
         dset = deepcopy(available_data[datasets[0]])
         dset = update_arg_dict("dataset", dset, config["cli_args"])
         dm_kwargs = deepcopy(available_data["generic"]["experiment"])
-        # dset[run_type].pop("normalize_kwargs", None)
-        # dset[run_type].pop("task_loss_scaling", None)
         dm_kwargs.update(dset[run_type])
         if run_type == "debug":
             dm = MatSciMLDataModule.from_devset(

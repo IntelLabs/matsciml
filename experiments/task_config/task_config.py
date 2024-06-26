@@ -34,7 +34,6 @@ task_map = {
 }
 
 
-# getattr(matsciml.datasets, available_data[dataset_name]["dataset"])
 def setup_task(config: dict[str, Any]) -> pl.LightningModule:
     model = config["model"]
     data_task_dict = config["dataset"]

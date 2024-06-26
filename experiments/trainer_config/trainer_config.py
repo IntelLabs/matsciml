@@ -8,7 +8,9 @@ import pytorch_lightning as pl
 from experiments.utils.utils import instantiate_arg_dict
 
 
-def setup_extra_trainer_args(log_path, trainer_args):
+def setup_extra_trainer_args(
+    log_path: str, trainer_args: dict[str, Any]
+) -> dict[str, Any]:
     if "loggers" in trainer_args:
         for logger in trainer_args["loggers"]:
             if "CSVLogger" in logger["class_path"]:
