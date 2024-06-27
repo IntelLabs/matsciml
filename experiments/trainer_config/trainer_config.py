@@ -5,7 +5,7 @@ from typing import Any
 
 import pytorch_lightning as pl
 
-from experiments.utils.utils import instantiate_arg_dict
+from experiments.utils.utils import instantiate_arg_dict, update_arg_dict
 
 
 def setup_extra_trainer_args(
@@ -30,6 +30,7 @@ def setup_trainer(
     run_type = config["run_type"]
     trainer_args = setup_extra_trainer_args(config["log_path"], trainer_args)
     trainer_args = instantiate_arg_dict(deepcopy(trainer_args))
+    trainer_args = update_arg_dict("trainer", trainer_args, config["cli_args"])
     if "loggers" in trainer_args:
         loggers = []
         for logger in trainer_args["loggers"]:
