@@ -23,3 +23,12 @@ dataset variables ahead of execution. The latter is an abstract method that
 implements the actual behavior of the transformation, taking in a data sample,
 transforms it, and then returns the result for the next transform stage. The
 core idea is to allow
+
+Transform API reference
+#######################
+
+.. autosummary::
+   :toctree: generated
+   :recursive:
+
+   matsciml.datasets.transforms
