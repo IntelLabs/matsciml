@@ -1955,11 +1955,6 @@ class ForceRegressionTask(BaseTaskModule):
                     s.step(loss, self.current_epoch)
                 else:
                     s.step(epoch=self.current_epoch)
-            else:
-                if isinstance(schedulers, lr_scheduler.ReduceLROnPlateau):
-                    schedulers.step(loss, self.current_epoch)
-                else:
-                    schedulers.step(epoch=self.current_epoch)
         return loss_dict
 
     def _make_normalizers(self) -> dict[str, Normalizer]:
