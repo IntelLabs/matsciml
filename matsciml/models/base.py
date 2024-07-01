@@ -2689,8 +2689,10 @@ class MultiTaskLitModule(pl.LightningModule):
             if self.is_multidata:
                 for key, data in batch.items():
                     data["embeddings"] = self.encoder(data)
+                embeddings = data["embeddings"]
             else:
                 batch["embeddings"] = self.encoder(batch)
+                embeddings = batch["embeddings"]
             # for single dataset usage, we assume the nested structure isn't used
             if self.is_multidata:
                 for key, data in batch.items():
@@ -2699,13 +2701,13 @@ class MultiTaskLitModule(pl.LightningModule):
                         results[key] = {}
                     # finally call the task with the data
                     for task_type, subtask in subtasks.items():
-                        results[key][task_type] = subtask(data)
+                        results[key][task_type] = subtask.process_embedding(embeddings)
             else:
                 # in the single dataset case, we can skip the outer loop
                 # and just pass the batch into the subtask
                 tasks = list(self.task_map.values()).pop(0)
                 for task_type, subtask in tasks.items():
-                    results[task_type] = subtask(batch)
+                    results[task_type] = subtask.process_embedding(embeddings)
             return results
 
     def predict(self, batch: BatchDict) -> dict[str, dict[str, torch.Tensor]]:
