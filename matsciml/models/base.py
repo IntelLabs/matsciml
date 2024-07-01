@@ -3051,6 +3051,9 @@ class MultiTaskLitModule(pl.LightningModule):
             prog_bar=True,
             batch_size=batch_info["batch_size"],
         )
+        # optionally log embeddings
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return losses
 
     def validation_step(
@@ -3105,6 +3108,9 @@ class MultiTaskLitModule(pl.LightningModule):
             prog_bar=True,
             batch_size=batch_info["batch_size"],
         )
+        # optionally log embeddings
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return losses
 
     @classmethod
