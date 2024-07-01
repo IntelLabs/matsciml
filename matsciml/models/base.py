@@ -2004,6 +2004,8 @@ class ForceRegressionTask(BaseTaskModule):
                     s.step(loss, self.current_epoch)
                 else:
                     s.step(epoch=self.current_epoch)
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return loss_dict
 
     def _make_normalizers(self) -> dict[str, Normalizer]:
