@@ -2009,14 +2009,15 @@ class ForceRegressionTask(BaseTaskModule):
         # step learning rate schedulers at the end of epochs
         if self.trainer.is_last_batch:
             schedulers = self.lr_schedulers()
-            if not isinstance(schedulers, list):
-                schedulers = [schedulers]
-            for s in schedulers:
-                # for schedulers that need a metric
-                if isinstance(s, lr_scheduler.ReduceLROnPlateau):
-                    s.step(loss, self.current_epoch)
-                else:
-                    s.step(epoch=self.current_epoch)
+            if schedulers is not None:
+                if not isinstance(schedulers, list):
+                    schedulers = [schedulers]
+                for s in schedulers:
+                    # for schedulers that need a metric
+                    if isinstance(s, lr_scheduler.ReduceLROnPlateau):
+                        s.step(loss, self.current_epoch)
+                    else:
+                        s.step(epoch=self.current_epoch)
         if self.hparams.log_embeddings and "embeddings" in batch:
             self._log_embedding(batch["embeddings"])
         return loss_dict
