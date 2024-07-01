@@ -2311,6 +2311,8 @@ class MultiTaskLitModule(pl.LightningModule):
         *tasks: tuple[str, BaseTaskModule],
         task_scaling: Iterable[float] | None = None,
         task_keys: dict[str, list[str]] | None = None,
+        log_embeddings: bool = False,
+        log_embeddings_every_n_steps: int = 50,
         **encoder_opt_kwargs,
     ) -> None:
         """
@@ -2354,6 +2356,8 @@ class MultiTaskLitModule(pl.LightningModule):
                 "subtask_hparams": subtask_hparams,
                 "task_scaling": task_scaling,
                 "encoder_opt_kwargs": encoder_opt_kwargs,
+                "log_embeddings": log_embeddings,
+                "log_embeddings_every_n_steps": log_embeddings_every_n_steps,
             },
         )
         self.task_map = task_map
