@@ -1,0 +1,25 @@
+encoder_class:
+  class_path: matsciml.models.GalaPotential
+encoder_kwargs:
+  D_in: 100
+  depth: 2
+  hidden_dim: 64
+  merge_fun: concat
+  join_fun: concat
+  invariant_mode: full
+  covariant_mode: full
+  include_normalized_products: True
+  invar_value_normalization: momentum
+  eqvar_value_normalization: momentum_layer
+  value_normalization: layer
+  score_normalization: layer
+  block_normalization: layer
+  equivariant_attention: False
+  tied_attention: True
+  encoder_only: True
+output_kwargs:
+  lazy: False
+  input_dim: 64
+  hidden_dim: 64
+transforms:
+  - class_path: matsciml.datasets.transforms.COMShift

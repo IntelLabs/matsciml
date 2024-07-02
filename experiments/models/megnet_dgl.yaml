@@ -1,0 +1,40 @@
+encoder_class:
+  class_path: matsciml.models.MEGNet
+encoder_kwargs:
+  conv_hiddens:
+  - 128
+  - 128
+  - 128
+  edge_feat_dim: 2
+  encoder_only: true
+  graph_feat_dim: 9
+  hiddens:
+  - 256
+  - 256
+  - 128
+  is_classification: false
+  node_feat_dim: 128
+  num_blocks: 4
+  output_hiddens:
+  - 64
+  - 64
+  s2s_num_iters: 4
+  s2s_num_layers: 5
+output_kwargs:
+  lazy: False
+  input_dim: 640
+  hidden_dim: 640
+transforms:
+  - class_path: matsciml.datasets.transforms.PeriodicPropertiesTransform
+    init_args:
+      cutoff_radius: 6.5
+      adaptive_cutoff: True
+  - class_path: matsciml.datasets.transforms.PointCloudToGraphTransform
+    init_args:
+      backend: dgl
+      cutoff_dist: 20.0
+      node_keys:
+        - "pos"
+        - "atomic_numbers"
+  - class_path: matsciml.datasets.transforms.DistancesTransform
+  - class_path: matsciml.datasets.transforms.GraphVariablesTransform

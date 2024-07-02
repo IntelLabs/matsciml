@@ -1,0 +1,18 @@
+dataset: CMDataset
+debug:
+  batch_size: 4
+  num_workers: 0
+experiment:
+  test_split: ''
+  train_path: ''
+  val_split: ''
+target_keys:
+- energy
+- symmetry_number
+- symmetry_symbol
+task_args:
+  normalize_kwargs:
+    energy_mean: 1
+    energy_std: 1
+  task_loss_scaling:
+    energy: 1

@@ -68,7 +68,7 @@ symmetry = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["matsciml*"]
+include = ["matsciml*", "experiments*"]
 where = ["."]
 
 [tool.setuptools.dynamic]

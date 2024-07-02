@@ -1,0 +1,5 @@
+model: faenet_pyg
+dataset:
+  carolina:
+    sr:
+      - energy

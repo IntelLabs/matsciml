@@ -1,0 +1,9 @@
+model: faenet_pyg
+dataset:
+  is2re:
+    sr:
+      - energy_init
+      - energy_relaxed
+  oqmd:
+    sr:
+      - energy

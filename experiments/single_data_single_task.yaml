@@ -1,0 +1,5 @@
+model: egnn_dgl
+dataset:
+  oqmd:
+    sr:
+      - band_gap

@@ -1,0 +1,12 @@
+dataset: OQMDDataset
+debug:
+  batch_size: 4
+  num_workers: 0
+experiment:
+  test_split: ''
+  train_path: ''
+  val_split: ''
+target_keys:
+- band_gap
+- energy
+- stability

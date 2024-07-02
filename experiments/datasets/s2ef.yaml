@@ -1,0 +1,10 @@
+dataset: S2EFDataset
+debug:
+  batch_size: 4
+  num_workers: 0
+experiment:
+  train_path: ''
+  val_split: ''
+target_keys:
+- energy
+- force
