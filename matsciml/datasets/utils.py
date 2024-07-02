@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 import lmdb
 import torch
+import numpy as np
 from einops import einsum, rearrange
 from joblib import Parallel, delayed
 from pymatgen.core import Lattice, Structure
@@ -302,11 +303,11 @@ def get_lmdb_keys(
             "Both `ignore_keys` and `_lambda` were passed; arguments are mutually exclusive.",
         )
     if ignore_keys:
-        _lambda = lambda x: x not in ignore_keys
+        _lambda = lambda x: x not in ignore_keys  # noqa: E731
     else:
         if not _lambda:
             # escape case where we basically don't filter
-            _lambda = lambda x: x
+            _lambda = lambda x: x  # noqa: E731
     # convert to a sorted list of keys
     keys = sorted(list(filter(_lambda, keys)))
     return keys
@@ -529,7 +530,7 @@ def parallel_lmdb_write(
     assert all(
         [length != 0 for length in lengths],
     ), "Too many processes specified and not enough data to split over multiple LMDB files. Decrease `num_procs!`"
-    p = Parallel(num_procs)(
+    _ = Parallel(num_procs)(
         delayed(write_chunk)(chunk, target_dir, index, metadata)
         for chunk, index in zip(chunks, lmdb_indices)
     )
@@ -693,6 +694,11 @@ def calculate_periodic_shifts(
         include_index=True,
         include_image=True,
     )
+    # check to make sure the cell definition is valid
+    if np.any(structure.frac_coords > 1.0):
+        raise ValueError(
+            f"Structure has fractional coordinates greater than 1! Check structure:\n{structure}"
+        )
 
     def _all_sites_have_neighbors(neighbors):
         return all([len(n) for n in neighbors])
@@ -729,12 +735,13 @@ def calculate_periodic_shifts(
     cell = torch.from_numpy(cell.copy()).float()
     # get coordinates as well, for standardization
     frac_coords = torch.from_numpy(structure.frac_coords).float()
+    coords = torch.from_numpy(structure.cart_coords).float()
     return_dict = {
         "src_nodes": torch.LongTensor(all_src),
         "dst_nodes": torch.LongTensor(all_dst),
         "images": torch.FloatTensor(all_images),
         "cell": cell,
-        "pos": frac_coords,
+        "pos": coords,
     }
     # now calculate offsets based on each image for a lattice
     return_dict["offsets"] = einsum(return_dict["images"], cell, "v i, n i j -> v j")
