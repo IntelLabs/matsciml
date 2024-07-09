@@ -88,7 +88,9 @@ class MACEWrapper(AbstractPyGModel):
         mace_kwargs["hidden_irreps"] = hidden_irreps
         mace_kwargs["atomic_numbers"] = list(range(1, num_atom_embedding + 1))
         if "atomic_energies" not in mace_kwargs:
-            logger.warning("No ``atomic_energies`` provided, defaulting to ones.")
+            logger.warning(
+                "No ``atomic_energies`` provided, defaulting to total ionization energy."
+            )
             mace_kwargs["atomic_energies"] = free_ion_energy_table(num_atom_embedding)
         # check to make sure all that's required is
         for key in __mace_required_args + __mace_submodule_required_args:
