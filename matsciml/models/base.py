@@ -1990,7 +1990,6 @@ class ForceRegressionTask(BaseTaskModule):
         loss_dict = self._compute_losses(batch)
         loss = loss_dict["loss"]
         # sandwich lightning callbacks
-        self.manual_backward(loss, retain_graph=True)
         self.manual_backward(loss)
         self.on_before_optimizer_step(opt)
         opt.step()
