@@ -5,10 +5,10 @@ from typing import Any, Callable, Type
 from functools import cache
 
 import torch
-import numpy as np
 from e3nn.o3 import Irreps
 from mace.modules import MACE
 from torch_geometric.nn import pool
+from mendeleev import element
 
 from matsciml.models.base import AbstractPyGModel
 from matsciml.common.types import BatchDict, DataDict, AbstractGraph, Embeddings
@@ -19,6 +19,30 @@ from matsciml.common.inspection import get_model_required_args, get_model_all_ar
 logger = getLogger(__file__)
 
 __all__ = ["MACEWrapper"]
+
+
+def free_ion_energy_table(num_elements: int = 100) -> torch.Tensor:
+    """
+    Generates a default table of atomic energies as the total
+    stripped ion energy. Keep in mind that the sign is negated.
+
+    Parameters
+    ----------
+    num_elements : int
+        Number of atoms to include in the tensor. This must
+        match the `num_atom_embedding` argument of ``MACE``,
+        otherwise will encounter a matmul error. Defaults to
+        100, which is the default value for ``MACEWrapper``.
+
+    Returns
+    -------
+    torch.Tensor
+        Tensor containing the energies of fully stripped ions
+        in double precision.
+    """
+    ele = [element(i) for i in range(1, num_elements + 1)]
+    ion_energies = [-sum(e.ionenergies.values()) for e in ele]
+    return torch.Tensor(ion_energies).double()
 
 
 @registry.register_model("MACEWrapper")
@@ -64,8 +88,10 @@ class MACEWrapper(AbstractPyGModel):
         mace_kwargs["hidden_irreps"] = hidden_irreps
         mace_kwargs["atomic_numbers"] = list(range(1, num_atom_embedding + 1))
         if "atomic_energies" not in mace_kwargs:
-            logger.warning("No ``atomic_energies`` provided, defaulting to ones.")
-            mace_kwargs["atomic_energies"] = np.ones(num_atom_embedding)
+            logger.warning(
+                "No ``atomic_energies`` provided, defaulting to total ionization energy."
+            )
+            mace_kwargs["atomic_energies"] = free_ion_energy_table(num_atom_embedding)
         # check to make sure all that's required is
         for key in __mace_required_args + __mace_submodule_required_args:
             if key not in mace_kwargs:
