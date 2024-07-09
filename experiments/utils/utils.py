@@ -3,9 +3,19 @@ import os
 
 import matsciml  # noqa: F401
 from matsciml.models.common import get_class_from_name
+from matsciml.common.inspection import get_model_all_args
 
 
-def instantiate_arg_dict(input: dict[str, Any]) -> dict[str, Any]:
+def verify_class_args(input_class, input_args):
+    all_args = get_model_all_args(input_class)
+
+    for key in input_args:
+        assert (
+            key in all_args
+        ), f"{key} was passed as a kwarg but does not match expected arguments."
+
+
+def instantiate_arg_dict(input: Union[list, dict[str, Any]]) -> dict[str, Any]:
     """Used to traverse through an config file and spin up any arguments that specify
     a 'class_path' and optional 'init_args'. Replaces the string values with the
     instantiated class. If the tag is a 'class_instance' this is simple a class which
@@ -35,13 +45,15 @@ def instantiate_arg_dict(input: dict[str, Any]) -> dict[str, Any]:
                 else:
                     transform_args = input_args
                 class_path = get_class_from_name(class_path)
+                verify_class_args(class_path, transform_args)
                 return class_path(**transform_args)
             if key == "encoder_class":
-                input[key] = eval(f"{value['class_path']}")
+                input[key] = get_class_from_name(value["class_path"])
             elif isinstance(value, dict) and "class_path" in value:
                 class_path = value["class_path"]
                 class_path = get_class_from_name(class_path)
                 input_args = value.get("init_args", {})
+                verify_class_args(class_path, input_args)
                 input[key] = class_path(**input_args)
             else:
                 input[key] = instantiate_arg_dict(value)
