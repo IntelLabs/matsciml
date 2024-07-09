@@ -3,9 +3,9 @@ debug:
   batch_size: 4
   num_workers: 0
 experiment:
-  test_split: ./matsciml/datasets/materiasl_project/devset
-  train_path: ./matsciml/datasets/materiasl_project/devset
-  val_split: ./matsciml/datasets/materiasl_project/devset
+  test_split: ""
+  train_path: ""
+  val_split: ""
 target_keys:
 - is_magnetic
 - is_metal
