@@ -89,7 +89,7 @@ def dynamic_gradients_context(need_grad: bool, has_rnn: bool) -> ContextManager:
     aren't in inference mode, which is enabled by PyTorch Lightning
     for faster inference.
     If this is `regress_forces` is set to False, a `nullcontext`
-    is applied that does nothing.k
+    is applied that does nothing.
     Parameters
     ----------
     need_grad : bool
