@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from importlib.util import find_spec
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any
 
 import dgl
 import torch
@@ -14,7 +14,10 @@ from torch import nn
 from matsciml.common.types import BatchDict, DataDict, Embeddings
 from matsciml.models.base import AbstractDGLModel
 
+from matsciml.common.registry import registry
 
+
+@registry.register_model("MPNN")
 class MPNN(AbstractDGLModel):
     def __init__(
         self,
@@ -75,7 +78,7 @@ class MPNN(AbstractDGLModel):
                 readout_cls = find_spec(readout, "dgl.nn.pytorch.glob")
                 if readout_cls is None:
                     raise ImportError(
-                        f"Class name passed to `readout`, but not found in `dgl.nn.pytorch.glob`.",
+                        "Class name passed to `readout`, but not found in `dgl.nn.pytorch.glob`.",
                     )
             else:
                 # assume it's generic type

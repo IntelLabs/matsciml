@@ -2,21 +2,24 @@
 # SPDX-License-Identifier: MIT License
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import dgl
 import torch
 import torch.nn as nn
 
 from matsciml.common.types import Embeddings
+from matsciml.common.registry import registry
 from matsciml.models.base import AbstractDGLModel
 from matsciml.models.dgl.dpp import dimenet_utils as du
+
 
 """
 Credit for original code: xnuohz; https://github.com/xnuohz/DimeNet-dgl
 """
 
 
+@registry.register_model("DimeNetPP")
 class DimeNetPP(AbstractDGLModel):
     """
     DimeNet++ model.
@@ -80,7 +83,7 @@ class DimeNetPP(AbstractDGLModel):
     ) -> None:
         if atom_embedding_dim:
             raise ValueError(
-                f"'atom_embedding_dim' should not be specified; please pass 'emb_size' instead.",
+                "'atom_embedding_dim' should not be specified; please pass 'emb_size' instead.",
             )
         super().__init__(emb_size, num_atom_embedding, embedding_kwargs, encoder_only)
         self.num_blocks = num_blocks

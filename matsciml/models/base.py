@@ -3350,6 +3350,7 @@ class S2EFInference(OpenCatalystInference):
         self.zero_grad(set_to_none=True)
 
 
+@registry.register_task("NodeDenoisingTask")
 class NodeDenoisingTask(BaseTaskModule):
     __task__ = "pretraining"
     """
