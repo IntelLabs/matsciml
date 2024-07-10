@@ -4,9 +4,9 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+
 from __future__ import annotations
 
-from typing import Optional
 
 import numpy as np
 import torch
@@ -42,7 +42,10 @@ from matsciml.models.pyg.gemnet.utils import (
     repeat_blocks,
 )
 
+from matsciml.common.registry import registry
 
+
+@registry.register_model("GemNetT")
 class GemNetT(torch.nn.Module):
     """
     GemNet-T, triplets-only variant of GemNet

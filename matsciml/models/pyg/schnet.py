@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+
 from __future__ import annotations
 
 import torch
@@ -12,7 +13,10 @@ from torch_scatter import scatter
 
 from matsciml.common.utils import conditional_grad, get_pbc_distances, radius_graph_pbc
 
+from matsciml.common.registry import registry
 
+
+@registry.register_model("SchNetWrap")
 class SchNetWrap(SchNet):
     r"""Wrapper around the continuous-filter convolutional neural network SchNet from the
     `"SchNet: A Continuous-filter Convolutional Neural Network for Modeling
@@ -131,13 +135,16 @@ class SchNetWrap(SchNet):
         energy = self._forward(data)
 
         if self.regress_forces:
-            forces = -1 * (
-                torch.autograd.grad(
-                    energy,
-                    data.pos,
-                    grad_outputs=torch.ones_like(energy),
-                    create_graph=True,
-                )[0]
+            forces = (
+                -1
+                * (
+                    torch.autograd.grad(
+                        energy,
+                        data.pos,
+                        grad_outputs=torch.ones_like(energy),
+                        create_graph=True,
+                    )[0]
+                )
             )
             return energy, forces
         else:

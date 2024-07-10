@@ -6,21 +6,25 @@ Implementation of MEGNet model.
 Code attributions to https://github.com/materialsvirtuallab/m3gnet-dgl/tree/main/megnet,
 along with contributions and modifications from Marcel Nassar, Santiago Miret, and Kelvin Lee
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import dgl
 import torch
 from dgl.nn import Set2Set
 from torch import nn
-from torch.nn import Dropout, Identity, Module, ModuleList, Softplus
+from torch.nn import Dropout, Identity, ModuleList, Softplus
 
 from matsciml.common.types import BatchDict, DataDict, Embeddings
 from matsciml.models.base import AbstractDGLModel
 from matsciml.models.dgl.megnet import MLP, EdgeSet2Set, MEGNetBlock
 
+from matsciml.common.registry import registry
 
+
+@registry.register_model("MEGNet")
 class MEGNet(AbstractDGLModel):
     def __init__(
         self,
@@ -172,14 +176,14 @@ class MEGNet(AbstractDGLModel):
         data["node_feats"] = node_feats
         assert (
             "graph_variables" in batch
-        ), f"MEGNet expects graph level features. Please include 'GraphVariablesTransform in your data pipeline."
+        ), "MEGNet expects graph level features. Please include 'GraphVariablesTransform in your data pipeline."
         data["graph_feats"] = batch.get("graph_variables")
         assert (
             "r" in graph.edata
-        ), f"MEGNet expects interatomic distances in edge data. Please include 'DistancesTransform' in your data pipeline."
+        ), "MEGNet expects interatomic distances in edge data. Please include 'DistancesTransform' in your data pipeline."
         assert (
             "mu" in graph.edata
-        ), f"MEGNet expects reduced masses in edge data. Please include 'DistancesTransform' in your data pipeline."
+        ), "MEGNet expects reduced masses in edge data. Please include 'DistancesTransform' in your data pipeline."
         edge_feats = torch.hstack([graph.edata["r"], graph.edata["mu"].unsqueeze(-1)])
         data["edge_feats"] = edge_feats
         return data

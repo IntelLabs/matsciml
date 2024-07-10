@@ -11,6 +11,8 @@ from torch_geometric.typing import Size
 
 from matsciml.common.types import AbstractGraph, Embeddings
 from matsciml.models.base import AbstractPyGModel
+from matsciml.common.registry import registry
+
 
 """
 Some inspiration from https://github.com/lucidrains/egnn-pytorch but
@@ -182,6 +184,7 @@ class EGNNConv(MessagePassing):
         return (new_nodes, new_coords)
 
 
+@registry.register_model("EGNN")
 class EGNN(AbstractPyGModel):
     def __init__(
         self,
