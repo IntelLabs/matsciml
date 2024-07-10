@@ -41,7 +41,6 @@ from matsciml.models.base import AbstractDGLModel
 from matsciml.common.registry import registry
 
 
-@registry.register_model("MEGNet")
 class GraphConvBlock(nn.Module):
     def __init__(
         self,
