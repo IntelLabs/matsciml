@@ -89,7 +89,7 @@ def dynamic_gradients_context(need_grad: bool, has_rnn: bool) -> ContextManager:
     aren't in inference mode, which is enabled by PyTorch Lightning
     for faster inference.
     If this is `regress_forces` is set to False, a `nullcontext`
-    is applied that does nothing.
+    is applied that does nothing.k
     Parameters
     ----------
     need_grad : bool
@@ -3350,6 +3350,7 @@ class S2EFInference(OpenCatalystInference):
         self.zero_grad(set_to_none=True)
 
 
+@registry.register_task("NodeDenoisingTask")
 class NodeDenoisingTask(BaseTaskModule):
     __task__ = "pretraining"
     """
