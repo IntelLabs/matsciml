@@ -24,10 +24,10 @@ S2EFLitModule(
 )
 
 """
+
 from __future__ import annotations
 
-from argparse import ArgumentParser
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any
 
 import dgl
 import numpy as np
@@ -37,6 +37,8 @@ from torch import nn
 
 from matsciml.common.types import Embeddings
 from matsciml.models.base import AbstractDGLModel
+
+from matsciml.common.registry import registry
 
 
 class GraphConvBlock(nn.Module):
@@ -118,6 +120,7 @@ class GraphConvBlock(nn.Module):
         return nn.Sequential(*layers)
 
 
+@registry.register_model("GraphConvModel")
 class GraphConvModel(AbstractDGLModel):
     def __init__(
         self,

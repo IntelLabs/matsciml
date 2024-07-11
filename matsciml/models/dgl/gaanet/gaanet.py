@@ -2,26 +2,22 @@
 # SPDX-License-Identifier: MIT License
 from __future__ import annotations
 
-import math
-from typing import Any, Callable, Dict, List, Optional, Union
 
-import dgl
 import geometric_algebra_attention.pytorch as gala
-import numpy as np
 import torch
-import torch.nn as nn
-from dgl.nn.pytorch.factory import KNNGraph
 
 from matsciml.common.types import Embeddings
 from matsciml.models.base import AbstractPointCloudModel
 from matsciml.models.dgl.gaanet.gaanet_model import (
-    MLP,
     LayerNorm,
     MomentumNorm,
     TiedMultivectorAttention,
 )
 
+from matsciml.common.registry import registry
 
+
+@registry.register_model("GalaPotential")
 class GalaPotential(AbstractPointCloudModel):
     """Calculate a potential using geometric algebra attention
 
@@ -124,7 +120,6 @@ class GalaPotential(AbstractPointCloudModel):
         self.save_hyperparameters()
 
     def make_attention_nets(self) -> None:
-        D_in = lambda i: 1 if (i == self.depth and self.rank == 1) else 2
         self.score_nets = torch.nn.ModuleList([])
         self.value_nets = torch.nn.ModuleList([])
         self.scale_nets = torch.nn.ModuleList([])

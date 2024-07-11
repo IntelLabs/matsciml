@@ -11,6 +11,7 @@ from warnings import warn
 from logging import getLogger
 
 import pytorch_lightning as pl
+from pytorch_lightning import loggers as pl_loggers
 import torch
 from einops import reduce
 from torch import Tensor, nn
@@ -682,6 +683,8 @@ class BaseTaskModule(pl.LightningModule):
         embedding_reduction_type: str = "mean",
         normalize_kwargs: dict[str, float] | None = None,
         scheduler_kwargs: dict[str, dict[str, Any]] | None = None,
+        log_embeddings: bool = False,
+        log_embeddings_every_n_steps: int = 50,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -845,11 +848,9 @@ class BaseTaskModule(pl.LightningModule):
         self,
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
     ) -> dict[str, torch.Tensor]:
-        if "embeddings" in batch:
-            embedding = batch.get("embeddings")
-        else:
-            embedding = self.encoder(batch)
-        outputs = self.process_embedding(embedding)
+        embeddings = self.encoder(batch)
+        batch["embeddings"] = embeddings
+        outputs = self.process_embedding(embeddings)
         return outputs
 
     def process_embedding(self, embeddings: Embeddings) -> dict[str, torch.Tensor]:
@@ -878,6 +879,57 @@ class BaseTaskModule(pl.LightningModule):
             )
             results[key] = output
         return results
+
+    def _log_embedding(self, embeddings: Embeddings) -> None:
+        """
+        This maps the appropriate logging function depending on what
+        logger was used, and saves the graph and node level embeddings.
+
+        Some services like ``wandb`` are able to do some nifty embedding
+        analyses online using these embeddings.
+
+        Parameters
+        ----------
+        embeddings : Embeddings
+            Data structure containing embeddings from the encoder.
+        """
+        log_freq = self.hparams.log_embeddings_every_n_steps
+        global_step = self.trainer.global_step
+        # only log embeddings at the same cadence as everything else
+        if self.logger is not None and (global_step % log_freq) == 0:
+            exp = self.logger.experiment
+            sys_z = embeddings.system_embedding.detach().cpu()
+            node_z = embeddings.point_embedding.detach().cpu()
+            if isinstance(self.logger, pl_loggers.WandbLogger):
+                # this import is okay here since we need it for the logger anyway
+                import wandb
+
+                cols = [f"D{i}" for i in range(sys_z.size(-1))]
+                exp.log(
+                    {"graph_embeddings": wandb.Table(columns=cols, data=sys_z.tolist())}
+                )
+                if isinstance(embeddings.point_embedding, torch.Tensor):
+                    # TODO: should add labels to the nodes based on graph index
+                    exp.log(
+                        {
+                            "node_embeddings": wandb.Table(
+                                columns=cols, data=node_z.tolist()
+                            )
+                        }
+                    )
+            elif isinstance(self.logger, pl_loggers.TensorBoardLogger):
+                exp.add_embedding(
+                    sys_z,
+                    tag=f"graph_embeddings_{self.trainer.global_step}",
+                )
+                if isinstance(embeddings.point_embedding, torch.Tensor):
+                    # TODO: should add labels to the nodes based on graph index
+                    exp.add_embedding(
+                        node_z,
+                        tag=f"node_embeddings_{self.trainer.global_step}",
+                    )
+            else:
+                pass
 
     def _get_targets(
         self,
@@ -1006,6 +1058,8 @@ class BaseTaskModule(pl.LightningModule):
             )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return loss_dict
 
     def validation_step(
@@ -1026,6 +1080,8 @@ class BaseTaskModule(pl.LightningModule):
             )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return loss_dict
 
     def test_step(
@@ -1046,6 +1102,8 @@ class BaseTaskModule(pl.LightningModule):
             )
             batch_size = None
         self.log_dict(metrics, batch_size=batch_size)
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return loss_dict
 
     def _make_normalizers(self) -> dict[str, Normalizer]:
@@ -1335,6 +1393,8 @@ class MaceEnergyForceTask(BaseTaskModule):
             output = head(embeddings.system_embedding[key])
             output = reduce(output, "b ... d -> b d", reduction="mean")
             results[key] = output
+        if self.hparams.log_embeddings:
+            self._log_embedding(embeddings)
         return results
 
     def _compute_losses(
@@ -1796,6 +1856,8 @@ class ForceRegressionTask(BaseTaskModule):
         # this ensures that we get a scalar value for every node
         # representing the energy contribution
         outputs["node_energies"] = node_energies
+        if self.hparams.log_embeddings:
+            self._log_embedding(embeddings)
         return outputs
 
     def predict(self, batch: BatchDict) -> dict[str, torch.Tensor]:
@@ -1934,7 +1996,6 @@ class ForceRegressionTask(BaseTaskModule):
         loss_dict = self._compute_losses(batch)
         loss = loss_dict["loss"]
         # sandwich lightning callbacks
-        self.manual_backward(loss, retain_graph=True)
         self.manual_backward(loss)
         self.on_before_optimizer_step(opt)
         opt.step()
@@ -1950,6 +2011,20 @@ class ForceRegressionTask(BaseTaskModule):
             )
             batch_size = None
         self.log_dict(metrics, on_step=True, prog_bar=True, batch_size=batch_size)
+        # step learning rate schedulers at the end of epochs
+        if self.trainer.is_last_batch:
+            schedulers = self.lr_schedulers()
+            if schedulers is not None:
+                if not isinstance(schedulers, list):
+                    schedulers = [schedulers]
+                for s in schedulers:
+                    # for schedulers that need a metric
+                    if isinstance(s, lr_scheduler.ReduceLROnPlateau):
+                        s.step(loss, self.current_epoch)
+                    else:
+                        s.step(epoch=self.current_epoch)
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return loss_dict
 
     def _make_normalizers(self) -> dict[str, Normalizer]:
@@ -2241,6 +2316,8 @@ class MultiTaskLitModule(pl.LightningModule):
         *tasks: tuple[str, BaseTaskModule],
         task_scaling: Iterable[float] | None = None,
         task_keys: dict[str, list[str]] | None = None,
+        log_embeddings: bool = False,
+        log_embeddings_every_n_steps: int = 50,
         **encoder_opt_kwargs,
     ) -> None:
         """
@@ -2284,6 +2361,8 @@ class MultiTaskLitModule(pl.LightningModule):
                 "subtask_hparams": subtask_hparams,
                 "task_scaling": task_scaling,
                 "encoder_opt_kwargs": encoder_opt_kwargs,
+                "log_embeddings": log_embeddings,
+                "log_embeddings_every_n_steps": log_embeddings_every_n_steps,
             },
         )
         self.task_map = task_map
@@ -2619,8 +2698,10 @@ class MultiTaskLitModule(pl.LightningModule):
             if self.is_multidata:
                 for key, data in batch.items():
                     data["embeddings"] = self.encoder(data)
+                embeddings = data["embeddings"]
             else:
                 batch["embeddings"] = self.encoder(batch)
+                embeddings = batch["embeddings"]
             # for single dataset usage, we assume the nested structure isn't used
             if self.is_multidata:
                 for key, data in batch.items():
@@ -2629,13 +2710,13 @@ class MultiTaskLitModule(pl.LightningModule):
                         results[key] = {}
                     # finally call the task with the data
                     for task_type, subtask in subtasks.items():
-                        results[key][task_type] = subtask(data)
+                        results[key][task_type] = subtask.process_embedding(embeddings)
             else:
                 # in the single dataset case, we can skip the outer loop
                 # and just pass the batch into the subtask
                 tasks = list(self.task_map.values()).pop(0)
                 for task_type, subtask in tasks.items():
-                    results[task_type] = subtask(batch)
+                    results[task_type] = subtask.process_embedding(embeddings)
             return results
 
     def predict(self, batch: BatchDict) -> dict[str, dict[str, torch.Tensor]]:
@@ -2975,6 +3056,9 @@ class MultiTaskLitModule(pl.LightningModule):
             prog_bar=True,
             batch_size=batch_info["batch_size"],
         )
+        # optionally log embeddings
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return losses
 
     def validation_step(
@@ -3029,6 +3113,9 @@ class MultiTaskLitModule(pl.LightningModule):
             prog_bar=True,
             batch_size=batch_info["batch_size"],
         )
+        # optionally log embeddings
+        if self.hparams.log_embeddings and "embeddings" in batch:
+            self._log_embedding(batch["embeddings"])
         return losses
 
     @classmethod
@@ -3104,6 +3191,57 @@ class MultiTaskLitModule(pl.LightningModule):
         # load in pre-trained weights
         task.encoder.load_state_dict(encoder_weights)
         return task
+
+    def _log_embedding(self, embeddings: Embeddings) -> None:
+        """
+        This maps the appropriate logging function depending on what
+        logger was used, and saves the graph and node level embeddings.
+
+        Some services like ``wandb`` are able to do some nifty embedding
+        analyses online using these embeddings.
+
+        Parameters
+        ----------
+        embeddings : Embeddings
+            Data structure containing embeddings from the encoder.
+        """
+        log_freq = self.hparams.log_embeddings_every_n_steps
+        global_step = self.trainer.global_step
+        # only log embeddings at the same cadence as everything else
+        if self.logger is not None and (global_step % log_freq) == 0:
+            exp = self.logger.experiment
+            sys_z = embeddings.system_embedding.detach().cpu()
+            node_z = embeddings.point_embedding.detach().cpu()
+            if isinstance(self.logger, pl_loggers.WandbLogger):
+                # this import is okay here since we need it for the logger anyway
+                import wandb
+
+                cols = [f"D{i}" for i in range(sys_z.size(-1))]
+                exp.log(
+                    {"graph_embeddings": wandb.Table(columns=cols, data=sys_z.tolist())}
+                )
+                if isinstance(embeddings.point_embedding, torch.Tensor):
+                    # TODO: should add labels to the nodes based on graph index
+                    exp.log(
+                        {
+                            "node_embeddings": wandb.Table(
+                                columns=cols, data=node_z.tolist()
+                            )
+                        }
+                    )
+            elif isinstance(self.logger, pl_loggers.TensorBoardLogger):
+                exp.add_embedding(
+                    sys_z,
+                    tag=f"graph_embeddings_{self.trainer.global_step}",
+                )
+                if isinstance(embeddings.point_embedding, torch.Tensor):
+                    # TODO: should add labels to the nodes based on graph index
+                    exp.add_embedding(
+                        node_z,
+                        tag=f"node_embeddings_{self.trainer.global_step}",
+                    )
+            else:
+                pass
 
 
 @registry.register_task("OpenCatalystInference")
@@ -3218,6 +3356,7 @@ class S2EFInference(OpenCatalystInference):
         self.zero_grad(set_to_none=True)
 
 
+@registry.register_task("NodeDenoisingTask")
 class NodeDenoisingTask(BaseTaskModule):
     __task__ = "pretraining"
     """
