@@ -1,5 +1,6 @@
 model: faenet_pyg
 dataset:
-  carolina:
-    sr:
-      - energy
+  oqmd:
+    - task: ScalarRegressionTask
+      targets:
+       - energy

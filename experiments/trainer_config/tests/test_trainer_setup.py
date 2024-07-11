@@ -54,7 +54,7 @@ def trainer_args() -> dict:
 def test_trainer_setup(trainer_args):
     temp_dir = tempfile.TemporaryDirectory()
     trainer = setup_trainer(
-        {"run_type": "debug", "log_path": f"{temp_dir}"}, trainer_args
+        {"run_type": "debug", "log_path": f"{temp_dir}", "cli_args": None}, trainer_args
     )
     assert any([CSVLogger == logger.__class__ for logger in trainer.loggers])
     assert any([EarlyStopping == logger.__class__ for logger in trainer.callbacks])
