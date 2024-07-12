@@ -50,7 +50,7 @@ def mace_architecture() -> MACEWrapper:
 
 
 # here we filter out datasets from the registry that don't make sense
-ignore_dset = ["Multi", "M3G", "PyG", "Cdvae"]
+ignore_dset = ["Multi", "M3G", "PyG", "Cdvae", "SyntheticPointGroupDataset"]
 filtered_list = list(
     filter(
         lambda x: all([target_str not in x for target_str in ignore_dset]),

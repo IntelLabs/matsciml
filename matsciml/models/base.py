@@ -1776,6 +1776,7 @@ class ForceRegressionTask(BaseTaskModule):
                         dim=-2,
                         reduce=self.embedding_reduction_type,
                     )
+
         else:
 
             def readout(node_energies: torch.Tensor):
@@ -2370,15 +2371,14 @@ class MultiTaskLitModule(pl.LightningModule):
         self.task_scaling = task_scaling
         self.encoder_opt_kwargs = encoder_opt_kwargs
         if task_keys is not None:
-            for pair in self.dataset_task_pairs:
-                # unpack 2-tuple
-                dataset_name, task_type = pair
-                relevant_keys = task_keys[dataset_name][task_type]
-                self._initialize_subtask_output(
-                    dataset_name,
-                    task_type,
-                    task_keys=relevant_keys,
-                )
+            for index, (dataset_name, task_dict) in enumerate(task_keys.items()):
+                for relevant_keys in task_dict.values():
+                    self._initialize_subtask_output(
+                        dataset_name,
+                        dict(self.dataset_task_pairs)[dataset_name],
+                        task_keys=relevant_keys,
+                    )
+
         self.configure_optimizers()
         self.automatic_optimization = False
 
