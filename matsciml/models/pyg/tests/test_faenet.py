@@ -73,7 +73,7 @@ def test_model_forward_nograd(dset_class_name: str, faenet_architecture: FAENet)
         Concrete FAENet object with some parameters
     """
     transforms = [
-        PeriodicPropertiesTransform(cutoff_radius=6.0),
+        PeriodicPropertiesTransform(cutoff_radius=6.0, adaptive_cutoff=True),
         PointCloudToGraphTransform(
             "pyg",
             node_keys=["pos", "atomic_numbers"],
