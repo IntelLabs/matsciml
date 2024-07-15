@@ -122,6 +122,6 @@ transforms:
 ## CLI Parameter Updates
 Certain parameters may be updated using the cli. The `-c, --cli_args` argument may be used, and the parameter must be specified as `[config].parameter.value`. The config may be `trainer`, `model`, or `dataset`. For example, to update the batch size for a debug run:
 
-`python training_script.py --cli_args --debug dataset.debug.batch_size.16`
+`python training_script.py --debug --cli_args dataset.debug.batch_size.16`
 
  Only arguments which contain dict: [str, int, float] mapping all the way through to the target value may be updated. Parameters which map to lists at any point are not updatable through `cli_args`, for example callbacks, loggers, and transforms.

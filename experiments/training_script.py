@@ -23,10 +23,30 @@ def main(config: dict[str, Any]) -> None:
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("-o", "--options", action="store_true")
-    parser.add_argument("-d", "--debug", action="store_true")
-    parser.add_argument("-e", "--experiment_config")
-    parser.add_argument("-c", "--cli_args", nargs="+", default=None)
+    parser.add_argument(
+        "-o",
+        "--options",
+        help="Show options for models, datasets, and targets",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        help="Uses debug config with devsets and only a few batches per epoch.",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-e",
+        "--experiment_config",
+        help="Experiment config yaml file to use.",
+    )
+    parser.add_argument(
+        "-c",
+        "--cli_args",
+        nargs="+",
+        help="Parameters to update via cli, such as: dataset.debug.batch_size.16",
+        default=None,
+    )
     args = parser.parse_args()
     if args.options:
         config_help()
