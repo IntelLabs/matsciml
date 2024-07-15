@@ -337,12 +337,17 @@ class AbstractPointCloudModel(AbstractTask):
         sizes = []
         # loop over each sample within a batch
         for index, sample in enumerate(temp_pos):
-            src_nodes, dst_nodes = batch["src_nodes"][index], batch["dst_nodes"][index]
+            src_nodes, dst_nodes = (
+                batch["pc_src_nodes"][index],
+                batch["pc_dst_nodes"][index],
+            )
             # use dst_nodes to gauge size because you will always have more
             # dst nodes than src nodes right now
             sizes.append(len(dst_nodes))
             # carve out neighborhoods as dictated by the dataset/transform definition
-            sample_pc_pos = sample[src_nodes][None, :] - sample[dst_nodes][:, None]
+            sample_pc_pos = (
+                sample[src_nodes.long()][None, :] - sample[dst_nodes.long()][:, None]
+            )
             pc_pos.append(sample_pc_pos)
         # pad the position result
         pc_pos, mask = pad_point_cloud(pc_pos, max(sizes))

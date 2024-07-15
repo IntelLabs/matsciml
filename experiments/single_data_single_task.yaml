@@ -1,0 +1,6 @@
+model: egnn_dgl
+dataset:
+  oqmd:
+    - task: ScalarRegressionTask
+      targets:
+       - band_gap

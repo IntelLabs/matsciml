@@ -1,0 +1,20 @@
+dataset: MaterialsProjectDataset
+debug:
+  batch_size: 4
+  num_workers: 0
+experiment:
+  test_split: ""
+  train_path: ""
+  val_split: ""
+target_keys:
+- is_magnetic
+- is_metal
+- is_stable
+- band_gap
+- efermi
+- energy_per_atom
+- formation_energy_per_atom
+- uncorrected_energy_per_atom
+- symmetry_number
+- symmetry_symbol
+- symmetry_group
