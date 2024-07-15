@@ -346,8 +346,7 @@ class AbstractPointCloudModel(AbstractTask):
             sizes.append(len(dst_nodes))
             # carve out neighborhoods as dictated by the dataset/transform definition
             sample_pc_pos = (
-                sample[src_nodes.to(int)][None, :]
-                - sample[dst_nodes.to(int).to(int)][:, None]
+                sample[src_nodes.long()][None, :] - sample[dst_nodes.long()][:, None]
             )
             pc_pos.append(sample_pc_pos)
         # pad the position result
