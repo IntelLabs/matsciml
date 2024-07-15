@@ -1,6 +1,5 @@
 from experiments.trainer_config.trainer_config import setup_trainer  # noqa: F401
 
-import os
 import yaml
 from pathlib import Path
 
@@ -11,7 +10,7 @@ trainer_args = {
 }
 
 for filename in yaml_dir.rglob("*.yaml"):
-    file_path = Path(os.path.join(yaml_dir, filename))
+    file_path = yaml_dir.joinpath(filename)
     with open(file_path, "r") as file:
         content = yaml.safe_load(file)
         file_key = file_path.stem
