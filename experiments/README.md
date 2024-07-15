@@ -18,13 +18,13 @@ In general, and experiment may the be launched by running:
 
 * The `model` field points to a specify `model.yaml` file in `./experiments/models`.
 * The `dataset` field is a dictionary specifying which datasets to use, as well as which tasks are associated with the parent dataset.
-    * Tasks are referred to by a shortened version of their name:
+    * Tasks are referred to by their class name:
     ```python
-    "sr","scalar_regression" -> ScalarRegressionTask
-    "fr", "force_regression" -> ForceRegressionTask
-    "bc", "binary_classification" -> BinaryClassificationTask
-    "csc", "crystal_symmetry_classification" -> CrystalSymmetryClassificationTask
-    "gffr", "grad_free_force_regression" -> GradFreeForceRegressionTask
+    ScalarRegressionTask
+    ForceRegressionTask
+    BinaryClassificationTask
+    CrystalSymmetryClassificationTask
+    GradFreeForceRegressionTask
     ```
 * A dataset may contain more than one task (single data, multi task learning)
 * Multiple datasets can be provided, each containing their own tasks (multi data, multi task learning)

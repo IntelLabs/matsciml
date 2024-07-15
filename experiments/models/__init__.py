@@ -4,7 +4,9 @@ import yaml
 from torch.nn import LayerNorm
 
 
-yaml_dir = yaml_dir = os.path.dirname(os.path.abspath(__file__))
+from pathlib import Path
+
+yaml_dir = Path(__file__).parent
 available_models = {
     "generic": {
         "output_kwargs": {
@@ -18,11 +20,9 @@ available_models = {
     },
 }
 
-
-for filename in os.listdir(yaml_dir):
-    if filename.endswith(".yaml"):
-        file_path = os.path.join(yaml_dir, filename)
-        with open(file_path, "r") as file:
-            content = yaml.safe_load(file)
-            file_key = os.path.splitext(filename)[0]
-            available_models[file_key] = content
+for filename in yaml_dir.rglob("*.yaml"):
+    file_path = Path(os.path.join(yaml_dir, filename))
+    with open(file_path, "r") as file:
+        content = yaml.safe_load(file)
+        file_key = file_path.stem
+        available_models[file_key] = content

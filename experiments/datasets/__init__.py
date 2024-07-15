@@ -1,8 +1,11 @@
 import os
 import yaml
 
+from pathlib import Path
 
-yaml_dir = yaml_dir = os.path.dirname(os.path.abspath(__file__))
+yaml_dir = Path(__file__).parent
+
+
 available_data = {
     "generic": {
         "experiment": {"batch_size": 32, "num_workers": 16},
@@ -11,10 +14,9 @@ available_data = {
 }
 
 
-for filename in os.listdir(yaml_dir):
-    if filename.endswith(".yaml"):
-        file_path = os.path.join(yaml_dir, filename)
-        with open(file_path, "r") as file:
-            content = yaml.safe_load(file)
-            file_key = os.path.splitext(filename)[0]
-            available_data[file_key] = content
+for filename in yaml_dir.rglob("*.yaml"):
+    file_path = Path(os.path.join(yaml_dir, filename))
+    with open(file_path, "r") as file:
+        content = yaml.safe_load(file)
+        file_key = file_path.stem
+        available_data[file_key] = content

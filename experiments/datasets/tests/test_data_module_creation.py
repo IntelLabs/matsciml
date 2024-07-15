@@ -7,13 +7,30 @@ import matsciml
 import matsciml.datasets.transforms  # noqa: F401
 from experiments.datasets.data_module_config import setup_datamodule
 
-single_task = {"dataset": {"oqmd": {"sr": ["energy"]}}}
-multi_task = {"dataset": {"s2ef": {"sr": "energy", "fr": ["force"]}}}
-multi_data = {
+
+single_task = {
+    "model": "egnn_dgl",
+    "dataset": {"oqmd": [{"task": "ScalarRegressionTask", "targets": ["band_gap"]}]},
+}
+multi_task = {
     "dataset": {
-        "s2ef": {"sr": "energy", "fr": ["force"]},
-        "is2re": {"sr": ["energy_init"]},
+        "s2ef": [
+            {"task": "ScalarRegressionTask", "targets": ["energy"]},
+            {"task": "ForceRegressionTask", "targets": ["force"]},
+        ]
     }
+}
+multi_data = {
+    "model": "faenet_pyg",
+    "dataset": {
+        "oqmd": [{"task": "ScalarRegressionTask", "targets": ["energy"]}],
+        "is2re": [
+            {
+                "task": "ScalarRegressionTask",
+                "targets": ["energy_init", "energy_relaxed"],
+            }
+        ],
+    },
 }
 
 
