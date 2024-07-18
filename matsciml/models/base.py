@@ -23,6 +23,7 @@ from matsciml.common.registry import registry
 from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
 from matsciml.models.common import OutputHead
 from matsciml.modules.normalizer import Normalizer
+from matsciml.models import losses as matsciml_losses
 
 logger = getLogger("matsciml")
 logger.setLevel("INFO")
@@ -1269,7 +1270,10 @@ class ScalarRegressionTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module = nn.MSELoss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = nn.MSELoss,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         **kwargs: Any,
@@ -1387,7 +1391,10 @@ class MaceEnergyForceTask(BaseTaskModule):
         encoder: Optional[nn.Module] = None,
         encoder_class: Optional[Type[nn.Module]] = None,
         encoder_kwargs: Optional[Dict[str, Any]] = None,
-        loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = nn.MSELoss,
         loss_coeff: Optional[Dict[str, Any]] = None,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
@@ -1614,7 +1621,10 @@ class BinaryClassificationTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module = nn.BCEWithLogitsLoss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = nn.BCEWithLogitsLoss,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         **kwargs,
@@ -1690,12 +1700,24 @@ class ForceRegressionTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module = nn.L1Loss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = None,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         embedding_reduction_type: str = "sum",
         **kwargs,
     ) -> None:
+        if not loss_func:
+            logger.warning(
+                "Loss functions were not specified. "
+                "Defaulting to AtomWeightedMSE for energy and MSE for force."
+            )
+            loss_func = {
+                "energy": matsciml_losses.AtomWeightedMSE(),
+                "force": nn.MSELoss(),
+            }
         super().__init__(
             encoder,
             encoder_class,
@@ -2109,7 +2131,10 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module = nn.MSELoss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = nn.MSELoss,
         output_kwargs: dict[str, Any] = {},
         **kwargs: Any,
     ) -> None:
@@ -2246,7 +2271,10 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module = nn.CrossEntropyLoss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = nn.CrossEntropyLoss,
         output_kwargs: dict[str, Any] = {},
         normalize_kwargs: dict[str, float] | None = None,
         freeze_embedding: bool = False,
