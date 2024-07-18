@@ -768,6 +768,13 @@ class BaseTaskModule(pl.LightningModule):
         if isinstance(self.loss_func, nn.Module):
             loss_dict = nn.ModuleDict({key: deepcopy(self.loss_func) for key in values})
             self.loss_func = loss_dict
+        # if a task key was given but not contained in loss_func
+        # user needs to figure out what to do
+        for key in values:
+            if key not in self.loss_func.keys():
+                raise KeyError(
+                    f"Task key {key} was specified but no loss function was specified."
+                )
         self.hparams["task_keys"] = self._task_keys
 
     @property
