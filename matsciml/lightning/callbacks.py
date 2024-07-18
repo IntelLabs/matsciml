@@ -9,7 +9,7 @@ from logging import DEBUG, getLogger
 from pathlib import Path
 from time import time
 from copy import copy
-from typing import Any, Callable, Dict, Iterator, Optional
+from typing import Any, Callable, Dict, Iterator, Literal, Optional
 from queue import Queue
 
 import numpy as np
@@ -362,15 +362,13 @@ class ManualGradientClip(Callback):
     def __init__(
         self,
         value: float,
-        algorithm: str = "norm",
-        verbose: bool = False,
+        algorithm: Literal["norm", "value"] = "norm",
         **kwargs,
     ) -> None:
         super().__init__()
         self.value = value
         self.algorithm = algorithm
         self.kwargs = kwargs
-        self.verbose = verbose
 
     @property
     def algorithm(self) -> Callable:
@@ -389,12 +387,9 @@ class ManualGradientClip(Callback):
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
         optimizer: Optimizer,
-        opt_idx: int,
     ) -> None:
         for parameter in pl_module.parameters():
             self.algorithm(parameter, self.value, **self.kwargs)
-            if self.verbose:
-                print(parameter)
 
 
 class MonitorGradients(Callback):
