@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from contextlib import ExitStack, nullcontext
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, ContextManager, Dict, List, Optional, Type, Union
 from warnings import warn
@@ -763,6 +764,10 @@ class BaseTaskModule(pl.LightningModule):
         if not self.has_initialized:
             self.output_heads = self._make_output_heads()
             self.normalizers = self._make_normalizers()
+        # homogenize it into a dictionary mapping
+        if isinstance(self.loss_func, nn.Module):
+            loss_dict = nn.ModuleDict({key: deepcopy(self.loss_func) for key in values})
+            self.loss_func = loss_dict
         self.hparams["task_keys"] = self._task_keys
 
     @property
