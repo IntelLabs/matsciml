@@ -22,7 +22,6 @@ from matsciml.common.registry import registry
 from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
 from matsciml.models.common import OutputHead
 from matsciml.modules.normalizer import Normalizer
-from matsciml.models import losses as matsciml_losses
 
 logger = getLogger("matsciml")
 logger.setLevel("INFO")
@@ -1657,18 +1656,12 @@ class ForceRegressionTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module | None = None,
-        energy_loss_func: type[nn.Module] | nn.Module = matsciml_losses.AtomWeightedMSE,
-        force_loss_func: type[nn.Module] | nn.Module = nn.MSELoss,
+        loss_func: type[nn.Module] | nn.Module = nn.L1Loss,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         embedding_reduction_type: str = "sum",
         **kwargs,
     ) -> None:
-        if loss_func is not None:
-            logger.warning(
-                "loss_func is now ignored; please set energy/force_loss_func instead."
-            )
         super().__init__(
             encoder,
             encoder_class,
@@ -1679,15 +1672,7 @@ class ForceRegressionTask(BaseTaskModule):
             embedding_reduction_type=embedding_reduction_type,
             **kwargs,
         )
-        if isinstance(energy_loss_func, type):
-            energy_loss_func = energy_loss_func()
-        if isinstance(force_loss_func, type):
-            force_loss_func = force_loss_func()
-        self.energy_loss_func = energy_loss_func
-        self.force_loss_func = force_loss_func
-        self.save_hyperparameters(
-            ignore=["encoder", "loss_func", "energy_loss_func", "force_loss_func"]
-        )
+        self.save_hyperparameters(ignore=["encoder", "loss_func"])
         # have to enable double backprop
         self.automatic_optimization = False
 
