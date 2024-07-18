@@ -44,6 +44,12 @@ class AtomWeightedMSE(nn.Module):
         targets: torch.Tensor,
         atoms_per_graph: torch.Tensor,
     ) -> torch.Tensor:
+        if atoms_per_graph.size(0) != targets.size(0):
+            raise RuntimeError(
+                "Dimensions for atom-weighted loss do not match:"
+                f" expected atoms_per_graph to have {targets.size(0)} elements; got {atoms_per_graph.size(0)}."
+                "This loss is intended to be applied to scalar targets only."
+            )
         # check to make sure we are broad casting correctly
         if (predicted.ndim != targets.ndim) and targets.size(-1) == 1:
             predicted.unsqueeze_(-1)
