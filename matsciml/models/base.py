@@ -674,7 +674,10 @@ class BaseTaskModule(pl.LightningModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module | None = None,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = None,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         lr: float = 1e-4,
@@ -704,6 +707,24 @@ class BaseTaskModule(pl.LightningModule):
             raise ValueError("No valid encoder passed.")
         if isinstance(loss_func, type):
             loss_func = loss_func()
+        # if we have a dictionary mapping, we specify the loss function
+        # for each target
+        if isinstance(loss_func, dict):
+            for key in loss_func:
+                # initialize objects if types are provided
+                if isinstance(loss_func[key], type):
+                    loss_func[key] = loss_func[key]()
+                if task_keys and key not in task_keys:
+                    raise KeyError(
+                        f"Loss dict configured with {key}/{loss_func[key]} that was not provided in task keys."
+                    )
+            if not task_keys:
+                logger.warning(
+                    f"Task keys were not specified, using loss_func keys instead {loss_func.keys()}"
+                )
+                task_keys = list(loss_func.keys())
+            # convert to a module dict for consistent API usage
+            loss_func = nn.ModuleDict({key: value for key, value in loss_func.items()})
         self.loss_func = loss_func
         default_heads = {"act_last": None, "hidden_dim": 128}
         default_heads.update(output_kwargs)
