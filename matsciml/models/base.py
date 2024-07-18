@@ -1038,7 +1038,8 @@ class BaseTaskModule(pl.LightningModule):
             target_val = targets[key]
             if self.uses_normalizers:
                 target_val = self.normalizers[key].norm(target_val)
-            loss = self.loss_func(predictions[key], target_val)
+            loss_func = self.loss_func[key]
+            loss = loss_func(predictions[key], target_val)
             losses[key] = loss * self.task_loss_scaling[key]
 
         total_loss: torch.Tensor = sum(losses.values())
