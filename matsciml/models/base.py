@@ -766,7 +766,9 @@ class BaseTaskModule(pl.LightningModule):
             self.output_heads = self._make_output_heads()
             self.normalizers = self._make_normalizers()
         # homogenize it into a dictionary mapping
-        if isinstance(self.loss_func, nn.Module):
+        if isinstance(self.loss_func, nn.Module) and not isinstance(
+            self.loss_func, nn.ModuleDict
+        ):
             loss_dict = nn.ModuleDict({key: deepcopy(self.loss_func) for key in values})
             self.loss_func = loss_dict
         # if a task key was given but not contained in loss_func
