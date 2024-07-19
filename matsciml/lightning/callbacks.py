@@ -1473,6 +1473,6 @@ class ExponentialMovingAverageCallback(Callback):
     def on_fit_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
-        loader = trainer.train_dataloader()
+        loader = trainer.train_dataloader
         self.logger.info("Fit finished - updating EMA batch normalization state.")
         update_bn(loader, pl_module.ema_module)
