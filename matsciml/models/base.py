@@ -1006,7 +1006,12 @@ class BaseTaskModule(pl.LightningModule):
             containing each individual target loss.
         """
         targets = self._get_targets(batch)
-        predictions = self(batch)
+        # if we have EMA weights, use them for prediction instead
+        if hasattr(self, "ema_module") and not self.training:
+            wrapper = self.ema_module
+        else:
+            wrapper = self
+        predictions = wrapper(batch)
         losses = {}
         for key in self.task_keys:
             target_val = targets[key]
