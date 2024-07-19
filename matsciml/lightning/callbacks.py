@@ -1431,6 +1431,7 @@ class ExponentialMovingAverageCallback(Callback):
         super().__init__()
         self.decay = decay
         self.logger = getLogger("matsciml.ema_callback")
+        self.logger.setLevel("WARN")
 
     def on_fit_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
