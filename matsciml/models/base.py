@@ -1083,7 +1083,7 @@ class BaseTaskModule(pl.LightningModule):
                 "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
-        self.log_dict(metrics, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size, on_step=True, prog_bar=True)
         if self.hparams.log_embeddings and "embeddings" in batch:
             self._log_embedding(batch["embeddings"])
         return loss_dict
@@ -1105,7 +1105,7 @@ class BaseTaskModule(pl.LightningModule):
                 "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
-        self.log_dict(metrics, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size, on_epoch=True, prog_bar=True)
         if self.hparams.log_embeddings and "embeddings" in batch:
             self._log_embedding(batch["embeddings"])
         return loss_dict
@@ -1510,7 +1510,7 @@ class MaceEnergyForceTask(BaseTaskModule):
                 "Unable to parse batch size from data, defaulting to `None` for logging."
             )
             batch_size = None
-        self.log_dict(metrics, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size, on_step=True, prog_bar=True)
         return loss_dict
 
     def test_step(
@@ -1531,7 +1531,7 @@ class MaceEnergyForceTask(BaseTaskModule):
                 "Unable to parse batch size from data, defaulting to `None` for logging."
             )
             batch_size = None
-        self.log_dict(metrics, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size, on_step=True, prog_bar=True)
         return loss_dict
 
     def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
