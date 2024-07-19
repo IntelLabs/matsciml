@@ -5,10 +5,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from contextlib import ExitStack, nullcontext
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, ContextManager, Dict, List, Optional, Type, Union
 from warnings import warn
 from logging import getLogger
+from inspect import signature
 
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
@@ -22,6 +24,7 @@ from matsciml.common.registry import registry
 from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
 from matsciml.models.common import OutputHead
 from matsciml.modules.normalizer import Normalizer
+from matsciml.models import losses as matsciml_losses
 
 logger = getLogger("matsciml")
 logger.setLevel("INFO")
@@ -674,7 +677,10 @@ class BaseTaskModule(pl.LightningModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module | None = None,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = None,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         lr: float = 1e-4,
@@ -704,6 +710,24 @@ class BaseTaskModule(pl.LightningModule):
             raise ValueError("No valid encoder passed.")
         if isinstance(loss_func, type):
             loss_func = loss_func()
+        # if we have a dictionary mapping, we specify the loss function
+        # for each target
+        if isinstance(loss_func, dict):
+            for key in loss_func:
+                # initialize objects if types are provided
+                if isinstance(loss_func[key], type):
+                    loss_func[key] = loss_func[key]()
+                if task_keys and key not in task_keys:
+                    raise KeyError(
+                        f"Loss dict configured with {key}/{loss_func[key]} that was not provided in task keys."
+                    )
+            if not task_keys:
+                logger.warning(
+                    f"Task keys were not specified, using loss_func keys instead {loss_func.keys()}"
+                )
+                task_keys = list(loss_func.keys())
+            # convert to a module dict for consistent API usage
+            loss_func = nn.ModuleDict({key: value for key, value in loss_func.items()})
         self.loss_func = loss_func
         default_heads = {"act_last": None, "hidden_dim": 128}
         default_heads.update(output_kwargs)
@@ -742,6 +766,19 @@ class BaseTaskModule(pl.LightningModule):
         if not self.has_initialized:
             self.output_heads = self._make_output_heads()
             self.normalizers = self._make_normalizers()
+        # homogenize it into a dictionary mapping
+        if isinstance(self.loss_func, nn.Module) and not isinstance(
+            self.loss_func, nn.ModuleDict
+        ):
+            loss_dict = nn.ModuleDict({key: deepcopy(self.loss_func) for key in values})
+            self.loss_func = loss_dict
+        # if a task key was given but not contained in loss_func
+        # user needs to figure out what to do
+        for key in values:
+            if key not in self.loss_func.keys():
+                raise KeyError(
+                    f"Task key {key} was specified but no loss function was specified."
+                )
         self.hparams["task_keys"] = self._task_keys
 
     @property
@@ -1012,7 +1049,28 @@ class BaseTaskModule(pl.LightningModule):
             target_val = targets[key]
             if self.uses_normalizers:
                 target_val = self.normalizers[key].norm(target_val)
-            loss = self.loss_func(predictions[key], target_val)
+            loss_func = self.loss_func[key]
+            # determine if we need additional arguments
+            loss_func_signature = signature(loss_func.forward).parameters
+            kwargs = {"input": predictions[key], "target": target_val}
+            # pack atoms per graph information too
+            if "atoms_per_graph" in loss_func_signature:
+                if graph := batch.get("graph", None):
+                    if isinstance(graph, dgl.DGLGraph):
+                        num_atoms = graph.batch_num_nodes()
+                    else:
+                        # in the pyg case we use the pointer tensor
+                        num_atoms = graph.ptr[1:] - graph.ptr[:-1]
+                else:
+                    # in MP at least this is provided by the dataset class
+                    num_atoms = batch.get("sizes", None)
+                    if not num_atoms:
+                        raise NotImplementedError(
+                            "Unable to determine number of atoms for dataset. "
+                            "This is required for the atom-weighted loss functions."
+                        )
+                kwargs["atoms_per_graph"] = num_atoms
+            loss = loss_func(**kwargs)
             losses[key] = loss * self.task_loss_scaling[key]
 
         total_loss: torch.Tensor = sum(losses.values())
@@ -1235,7 +1293,10 @@ class ScalarRegressionTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module = nn.MSELoss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = nn.MSELoss,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         **kwargs: Any,
@@ -1353,7 +1414,10 @@ class MaceEnergyForceTask(BaseTaskModule):
         encoder: Optional[nn.Module] = None,
         encoder_class: Optional[Type[nn.Module]] = None,
         encoder_kwargs: Optional[Dict[str, Any]] = None,
-        loss_func: Union[Type[nn.Module], nn.Module] = nn.MSELoss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = nn.MSELoss,
         loss_coeff: Optional[Dict[str, Any]] = None,
         task_keys: Optional[List[str]] = None,
         output_kwargs: Dict[str, Any] = {},
@@ -1580,7 +1644,10 @@ class BinaryClassificationTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module = nn.BCEWithLogitsLoss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = nn.BCEWithLogitsLoss,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         **kwargs,
@@ -1656,12 +1723,24 @@ class ForceRegressionTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module = nn.L1Loss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = None,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         embedding_reduction_type: str = "sum",
         **kwargs,
     ) -> None:
+        if not loss_func:
+            logger.warning(
+                "Loss functions were not specified. "
+                "Defaulting to AtomWeightedMSE for energy and MSE for force."
+            )
+            loss_func = {
+                "energy": matsciml_losses.AtomWeightedMSE(),
+                "force": nn.MSELoss(),
+            }
         super().__init__(
             encoder,
             encoder_class,
@@ -2075,7 +2154,10 @@ class GradFreeForceRegressionTask(ScalarRegressionTask):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module = nn.MSELoss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = nn.MSELoss,
         output_kwargs: dict[str, Any] = {},
         **kwargs: Any,
     ) -> None:
@@ -2212,7 +2294,10 @@ class CrystalSymmetryClassificationTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module = nn.CrossEntropyLoss,
+        loss_func: type[nn.Module]
+        | nn.Module
+        | dict[str, nn.Module | type[nn.Module]]
+        | None = nn.CrossEntropyLoss,
         output_kwargs: dict[str, Any] = {},
         normalize_kwargs: dict[str, float] | None = None,
         freeze_embedding: bool = False,
@@ -3373,7 +3458,7 @@ class NodeDenoisingTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module | None = None,
+        loss_func: type[nn.Module] | nn.Module | None = nn.MSELoss,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         lr: float = 0.0001,
@@ -3384,7 +3469,9 @@ class NodeDenoisingTask(BaseTaskModule):
         **kwargs,
     ) -> None:
         if task_keys is not None:
-            warn("Task keys were passed to NodeDenoisingTask, but is not used.")
+            logger.warning(
+                "Task keys were passed to NodeDenoisingTask, but is not used."
+            )
         task_keys = ["denoise"]
         super().__init__(
             encoder,
@@ -3400,7 +3487,6 @@ class NodeDenoisingTask(BaseTaskModule):
             scheduler_kwargs,
             **kwargs,
         )
-        self.loss_func = nn.MSELoss()
 
     def _make_output_heads(self) -> nn.ModuleDict:
         # make a single output head for noise prediction applied to nodes
