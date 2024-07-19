@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable, ContextManager, Dict, List, Optional, Type, Union
 from warnings import warn
 from logging import getLogger
+from inspect import signature
 
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
@@ -1049,7 +1050,27 @@ class BaseTaskModule(pl.LightningModule):
             if self.uses_normalizers:
                 target_val = self.normalizers[key].norm(target_val)
             loss_func = self.loss_func[key]
-            loss = loss_func(predictions[key], target_val)
+            # determine if we need additional arguments
+            loss_func_signature = signature(loss_func.forward).parameters
+            kwargs = {"input": predictions[key], "target": target_val}
+            # pack atoms per graph information too
+            if "atoms_per_graph" in loss_func_signature:
+                if graph := batch.get("graph", None):
+                    if isinstance(graph, dgl.DGLGraph):
+                        num_atoms = graph.batch_num_nodes()
+                    else:
+                        # in the pyg case we use the pointer tensor
+                        num_atoms = graph.ptr[1:] - graph.ptr[:-1]
+                else:
+                    # in MP at least this is provided by the dataset class
+                    num_atoms = batch.get("sizes", None)
+                    if not num_atoms:
+                        raise NotImplementedError(
+                            "Unable to determine number of atoms for dataset. "
+                            "This is required for the atom-weighted loss functions."
+                        )
+                kwargs["atoms_per_graph"] = num_atoms
+            loss = loss_func(**kwargs)
             losses[key] = loss * self.task_loss_scaling[key]
 
         total_loss: torch.Tensor = sum(losses.values())
