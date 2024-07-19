@@ -1411,7 +1411,11 @@ class ModelAutocorrelation(Callback):
 
 
 class ExponentialMovingAverageCallback(Callback):
-    def __init__(self, decay: float = 0.99) -> None:
+    def __init__(
+        self,
+        decay: float = 0.99,
+        verbose: bool | Literal["WARN", "INFO", "DEBUG"] = "WARN",
+    ) -> None:
         """
         Initialize an exponential moving average callback.
 
@@ -1431,7 +1435,18 @@ class ExponentialMovingAverageCallback(Callback):
         super().__init__()
         self.decay = decay
         self.logger = getLogger("matsciml.ema_callback")
-        self.logger.setLevel("WARN")
+        if isinstance(verbose, bool):
+            if not verbose:
+                verbose = "WARN"
+            else:
+                verbose = "INFO"
+        if isinstance(verbose, str):
+            assert verbose in [
+                "WARN",
+                "INFO",
+                "DEBUG",
+            ], "Invalid verbosity setting in EMA callback."
+        self.logger.setLevel(verbose)
 
     def on_fit_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
