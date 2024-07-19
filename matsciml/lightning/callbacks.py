@@ -24,6 +24,7 @@ from torch import nn
 from torch.optim import Optimizer
 from dgl import DGLGraph
 from scipy.signal import correlate
+from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn, update_bn
 
 from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
@@ -1407,3 +1408,87 @@ class ModelAutocorrelation(Callback):
             _ = self.history["grads"].get()
         if self.is_active:
             self.run_analysis(pl_module.logger)
+
+
+class ExponentialMovingAverageCallback(Callback):
+    def __init__(
+        self,
+        decay: float = 0.99,
+        verbose: bool | Literal["WARN", "INFO", "DEBUG"] = "WARN",
+    ) -> None:
+        """
+        Initialize an exponential moving average callback.
+
+        This callback attaches a ``ema_module`` attribute to
+        the current training task, which duplicates the model
+        weights that are tracked with an exponential moving
+        average, parametrized by the ``decay`` value.
+
+        This will double the memory footprint of your model,
+        but has been shown to considerably improve generalization.
+
+        Parameters
+        ----------
+        decay : float
+            Exponential decay factor to apply to updates.
+        """
+        super().__init__()
+        self.decay = decay
+        self.logger = getLogger("matsciml.ema_callback")
+        if isinstance(verbose, bool):
+            if not verbose:
+                verbose = "WARN"
+            else:
+                verbose = "INFO"
+        if isinstance(verbose, str):
+            assert verbose in [
+                "WARN",
+                "INFO",
+                "DEBUG",
+            ], "Invalid verbosity setting in EMA callback."
+        self.logger.setLevel(verbose)
+
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        # check to make sure the module has no lazy layers
+        for layer in pl_module.modules():
+            if isinstance(layer, nn.modules.lazy.LazyModuleMixin):
+                if layer.has_uninitialized_params():
+                    raise RuntimeError(
+                        "EMA callback does not support lazy layers. Please "
+                        "re-run without using lazy layers."
+                    )
+        # in the case that there is already an EMA state we don't initialize
+        if hasattr(pl_module, "ema_module"):
+            self.logger.info(
+                "Task has an existing EMA state; not initializing a new one."
+            )
+            self.ema_module = pl_module.ema_module
+        else:
+            # hook to the task module and in the current callback
+            ema_module = AveragedModel(
+                pl_module, multi_avg_fn=get_ema_multi_avg_fn(self.decay)
+            )
+            self.logger.info("Task does not have an existing EMA state; creating one.")
+            # setting the callback ema_module attribute allows ease of access
+            self.ema_module = ema_module
+            pl_module.ema_module = ema_module
+
+    def on_train_batch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        outputs,
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        self.logger.info("Updating EMA state.")
+        pl_module.ema_module.update_parameters(pl_module)
+
+    def on_fit_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        loader = trainer.train_dataloader
+        self.logger.info("Fit finished - updating EMA batch normalization state.")
+        update_bn(loader, pl_module.ema_module)

@@ -1043,7 +1043,12 @@ class BaseTaskModule(pl.LightningModule):
             containing each individual target loss.
         """
         targets = self._get_targets(batch)
-        predictions = self(batch)
+        # if we have EMA weights, use them for prediction instead
+        if hasattr(self, "ema_module") and not self.training:
+            wrapper = self.ema_module
+        else:
+            wrapper = self
+        predictions = wrapper(batch)
         losses = {}
         for key in self.task_keys:
             target_val = targets[key]
@@ -1136,7 +1141,7 @@ class BaseTaskModule(pl.LightningModule):
                 "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
-        self.log_dict(metrics, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size, on_step=True, prog_bar=True)
         if self.hparams.log_embeddings and "embeddings" in batch:
             self._log_embedding(batch["embeddings"])
         return loss_dict
@@ -1158,7 +1163,7 @@ class BaseTaskModule(pl.LightningModule):
                 "Unable to parse batch size from data, defaulting to `None` for logging.",
             )
             batch_size = None
-        self.log_dict(metrics, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size, on_epoch=True, prog_bar=True)
         if self.hparams.log_embeddings and "embeddings" in batch:
             self._log_embedding(batch["embeddings"])
         return loss_dict
@@ -1210,7 +1215,12 @@ class BaseTaskModule(pl.LightningModule):
             normalizers are available for a given task, we apply the
             inverse norm on the value.
         """
-        outputs = self(batch)
+        # use EMA weights instead if they are available
+        if hasattr(self, "ema_module"):
+            wrapper = self.ema_module
+        else:
+            wrapper = self
+        outputs = wrapper(batch)
         if self.uses_normalizers:
             for key in self.task_keys:
                 if key in self.normalizers:
@@ -1564,7 +1574,7 @@ class MaceEnergyForceTask(BaseTaskModule):
                 "Unable to parse batch size from data, defaulting to `None` for logging."
             )
             batch_size = None
-        self.log_dict(metrics, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size, on_step=True, prog_bar=True)
         return loss_dict
 
     def test_step(
@@ -1585,7 +1595,7 @@ class MaceEnergyForceTask(BaseTaskModule):
                 "Unable to parse batch size from data, defaulting to `None` for logging."
             )
             batch_size = None
-        self.log_dict(metrics, batch_size=batch_size)
+        self.log_dict(metrics, batch_size=batch_size, on_step=True, prog_bar=True)
         return loss_dict
 
     def on_train_batch_start(self, batch: Any, batch_idx: int) -> Optional[int]:
