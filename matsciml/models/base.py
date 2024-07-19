@@ -3437,7 +3437,7 @@ class NodeDenoisingTask(BaseTaskModule):
         encoder: nn.Module | None = None,
         encoder_class: type[nn.Module] | None = None,
         encoder_kwargs: dict[str, Any] | None = None,
-        loss_func: type[nn.Module] | nn.Module | None = None,
+        loss_func: type[nn.Module] | nn.Module | None = nn.MSELoss,
         task_keys: list[str] | None = None,
         output_kwargs: dict[str, Any] = {},
         lr: float = 0.0001,
@@ -3464,7 +3464,6 @@ class NodeDenoisingTask(BaseTaskModule):
             scheduler_kwargs,
             **kwargs,
         )
-        self.loss_func = nn.MSELoss()
 
     def _make_output_heads(self) -> nn.ModuleDict:
         # make a single output head for noise prediction applied to nodes
