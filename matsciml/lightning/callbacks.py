@@ -1443,7 +1443,9 @@ class ExponentialMovingAverageCallback(Callback):
             self.ema_module = pl_module.ema_module
         else:
             # hook to the task module and in the current callback
-            ema_module = AveragedModel(pl_module, get_ema_multi_avg_fn(self.decay))
+            ema_module = AveragedModel(
+                pl_module, multi_avg_fn=get_ema_multi_avg_fn(self.decay)
+            )
             self.logger.info("Task does not have an existing EMA state; creating one.")
             # setting the callback ema_module attribute allows ease of access
             self.ema_module = ema_module
