@@ -89,7 +89,7 @@ def test_force_regression(egnn_config):
     # Scenario where one task_key is set. Expect to use one task_loss_scaling value.
     task = ForceRegressionTask(
         **egnn_config,
-        task_keys=["force"],
+        task_keys=["force", "energy"],
         task_loss_scaling={"force": 10},
     )
     trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
