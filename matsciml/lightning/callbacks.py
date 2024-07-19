@@ -1435,6 +1435,14 @@ class ExponentialMovingAverageCallback(Callback):
     def on_fit_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
+        # check to make sure the module has no lazy layers
+        for layer in pl_module.modules():
+            if isinstance(layer, nn.modules.lazy.LazyModuleMixin):
+                if layer.has_uninitialized_params():
+                    raise RuntimeError(
+                        "EMA callback does not support lazy layers. Please "
+                        "re-run without using lazy layers."
+                    )
         # in the case that there is already an EMA state we don't initialize
         if hasattr(pl_module, "ema_module"):
             self.logger.info(
