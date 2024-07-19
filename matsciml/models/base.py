@@ -1157,7 +1157,12 @@ class BaseTaskModule(pl.LightningModule):
             normalizers are available for a given task, we apply the
             inverse norm on the value.
         """
-        outputs = self(batch)
+        # use EMA weights instead if they are available
+        if hasattr(self, "ema_module"):
+            wrapper = self.ema_module
+        else:
+            wrapper = self
+        outputs = wrapper(batch)
         if self.uses_normalizers:
             for key in self.task_keys:
                 if key in self.normalizers:
