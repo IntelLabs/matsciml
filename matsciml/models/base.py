@@ -3448,7 +3448,9 @@ class NodeDenoisingTask(BaseTaskModule):
         **kwargs,
     ) -> None:
         if task_keys is not None:
-            warn("Task keys were passed to NodeDenoisingTask, but is not used.")
+            logger.warning(
+                "Task keys were passed to NodeDenoisingTask, but is not used."
+            )
         task_keys = ["denoise"]
         super().__init__(
             encoder,
