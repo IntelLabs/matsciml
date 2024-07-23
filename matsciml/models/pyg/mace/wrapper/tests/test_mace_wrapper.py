@@ -44,6 +44,7 @@ def mace_architecture() -> MACEWrapper:
         "correlation": 1,
         "radial_type": "bessel",
         "gate": nn.Identity(),
+        "distance_transform": None,
     }
     model = MACEWrapper(**model_config)
     return model
