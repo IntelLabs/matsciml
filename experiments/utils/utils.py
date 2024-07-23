@@ -3,17 +3,6 @@ import os
 
 import matsciml  # noqa: F401
 from matsciml.models.common import get_class_from_name
-from matsciml.common.inspection import get_model_all_args
-
-
-def verify_class_args(input_class, input_args):
-    print(input_class)
-    all_args = get_model_all_args(input_class)
-
-    for key in input_args:
-        assert (
-            key in all_args
-        ), f"{key} was passed as a kwarg but does not match expected arguments."
 
 
 def instantiate_arg_dict(input: Union[list, dict[str, Any]]) -> dict[str, Any]:
