@@ -25,6 +25,7 @@ encoder_kwargs:
   num_polynomial_cutoff: 5.0
   r_max: 6.0
   radial_type: bessel
+  distance_transform: None
   atomic_energies:
     class_path: torch.Tensor
     init_args:

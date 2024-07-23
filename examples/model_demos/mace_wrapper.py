@@ -36,6 +36,7 @@ task = ScalarRegressionTask(
         "correlation": 1,
         "radial_type": "bessel",
         "gate": nn.Identity(),
+        "distance_transform": None,
     },
     task_keys=["energy_relaxed"],
 )
