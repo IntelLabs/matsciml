@@ -7,6 +7,7 @@ from matsciml.common.inspection import get_model_all_args
 
 
 def verify_class_args(input_class, input_args):
+    print(input_class)
     all_args = get_model_all_args(input_class)
 
     for key in input_args:
@@ -45,7 +46,6 @@ def instantiate_arg_dict(input: Union[list, dict[str, Any]]) -> dict[str, Any]:
                 else:
                     transform_args = input_args
                 class_path = get_class_from_name(class_path)
-                verify_class_args(class_path, transform_args)
                 return class_path(**transform_args)
             if key == "encoder_class":
                 input[key] = get_class_from_name(value["class_path"])
@@ -53,7 +53,6 @@ def instantiate_arg_dict(input: Union[list, dict[str, Any]]) -> dict[str, Any]:
                 class_path = value["class_path"]
                 class_path = get_class_from_name(class_path)
                 input_args = value.get("init_args", {})
-                verify_class_args(class_path, input_args)
                 input[key] = class_path(**input_args)
             else:
                 input[key] = instantiate_arg_dict(value)
