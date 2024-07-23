@@ -1289,6 +1289,28 @@ class BaseTaskModule(pl.LightningModule):
         task.encoder.load_state_dict(encoder_weights)
         return task
 
+    def on_save_checkpoint(self, checkpoint):
+        """Override checkpoint saving to facilitate EMA weights loading."""
+        super().on_save_checkpoint(checkpoint)
+        # this case checks for EMA weights, where we give up on
+        # the non-averaged weights in favor of the averaged ones
+        checkpoint["state_dict"] = self.state_dict()
+        if hasattr(self, "ema_module"):
+            logger.info("Replacing model weights with exponential moving average.")
+            for key, value in self.ema_module.state_dict().items():
+                if key != "n_averaged":
+                    # remove the module prefix for EMA state
+                    tree = key.split(".")
+                    renamed_key = ".".join(tree[1:])
+                    assert (
+                        renamed_key in checkpoint["state_dict"]
+                    ), f"Unexpected key in EMA module: {renamed_key}"
+                    checkpoint["state_dict"][renamed_key] = value
+            # now remove the redundant EMA weights to unblock checkpoint loading later
+            for key in list(checkpoint["state_dict"].keys()):
+                if "ema_module" in key:
+                    del checkpoint["state_dict"][key]
+
 
 @registry.register_task("ScalarRegressionTask")
 class ScalarRegressionTask(BaseTaskModule):
@@ -3224,6 +3246,28 @@ class MultiTaskLitModule(pl.LightningModule):
         raise NotImplementedError(
             "MultiTask should be reloaded using the `matsciml.models.multitask_from_checkpoint` function instead.",
         )
+
+    def on_save_checkpoint(self, checkpoint):
+        """Override checkpoint saving to facilitate EMA weights loading."""
+        super().on_save_checkpoint(checkpoint)
+        # this case checks for EMA weights, where we give up on
+        # the non-averaged weights in favor of the averaged ones
+        checkpoint["state_dict"] = self.state_dict()
+        if hasattr(self, "ema_module"):
+            logger.info("Replacing model weights with exponential moving average.")
+            for key, value in self.ema_module.state_dict().items():
+                if key != "n_averaged":
+                    # remove the module prefix for EMA state
+                    tree = key.split(".")
+                    renamed_key = ".".join(tree[1:])
+                    assert (
+                        renamed_key in checkpoint["state_dict"]
+                    ), f"Unexpected key in EMA module: {renamed_key}"
+                    checkpoint["state_dict"][renamed_key] = value
+            # now remove the redundant EMA weights to unblock checkpoint loading later
+            for key in list(checkpoint["state_dict"].keys()):
+                if "ema_module" in key:
+                    del checkpoint["state_dict"][key]
 
     @classmethod
     def from_pretrained_encoder(cls, task_ckpt_path: str | Path, **kwargs):
