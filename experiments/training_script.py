@@ -44,18 +44,21 @@ if __name__ == "__main__":
         "-d",
         "--dataset_config",
         type=Path,
+        default=Path(__file__).parent.joinpath("configs", "datasets"),
         help="Dataset config folder or yaml file to use.",
     )
     parser.add_argument(
         "-t",
         "--trainer_config",
         type=Path,
+        default=Path(__file__).parent.joinpath("configs", "trainer"),
         help="Trainer config folder or yaml file to use.",
     )
     parser.add_argument(
         "-m",
         "--model_config",
         type=Path,
+        default=Path(__file__).parent.joinpath("configs", "models"),
         help="Model config folder or yaml file to use.",
     )
     parser.add_argument(
