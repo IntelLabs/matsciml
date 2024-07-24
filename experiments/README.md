@@ -9,7 +9,7 @@ Yaml files dictate how models, datasets, tasks and trainers are set up. A defaul
 python experiments/training_script.py -e experiments/experiment_config.yaml -t experiments/configs/trainer.yaml -m ./experiments/models -d ./experiments/datasets/oqmd.yaml --debug
 ```
 
-Note that a combination of full yaml file paths and directory paths are used. In the case of models configs (`-m`) a full path is specified, meaning all yaml files contained in that directory will accessible from the experiment config.
+Note that a combination of full yaml file paths and directory paths are used. In the case of models configs (`-m`) a full path is specified, meaning all yaml files contained in that directory will accessible from the experiment config. In the case of multidata training, it is only possible to point to a directory of datasets as multiple will need to be configured.
 
 ## Experiment Config
 The starting point of defining an experiment is the experiment config. This is a yaml file that lays out what model, dataset(s), and task(s) will be used during training. An example config for single task training yaml (`single_task.yaml`) look like this:
