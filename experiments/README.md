@@ -2,6 +2,15 @@
 
 Experimental workflows may be time consuming, repetitive, and complex to set up. Additionally, pytorch-lightning based cli utilities may not be able to handle specific use cases such as multi-data or multi-task training in matsciml. The experiments module of MatSciML is meant to loosely mirror the functionality of the pytorch lightning cli while allowing more flexibility in setting up complex experiments. Yaml files define the module parameters, and specific arguments may be change via the command line if desired. A single command is used to launch training runs which take out the complexity of writing up new script for each experiment type.
 
+## Config Files
+Yaml files dictate how models, datasets, tasks and trainers are set up. A default set of config files is provided under `./experiments/configs`, however when setting up new experiments, it is recommended to create a folder of your own to better track your own experiment designs. Using the cli parameters `-d` `-m`, `-t` and `-e`, you can specify a path to a directory or specific file for datasets, models, trainer, and experiment configuration. The varying yaml files and their contents are explained below. An example of running a simple experimental using the predefined yaml files may look like this:
+
+```python
+python experiments/training_script.py -e experiments/experiment_config.yaml -t experiments/configs/trainer.yaml -m ./experiments/models -d ./experiments/datasets/oqmd.yaml --debug
+```
+
+Note that a combination of full yaml file paths and directory paths are used. In the case of models configs (`-m`) a full path is specified, meaning all yaml files contained in that directory will accessible from the experiment config.
+
 ## Experiment Config
 The starting point of defining an experiment is the experiment config. This is a yaml file that lays out what model, dataset(s), and task(s) will be used during training. An example config for single task training yaml (`single_task.yaml`) look like this:
 ```yaml
