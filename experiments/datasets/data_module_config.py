@@ -13,8 +13,7 @@ from matsciml.datasets import *  # noqa: F401
 
 from matsciml.lightning.data_utils import MultiDataModule
 
-from experiments.datasets import available_data
-from experiments.models import available_models
+from experiments.utils.configurator import configurator
 from experiments.utils.utils import instantiate_arg_dict, update_arg_dict
 
 
@@ -22,13 +21,13 @@ def setup_datamodule(config: dict[str, Any]) -> pl.LightningModule:
     model = config["model"]
     data_task_dict = config["dataset"]
     run_type = config["run_type"]
-    model = instantiate_arg_dict(deepcopy(available_models[model]))
+    model = instantiate_arg_dict(deepcopy(configurator.models[model]))
     model = update_arg_dict("model", model, config["cli_args"])
     datasets = list(data_task_dict.keys())
     if len(datasets) == 1:
-        dset = deepcopy(available_data[datasets[0]])
+        dset = deepcopy(configurator.datasets[datasets[0]])
         dset = update_arg_dict("dataset", dset, config["cli_args"])
-        dm_kwargs = deepcopy(available_data["generic"]["experiment"])
+        dm_kwargs = deepcopy(configurator.datasets["generic"]["experiment"])
         dm_kwargs.update(dset[run_type])
         if run_type == "debug":
             dm = MatSciMLDataModule.from_devset(
@@ -45,9 +44,9 @@ def setup_datamodule(config: dict[str, Any]) -> pl.LightningModule:
     else:
         dset_list = {"train": [], "val": [], "test": []}
         for dataset in datasets:
-            dset = deepcopy(available_data[dataset])
+            dset = deepcopy(configurator.datasets[dataset])
             dset = update_arg_dict("dataset", dset, config["cli_args"])
-            dm_kwargs = deepcopy(available_data["generic"]["experiment"])
+            dm_kwargs = deepcopy(configurator.datasets["generic"]["experiment"])
             dset[run_type].pop("normalize_kwargs", None)
             dm_kwargs.update(dset[run_type])
             dataset_name = dset["dataset"]

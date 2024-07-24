@@ -37,7 +37,10 @@ def instantiate_arg_dict(input: Union[list, dict[str, Any]]) -> dict[str, Any]:
                 class_path = get_class_from_name(class_path)
                 return class_path(**transform_args)
             if key == "encoder_class":
+                # try:
                 input[key] = get_class_from_name(value["class_path"])
+                # except Exception:
+                #     breakpoint()
             elif isinstance(value, dict) and "class_path" in value:
                 class_path = value["class_path"]
                 class_path = get_class_from_name(class_path)
@@ -142,13 +145,12 @@ def update_arg_dict(
 
 
 def config_help() -> None:
-    from experiments.datasets import available_data
-    from experiments.models import available_models
+    from experiments.utils.configurator import configurator
 
     print("Models:")
-    _ = [print("\t", m) for m in available_models.keys() if m != "generic"]
+    _ = [print("\t", m) for m in configurator.models.keys() if m != "generic"]
     print()
     print("Datasets and Target Keys:")
-    for k, v in available_data.items():
+    for k, v in configurator.models.items():
         if k != "generic":
             print(f"\t{k}: {v['target_keys']}")

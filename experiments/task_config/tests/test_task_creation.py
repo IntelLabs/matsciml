@@ -8,9 +8,10 @@ from experiments.task_config.task_config import (
 )
 from experiments.utils.utils import instantiate_arg_dict
 
+from copy import deepcopy
+
 import matsciml
 import matsciml.datasets.transforms  # noqa: F401
-
 
 single_task = {
     "model": "egnn_dgl",
@@ -20,7 +21,7 @@ multi_task = {
     "dataset": {
         "s2ef": [
             {"task": "ScalarRegressionTask", "targets": ["energy"]},
-            {"task": "ForceRegressionTask", "targets": ["force"]},
+            {"task": "ForceRegressionTask", "targets": ["energy", "force"]},
         ]
     }
 }
@@ -64,7 +65,7 @@ def test_build_model() -> dict[str, Any]:
         ],
     }
 
-    output = instantiate_arg_dict(input_dict)
+    output = instantiate_arg_dict(deepcopy(input_dict))
     assert isinstance(
         output["transforms"][0],
         matsciml.datasets.transforms.PeriodicPropertiesTransform,
