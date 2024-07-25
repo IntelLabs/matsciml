@@ -22,11 +22,12 @@ dataset:
 ```
 
 In general, and experiment may the be launched by running:
-`python experiments/training_script.py --experiment_config ./experiments/single_task.yaml`
+`python experiments/training_script.py --experiment_config ./experiments/configs/single_task.yaml`
 
 
-* The `model` field points to a specify `model.yaml` file in `./experiments/models`.
-* The `dataset` field is a dictionary specifying which datasets to use, as well as which tasks are associated with the parent dataset.
+* The trainer used defaults to the config in `./experiments/configs/trainer.yaml`.
+* The `model` field points to a specific `model.yaml` file. Default model configs are in `./experiments/configs/models`.
+* The `dataset` field is a dictionary specifying which datasets to use, as well as which tasks are associated with the parent dataset. Default datasets are in `./experiments/configs/datasets`.
     * Tasks are referred to by their class name:
     ```python
     ScalarRegressionTask
