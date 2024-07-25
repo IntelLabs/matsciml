@@ -4,9 +4,19 @@ from __future__ import annotations
 import pytest
 
 import matsciml
+import experiments
 import matsciml.datasets.transforms  # noqa: F401
 from experiments.datasets.data_module_config import setup_datamodule
+from experiments.utils.configurator import configurator
+from pathlib import Path
 
+base_path = Path(experiments.__file__).parent
+model_path = base_path.joinpath("configs", "models")
+datasets_path = base_path.joinpath("configs", "datasets")
+trainer_path = base_path.joinpath("configs", "trainer")
+configurator.configure_models(model_path)
+configurator.configure_datasets(datasets_path)
+configurator.configure_trainer(trainer_path)
 
 single_task = {
     "model": "egnn_dgl",

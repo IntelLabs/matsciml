@@ -142,13 +142,12 @@ def update_arg_dict(
 
 
 def config_help() -> None:
-    from experiments.datasets import available_data
-    from experiments.models import available_models
+    from experiments.utils.configurator import configurator
 
     print("Models:")
-    _ = [print("\t", m) for m in available_models.keys() if m != "generic"]
+    _ = [print("\t", m) for m in configurator.models.keys() if m != "generic"]
     print()
     print("Datasets and Target Keys:")
-    for k, v in available_data.items():
+    for k, v in configurator.models.items():
         if k != "generic":
             print(f"\t{k}: {v['target_keys']}")
