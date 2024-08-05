@@ -414,6 +414,13 @@ class MaterialsTrajectoryDataset(MaterialsProjectDataset):
         self.target_keys = target_types
         return return_dict
 
+    @classmethod
+    def from_devset(cls, transforms: list[Callable] | None = None, **kwargs):
+        """Override the devset call, at least temporarily."""
+        raise NotImplementedError(
+            "Materials Trajectory does not have a devset available."
+        )
+
 
 if _has_pyg:
     from torch_geometric.data import Batch, Data
