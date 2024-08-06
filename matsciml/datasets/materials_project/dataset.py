@@ -404,6 +404,17 @@ class MaterialsTrajectoryDataset(MaterialsProjectDataset):
                 if isinstance(item, Iterable):
                     item = torch.Tensor(item)
                 targets[key] = item
+        # check for missing essential keys
+        missing_keys = [
+            key
+            for key in ["force", "stress", "corrected_total_energy"]
+            if key not in targets
+        ]
+        if len(missing_keys) != 0:
+            raise KeyError(
+                f"Missing the following keys: {missing_keys} needed for MPTraj."
+                " Please ensure you're using the right dataset/LMDB files!"
+            )
         # copy as nominal energy value
         if "energy" not in targets:
             targets["energy"] = targets["corrected_total_energy"]
