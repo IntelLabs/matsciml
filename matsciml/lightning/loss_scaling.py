@@ -16,6 +16,15 @@ class BaseScalingSchedule(ABC):
     """
 
     @property
+    def key(self) -> str:
+        """References the target key this scaling value maps to."""
+        return self._key
+
+    @key.setter
+    def key(self, value: str) -> None:
+        self._key = value
+
+    @property
     def grid(self) -> np.ndarray:
         return self._grid
 
