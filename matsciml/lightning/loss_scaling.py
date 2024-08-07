@@ -87,9 +87,12 @@ class LinearScalingSchedule(BaseScalingSchedule):
 
     @cached_property
     def schedule(self) -> Generator[float, None, None]:
-        delta = self.initial_value - self.end_value
+        delta = np.abs(self.initial_value - self.end_value)
+        delta_values = self.grid * delta
+        if self.initial_value > self.end_value:
+            delta_values = np.negative(delta_values)
         # linear ramp to go from initial to end values
-        schedule = (self.grid * delta) + self.initial_value
+        schedule = delta_values + self.initial_value
         for value in schedule:
             yield value
 
