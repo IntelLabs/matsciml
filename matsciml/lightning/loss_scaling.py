@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod, ABC
 from typing import Literal, Generator
+from functools import cached_property
 
 import numpy as np
 from pytorch_lightning import Trainer, LightningModule
@@ -84,7 +85,7 @@ class LinearScalingSchedule(BaseScalingSchedule):
         self.end_value = end_value
         self.step_frequency = step_frequency
 
-    @property
+    @cached_property
     def schedule(self) -> Generator[float, None, None]:
         delta = self.initial_value - self.end_value
         # linear ramp to go from initial to end values
