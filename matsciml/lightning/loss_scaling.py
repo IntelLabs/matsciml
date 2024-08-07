@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod, ABC
 from typing import Literal, Generator
 
+import numpy as np
 from pytorch_lightning import Trainer, LightningModule
 
 
@@ -13,6 +14,19 @@ class BaseScalingSchedule(ABC):
     Subclasses will implement the actual schedules, and all of
     the boilerplate (e.g. setup and step methods) are lifted here.
     """
+
+    @property
+    def grid(self) -> np.ndarray:
+        return self._grid
+
+    @abstractmethod
+    def set_grid(self, *args, **kwargs) -> None:
+        raise NotImplementedError(
+            "Requires concrete method of computing time grid for scheduling."
+        )
+
+    def __len__(self) -> int:
+        return len(self.grid)
 
     @property
     def step_frequency(self) -> Literal["step", "epoch"]:
