@@ -6,6 +6,8 @@ from typing import Literal, Generator
 import numpy as np
 from pytorch_lightning import Trainer, LightningModule
 
+__all__ = ["LinearScalingSchedule"]
+
 
 class BaseScalingSchedule(ABC):
     """
