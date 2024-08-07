@@ -64,3 +64,20 @@ class BaseScalingSchedule(ABC):
     def setup(self, trainer: Trainer, pl_module: LightningModule) -> None:
         """Configures the schedule by grabbing whatever is needed from trainer/module"""
         ...
+
+
+class LinearScalingSchedule(BaseScalingSchedule):
+    def __init__(
+        self,
+        key: str,
+        initial_value: float,
+        end_value: float | None = None,
+        step_frequency: Literal["step", "epoch"] = "epoch",
+    ) -> None:
+        super().__init__()
+        self.key = key
+        self.initial_value = initial_value
+        if not end_value:
+            end_value = initial_value
+        self.end_value = end_value
+        self.step_frequency = step_frequency
