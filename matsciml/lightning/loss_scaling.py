@@ -81,3 +81,11 @@ class LinearScalingSchedule(BaseScalingSchedule):
             end_value = initial_value
         self.end_value = end_value
         self.step_frequency = step_frequency
+
+    @property
+    def schedule(self) -> Generator[float, None, None]:
+        delta = self.initial_value - self.end_value
+        # linear ramp to go from initial to end values
+        schedule = (self.grid * delta) + self.initial_value
+        for value in schedule:
+            yield value
