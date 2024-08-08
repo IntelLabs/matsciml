@@ -55,7 +55,7 @@ def test_linear_schedule_with_trainer(task_and_dm):
     sched_callback = LossScalingScheduler(
         LinearScalingSchedule("energy", 1.0, 10.0, "step"),
     )
-    trainer = Trainer(fast_dev_run=10, callbacks=sched_callback)
+    trainer = Trainer(fast_dev_run=5, callbacks=sched_callback)
     trainer.fit(task, datamodule=dm)
     scheduler = sched_callback.schedules[0]
     # make sure that the scaling values are set correctly
@@ -72,3 +72,16 @@ def test_linear_schedule_with_bad_key(task_and_dm):
     trainer = Trainer(fast_dev_run=10, callbacks=sched_callback)
     with pytest.raises(KeyError):
         trainer.fit(task, datamodule=dm)
+
+
+def test_linear_schedule_with_epoch_step(task_and_dm):
+    """Tests that the linear schedule works under intended conditions."""
+    task, dm = task_and_dm
+    sched_callback = LossScalingScheduler(
+        LinearScalingSchedule("energy", 1.0, 10.0, "epoch"),
+    )
+    trainer = Trainer(fast_dev_run=5, callbacks=sched_callback)
+    trainer.fit(task, datamodule=dm)
+    scheduler = sched_callback.schedules[0]
+    # since we step at an epoch rate, this shouldn't have changed
+    assert task.task_loss_scaling["energy"] == scheduler.initial_value
