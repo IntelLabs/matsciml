@@ -1496,7 +1496,7 @@ class ExponentialMovingAverageCallback(Callback):
 
 
 class LossScalingScheduler(Callback):
-    def __init__(self, *schedules: list[BaseScalingSchedule]) -> None:
+    def __init__(self, *schedules: BaseScalingSchedule) -> None:
         """
         Callback for dynamically adjusting loss scaling values over
         the course of training, a la curriculum learning.
@@ -1509,8 +1509,8 @@ class LossScalingScheduler(Callback):
 
         Parameters
         ----------
-        args : list[BaseScalingSchedule]
-            List of loss value schedulers.
+        args : BaseScalingSchedule
+            Scaling schedules for as many tasks as being performed.
         """
         super().__init__()
         assert len(schedules) > 0, "Must pass individual schedules to loss scheduler!"
