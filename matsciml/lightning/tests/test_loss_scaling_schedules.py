@@ -4,7 +4,10 @@ import pytest
 import numpy as np
 from pytorch_lightning import Trainer
 
-from matsciml.lightning.loss_scaling import LinearScalingSchedule
+from matsciml.lightning.loss_scaling import (
+    LinearScalingSchedule,
+    SigmoidScalingSchedule,
+)
 from matsciml.lightning.callbacks import LossScalingScheduler
 from matsciml.models.pyg import EGNN
 from matsciml.models import ScalarRegressionTask
@@ -85,3 +88,23 @@ def test_linear_schedule_with_epoch_step(task_and_dm):
     scheduler = sched_callback.schedules[0]
     # since we step at an epoch rate, this shouldn't have changed
     assert task.task_loss_scaling["energy"] == scheduler.initial_value
+
+
+@pytest.mark.parametrize("initial", (0.5, 1.5, 5.0))
+@pytest.mark.parametrize("end", (2.0, 0.5, 100.0))
+@pytest.mark.parametrize("num_steps", (10, 100, 5000))
+@pytest.mark.parametrize("step_frequency", ["step", "epoch"])
+@pytest.mark.parametrize("center_frac", [0.2, 0.8, 0.5])
+@pytest.mark.parametrize("curvature", [1e-4, 1e-7])
+def test_sigmoid_schedule_without_trainer(
+    initial, end, num_steps, step_frequency, center_frac, curvature
+):
+    sched = SigmoidScalingSchedule(
+        "test", initial, end, center_frac, curvature, step_frequency
+    )
+    sched.set_grid(num_steps)
+    rates = [sched.step() for _ in range(len(sched))]
+    assert rates
+    assert len(rates) == num_steps
+    expected = sched.sigmoid_curve(sched.grid, initial, end, center_frac, curvature)
+    assert np.allclose(np.array(rates), expected)
