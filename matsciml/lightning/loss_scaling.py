@@ -76,14 +76,17 @@ class BaseScalingSchedule(ABC):
         pl_module : LightningModule
             Instances of a LightningModule; not used in this setup.
         """
-        if step_count := trainer.max_steps:
+        if (step_count := trainer.max_steps) > -1:
             self.set_grid(step_count)
         else:
-            train_loader = trainer.train_dataloader()
+            train_loader = trainer.datamodule.train_dataloader()
             # num_train_batches is how many batches loaded up per loader, per epoch
             expected_epochs = trainer.max_epochs
             if self.step_frequency == "step":
-                num_train_batches = len(train_loader)
+                if trainer.limit_train_batches <= 1.0:
+                    num_train_batches = len(train_loader)
+                else:
+                    num_train_batches = trainer.limit_train_batches
                 num_steps = int(num_train_batches * expected_epochs)
             else:
                 num_steps = expected_epochs
