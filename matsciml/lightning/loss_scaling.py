@@ -132,6 +132,37 @@ class SigmoidScalingSchedule(BaseScalingSchedule):
         curvature: float = 5e-7,
         step_frequency: Literal["step", "epoch"] = "step",
     ) -> None:
+        """
+        Schedules a sigmoidal scheduling curve.
+
+        This provides an exponential ramp between initial and
+        end values, with controllable turning point and rate
+        of change.
+
+        Parameters
+        ----------
+        key : str
+            Task key that this schedule maps to.
+        initial : float
+            Value of the left asymptote; i.e. for t < 0.
+        end : float
+            Value of the right asymptote; i.e. for t > 0.
+        center_frac : float
+            For t in [0,1], this is the turning point of the
+            curve. Assuming this range spans the whole training
+            run, 0.5 would place the turning point at half the
+            epochs/training steps.
+        curvature : float
+            The rate at which the values change. Small values of `curvature`
+            (in orders of magnitude) increases the rate of change such that
+            the changeover becomes much more abrupt, spending more steps/epochs
+            closer to their asymptotes. Values between 1e-2 and 1e-9 are
+            recommended; larger values will have a very gradual ramp up but
+            will not necessarily obey the initial value exactly.
+        step_frequency : Literal['step', 'epoch']
+            Frequency at which this schedule works. This dictates
+            the number of grid points we expect to ramp with.
+        """
         super().__init__()
         self.key = key
         self.initial_value = initial_value
@@ -157,7 +188,7 @@ class SigmoidScalingSchedule(BaseScalingSchedule):
         change determined by curvature.
 
         The explicit assumption  here is that all of the 'action' occurs
-        between t \in [0,1], although it is defined beyond those ranges
+        between t in [0,1], although it is defined beyond those ranges
         (i.e. the initial and end values).
 
         Parameters
