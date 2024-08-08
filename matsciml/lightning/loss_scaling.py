@@ -120,3 +120,86 @@ class LinearScalingSchedule(BaseScalingSchedule):
 
     def set_grid(self, total_steps: int, *args, **kwargs) -> None:
         self._grid = np.linspace(0.0, 1.0, total_steps)
+
+
+class SigmoidScalingSchedule(BaseScalingSchedule):
+    def __init__(
+        self,
+        key: str,
+        initial_value: float,
+        end_value: float,
+        center_frac: float,
+        curvature: float = 5e-7,
+        step_frequency: Literal["step", "epoch"] = "step",
+    ) -> None:
+        super().__init__()
+        self.key = key
+        self.initial_value = initial_value
+        self.end_value = end_value
+        self.step_frequency = step_frequency
+        self.center_frac = center_frac
+        self.curvature = curvature
+
+    @staticmethod
+    def sigmoid_curve(
+        t: float | np.ndarray,
+        initial: float,
+        end: float,
+        center_frac: float,
+        curvature: float,
+    ) -> float | np.ndarray:
+        """
+        Returns the value at point t for a parametrized sigmoid curve.
+
+        This function is plotted at this link: https://www.desmos.com/calculator/urrjjviigq?lang=en
+        Essentially, it ramps between `initial` and `end` values, with
+        the turning point centered at `center_frac`, with the rate of
+        change determined by curvature.
+
+        The explicit assumption  here is that all of the 'action' occurs
+        between t \in [0,1], although it is defined beyond those ranges
+        (i.e. the initial and end values).
+
+        Parameters
+        ----------
+        t : float
+            Equivalent to `x`, acting as the ordinate to this function.
+            While the function is defined for all `t`, this function
+            mainly assumes t is between [0,1].
+        initial : float
+            Value of the left asymptote; i.e. for t < 0.
+        end : float
+            Value of the right asymptote; i.e. for t > 0.
+        center_frac : float
+            For t in [0,1], this is the turning point of the
+            curve. Assuming this range spans the whole training
+            run, 0.5 would place the turning point at half the
+            epochs/training steps.
+        curvature : float
+            The rate at which the values change. Small values of `curvature`
+            (in orders of magnitude) increases the rate of change such that
+            the changeover becomes much more abrupt, spending more steps/epochs
+            closer to their asymptotes.
+
+        Returns
+        -------
+        float
+            Value of the curve at point t.
+        """
+        k_c = curvature**center_frac
+        k_t = curvature**t
+        numerator = initial * k_c + end * k_t
+        denominator = k_c + k_t
+        return numerator / denominator
+
+    @cached_property
+    def schedule(self) -> Generator[float, None, None]:
+        grid = self.grid
+        schedule = self.sigmoid_curve(
+            grid, self.initial_value, self.end_value, self.center_frac, self.curvature
+        )
+        for value in schedule:
+            yield value
+
+    def set_grid(self, total_steps: int, *args, **kwargs) -> None:
+        self._grid = np.linspace(0.0, 1.0, total_steps)
