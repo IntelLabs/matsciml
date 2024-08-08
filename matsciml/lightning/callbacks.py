@@ -30,6 +30,7 @@ from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
 from matsciml.models.base import BaseTaskModule
 from matsciml.common.types import Embeddings, BatchDict
+from matsciml.lightning.loss_scaling import BaseScalingSchedule
 
 
 class LeaderboardWriter(BasePredictionWriter):
@@ -1492,3 +1493,78 @@ class ExponentialMovingAverageCallback(Callback):
         loader = trainer.train_dataloader
         self.logger.info("Fit finished - updating EMA batch normalization state.")
         update_bn(loader, pl_module.ema_module)
+
+
+class LossScalingScheduler(Callback):
+    def __init__(self, *schedules: list[BaseScalingSchedule]) -> None:
+        """
+        Callback for dynamically adjusting loss scaling values over
+        the course of training, a la curriculum learning.
+
+        This class is configured by supplying a list of schedules
+        as args; see `matsciml.lightning.loss_scaling` module for
+        available schedules. Each schedule instance has a `key`
+        attribute that points it to the corresponding task key
+        as set in the Lightning task module (e.g. `energy`, `force`).
+
+        Parameters
+        ----------
+        args : list[BaseScalingSchedule]
+            List of loss value schedulers.
+        """
+        super().__init__()
+        assert len(schedules) > 0, "Must pass individual schedules to loss scheduler!"
+        self.schedules = schedules
+        self._logger = getLogger("matsciml.loss_scaling_scheduler")
+        self._logger.debug(f"Configured {len(self.schedules)} schedules.")
+        self._logger.debug(
+            f"Schedules have {[s.key for s in self.schedules]} task keys."
+        )
+
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        for schedule in self.schedules:
+            # schedules grab what information they need from the
+            # trainer and task modules
+            schedule.setup(trainer, pl_module)
+            self._logger.debug("Configured {schedule.key} schedule.")
+
+    def on_train_batch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        outputs: Any,
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        for schedule in self.schedules:
+            if schedule.step_frequency == "step":
+                target_key = schedule.key
+                self._logger.debug(
+                    f"Attempting to advance {target_key} schedule on step."
+                )
+                try:
+                    new_scaling_value = schedule.step()
+                    pl_module.task_loss_scaling[target_key] = new_scaling_value
+                except StopIteration:
+                    self._logger.warning(
+                        f"{target_key} has run out of scheduled values; this may be unintentional."
+                    )
+
+    def on_train_epoch_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        for schedule in self.schedules:
+            if schedule.step_frequency == "epoch":
+                target_key = schedule.key
+                self._logger.debug(
+                    f"Attempting to advance {target_key} schedule on epoch."
+                )
+                try:
+                    new_scaling_value = schedule.step()
+                    pl_module.task_loss_scaling[target_key] = new_scaling_value
+                except StopIteration:
+                    self._logger.warning(
+                        f"{target_key} has run out of scheduled values; this may be unintentional."
+                    )
