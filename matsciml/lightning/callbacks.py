@@ -1576,6 +1576,9 @@ class LossScalingScheduler(Callback):
                 try:
                     new_scaling_value = schedule.step()
                     pl_module.task_loss_scaling[target_key] = new_scaling_value
+                    self._logger.debug(
+                        f"Advanced {target_key} to new value: {new_scaling_value}"
+                    )
                 except StopIteration:
                     self._logger.warning(
                         f"{target_key} has run out of scheduled values; this may be unintentional."
@@ -1593,6 +1596,9 @@ class LossScalingScheduler(Callback):
                 try:
                     new_scaling_value = schedule.step()
                     pl_module.task_loss_scaling[target_key] = new_scaling_value
+                    self._logger.debug(
+                        f"Advanced {target_key} to new value: {new_scaling_value}"
+                    )
                 except StopIteration:
                     self._logger.warning(
                         f"{target_key} has run out of scheduled values; this may be unintentional."
