@@ -57,3 +57,14 @@ def test_linear_schedule_with_trainer(task_and_dm):
     )
     trainer = Trainer(fast_dev_run=10, callbacks=sched_callback)
     trainer.fit(task, datamodule=dm)
+
+
+def test_linear_schedule_with_bad_key(task_and_dm):
+    """Tests that the linear schedule works under intended conditions."""
+    task, dm = task_and_dm
+    sched_callback = LossScalingScheduler(
+        LinearScalingSchedule("non-existent-key", 1.0, 10.0, "step"),
+    )
+    trainer = Trainer(fast_dev_run=10, callbacks=sched_callback)
+    with pytest.raises(KeyError):
+        trainer.fit(task, datamodule=dm)
