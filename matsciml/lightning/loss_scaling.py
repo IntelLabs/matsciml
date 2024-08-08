@@ -63,10 +63,32 @@ class BaseScalingSchedule(ABC):
             "Must override `schedule` property and setter methods."
         )
 
-    @abstractmethod
     def setup(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        """Configures the schedule by grabbing whatever is needed from trainer/module"""
-        ...
+        """
+        This configures the grid based on either the total number of
+        projected steps or epochs, depending on what was specified.
+
+        Parameters
+        ----------
+        trainer : Trainer
+            Instance of a PyTorch Lightning trainer.
+        pl_module : LightningModule
+            Instances of a LightningModule; not used in this setup.
+        """
+        if step_count := trainer.max_steps:
+            self.set_grid(step_count)
+        else:
+            train_loader = trainer.train_dataloader()
+            # num_train_batches is how many batches loaded up per loader, per epoch
+            expected_epochs = trainer.max_epochs
+            if self.step_frequency == "step":
+                num_train_batches = len(train_loader)
+                num_steps = int(num_train_batches * expected_epochs)
+            else:
+                num_steps = expected_epochs
+            self.set_grid(num_steps)
+        # set the initial scaling value
+        pl_module.task_loss_scaling[self.key] = self.initial_value
 
 
 class LinearScalingSchedule(BaseScalingSchedule):
@@ -98,30 +120,3 @@ class LinearScalingSchedule(BaseScalingSchedule):
 
     def set_grid(self, total_steps: int, *args, **kwargs) -> None:
         self._grid = np.linspace(0.0, 1.0, total_steps)
-
-    def setup(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        """
-        This configures the grid based on either the total number of
-        projected steps or epochs, depending on what was specified.
-
-        Parameters
-        ----------
-        trainer : Trainer
-            Instance of a PyTorch Lightning trainer.
-        pl_module : LightningModule
-            Instances of a LightningModule; not used in this setup.
-        """
-        if step_count := trainer.max_steps:
-            self.set_grid(step_count)
-        else:
-            train_loader = trainer.train_dataloader()
-            # num_train_batches is how many batches loaded up per loader, per epoch
-            expected_epochs = trainer.max_epochs
-            if self.step_frequency == "step":
-                num_train_batches = len(train_loader)
-                num_steps = int(num_train_batches * expected_epochs)
-            else:
-                num_steps = expected_epochs
-            self.set_grid(num_steps)
-        # set the initial scaling value
-        pl_module.task_loss_scaling[self.key] = self.initial_value
