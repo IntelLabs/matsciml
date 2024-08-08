@@ -22,7 +22,7 @@ from matsciml.datasets.transforms import (
 def task_and_dm():
     t = ScalarRegressionTask(
         encoder_class=EGNN,
-        encoder_kwargs={"hidden_dim": 128, "output_dim": 64},
+        encoder_kwargs={"hidden_dim": 128, "output_dim": 64, "num_conv": 1},
         task_keys=["energy"],
     )
     dm = MatSciMLDataModule.from_devset(
