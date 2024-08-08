@@ -123,3 +123,5 @@ class LinearScalingSchedule(BaseScalingSchedule):
             else:
                 num_steps = expected_epochs
             self.set_grid(num_steps)
+        # set the initial scaling value
+        pl_module.task_loss_scaling[self.key] = self.initial_value
