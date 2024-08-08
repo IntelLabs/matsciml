@@ -233,7 +233,7 @@ class SigmoidScalingSchedule(BaseScalingSchedule):
         """
         k_c = curvature**center_frac
         k_t = curvature**t
-        numerator = initial * k_c + end * k_t
+        numerator = end * k_c + initial * k_t
         denominator = k_c + k_t
         return numerator / denominator
 
