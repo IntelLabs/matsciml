@@ -1525,6 +1525,11 @@ class LossScalingScheduler(Callback):
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
         for schedule in self.schedules:
+            # check to make sure the schedule key actually exists in the task
+            if schedule.key not in pl_module.task_loss_scaling:
+                raise KeyError(
+                    f"Schedule for {schedule.key} expected, but not specified as a task key!"
+                )
             # schedules grab what information they need from the
             # trainer and task modules
             schedule.setup(trainer, pl_module)
