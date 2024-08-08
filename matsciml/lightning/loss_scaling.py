@@ -7,7 +7,7 @@ from functools import cached_property
 import numpy as np
 from pytorch_lightning import Trainer, LightningModule
 
-__all__ = ["LinearScalingSchedule"]
+__all__ = ["LinearScalingSchedule", "SigmoidScalingSchedule"]
 
 
 class BaseScalingSchedule(ABC):
