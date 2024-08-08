@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import pytest
 import numpy as np
+from pytorch_lightning import Trainer
 
 from matsciml.lightning.loss_scaling import LinearScalingSchedule
+from matsciml.lightning.callbacks import LossScalingScheduler
 from matsciml.models.pyg import EGNN
 from matsciml.models import ScalarRegressionTask
 from matsciml.lightning import MatSciMLDataModule
@@ -45,3 +47,13 @@ def test_linear_schedule_without_trainer(initial, end, num_steps):
     assert len(rates) == num_steps
     expected = np.linspace(initial, end, num_steps)
     assert np.allclose(np.array(rates), expected)
+
+
+def test_linear_schedule_with_trainer(task_and_dm):
+    """Tests that the linear schedule works under intended conditions."""
+    task, dm = task_and_dm
+    sched_callback = LossScalingScheduler(
+        LinearScalingSchedule("energy", 1.0, 10.0, "step"),
+    )
+    trainer = Trainer(fast_dev_run=10, callbacks=sched_callback)
+    trainer.fit(task, datamodule=dm)
