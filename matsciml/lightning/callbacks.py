@@ -1547,6 +1547,7 @@ class LossScalingScheduler(Callback):
     def on_fit_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
+        trainer.datamodule.setup("fit")
         for schedule in self.schedules:
             # check to make sure the schedule key actually exists in the task
             if schedule.key not in pl_module.task_keys:
