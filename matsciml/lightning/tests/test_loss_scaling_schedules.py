@@ -108,3 +108,23 @@ def test_sigmoid_schedule_without_trainer(
     assert len(rates) == num_steps
     expected = sched.sigmoid_curve(sched.grid, initial, end, center_frac, curvature)
     assert np.allclose(np.array(rates), expected)
+
+
+def test_sigmoid_schedule_with_trainer(task_and_dm):
+    """Tests that the linear schedule works under intended conditions."""
+    task, dm = task_and_dm
+    sched_callback = LossScalingScheduler(
+        SigmoidScalingSchedule("energy", 1.0, 10.0, 0.5, 1e-8, "step"),
+    )
+    trainer = Trainer(fast_dev_run=5, callbacks=sched_callback)
+    trainer.fit(task, datamodule=dm)
+    scheduler = sched_callback.schedules[0]
+    # make sure that the scaling values are set correctly
+    assert task.task_loss_scaling["energy"] != scheduler.initial_value
+    per_error = (
+        np.abs(task.task_loss_scaling["energy"] - scheduler.end_value)
+        / scheduler.end_value
+    )
+    # make sure the value is close-ish to the end value, not exactly
+    # due to curvature
+    assert per_error > 0.85
