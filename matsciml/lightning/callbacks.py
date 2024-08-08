@@ -32,6 +32,24 @@ from matsciml.models.base import BaseTaskModule
 from matsciml.common.types import Embeddings, BatchDict
 from matsciml.lightning.loss_scaling import BaseScalingSchedule
 
+__all__ = [
+    "LeaderboardWriter",
+    "GradientCheckCallback",
+    "UnusedParametersCallback",
+    "ThroughputCallback",
+    "ForwardNaNDetection",
+    "ManualGradientClip",
+    "MonitorGradients",
+    "GarbageCallback",
+    "InferenceWriter",
+    "CodeCarbonCallback",
+    "SAM",
+    "TrainingHelperCallback",
+    "ModelAutocorrelation",
+    "ExponentialMovingAverageCallback",
+    "LossScalingScheduler",
+]
+
 
 class LeaderboardWriter(BasePredictionWriter):
     """
@@ -1496,7 +1514,11 @@ class ExponentialMovingAverageCallback(Callback):
 
 
 class LossScalingScheduler(Callback):
-    def __init__(self, *schedules: BaseScalingSchedule) -> None:
+    def __init__(
+        self,
+        *schedules: BaseScalingSchedule,
+        log_level: Literal["INFO", "DEBUG", "WARNING", "CRITICAL"] = "INFO",
+    ) -> None:
         """
         Callback for dynamically adjusting loss scaling values over
         the course of training, a la curriculum learning.
@@ -1516,6 +1538,7 @@ class LossScalingScheduler(Callback):
         assert len(schedules) > 0, "Must pass individual schedules to loss scheduler!"
         self.schedules = schedules
         self._logger = getLogger("matsciml.loss_scaling_scheduler")
+        self._logger.setLevel(log_level)
         self._logger.debug(f"Configured {len(self.schedules)} schedules.")
         self._logger.debug(
             f"Schedules have {[s.key for s in self.schedules]} task keys."
