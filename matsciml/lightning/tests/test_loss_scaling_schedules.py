@@ -64,7 +64,7 @@ def test_linear_schedule_with_trainer(task_and_dm):
 
 
 def test_linear_schedule_with_bad_key(task_and_dm):
-    """Tests that the linear schedule works under intended conditions."""
+    """Tests that the linear schedule breaks if the key doesn't match task."""
     task, dm = task_and_dm
     sched_callback = LossScalingScheduler(
         LinearScalingSchedule("non-existent-key", 1.0, 10.0, "step"),
@@ -75,7 +75,7 @@ def test_linear_schedule_with_bad_key(task_and_dm):
 
 
 def test_linear_schedule_with_epoch_step(task_and_dm):
-    """Tests that the linear schedule works under intended conditions."""
+    """Tests that the epoch linear schedule doesn't trigger when we only step."""
     task, dm = task_and_dm
     sched_callback = LossScalingScheduler(
         LinearScalingSchedule("energy", 1.0, 10.0, "epoch"),
