@@ -57,6 +57,8 @@ def test_linear_schedule_with_trainer(task_and_dm):
     )
     trainer = Trainer(fast_dev_run=10, callbacks=sched_callback)
     trainer.fit(task, datamodule=dm)
+    scheduler = sched_callback.schedules[0]
+    assert task.task_loss_scaling["energy"] != scheduler.initial_value
 
 
 def test_linear_schedule_with_bad_key(task_and_dm):
