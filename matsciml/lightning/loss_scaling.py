@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod, ABC
 from typing import Literal, Generator
 from functools import cached_property
+from logging import getLogger
 
 import numpy as np
 from pytorch_lightning import Trainer, LightningModule
@@ -168,8 +169,18 @@ class SigmoidScalingSchedule(BaseScalingSchedule):
         self.initial_value = initial_value
         self.end_value = end_value
         self.step_frequency = step_frequency
+        assert 0.0 < center_frac < 1.0, "Center fraction value must be between [0,1]"
         self.center_frac = center_frac
         self.curvature = curvature
+        self._logger = getLogger(f"matsciml.sigmoid_loss_scaling.{key}")
+        if curvature > 1e-2:
+            self._logger.warning(
+                "Curvature value is larger than expected; make sure this is intended!"
+            )
+        if curvature < 1e-9:
+            self._logger.warning(
+                "Curvature value is very small; make sure this is intended!"
+            )
 
     @staticmethod
     def sigmoid_curve(
