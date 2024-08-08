@@ -1526,7 +1526,7 @@ class LossScalingScheduler(Callback):
     ) -> None:
         for schedule in self.schedules:
             # check to make sure the schedule key actually exists in the task
-            if schedule.key not in pl_module.task_loss_scaling:
+            if schedule.key not in pl_module.task_keys:
                 raise KeyError(
                     f"Schedule for {schedule.key} expected, but not specified as a task key!"
                 )
