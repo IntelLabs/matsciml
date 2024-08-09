@@ -30,6 +30,25 @@ from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
 from matsciml.models.base import BaseTaskModule
 from matsciml.common.types import Embeddings, BatchDict
+from matsciml.lightning.loss_scaling import BaseScalingSchedule
+
+__all__ = [
+    "LeaderboardWriter",
+    "GradientCheckCallback",
+    "UnusedParametersCallback",
+    "ThroughputCallback",
+    "ForwardNaNDetection",
+    "ManualGradientClip",
+    "MonitorGradients",
+    "GarbageCallback",
+    "InferenceWriter",
+    "CodeCarbonCallback",
+    "SAM",
+    "TrainingHelperCallback",
+    "ModelAutocorrelation",
+    "ExponentialMovingAverageCallback",
+    "LossScalingScheduler",
+]
 
 
 class LeaderboardWriter(BasePredictionWriter):
@@ -1492,3 +1511,86 @@ class ExponentialMovingAverageCallback(Callback):
         loader = trainer.train_dataloader
         self.logger.info("Fit finished - updating EMA batch normalization state.")
         update_bn(loader, pl_module.ema_module)
+
+
+class LossScalingScheduler(Callback):
+    def __init__(
+        self,
+        *schedules: BaseScalingSchedule,
+        log_level: Literal["INFO", "DEBUG", "WARNING", "CRITICAL"] = "INFO",
+    ) -> None:
+        """
+        Callback for dynamically adjusting loss scaling values over
+        the course of training, a la curriculum learning.
+
+        This class is configured by supplying a list of schedules
+        as args; see `matsciml.lightning.loss_scaling` module for
+        available schedules. Each schedule instance has a `key`
+        attribute that points it to the corresponding task key
+        as set in the Lightning task module (e.g. `energy`, `force`).
+
+        Parameters
+        ----------
+        args : BaseScalingSchedule
+            Scaling schedules for as many tasks as being performed.
+        """
+        super().__init__()
+        assert len(schedules) > 0, "Must pass individual schedules to loss scheduler!"
+        self.schedules = schedules
+        self._logger = getLogger("matsciml.loss_scaling_scheduler")
+        self._logger.setLevel(log_level)
+        self._logger.debug(f"Configured {len(self.schedules)} schedules.")
+        self._logger.debug(
+            f"Schedules have {[s.key for s in self.schedules]} task keys."
+        )
+
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        trainer.datamodule.setup("fit")
+        for schedule in self.schedules:
+            # check to make sure the schedule key actually exists in the task
+            if schedule.key not in pl_module.task_keys:
+                raise KeyError(
+                    f"Schedule for {schedule.key} expected, but not specified as a task key!"
+                )
+            # schedules grab what information they need from the
+            # trainer and task modules
+            schedule.setup(trainer, pl_module)
+            self._logger.debug("Configured {schedule.key} schedule.")
+
+    def _step_schedules(
+        self, pl_module: "pl.LightningModule", stage: Literal["step", "epoch"]
+    ) -> None:
+        """Base function to step schedules according to what stage we are in."""
+        for schedule in self.schedules:
+            if schedule.step_frequency == stage:
+                target_key = schedule.key
+                self._logger.debug(
+                    f"Attempting to advance {target_key} schedule on {stage}."
+                )
+                try:
+                    new_scaling_value = schedule.step()
+                    pl_module.task_loss_scaling[target_key] = new_scaling_value
+                    self._logger.debug(
+                        f"Advanced {target_key} to new value: {new_scaling_value}"
+                    )
+                except StopIteration:
+                    self._logger.warning(
+                        f"{target_key} has run out of scheduled values; this may be unintentional."
+                    )
+
+    def on_train_batch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        outputs: Any,
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        self._step_schedules(pl_module, "step")
+
+    def on_train_epoch_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        self._step_schedules(pl_module, "epoch")
