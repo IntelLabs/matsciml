@@ -94,6 +94,9 @@ class BaseScalingSchedule(ABC):
         # set the initial scaling value
         pl_module.task_loss_scaling[self.key] = self.initial_value
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__} for {self.key} - start: {self.initial_value}, end: {self.end_value}"
+
 
 class LinearScalingSchedule(BaseScalingSchedule):
     def __init__(
