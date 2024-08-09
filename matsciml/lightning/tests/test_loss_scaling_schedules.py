@@ -127,4 +127,4 @@ def test_sigmoid_schedule_with_trainer(task_and_dm):
     )
     # make sure the value is close-ish to the end value, not exactly
     # due to curvature
-    assert per_error > 0.85
+    assert per_error < 0.01
