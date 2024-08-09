@@ -1559,19 +1559,15 @@ class LossScalingScheduler(Callback):
             schedule.setup(trainer, pl_module)
             self._logger.debug("Configured {schedule.key} schedule.")
 
-    def on_train_batch_end(
-        self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
-        outputs: Any,
-        batch: Any,
-        batch_idx: int,
+    def _step_schedules(
+        self, pl_module: "pl.LightningModule", stage: Literal["step", "epoch"]
     ) -> None:
+        """Base function to step schedules according to what stage we are in."""
         for schedule in self.schedules:
-            if schedule.step_frequency == "step":
+            if schedule.step_frequency == stage:
                 target_key = schedule.key
                 self._logger.debug(
-                    f"Attempting to advance {target_key} schedule on step."
+                    f"Attempting to advance {target_key} schedule on {stage}."
                 )
                 try:
                     new_scaling_value = schedule.step()
@@ -1584,22 +1580,17 @@ class LossScalingScheduler(Callback):
                         f"{target_key} has run out of scheduled values; this may be unintentional."
                     )
 
+    def on_train_batch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        outputs: Any,
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        self._step_schedules(pl_module, "step")
+
     def on_train_epoch_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
-        for schedule in self.schedules:
-            if schedule.step_frequency == "epoch":
-                target_key = schedule.key
-                self._logger.debug(
-                    f"Attempting to advance {target_key} schedule on epoch."
-                )
-                try:
-                    new_scaling_value = schedule.step()
-                    pl_module.task_loss_scaling[target_key] = new_scaling_value
-                    self._logger.debug(
-                        f"Advanced {target_key} to new value: {new_scaling_value}"
-                    )
-                except StopIteration:
-                    self._logger.warning(
-                        f"{target_key} has run out of scheduled values; this may be unintentional."
-                    )
+        self._step_schedules(pl_module, "epoch")
