@@ -11,7 +11,7 @@ __all__ = ["NoisyPositions"]
 
 
 class NoisyPositions(AbstractDataTransform):
-    def __init__(self, scale: float = 1e-3, normalize: bool = False) -> None:
+    def __init__(self, scale: float = 1e-1, normalize: bool = False) -> None:
         """
         Initializes a NoisyPositions transform.
 
