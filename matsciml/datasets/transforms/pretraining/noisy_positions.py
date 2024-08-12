@@ -63,7 +63,9 @@ class NoisyPositions(AbstractDataTransform):
             data["noisy_pos"] = noisy_pos
         # set targets so that tasks know what to do
         # noise targets are normalized by the scale
-        data["targets"]["denoise"] = noise / self.scale
+        if self.normalize:
+            noise /= self.scale
+        data["targets"]["denoise"] = noise
         if "pretraining" in data["target_types"]:
             data["target_types"]["pretraining"].append("denoise")
         else:
