@@ -11,7 +11,7 @@ __all__ = ["NoisyPositions"]
 
 
 class NoisyPositions(AbstractDataTransform):
-    def __init__(self, scale: float = 1e-3) -> None:
+    def __init__(self, scale: float = 1e-1, normalize: bool = False) -> None:
         """
         Initializes a NoisyPositions transform.
 
@@ -31,9 +31,13 @@ class NoisyPositions(AbstractDataTransform):
         ----------
         scale : float
             Scale used to multiply N~(0, I_3) Gaussian noise
+        normalize : bool
+            If True, rescales the noise tensor by the scale
+            for loss computation. This is done in Liao, 2024.
         """
         super().__init__()
         self.scale = scale
+        self.normalize = normalize
 
     def __call__(self, data: DataDict) -> DataDict:
         if "graph" in data:
@@ -58,6 +62,9 @@ class NoisyPositions(AbstractDataTransform):
         else:
             data["noisy_pos"] = noisy_pos
         # set targets so that tasks know what to do
+        # noise targets are normalized by the scale
+        if self.normalize:
+            noise /= self.scale
         data["targets"]["denoise"] = noise
         if "pretraining" in data["target_types"]:
             data["target_types"]["pretraining"].append("denoise")
