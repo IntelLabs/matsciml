@@ -6,7 +6,8 @@ from typing import Any
 import pytorch_lightning as pl
 
 from matsciml.common.registry import registry
-from matsciml.models.base import MultiTaskLitModule
+from matsciml.models.base import MultiTaskLitModule, BaseTaskModule
+from matsciml.models import multitask_from_checkpoint
 
 from experiments.utils.configurator import configurator
 from experiments.utils.utils import instantiate_arg_dict, update_arg_dict
@@ -19,6 +20,7 @@ def setup_task(config: dict[str, Any]) -> pl.LightningModule:
     model = update_arg_dict("model", model, config["cli_args"])
     configured_tasks = []
     data_task_list = []
+    from_checkpoint = True if "load_weights" in config else False
     for dataset_name, tasks in data_task_dict.items():
         dset_args = deepcopy(configurator.datasets[dataset_name])
         dset_args = update_arg_dict("dataset", dset_args, config["cli_args"])
@@ -30,7 +32,7 @@ def setup_task(config: dict[str, Any]) -> pl.LightningModule:
             additonal_task_args = dset_args.get("task_args", None)
             if additonal_task_args is not None:
                 task_args.update(additonal_task_args)
-            configured_task = task_class(**task_args)
+            configured_task = task_class if from_checkpoint else task_class(**task_args)
             configured_tasks.append(configured_task)
             data_task_list.append(
                 [configurator.datasets[dataset_name]["dataset"], configured_task]
@@ -40,4 +42,24 @@ def setup_task(config: dict[str, Any]) -> pl.LightningModule:
         task = MultiTaskLitModule(*data_task_list)
     else:
         task = configured_tasks[0]
+    if "load_weights" in config:
+        task = load_from_checkpoint(task, config, task_args)
+    return task
+
+
+def load_from_checkpoint(
+    task: BaseTaskModule, config: dict[str, Any], task_args: dict[str, Any]
+) -> BaseTaskModule:
+    load_config = config["load_weights"]
+    ckpt = load_config["path"]
+    method = load_config["method"]
+    load_type = load_config["type"]
+    if not isinstance(task, MultiTaskLitModule):
+        if load_type == "local":
+            if method == "checkpoint":
+                task = task.load_from_checkpoint(ckpt)
+            if method == "pretrained":
+                task = task.from_pretrained_encoder(ckpt, **task_args)
+    else:
+        task = multitask_from_checkpoint(ckpt)
     return task
