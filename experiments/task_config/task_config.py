@@ -57,17 +57,19 @@ def load_from_checkpoint(
     method = load_config["method"]
     load_type = load_config["type"]
     if not isinstance(task, MultiTaskLitModule):
-        if load_type == "local":
-            if method == "checkpoint":
-                task = task.load_from_checkpoint(ckpt)
-            if method == "pretrained":
-                task = task.from_pretrained_encoder(ckpt, **task_args)
         if load_type == "wandb":
             # creates lightning wandb logger object and a new run
             wandb_logger = get_wandb_logger()
             artifact = Path(wandb_logger.download_artifact(ckpt))
-            task = task.load_from_checkpoint(artifact.joinpath("model.ckpt"))
-
+            ckpt = artifact.joinpath("model.ckpt")
+        if method == "checkpoint":
+            task = task.load_from_checkpoint(ckpt)
+        elif method == "pretrained":
+            task = task.from_pretrained_encoder(ckpt, **task_args)
+        else:
+            raise Exception(
+                "Unsupported method for loading checkpoint. Must be 'checkpoint' or 'pretrained'"
+            )
     else:
         task = multitask_from_checkpoint(ckpt)
     return task

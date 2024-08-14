@@ -38,8 +38,8 @@ load_weights:
    path: ./path/to/checkpoint
 ```
 * `method` specifies whether to use the model *as-is* (`checkpoint`), or *encoder-only* (`pretrained`) in the checkpoint.
-* `type` specifies where to load the checkpoint from. Currently only locally stored checkpoints may be used.
-* `path` points to the location of the checkpoint.
+* `type` specifies where to load the checkpoint from (`local`, or `wandb`).
+* `path` points to the location of the checkpoint. WandB checkpoints may be specified by pointing to the model artifact, typically specified by: `entity-name/project-name/model-version:number`
 
 
 In general, and experiment may the be launched by running:
