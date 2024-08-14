@@ -21,6 +21,27 @@ dataset:
       - energy
 ```
 
+### Checkpoint Loading
+Pretrained model checkpoints may be loaded for use in downstream tasks. Models can be loaded and used *as-is*, or only the encoder may be used.
+
+To load a checkpoint, add the `load_weights` field to the experiment config:
+```yaml
+model: egnn_dgl
+dataset:
+  oqmd:
+    - task: ScalarRegressionTask
+      targets:
+       - energy
+load_weights:
+   method: checkpoint
+   type: local
+   path: ./path/to/checkpoint
+```
+* `method` specifies whether to use the model *as-is* (`checkpoint`), or *encoder-only* (`pretrained`) in the checkpoint.
+* `type` specifies where to load the checkpoint from (`local`, or `wandb`).
+* `path` points to the location of the checkpoint. WandB checkpoints may be specified by pointing to the model artifact, typically specified by: `entity-name/project-name/model-version:number`
+
+
 In general, and experiment may the be launched by running:
 `python experiments/training_script.py --experiment_config ./experiments/configs/single_task.yaml`
 
