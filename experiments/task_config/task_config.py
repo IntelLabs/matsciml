@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import Any
+from pathlib import Path
+
 
 import pytorch_lightning as pl
 
@@ -60,6 +62,22 @@ def load_from_checkpoint(
                 task = task.load_from_checkpoint(ckpt)
             if method == "pretrained":
                 task = task.from_pretrained_encoder(ckpt, **task_args)
+        if load_type == "wandb":
+            # creates lightning wandb logger object and a new run
+            wandb_logger = get_wandb_logger()
+            artifact = Path(wandb_logger.download_artifact(ckpt))
+            task = task.load_from_checkpoint(artifact.joinpath("model.ckpt"))
+
     else:
         task = multitask_from_checkpoint(ckpt)
     return task
+
+
+def get_wandb_logger():
+    trainer_args = configurator.trainer
+    for logger in trainer_args["loggers"]:
+        if "WandbLogger" in logger["class_path"]:
+            wandb_logger = instantiate_arg_dict(logger)
+            return wandb_logger
+    else:
+        raise KeyError("WandbLogger Expected in trainer config but not found")
