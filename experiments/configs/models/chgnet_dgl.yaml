@@ -1,5 +1,5 @@
 encoder_class:
-  class_path: matsciml.models.M3GNet
+  class_path: matsciml.models.CHGNet
 encoder_kwargs:
   element_types:
     class_path: matsciml.datasets.utils.element_types
