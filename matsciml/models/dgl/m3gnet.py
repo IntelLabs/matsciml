@@ -24,7 +24,7 @@ class M3GNet(AbstractDGLModel):
         self, element_types: list[str], return_all_layer_output: bool, *args, **kwargs
     ):
         super().__init__(atom_embedding_dim=len(element_types))
-        self.elemenet_types = element_types
+        self.element_types = element_types
         self.all_embeddings = return_all_layer_output
         self.model = matgl_m3gnet(element_types, *args, **kwargs)
         self.atom_embedding = self.model.embedding.layer_node_embedding
