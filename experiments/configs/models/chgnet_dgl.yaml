@@ -1,0 +1,22 @@
+encoder_class:
+  class_path: matsciml.models.M3GNet
+encoder_kwargs:
+  element_types:
+    class_path: matsciml.datasets.utils.element_types
+output_kwargs:
+  lazy: False
+  input_dim: 64
+  hidden_dim: 64
+transforms:
+  - class_path: matsciml.datasets.transforms.PeriodicPropertiesTransform
+    init_args:
+      cutoff_radius: 6.5
+      adaptive_cutoff: True
+  - class_path: matsciml.datasets.transforms.PointCloudToGraphTransform
+    init_args:
+      backend: dgl
+      cutoff_dist: 20.0
+      node_keys:
+        - "pos"
+        - "atomic_numbers"
+  - class_path: matsciml.datasets.transforms.MGLDataTransform

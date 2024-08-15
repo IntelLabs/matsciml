@@ -14,6 +14,7 @@ if package_registry["dgl"]:
     from matsciml.models.dgl.mpnn import MPNN
     from matsciml.models.dgl.schnet_dgl import SchNet
     from matsciml.models.dgl.tensornet import TensorNet
+    from matsciml.models.dgl.chgnet import CHGNet
 
     __all__ = [
         "DimeNetPP",
@@ -25,4 +26,5 @@ if package_registry["dgl"]:
         "MPNN",
         "SchNet",
         "TensorNet",
+        "CHGNet",
     ]
