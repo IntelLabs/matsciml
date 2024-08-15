@@ -55,8 +55,6 @@ class CHGNet(AbstractDGLModel, MGLCHGNet):
         Returns:
             torch.Tensor: Model output.
         """
-        # g.edata["pbc_offshift"] = g.edata["offsets"]
-        # g.ndata["node_type"] = g.ndata["atomic_numbers"].long()
         # compute bond vectors and distances and add to g, needs to be computed here to register gradients
         bond_vec, bond_dist = compute_pair_vector_and_distance(g)
         g.edata["bond_vec"] = bond_vec.to(g.device)
