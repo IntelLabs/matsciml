@@ -149,6 +149,11 @@ class MACEWrapper(AbstractPyGModel):
                     f"Expected periodic property {key} to be in batch."
                     " Please include ``PeriodicPropertiesTransform``."
                 )
+        # hacky way of letting MACE work for single graph
+        if "batch" not in graph:
+            from torch_geometric.data import Batch
+
+            graph = Batch.from_data_list([graph])
         assert hasattr(graph, "ptr"), "Graph is missing the `ptr` attribute!"
         # the name of these keys matches up with our `_forward`, and
         # later get remapped to MACE ones
