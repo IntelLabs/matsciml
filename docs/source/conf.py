@@ -2,7 +2,12 @@ project = "Open MatSciML Toolkit"
 copyright = "2024, Intel Corporation"
 author = "Intel Corporation"
 
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinx.ext.napoleon"]
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.autosectionlabel",
+]
 
 templates_path = ["_templates"]
 exclude_patterns = []
