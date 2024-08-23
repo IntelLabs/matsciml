@@ -42,6 +42,9 @@ Dataset API reference
 ``BaseLMDBDataset`` reference
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. note::
+   This subsection is mainly for developers.
+
 This class serves as the intended basis for all ``matsciml`` datasets. In addition
 to functions that are in charge of reading from LMDB filetypes, the base class
 implements several quality of life methods and properties that are intended to
