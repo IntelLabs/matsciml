@@ -35,6 +35,22 @@ are integrated into Open MatSciML Toolkit.
 Users can obtain preprocessed LMDB files from the `Zenodo <https://doi.org/10.5281/zenodo.10768743>`_. Each dataset
 includes predefined train/test/validation splits, which should be ready to use out of the box with the Open MatSciML Toolkit pipeline.
 
+User reference
+##############
+
+Generally speaking, users do not have to directly interact with the underlying
+``Dataset`` classes/objects unless you are doing something out of the box. At
+a high-level, the general interface for all datasets includes an ``lmdb_root``
+and a ``transforms`` arguments that can be configured: the former points to
+a folder containing LMDB files that pertain to a particular split, and transforms
+are a list of callable transformations to each data sample **after** they are loaded.
+
+To make use of the PyTorch Lightning abstractions, we recommend users configure
+the ``MatSciMLDataModule``.
+
+.. autoclass:: matsciml.lightning.data_utils.MatSciMLDataModule
+   :members:
+
 
 Dataset API reference
 #####################
