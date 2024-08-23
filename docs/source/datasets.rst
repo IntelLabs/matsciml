@@ -31,6 +31,11 @@ are integrated into Open MatSciML Toolkit.
     - CC-BY-4.0
     - Pertains to the novel 2D and 3D materials database, comprising >200,000 PBE/PBESol relaxed structures with a host of calculated properties.
 
+
+Users can obtain preprocessed LMDB files from the `Zenodo <https://doi.org/10.5281/zenodo.10768743>`_. Each dataset
+includes predefined train/test/validation splits, which should be ready to use out of the box with the Open MatSciML Toolkit pipeline.
+
+
 Dataset API reference
 #####################
 
