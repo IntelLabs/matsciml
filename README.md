@@ -4,7 +4,7 @@
 <div align="center">
 
 [![Documentation](https://readthedocs.org/projects/matsciml/badge/?version=latest)](https://matsciml.readthedocs.io/en/latest/?badge=latest)
-[![Datasets on Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.10768743.svg)](https://doi.org/10.5281/zenodo.10768743)
+[![Datasets on Zenodo](https://zenodo.org/badge/Datasets/10.5281/zenodo.10768743.svg)](https://doi.org/10.5281/zenodo.10768743)
 [![lightning](https://img.shields.io/badge/Lightning-v2.2.4%2B-792ee5?logo=pytorchlightning)](https://lightning.ai/docs/pytorch/1.8.6)
 [![pytorch](https://img.shields.io/badge/PyTorch-v2.1.0%2B-red?logo=pytorch)](https://pytorch.org/get-started/locally/)
 [![dgl](https://img.shields.io/badge/DGL-v2.0%2B-blue?logo=dgl)](https://docs.dgl.ai/en/latest/)
