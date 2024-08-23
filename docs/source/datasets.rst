@@ -47,7 +47,24 @@ are a list of callable transformations to each data sample **after** they are lo
 See the :ref:`Transforms` section for details.
 
 To make use of the PyTorch Lightning abstractions, we recommend users configure
-the ``MatSciMLDataModule``.
+the ``MatSciMLDataModule``. The fastest way to interact with datamodules (also
+underlying datasets) is through the ``from_devset`` method. This lets you get
+up and running without downloading and processing large datasets right out
+of the box just by supplying the dataset name as a string. With this usage,
+the same devset is used for both training and validation, allowing you to test
+the full functional pipeline; perfect for development!
+
+
+.. code-block:: python
+   :caption: Configuring devset usage with LiPS; can be substituted with any of the supported datasets.
+
+   from matsciml.lightning import MatSciMLDataModule
+   from matsciml.datasets.transforms import PointCloudToGraphTransform
+
+   datamodule = MatSciMLDataModule.from_devset(
+      "LiPSDataset", batch_size=8, transforms=[PointCloudToGraphTransform("pyg", 6.0)]
+    )
+
 
 .. autoclass:: matsciml.lightning.data_utils.MatSciMLDataModule
    :members:
