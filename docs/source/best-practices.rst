@@ -54,12 +54,13 @@ abstractions.
 Intel®️ XPU usage
 ^^^^^^^^^^^^^^^^
 
-.. warning::
+.. important::
    The XPU packaging ecosystem is currently being overhauled substantially,
    notably from PyTorch 2.4.0 onwards, should have native support. As such,
    a lot of information in this section will soon become out of date in
    that it won't be absolutely necessary to install IPEX in order to use
    Intel XPUs.
+
 
 Currently, in order to use Intel GPUs with PyTorch and ``matsciml``,
 the XPU version of ``intel_extension_for_pytorch`` (IPEX) must be installed
@@ -75,8 +76,6 @@ Normally, these are automatically registered to Lightning by importing
 ``matsciml`` and so no further action is required. If needed, however,
 the :py:func:`matsciml.lightning.xpu.XPUAccelerator` object can be passed
 directly to the ``accelerator`` argument in ``Trainer``.
-
-.. autofunction:: matsciml.lightning.xpu.SingleXPUStrategy
 
 The `xpu_example.py <https://github.com/IntelLabs/matsciml/tree/main/examples/devices/xpu_example.py>`_ provides
 an example for XPU usage.
