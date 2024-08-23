@@ -32,6 +32,35 @@ significantly more distant atoms than the average sample. By doing so, we
 improve computational efficiency by not needing to consider many more edges
 than required.
 
+Point clouds to graphs
+^^^^^^^^^^^^^^^^^^^^^^
+
+``matsciml`` implements back and forth transforms to go between point cloud
+and graph representations of data. Most people are interested in converting
+point clouds (which are stored in the LMDB files) into graphs, which can
+be done so with the ``PointCloudToGraphTransform``. The minimal configuration
+is to specify the graph implementation, and optionally a cutoff parameter.
+If the ``PeriodicPropertiesTransform`` is used **before** the graph transform,
+the graph transform will use edges generated with consideration of the periodic
+boundary conditions, in which case the cutoff parameter is not used.
+
+A typical configuration would look like this:
+
+.. code-block:: python
+   :caption: Example PyG transformation, including periodic boundary conditions with a cutoff of 6.0.
+
+   transforms = [
+      PeriodicPropertiesTransform(6.0, adaptive_cutoff=True),
+      PointCloudToGraphTransform("pyg")
+   ]
+
+This transform results in a ``graph`` key/value being added to the data
+sample, and is appropriately batched depending on the implementation used.
+
+.. autoclass:: matsciml.datasets.transforms.PointCloudToGraphTransform
+   :members:
+
+
 Accelerator usage
 -----------------
 
