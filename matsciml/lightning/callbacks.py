@@ -9,7 +9,8 @@ from logging import DEBUG, getLogger
 from pathlib import Path
 from time import time
 from copy import copy
-from typing import Any, Callable, Dict, Iterator, Optional
+from typing import Any, Callable, Dict, Iterator, Literal, Optional
+from queue import Queue
 
 import numpy as np
 import pytorch_lightning as pl
@@ -17,13 +18,37 @@ import torch
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import BasePredictionWriter, Callback
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
+from pytorch_lightning import loggers as pl_loggers
 from torch import distributed as dist
 from torch import nn
 from torch.optim import Optimizer
+from dgl import DGLGraph
+from scipy.signal import correlate
+from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn, update_bn
 
 from matsciml.common.packages import package_registry
 from matsciml.datasets.utils import concatenate_keys
 from matsciml.models.base import BaseTaskModule
+from matsciml.common.types import Embeddings, BatchDict
+from matsciml.lightning.loss_scaling import BaseScalingSchedule
+
+__all__ = [
+    "LeaderboardWriter",
+    "GradientCheckCallback",
+    "UnusedParametersCallback",
+    "ThroughputCallback",
+    "ForwardNaNDetection",
+    "ManualGradientClip",
+    "MonitorGradients",
+    "GarbageCallback",
+    "InferenceWriter",
+    "CodeCarbonCallback",
+    "SAM",
+    "TrainingHelperCallback",
+    "ModelAutocorrelation",
+    "ExponentialMovingAverageCallback",
+    "LossScalingScheduler",
+]
 
 
 class LeaderboardWriter(BasePredictionWriter):
@@ -357,15 +382,13 @@ class ManualGradientClip(Callback):
     def __init__(
         self,
         value: float,
-        algorithm: str = "norm",
-        verbose: bool = False,
+        algorithm: Literal["norm", "value"] = "norm",
         **kwargs,
     ) -> None:
         super().__init__()
         self.value = value
         self.algorithm = algorithm
         self.kwargs = kwargs
-        self.verbose = verbose
 
     @property
     def algorithm(self) -> Callable:
@@ -384,12 +407,9 @@ class ManualGradientClip(Callback):
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
         optimizer: Optimizer,
-        opt_idx: int,
     ) -> None:
         for parameter in pl_module.parameters():
             self.algorithm(parameter, self.value, **self.kwargs)
-            if self.verbose:
-                print(parameter)
 
 
 class MonitorGradients(Callback):
@@ -845,3 +865,732 @@ class SAM(Callback):
             if p.grad is None:
                 continue
             p.data = org_weights[p]
+
+
+def embedding_magnitude_hook(
+    module: nn.Module, input: BatchDict, output: Embeddings
+) -> None:
+    """
+    Forward hook that will inspect an embedding output.
+
+    This checks for two properties of graph-level and node-level embeddings:
+    the magnitude of the median tells us if the values are a lot larger than
+    what we might typically expect, and the variance tells us if the embeddings
+    are effectively collapsing.
+
+    Parameters
+    ----------
+    module : nn.Module
+        Nominally a PyTorch module, but we actually expect an encoder.
+    input : BatchDict
+        Batch of samples to process
+    output : Embeddings
+        Expected to be an embedding data structure. If not, we don't
+        fail the run, but posts a critical message.
+    """
+    logger = getLogger("matsciml.helper")
+    logger.setLevel("INFO")
+    if isinstance(output, Embeddings):
+        # check the magnitude of both node and system level embeddings
+        if output.system_embedding is not None:
+            sys_z = output.system_embedding.detach().cpu()
+            # calculate representative statistics
+            sys_z_med = sys_z.median().abs().item()
+            sys_z_var = sys_z.var().item()
+            if sys_z_med > 10.0:
+                logger.warning(
+                    f"Median system/graph embedding value is greater than 10 ({sys_z_med})"
+                )
+            if sys_z_var <= 1e-5:
+                logger.warning(
+                    f"Variance in system/graph embedding is quite small ({sys_z_var})"
+                )
+        if output.point_embedding is not None:
+            node_z = output.point_embedding.detach().cpu()
+            # calculate representative statistics
+            node_z_med = node_z.median().abs().item()
+            node_z_var = node_z.var().item()
+            if node_z_med > 10.0:
+                logger.warning(
+                    f"Median node embedding value is greater than 10 ({node_z_med})"
+                )
+            if node_z_var <= 1e-5:
+                logger.warning(
+                    f"Variance in node embedding is quite small ({node_z_var})"
+                )
+    else:
+        logger.critical(
+            f"Hooked module does not produce an embedding data structure! {module}"
+        )
+
+
+class TrainingHelperCallback(Callback):
+    def __init__(
+        self,
+        small_grad_thres: float = 1e-3,
+        update_freq: int = 50,
+        encoder_hook: bool = True,
+        record_param_norm_history: bool = True,
+    ) -> None:
+        """
+        Initializes a ``TrainingHelperCallback``.
+
+        The purpose of this callback is to provide some typical
+        heuristics that are useful for diagnosing how training
+        is progressing. The behavior of this callback is twofold:
+        (1) emit warning messages to the user, indicating that
+        there are irregularities like missing gradients, and low
+        variance in embeddings; (2) send some of these observations
+        to loggers like ``TensorBoardLogger`` and ``WandbLogger``
+        for asynchronous viewing.
+
+        Parameters
+        ----------
+        small_grad_thres : float, default 1e-3
+            Threshold for detecting when gradients for particular
+            parameters are considered small. This helps identify
+            layers that could benefit with some residual connections.
+        update_freq : int, default 50
+            Frequency of which to run checks with this callback.
+            This can be increased to make messages less spammy.
+        encoder_hook : bool, default True
+            If True, we register a forward hook with the model's
+            encoder that is specifically designed for ``matsciml``
+            usage. This hook will inspect graph and node level
+            embeddings, particularly variance in dimensions, to
+            identify feature collapse.
+        record_param_norm_history : bool, default True
+            If True, will log tensor norms to ``tensorboard`` or
+            ``wandb`` services.
+        """
+        super().__init__()
+        self.logger = getLogger("matsciml.helper")
+        self.logger.setLevel("INFO")
+        self.small_grad_thres = small_grad_thres
+        self.update_freq = update_freq
+        self.encoder_hook = encoder_hook
+        self.record_param_norm_history = record_param_norm_history
+
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        """
+        This attaches the embedding hook, which inspects the embeddings
+        to make sure there is sufficient variance, or if the values are
+        too big.
+        """
+        if self.encoder_hook:
+            pl_module.encoder.register_forward_hook(embedding_magnitude_hook)
+            self.logger.info("Registered embedding monitor")
+
+    def on_train_epoch_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        """Sets an internal batch index tracker for activity."""
+        self.batch_idx = 0
+
+    def on_train_batch_start(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        """
+        Triggering at the beginning of a training batch, this is where all
+        the checks pertaining to input data should be made. For now,
+        we check whether or not the coordinates are bounded between 0,1
+        which may indicate that the coordinates are fractional which may
+        not be intended.
+        """
+        self.batch_idx = batch_idx
+        if self.is_active:
+            # look at atom positions for irregularities
+            if "graph" in batch:
+                g = batch["graph"]
+                if isinstance(g, DGLGraph):
+                    pos = g.ndata["pos"]
+                else:
+                    pos = g.pos
+            else:
+                # we assume there are positions, otherwise there are bigger
+                # problems than running this check
+                pos = batch["pos"]
+            min_pos, max_pos = pos.min().item(), pos.max().item()
+            if min_pos >= 0.0 and max_pos <= 1.0:
+                self.logger.warning(
+                    "Coordinates are small and might be fractional, which may not be intended."
+                )
+
+    @property
+    def is_active(self) -> bool:
+        """Determines whether or not to perform an update."""
+        return (self.batch_idx % self.update_freq) == 0
+
+    @staticmethod
+    def encoder_head_comparison(
+        pl_module: pl.LightningModule,
+        log_history,
+        python_logger,
+        global_step: int | None = None,
+    ):
+        """
+        Make a comparison of weight norms in the encoder and output head stack.
+
+        The heuristic being checked here is if the encoder weights are a lot smaller
+        than the output head, the encoder may end up being ignored entirely and
+        the output heads are just overfitting to the data. This check doesn't prove
+        that is happening, but provides an indication of it.
+
+        Parameters
+        ----------
+        pl_module
+            Nominally a generic ``LightningModule``, but we expect the
+            model to have an encoder and an output head module dict.
+        log_history : bool
+            Default True, whether to log the weight norm values to an
+            experiment tracker.
+        python_logger : Logger
+            Logger for the Python side to raise the warning message.
+        """
+        # compare encoder and output head weights
+        encoder_norm_vals = []
+        output_norm_vals = []
+        for parameter in pl_module.encoder.parameters():
+            encoder_norm_vals.append(parameter.detach().norm().cpu().item())
+        for head in pl_module.output_heads.values():
+            for parameter in head.parameters():
+                output_norm_vals.append(parameter.detach().norm().cpu().item())
+        encoder_norm_vals = np.array(encoder_norm_vals)
+        output_norm_vals = np.array(output_norm_vals)
+        encoder_median = np.median(encoder_norm_vals)
+        output_median = np.median(output_norm_vals)
+        if encoder_median < (2.0 * output_median):
+            python_logger.warning(
+                "Median encoder weights are significantly smaller than output heads:"
+                " encoder median norm: {encoder_median:.3e},"
+                " output head: {output_median:.3e}"
+            )
+        # optionally record to a supported service as well
+        # this nominally should work for multiple loggers
+        if log_history and len(pl_module.loggers) > 0:
+            for pl_logger in pl_module.loggers:
+                log_service = pl_logger.experiment
+                encoder_norm_vals = torch.from_numpy(encoder_norm_vals).float()
+                output_norm_vals = torch.from_numpy(output_norm_vals).float()
+                if isinstance(log_service, pl_loggers.TensorBoardLogger):
+                    log_service.add_histogram(
+                        "encoder_weight_norm", encoder_norm_vals, global_step
+                    )
+                    log_service.add_histogram(
+                        "outputhead_weight_norm", output_norm_vals, global_step
+                    )
+                elif isinstance(log_service, pl_loggers.WandbLogger):
+                    log_service.log({"encoder_weight_norm": encoder_norm_vals})
+                    log_service.log({"outputhead_weight_norm": output_norm_vals})
+
+    def on_before_optimizer_step(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        optimizer: Optimizer,
+    ) -> None:
+        """
+        This stage checks for problems pertaining to parameter weights
+        and gradients, triggering before the optimizer is stepped.
+        We check to make sure the gradient norm is reasonably sized,
+        as well as making sure that the output head weigts don't get
+        significantly larger than the encoder.
+        """
+        if self.is_active:
+            log_service = pl_module.logger
+            # loop through parameter related checks
+            grad_norm_vals = []
+            for name, parameter in pl_module.named_parameters():
+                if parameter.requires_grad:
+                    if parameter.grad is None:
+                        self.logger.warning(
+                            f"Parameter {name} has no gradients, but should!"
+                        )
+                    else:
+                        grad_norm = parameter.grad.norm()
+                        if grad_norm.abs() < self.small_grad_thres:
+                            self.logger.warning(
+                                f"Parameter {name} has small gradient norm - {grad_norm}"
+                            )
+                        grad_norm_vals.append(grad_norm.detach().cpu().item())
+            # track gradient norm for the whole model
+            grad_norm_vals = torch.FloatTensor(grad_norm_vals)
+            if isinstance(log_service, pl_loggers.TensorBoardLogger):
+                log_service.experiment.add_histogram(
+                    "gradient_norms", grad_norm_vals, global_step=trainer.global_step
+                )
+            elif isinstance(log_service, pl_loggers.WandbLogger):
+                log_service.experiment.log(
+                    {"gradient_norms": torch.FloatTensor(grad_norm_vals)}
+                )
+            self.encoder_head_comparison(
+                pl_module,
+                self.record_param_norm_history,
+                self.logger,
+                trainer.global_step,
+            )
+
+
+class ModelAutocorrelation(Callback):
+    def __init__(
+        self,
+        buffer_size: int = 100,
+        sampled: bool = True,
+        sample_frac: float = 0.05,
+        analyze_grads: bool = True,
+        analyze_every_n_steps: int = 50,
+    ) -> None:
+        """
+        Initializes a ``ModelAutocorrelation`` callback.
+
+        The purpose of this callback is to track parameters and optionally
+        gradients over time, and periodically calculate the autocorrelation
+        spectrum to see how correlated parameters and gradients are throughout
+        the training process.
+
+        Parameters
+        ----------
+        buffer_size : int, default 100
+            Number of steps worth of parameters/gradients to keep in
+            the correlation window. If the buffer is too small, the
+            autocorrelation might not be particularly meaningful; if
+            it's too big, it may impact training throughput.
+        sampled : bool, default True
+            If True, we ``sample_frac`` worth of elements from every
+            parameter tensor. The False case has not yet been implemented,
+            but is intended to track the whole model.
+        sample_frac : float, default 0.05
+            Fraction of a given parameter/gradient tensor to track.
+            Larger values give a better picture for how the whole
+            model is behaving, while fewer samples mean less impact
+            but a poorer description.
+        analyze_grads : bool, default True
+            If True, perform the autocorrelation procedure for gradients
+            as well as parameters. This may give a better indication of
+            dynamics over parameters alone.
+        analyze_every_n_steps : int, default 50
+            Frequency to carry out the autocorrelation analysis. Note
+            that sampling is done at every training step, regardless
+            of this value. Instead, this determines how often we do the
+            autocorrelation calculation and logging.
+
+        Raises
+        ------
+        NotImplementedError
+            If ``sampled=False``, which has not yet been implemented.
+        """
+        super().__init__()
+        self.buffer_size = buffer_size
+        if not sampled:
+            raise NotImplementedError(
+                "Only sampled analysis mode is currently supported."
+            )
+        self.sampled = sampled
+        self.sample_frac = sample_frac
+        self.analyze_grads = analyze_grads
+        self.analyze_every_n_steps = analyze_every_n_steps
+
+    @staticmethod
+    def sample_parameters(
+        model: nn.Module, indices: dict[str, torch.Tensor], collect_grads: bool
+    ) -> tuple[np.ndarray, np.ndarray | None]:
+        """
+        Collect elements from parameter and gradient tensors of the
+        target model based on a dictionary of indices.
+
+        Indices are expected to run over the number elements flattened
+        tensors (i.e. ``Tensor.numel``).
+
+        Parameters
+        ----------
+        model : nn.Module
+            PyTorch model to track
+        indices : dict[str, torch.Tensor]
+            Dictionary mapping for layer name and corresponding
+            parameter tensor
+        collect_grads
+            If True, gradients will also be recorded. Evidently
+            this means twice the storage requirement.
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray | None]
+            If ``collect_grads`` is True, a 2-tuple of arrays
+            will be returned, corresponding to the sampled
+            parameters and gradients. If False, the latter will
+            just be None.
+        """
+        collected_params = []
+        collected_grads = []
+        for name, parameter in model.named_parameters():
+            idx = indices.get(name, None)
+            if idx is not None:
+                elements = parameter.flatten()[idx].detach().cpu().numpy()
+                collected_params.append(elements)
+                if collect_grads and parameter.grad is not None:
+                    collected_grads.append(
+                        parameter.grad.flatten()[idx].detach().cpu().numpy()
+                    )
+        if collect_grads and len(collected_grads) > 0:
+            return np.hstack(collected_params), np.hstack(collected_grads)
+        else:
+            return np.hstack(collected_params), None
+
+    def run_analysis(self, logger: pl_loggers.Logger):
+        """
+        Perform the autocorrelation analysis.
+
+        This function will convert the history buffer into arrays
+        and pass them to ``_calculate_autocorrelation``. If we have
+        a logger (either ``wandb`` or ``tensorboard``), we will
+        log the correlation spectra to these services as well.
+
+        Parameters
+        ----------
+        logger : pl_loggers.Logger
+            Abstract PyTorch Lightning logger instance. While it is
+            technically abstract, only ``WandbLogger`` and ``TensorBoardLogger``
+            are supported right now
+        """
+        param_history = np.vstack(self.history["params"].queue)
+        param_corr = self._calculate_autocorrelation(param_history)
+        # now log the spectrum
+        if isinstance(logger, pl_loggers.WandbLogger):
+            from wandb.plot import line_series
+
+            logger.experiment.log(
+                {
+                    "param_autocorrelation": line_series(
+                        xs=[i for i in range(param_history.shape[0])],
+                        ys=param_corr.tolist(),
+                        title="Parameter autocorrelation",
+                        xname="Steps",
+                    )
+                }
+            )
+        elif isinstance(logger, pl_loggers.TensorBoardLogger):
+            logger.experiment.add_image(
+                "param_autocorrelation",
+                param_corr,
+                global_step=self.global_step,
+                dataformats="WH",
+            )
+        else:
+            raise NotImplementedError(
+                "Only WandbLogger and TensorBoardLogger are currently supported."
+            )
+
+        if self.analyze_grads:
+            grad_history = np.vstack(self.history["grads"].queue)
+            grad_corr = self._calculate_autocorrelation(grad_history)
+            if isinstance(logger, pl_loggers.WandbLogger):
+                from wandb.plot import line_series
+
+                logger.experiment.log(
+                    {
+                        "grad_autocorrelation": line_series(
+                            xs=[i for i in range(grad_history.shape[0])],
+                            ys=grad_corr.tolist(),
+                            title="Gradient autocorrelation",
+                            xname="Steps",
+                        )
+                    }
+                )
+            elif isinstance(logger, pl_loggers.TensorBoardLogger):
+                logger.experiment.add_image(
+                    "grad_autocorrelation",
+                    grad_corr,
+                    global_step=self.global_step,
+                    dataformats="WH",
+                )
+
+    @staticmethod
+    def _calculate_autocorrelation(history: np.ndarray) -> np.ndarray:
+        """
+        Use ``scipy.signal.correlate`` to calculate the autocorrelation
+        for parameters and optionally gradients.
+
+        This spectrum tells you the degree of correlation between training
+        steps in the recent history for every parameter/gradient element
+        being tracked. The rescaling is done unintelligently, and for
+        purely aesthetic reasons.
+
+        Parameters
+        ----------
+        history : np.ndarray
+            NumPy 2D array; the first dimension is time step, and the
+            second is parameter/gradient element.
+
+        Returns
+        -------
+        np.ndarray
+            NumPy 2D array; the first dimension is time step, and the
+            second corresponds to autocorrelation power/signal.
+        """
+        assert history.ndim == 2, "Expected history to be 2D!"
+        # normalizing by variance explodes, so just make it relative
+        corr = correlate(history, history, mode="same")
+        corr = (corr - corr.min(axis=0)) / (corr.max(axis=0) - corr.min(axis=0))
+        return corr
+
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        """
+        Setup the callback tracking. For sampling mode, we generate random
+        indices for every parameter in the model (that isn't lazy) that
+        corresponds to parameters/gradients we will consistently track
+        throughout training.
+
+        Parameters
+        ----------
+        trainer : pl.Trainer
+            PyTorch Lightning trainer instance
+        pl_module : pl.LightningModule
+            PyTorch Lightning module to track
+        """
+        if self.sampled:
+            indices = {}
+            for name, parameter in pl_module.named_parameters():
+                if not isinstance(parameter, torch.nn.UninitializedParameter):
+                    numel = parameter.numel()
+                    indices[name] = torch.randperm(numel)[
+                        : int(numel * self.sample_frac)
+                    ]
+            self.indices = indices
+        # queue structure is used to manage the history with a finite
+        # number of elements
+        self.history = {
+            "params": Queue(self.buffer_size),
+            "grads": Queue(self.buffer_size),
+        }
+
+    @property
+    def global_step(self) -> int:
+        return self._global_step
+
+    @global_step.setter
+    def global_step(self, value: int) -> None:
+        self._global_step = value
+
+    @property
+    def is_active(self) -> bool:
+        """Used to determine whether the correlation analysis will be carried out."""
+        return (
+            self.global_step % self.analyze_every_n_steps
+        ) == 0 and self.global_step != 0
+
+    def on_train_batch_start(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        self.global_step = trainer.global_step
+
+    def on_before_optimizer_step(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", loss: torch.Tensor
+    ) -> None:
+        """
+        Triggers before the optimizer is stepped, adding the parameters and
+        optionally gradients to the history.
+
+        If the current step matches the analysis frequency, carry out the
+        autocorrelation analysis and log the spectrum.
+
+        Parameters
+        ----------
+        trainer : pl.Trainer
+            PyTorch Lightning trainer instance
+        pl_module : pl.LightningModule
+            PyTorch Lightning module to track
+        loss : torch.Tensor
+            Loss value; unused
+        """
+        params, grads = self.sample_parameters(
+            pl_module, self.indices, self.analyze_grads
+        )
+        self.history["params"].put(params)
+        if self.analyze_grads:
+            self.history["grads"].put(grads)
+        # remove the oldest part of history first if we're full
+        if self.history["params"].full():
+            _ = self.history["params"].get()
+        if self.history["grads"].full():
+            _ = self.history["grads"].get()
+        if self.is_active:
+            self.run_analysis(pl_module.logger)
+
+
+class ExponentialMovingAverageCallback(Callback):
+    def __init__(
+        self,
+        decay: float = 0.99,
+        verbose: bool | Literal["WARN", "INFO", "DEBUG"] = "WARN",
+    ) -> None:
+        """
+        Initialize an exponential moving average callback.
+
+        This callback attaches a ``ema_module`` attribute to
+        the current training task, which duplicates the model
+        weights that are tracked with an exponential moving
+        average, parametrized by the ``decay`` value.
+
+        This will double the memory footprint of your model,
+        but has been shown to considerably improve generalization.
+
+        Parameters
+        ----------
+        decay : float
+            Exponential decay factor to apply to updates.
+        """
+        super().__init__()
+        self.decay = decay
+        self.logger = getLogger("matsciml.ema_callback")
+        if isinstance(verbose, bool):
+            if not verbose:
+                verbose = "WARN"
+            else:
+                verbose = "INFO"
+        if isinstance(verbose, str):
+            assert verbose in [
+                "WARN",
+                "INFO",
+                "DEBUG",
+            ], "Invalid verbosity setting in EMA callback."
+        self.logger.setLevel(verbose)
+
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        # check to make sure the module has no lazy layers
+        for layer in pl_module.modules():
+            if isinstance(layer, nn.modules.lazy.LazyModuleMixin):
+                if layer.has_uninitialized_params():
+                    raise RuntimeError(
+                        "EMA callback does not support lazy layers. Please "
+                        "re-run without using lazy layers."
+                    )
+        # in the case that there is already an EMA state we don't initialize
+        if hasattr(pl_module, "ema_module"):
+            self.logger.info(
+                "Task has an existing EMA state; not initializing a new one."
+            )
+            self.ema_module = pl_module.ema_module
+        else:
+            # hook to the task module and in the current callback
+            ema_module = AveragedModel(
+                pl_module, multi_avg_fn=get_ema_multi_avg_fn(self.decay)
+            )
+            self.logger.info("Task does not have an existing EMA state; creating one.")
+            # setting the callback ema_module attribute allows ease of access
+            self.ema_module = ema_module
+            pl_module.ema_module = ema_module
+
+    def on_train_batch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        outputs,
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        self.logger.info("Updating EMA state.")
+        pl_module.ema_module.update_parameters(pl_module)
+
+    def on_fit_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        loader = trainer.train_dataloader
+        self.logger.info("Fit finished - updating EMA batch normalization state.")
+        update_bn(loader, pl_module.ema_module)
+
+
+class LossScalingScheduler(Callback):
+    def __init__(
+        self,
+        *schedules: BaseScalingSchedule,
+        log_level: Literal["INFO", "DEBUG", "WARNING", "CRITICAL"] = "INFO",
+    ) -> None:
+        """
+        Callback for dynamically adjusting loss scaling values over
+        the course of training, a la curriculum learning.
+
+        This class is configured by supplying a list of schedules
+        as args; see `matsciml.lightning.loss_scaling` module for
+        available schedules. Each schedule instance has a `key`
+        attribute that points it to the corresponding task key
+        as set in the Lightning task module (e.g. `energy`, `force`).
+
+        Parameters
+        ----------
+        args : BaseScalingSchedule
+            Scaling schedules for as many tasks as being performed.
+        """
+        super().__init__()
+        assert len(schedules) > 0, "Must pass individual schedules to loss scheduler!"
+        self.schedules = schedules
+        self._logger = getLogger("matsciml.loss_scaling_scheduler")
+        self._logger.setLevel(log_level)
+        self._logger.debug(f"Configured {len(self.schedules)} schedules.")
+        self._logger.debug(
+            f"Schedules have {[s.key for s in self.schedules]} task keys."
+        )
+
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        trainer.datamodule.setup("fit")
+        for schedule in self.schedules:
+            # check to make sure the schedule key actually exists in the task
+            if schedule.key not in pl_module.task_keys:
+                raise KeyError(
+                    f"Schedule for {schedule.key} expected, but not specified as a task key!"
+                )
+            # schedules grab what information they need from the
+            # trainer and task modules
+            schedule.setup(trainer, pl_module)
+            self._logger.debug("Configured {schedule.key} schedule.")
+
+    def _step_schedules(
+        self, pl_module: "pl.LightningModule", stage: Literal["step", "epoch"]
+    ) -> None:
+        """Base function to step schedules according to what stage we are in."""
+        for schedule in self.schedules:
+            if schedule.step_frequency == stage:
+                target_key = schedule.key
+                self._logger.debug(
+                    f"Attempting to advance {target_key} schedule on {stage}."
+                )
+                try:
+                    new_scaling_value = schedule.step()
+                    pl_module.task_loss_scaling[target_key] = new_scaling_value
+                    self._logger.debug(
+                        f"Advanced {target_key} to new value: {new_scaling_value}"
+                    )
+                except StopIteration:
+                    self._logger.warning(
+                        f"{target_key} has run out of scheduled values; this may be unintentional."
+                    )
+
+    def on_train_batch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        outputs: Any,
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        self._step_schedules(pl_module, "step")
+
+    def on_train_epoch_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        self._step_schedules(pl_module, "epoch")

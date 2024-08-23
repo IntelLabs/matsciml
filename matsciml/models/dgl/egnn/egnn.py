@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT License
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable
 
 import dgl
 import torch
@@ -13,7 +13,10 @@ from matsciml.common.types import BatchDict, DataDict, Embeddings
 from matsciml.models.base import AbstractDGLModel
 from matsciml.models.dgl.egnn.egnn_model import EGNN, MLP
 
+from matsciml.common.registry import registry
 
+
+@registry.register_model("PLEGNNBackbone")
 class PLEGNNBackbone(AbstractDGLModel):
     def __init__(
         self,
@@ -169,7 +172,7 @@ class PLEGNNBackbone(AbstractDGLModel):
         data = {}
         assert (
             "graph" in batch
-        ), f"PLEGNN expects a DGLGraph in the 'graph' key of a batch."
+        ), "PLEGNN expects a DGLGraph in the 'graph' key of a batch."
         graph = batch.get("graph")
         atomic_numbers = graph.ndata["atomic_numbers"].long()
         pos = graph.ndata["pos"]

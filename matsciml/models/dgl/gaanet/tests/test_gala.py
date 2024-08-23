@@ -42,8 +42,8 @@ def data():
         ),
         # this should be 3 point clouds
         "pc_features": torch.rand(3, 4, 4, 200),
-        "src_nodes": [torch.arange(3), torch.arange(3), torch.arange(4)],
-        "dst_nodes": [torch.arange(3), torch.arange(3), torch.arange(4)],
+        "pc_src_nodes": [torch.arange(3), torch.arange(3), torch.arange(4)],
+        "pc_dst_nodes": [torch.arange(3), torch.arange(3), torch.arange(4)],
         "sizes": [3, 3, 4],
     }
     return data

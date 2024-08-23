@@ -1,0 +1,15 @@
+dataset: NomadDataset
+debug:
+  batch_size: 4
+  num_workers: 0
+experiment:
+  test_split: ''
+  train_path: ''
+  val_split: ''
+target_keys:
+- spin_polarized
+- efermi
+- relative_energy
+- symmetry_number
+- symmetry_symbol
+- symmetry_group

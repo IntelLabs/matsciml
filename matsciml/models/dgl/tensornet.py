@@ -51,16 +51,16 @@ class TensorNet(AbstractDGLModel, MGLTensorNet):
         # Obtain graph, with distances and relative position vectors
         g.edata["pbc_offshift"] = g.edata["offsets"]
         g.ndata["node_type"] = g.ndata["atomic_numbers"].long()
+
+        # Obtain graph, with distances and relative position vectors
         bond_vec, bond_dist = compute_pair_vector_and_distance(g)
         g.edata["bond_vec"] = bond_vec.to(g.device)
         g.edata["bond_dist"] = bond_dist.to(g.device)
 
-        # This asserts convinces TorchScript that edge_vec is a Tensor and not an Optional[Tensor]
-
         # Expand distances with radial basis functions
         edge_attr = self.bond_expansion(g.edata["bond_dist"])
         g.edata["edge_attr"] = edge_attr
-        # Embedding from edge-wise tensors to node-wise tensors
+        # Embedding layer
         X, edge_feat, state_feat = self.tensor_embedding(g, state_attr)
         # Interaction layers
         for layer in self.layers:
@@ -76,6 +76,7 @@ class TensorNet(AbstractDGLModel, MGLTensorNet):
             dim=-1,
         )
         x = self.out_norm(x)
+        x = self.linear(x)
 
         g.ndata["node_feat"] = x
         if self.is_intensive:
@@ -86,6 +87,7 @@ class TensorNet(AbstractDGLModel, MGLTensorNet):
                 output = self.sigmoid(output)
             matsciml_output = (vec, tensor_norm(X))
             return matsciml_output
+
         g.ndata["atomic_properties"] = self.final_layer(g)
         output = dgl.readout_nodes(g, "atomic_properties", op="sum")
         matsciml_output = (output, g.ndata["atomic_properties"])

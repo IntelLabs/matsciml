@@ -347,6 +347,92 @@ class MaterialsProjectDataset(PointCloudDataset):
         )
 
 
+@registry.register_dataset("MaterialsTrajectoryDataset")
+class MaterialsTrajectoryDataset(MaterialsProjectDataset):
+    """
+    This is predominantly a variant of the base class,
+    but specialized towards energy, stress, and force prediction.
+    """
+
+    def data_from_key(
+        self,
+        lmdb_index: int,
+        subindex: int,
+    ) -> dict[str, torch.Tensor | dict[str, torch.Tensor]]:
+        """
+        Variation of the base class method. A lot of the complexity
+        is removed, as this class exclusively focuses on performing
+        energy/stress/force regression tasks.
+
+        Parameters
+        ----------
+        lmdb_index : int
+            Index corresponding to which LMDB environment to parse from.
+        subindex : int
+            Index within an LMDB file that maps to a sample.
+
+        Returns
+        -------
+        Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
+            A single sample/material from Materials Project.
+        """
+        data: dict[str, Any] = super(PointCloudDataset, self).data_from_key(
+            lmdb_index, subindex
+        )
+        return_dict = {}
+        # parse out relevant structure/lattice data
+        self._parse_structure(data, return_dict)
+        self._parse_symmetry(data, return_dict)
+        target_keys = [
+            "energy",
+            "force",
+            "stress",
+            "uncorrected_total_energy",
+            "ef_per_atom_relaxed",
+            "ef_per_atom",
+            "e_per_atom_relaxed",
+            "energy_per_atom",
+            "corrected_total_energy",
+        ]
+        # pack stuff
+        targets = {}
+        for key in target_keys:
+            item = data.get(key, None)
+            if item is not None:
+                # in the case we have something like a list, we'll try
+                # and convert it into a tensor in this pass
+                if isinstance(item, Iterable):
+                    item = torch.Tensor(item)
+                targets[key] = item
+        # check for missing essential keys
+        missing_keys = [
+            key
+            for key in ["force", "stress", "corrected_total_energy"]
+            if key not in targets
+        ]
+        if len(missing_keys) != 0:
+            raise KeyError(
+                f"Missing the following keys: {missing_keys} needed for MPTraj."
+                " Please ensure you're using the right dataset/LMDB files!"
+            )
+        # copy as nominal energy value
+        if "energy" not in targets:
+            targets["energy"] = targets["corrected_total_energy"]
+        return_dict["targets"] = targets
+        # compress all the targets into a single tensor for convenience
+        target_types = {"classification": [], "regression": target_keys}
+        return_dict["target_types"] = target_types
+        self.target_keys = target_types
+        return return_dict
+
+    @classmethod
+    def from_devset(cls, transforms: list[Callable] | None = None, **kwargs):
+        """Override the devset call, at least temporarily."""
+        raise NotImplementedError(
+            "Materials Trajectory does not have a devset available."
+        )
+
+
 if _has_pyg:
     from torch_geometric.data import Batch, Data
 

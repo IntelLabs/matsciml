@@ -11,7 +11,10 @@ from matsciml.datasets.alexandria import AlexandriaDataset
 from matsciml.datasets.carolina_db import CMDataset
 from matsciml.datasets.colabfit import ColabFitDataset
 from matsciml.datasets.lips import LiPSDataset
-from matsciml.datasets.materials_project import MaterialsProjectDataset
+from matsciml.datasets.materials_project import (
+    MaterialsProjectDataset,
+    MaterialsTrajectoryDataset,
+)
 from matsciml.datasets.multi_dataset import MultiDataset
 from matsciml.datasets.nomad import NomadDataset
 from matsciml.datasets.ocp_datasets import IS2REDataset, S2EFDataset
@@ -26,6 +29,7 @@ __all__ = [
     "NomadDataset",
     "OQMDDataset",
     "MaterialsProjectDataset",
+    "MaterialsTrajectoryDataset",
     "LiPSDataset",
     "SyntheticPointGroupDataset",
     "MultiDataset",

@@ -32,11 +32,11 @@ dependencies = [
   "pymatgen==2024.3.1",
   "schema>=0.7.5",
   "ase>=3.22.1",
-  "matgl==1.0.0",
+  "matgl==1.1.3",
   "einops==0.8.0",
-  "mendeleev==0.16.0",
+  "mendeleev==0.17.0",
   "e3nn",
-  "mace-torch==0.3.4",
+  "mace-torch==0.3.6",
   "monty==2024.2.2"
 ]
 description = "PyTorch Lightning and Deep Graph Library enabled materials science deep learning pipeline"
@@ -71,7 +71,7 @@ symmetry = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["matsciml*"]
+include = ["matsciml*", "experiments*"]
 where = ["."]
 
 [tool.setuptools.dynamic]

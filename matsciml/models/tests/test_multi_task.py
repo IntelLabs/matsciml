@@ -85,10 +85,10 @@ def test_multitask_init(is2re_s2ef, model_def):
     dm = is2re_s2ef
     encoder = model_def
     is2re = ScalarRegressionTask(encoder, task_keys=["energy_init", "energy_relaxed"])
-    s2ef = ForceRegressionTask(encoder, task_keys=["energy"])
+    s2ef = ForceRegressionTask(encoder, task_keys=["energy", "force"])
 
     # pass task keys to make sure output heads are created
-    task = MultiTaskLitModule(
+    _ = MultiTaskLitModule(
         ("IS2REDataset", is2re),
         ("S2EFDataset", s2ef),
         task_keys=dm.target_keys,

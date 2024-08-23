@@ -212,6 +212,9 @@ class MatSciMLCalculator(Calculator):
         data_dict["pos"] = pos
         data_dict["atomic_numbers"] = atomic_numbers
         data_dict["cell"] = cell
+        # ptr and batch are usually expected by MACE even if it's a single graph
+        data_dict["ptr"] = torch.tensor([0])
+        data_dict["batch"] = torch.zeros((pos.size(0)))
         return data_dict
 
     def _format_pipeline(self, atoms: Atoms) -> DataDict:

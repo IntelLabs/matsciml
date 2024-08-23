@@ -1,0 +1,6 @@
+model: faenet_pyg
+dataset:
+  oqmd:
+    - task: ScalarRegressionTask
+      targets:
+       - energy

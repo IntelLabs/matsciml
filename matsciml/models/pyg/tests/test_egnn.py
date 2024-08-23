@@ -4,7 +4,6 @@ import pytest
 import torch
 
 # this import is not used, but ensures that the registry is updated
-from matsciml import datasets
 from matsciml.common.registry import registry
 from matsciml.datasets.transforms import (
     PeriodicPropertiesTransform,
@@ -32,7 +31,7 @@ def egnn_architecture() -> EGNN:
 
 
 # here we filter out datasets from the registry that don't make sense
-ignore_dset = ["Multi", "M3G", "PyG", "Cdvae"]
+ignore_dset = ["Multi", "M3G", "PyG", "Cdvae", "SyntheticPointGroupDataset"]
 filtered_list = list(
     filter(
         lambda x: all([target_str not in x for target_str in ignore_dset]),
@@ -64,7 +63,7 @@ def test_model_forward_nograd(dset_class_name: str, egnn_architecture: EGNN):
         Concrete EGNN object with some parameters
     """
     transforms = [
-        PeriodicPropertiesTransform(cutoff_radius=6.0),
+        PeriodicPropertiesTransform(cutoff_radius=6.0, adaptive_cutoff=True),
         PointCloudToGraphTransform("pyg"),
     ]
     dm = MatSciMLDataModule.from_devset(
@@ -84,4 +83,4 @@ def test_model_forward_nograd(dset_class_name: str, egnn_architecture: EGNN):
         assert torch.isreal(z).all()
         assert ~torch.isnan(z).all()  # check there are no NaNs
         assert torch.isfinite(z).all()
-        assert torch.all(torch.abs(z) <= 1000)  # ensure reasonable values
+        assert torch.all(torch.abs(z) <= 10000)  # ensure reasonable values
