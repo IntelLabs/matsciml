@@ -4,6 +4,7 @@ author = "Intel Corporation"
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosectionlabel",

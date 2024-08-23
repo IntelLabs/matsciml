@@ -15,6 +15,7 @@ The Open MatSciML Toolkit
    transforms
    models
    training
+   callbacks
    best-practices
    how-to
 
