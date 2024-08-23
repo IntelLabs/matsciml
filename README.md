@@ -19,6 +19,7 @@ This is the implementation of the MatSci ML benchmark, which includes ~1.5 milli
 
 ### News
 
+- 2024/08/23 [Readthedocs](https://matsciml.readthedocs.io/en/latest/) is now online!
 - [2023/09/27] Release of [pre-packaged lmdb-based datasets](https://zenodo.org/record/8381476) from v1.0.0 via Zenodo.
 - [2023/08/31] Initial release of the MatSci ML Benchmark with integration of ~1.5 million ground state materials.
 - [2023/07/31] The Open MatSci ML Toolkit : A Flexible Framework for Deep Learning on the OpenCatalyst Dataset paper is accepted into TMLR. See previous version for code related to the benchmark.
