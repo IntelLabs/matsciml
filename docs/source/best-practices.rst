@@ -181,6 +181,48 @@ the accelerator.
 Training
 --------
 
+Quick debugging
+^^^^^^^^^^^^^^^
+
+Using PyTorch Lightning, the ``Trainer`` can be configured to perform
+a fast "dev" run which disables checkpointing and logging, and performs
+a specified number of training and validation steps for a single loop.
+
+.. code-block:: python
+   import pytorch_lightning as pl
+
+   trainer = pl.Trainer(fast_dev_run=10)
+
+This is an excellent way to quickly debug datasets and workflows. When
+paired with ``MatSciMLDataModule.from_devset(...)``, debugging can be
+significantly faster in our experience.
+
+Diagnosing ``NaN`` during training
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``matsciml.lightning.callbacks.GradientCheckCallback`` is written to help
+track down where and when parameter losses go to ``NaN``. When configured with
+``verbose``, it will print out the batch index and layers where this occurs.
+This callback will also zero out ``NaN`` gradients, allowing training to resume
+and hoping for the problem to self-correct as the model has a chance to learn
+from various training samples.
+
+Understanding training dynamics
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``matsciml.lightning.callbacks.TrainingHelperCallback`` is a callback that implements
+a number of heuristics that may be helpful in getting an intuition for model
+training. Some of the things this callback will watch for are embeddings that explode,
+oddities with data, and making sure that gradients make it to the encoder such that
+output heads are not completely ignoring the embeddings. If paired with ``wandb``
+logging via ``pytorch_lightning.loggers.WandbLogger``, it will also log histograms
+that help diagnose gradient behaviors.
+
+Similarly, the ``matsciml.lightning.callbacks.ModelAutocorrelation`` callback was
+inspired by observations made in LLM training research, where the breakdown of
+assumptions in the convergent properties of ``Adam``-like optimizers causes large
+spikes in the training loss. This callback can help identify these occurrences.
+
 .. _e3nn documentation: https://docs.e3nn.org/en/latest/
 
 .. _IPEX installation: https://intel.github.io/intel-extension-for-pytorch/index.html#installation?platform=gpu
