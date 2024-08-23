@@ -16,6 +16,7 @@ dependencies:
   - pip
   - pip:
     - "-e ./[all]"
+    - intel-openmp
 variables:
   # append to library path for dynamic libraries
   LD_LIBRARY_PATH: "'$LD_LIBRARY_PATH:$CONDA_PREFIX/lib'"
