@@ -54,6 +54,13 @@ abstractions.
 Intel®️ XPU usage
 ^^^^^^^^^^^^^^^^
 
+.. warning::
+   The XPU packaging ecosystem is currently being overhauled substantially,
+   notably from PyTorch 2.4.0 onwards, should have native support. As such,
+   a lot of information in this section will soon become out of date in
+   that it won't be absolutely necessary to install IPEX in order to use
+   Intel XPUs.
+
 Currently, in order to use Intel GPUs with PyTorch and ``matsciml``,
 the XPU version of ``intel_extension_for_pytorch`` (IPEX) must be installed
 alongside oneAPI with supported video drivers and compute runtimes.
