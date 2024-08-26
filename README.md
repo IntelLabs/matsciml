@@ -307,6 +307,10 @@ In Open MatSci ML Toolkit, tasks effective form learning objectives: at a high l
 - [6] Zhao, Y., Al‐Fahdi, M., Hu, M., Siriwardane, E.M., Song, Y., Nasiri, A. and Hu, J., 2021. High‐throughput discovery of novel cubic crystal materials using deep generative neural networks. Advanced Science, 8(20), p.2100566.
 - [7] Xie, T., Fu, X., Ganea, O.E., Barzilay, R. and Jaakkola, T.S., 2021, October. Crystal Diffusion Variational Autoencoder for Periodic Material Generation. In International Conference on Learning Representations.
 
+## Contributing
+
+Please refer to the [developers guide](https://matsciml.readthedocs.io/en/latest/developers.html) for how to contribute the the Open MatSciML Toolkit.
+
 
 ## Citations
 
