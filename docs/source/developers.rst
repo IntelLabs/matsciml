@@ -53,6 +53,11 @@ if you have the necessary development packages installed, can be used to build t
 PRs. Simply navigate into ``docs``, then run ``make html`` that will then build into ``docs/html`` for you to open up in a browser.
 We recommend you make sure that the documentation is formatted as intended before submitting.
 
+In terms of general documentation style, when in doubt, follow `Strunk & White <https://en.wikipedia.org/wiki/The_Elements_of_Style>`_. Specific to the ``matsciml``
+style is to try and weave API references in a more prose-like way, i.e. instead of merely offloading everything to automatically generated text with ``.. autoclass``,
+you should strive to write about concepts and add code references in support of your writing. A (currently limited) example of this is in :ref:`Best practices`, where
+each section describes an idea followed by reference to the relevant API.
+
 Models
 ^^^^^^
 
