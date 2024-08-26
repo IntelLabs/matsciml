@@ -10,7 +10,7 @@ we assume you are working in a terminal, and if you use a graphical interface fo
 specifics but the general idea should remain the same.
 
 1. Make sure you have an account on Github, and that your local environment has ``git`` set up and configured with your Github credentials for SSH access. See `here <https://docs.github.com/en/authentication/connecting-to-github-with-ssh>`_ for instructions to do so.
-2. At the `public repository <https://github.com/IntelLabs/matsciml`_, create a fork. When that's done, clone *your fork* locally where you normally keep code.
+2. At the `public repository <https://github.com/IntelLabs/matsciml>`_, create a fork. When that's done, clone *your fork* locally where you normally keep code.
 3. Navigate to your freshly cloned ``matsciml``; by default you will be on ``main`` branch.
 4. We recommend making changes on new branches: you can create a new branch by running ``git checkout -b <name-of-branch>``. We recommend naming the branch something descriptive, and optionally if you are addressing an issue, prefix the name of the branch with the Github issue number.
 5. Install ``matsciml`` in a virtual environment, whether that be with ``conda``/``mamba``, or with ``venv``. Be sure to install it in editable mode (``-e``), with the development requirements (``./[dev]``).
