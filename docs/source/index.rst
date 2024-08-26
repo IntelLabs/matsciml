@@ -19,6 +19,7 @@ The Open MatSciML Toolkit
    experiment-interface
    best-practices
    how-to
+   developers
 
 The Open MatSciML Toolkit comprises a framework and benchmark suite for AI-accelerated materials discovery,
 with a strong emphasis on a low barrier to entry and continuity across laptops to high performance computing clusters.
@@ -39,6 +40,7 @@ are supported by the toolkit. If any pique your interest, check out the `Github 
 folder, which can be a good place to get up and running. Once you've got your teeth sunk into the
 general functionality of the toolkit, check out :ref:`Best practices` for additional functionality
 of the toolkit. If you're stuck, please feel free to open an issue or start a discussion on Github!
+When you're ready, checkout the :ref:`Developers guide` to see how you can contribute to the toolkit!
 
 Installation
 ^^^^^^^^^^^^^
