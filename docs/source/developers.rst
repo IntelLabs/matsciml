@@ -23,7 +23,7 @@ specifics but the general idea should remain the same.
 12. Once the changes have been approved, if it's your first pull request we'll ask you to add your name to the contributors list! You can make this as another local commit, then run ``git push`` again.
 
 General Guidelines
-==================
+------------------
 
 * Make your code readable and maintainable. Use meaningful variable and function names.
 * Follow the coding standards and style guidelines set in the repository.
@@ -39,7 +39,7 @@ Thank you for being a part of our open-source community!
 
 
 Specific instructions
-=====================
+---------------------
 
 Documentation
 ^^^^^^^^^^^^^
@@ -56,7 +56,7 @@ We recommend you make sure that the documentation is formatted as intended befor
 Models
 ^^^^^^
 
-Please refer to the dedicated `models writeup <https://github.com/IntelLabs/matsciml/models/README.md>`_.
+Please refer to the dedicated `models writeup <https://github.com/IntelLabs/matsciml/models/README.md>`_ until we migrate the documentation here.
 
 Datasets
 ^^^^^^^^
