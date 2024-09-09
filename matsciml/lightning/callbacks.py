@@ -716,6 +716,7 @@ class SAM(Callback):
         skip_step_count: int | None = None,
         skip_epoch_count: int | float | None = None,
         logging: bool = False,
+        log_level: Literal["DEBUG", "INFO", "WARNING"] = "WARNING",
     ) -> None:
         """
         Set up the ``SAM (Sharpness Aware Minimization)`` callback.
@@ -756,6 +757,12 @@ class SAM(Callback):
         logging : bool, default False
             If set to True, logs the behavior of SAM to console. This is useful
             for debugging.
+        log_level: Literal["INFO", "DEBUG", "WARNING"], default "WARNING"
+            Sets the logging level if logging is specified. By default the
+            level is set to warnings, which will not report when SAM is not running
+            but still warn the user when the gradient norm is smaller than
+            machine epsilon. Set the level to "INFO" or lower if you wish to
+            check when SAM is *not* running.
 
         Examples
         --------
@@ -781,7 +788,7 @@ class SAM(Callback):
         self.skip_epoch_count = skip_epoch_count
         if logging:
             self.logger = getLogger("matsciml.callbacks.SAM")
-            self.logger.setLevel("INFO")
+            self.logger.setLevel(log_level)
         else:
             self.logger = None
 
