@@ -770,7 +770,28 @@ class SAM(Callback):
                 "`skip_epoch_count` and `skip_step_count` are mutually exclusive for SAM."
             )
         self.skip_step_count = skip_step_count
+        if skip_epoch_count and not skip_epoch_count.is_integer():
+            assert (
+                0 < skip_epoch_count < 1.0
+            ), "Decimal `skip_epoch_count` passed not within [0,1]."
         self.skip_epoch_count = skip_epoch_count
+
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        # determine the maximum number of epochs
+        self.max_epochs = trainer.max_epochs
+        # if it's been specified explicitly, just use that
+        if trainer.max_steps > -1:
+            self.max_steps = trainer.max_steps
+        else:
+            # work out the total number of expected steps
+            train_len = len(trainer.train_dataloader)
+            self.max_steps = train_len * self.max_epochs
+        # if a fractional epoch skip is specified, convert it to
+        # an integer count for easier comparison
+        if self.skip_epoch_count and not self.skip_epoch_count.is_integer():
+            self.skip_epoch_count = int(self.max_epochs * self.skip_epoch_count)
 
     @staticmethod
     def _get_params(optimizer: Optimizer) -> Iterator[torch.Tensor]:
