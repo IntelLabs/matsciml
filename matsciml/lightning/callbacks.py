@@ -715,6 +715,7 @@ class SAM(Callback):
         adaptive: bool = False,
         skip_step_count: int | None = None,
         skip_epoch_count: int | float | None = None,
+        logging: bool = False,
     ) -> None:
         """
         Set up the ``SAM (Sharpness Aware Minimization)`` callback.
@@ -752,6 +753,9 @@ class SAM(Callback):
             to wait before SAM triggers. The default setting, None, will not
             wait any epochs before invoking SAM. Mutually exclusive with
             ``skip_step_count``.
+        logging : bool, default False
+            If set to True, logs the behavior of SAM to console. This is useful
+            for debugging.
 
         Examples
         --------
@@ -775,6 +779,10 @@ class SAM(Callback):
                 0 < skip_epoch_count < 1.0
             ), "Decimal `skip_epoch_count` passed not within [0,1]."
         self.skip_epoch_count = skip_epoch_count
+        if logging:
+            self.logger = getLogger("matsciml.callbacks.SAM")
+        else:
+            self.logger = None
 
     def on_fit_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
