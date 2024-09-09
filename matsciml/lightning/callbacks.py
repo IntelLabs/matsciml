@@ -781,6 +781,7 @@ class SAM(Callback):
         self.skip_epoch_count = skip_epoch_count
         if logging:
             self.logger = getLogger("matsciml.callbacks.SAM")
+            self.logger.setLevel("INFO")
         else:
             self.logger = None
 
