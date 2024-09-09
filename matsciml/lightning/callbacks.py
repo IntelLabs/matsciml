@@ -804,7 +804,11 @@ class SAM(Callback):
         if self.skip_epoch_count and not self.skip_epoch_count.is_integer():
             self.skip_epoch_count = int(self.max_epochs * self.skip_epoch_count)
         # add floating point epsilon for later use
-        self.epsilon = torch.finfo(pl_module.dtype).eps
+        self.epsilon = torch.tensor(
+            [torch.finfo(pl_module.dtype).eps],
+            dtype=pl_module.dtype,
+            device=pl_module.device,
+        )
 
     @staticmethod
     def _get_params(optimizer: Optimizer) -> Iterator[torch.Tensor]:
@@ -927,7 +931,13 @@ class SAM(Callback):
         """
         org_weights dictionary stores original weights and perturbed weights
         """
-        scale = self.rho / (self._grad_norm(optimizer) + 1e-5)
+        # take the larger value of the two; hopefully not epsilon!
+        grad_norm = torch.maximum(self._grad_norm(optimizer), self.epsilon)
+        if grad_norm == self.epsilon and self.logger:
+            self.logger.warning(
+                f"Gradient norm smaller than machine epsilon at batch number {self.batch_idx}."
+            )
+        scale = self.rho / grad_norm
         org_weights: Dict[torch.Tensor, torch.Tensor] = {}
         for p in self._get_params(optimizer):
             if p.grad is None:
