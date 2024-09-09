@@ -803,6 +803,8 @@ class SAM(Callback):
         # an integer count for easier comparison
         if self.skip_epoch_count and not self.skip_epoch_count.is_integer():
             self.skip_epoch_count = int(self.max_epochs * self.skip_epoch_count)
+        # add floating point epsilon for later use
+        self.epsilon = torch.finfo(pl_module.dtype).eps
 
     @staticmethod
     def _get_params(optimizer: Optimizer) -> Iterator[torch.Tensor]:
