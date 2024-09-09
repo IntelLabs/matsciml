@@ -821,7 +821,7 @@ class SAM(Callback):
         self.batch = batch
         self.batch_idx = batch_idx
         # add flag to determine if we should run SAM on this step
-        current_step = trainer.current_step
+        current_step = trainer.global_step
         current_epoch = trainer.current_epoch
         # by default we start SAM, and toggle off if conditions met
         start_sam = True
