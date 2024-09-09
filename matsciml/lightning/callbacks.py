@@ -818,6 +818,16 @@ class SAM(Callback):
     ) -> None:
         self.batch = batch
         self.batch_idx = batch_idx
+        # add flag to determine if we should run SAM on this step
+        current_step = trainer.current_step
+        current_epoch = trainer.current_epoch
+        # by default we start SAM, and toggle off if conditions met
+        start_sam = True
+        if self.skip_epoch_count and self.skip_epoch_count < current_epoch:
+            start_sam = False
+        if self.skip_step_count and self.skip_step_count < current_step:
+            start_sam = False
+        self.start_sam = start_sam
 
     def extract_optimizer_specific_loss(self, task, optimizer, loss):
         optimizer_names = copy(task.optimizer_names)
