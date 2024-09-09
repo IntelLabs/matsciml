@@ -786,6 +786,8 @@ class SAM(Callback):
             self.max_steps = trainer.max_steps
         else:
             # work out the total number of expected steps
+            if not trainer.train_dataloader:
+                trainer.fit_loop.setup_data()
             train_len = len(trainer.train_dataloader)
             self.max_steps = train_len * self.max_epochs
         # if a fractional epoch skip is specified, convert it to
