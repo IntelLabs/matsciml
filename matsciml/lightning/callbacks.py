@@ -847,13 +847,13 @@ class SAM(Callback):
         current_epoch = trainer.current_epoch
         # by default we start SAM, and toggle off if conditions met
         start_sam = True
-        if self.skip_epoch_count and not self.skip_epoch_count < current_epoch:
+        if self.skip_epoch_count and current_epoch < self.skip_epoch_count:
             start_sam = False
             if self.logger:
                 self.logger.info(
                     "Required number of epochs not met; not running SAM yet."
                 )
-        if self.skip_step_count and not self.skip_step_count < current_step:
+        if self.skip_step_count and current_step < self.skip_step_count:
             start_sam = False
             if self.logger:
                 self.logger.info(
