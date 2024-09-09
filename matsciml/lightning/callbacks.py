@@ -709,7 +709,13 @@ if package_registry["codecarbon"]:
 
 
 class SAM(Callback):
-    def __init__(self, rho: float = 0.05, adaptive: bool = False) -> None:
+    def __init__(
+        self,
+        rho: float = 0.05,
+        adaptive: bool = False,
+        skip_step_count: int | None = None,
+        skip_epoch_count: int | float | None = None,
+    ) -> None:
         """
         Set up the ``SAM (Sharpness Aware Minimization)`` callback.
         https://arxiv.org/abs/2010.01412
@@ -734,6 +740,18 @@ class SAM(Callback):
         adaptive : bool
             A boolean flag indicating whether to adaptively normalize weights.
             Defaults to False.
+        skip_step_count : int | None, default None
+            Specifies an integer number of steps to skip before SAM is actually
+            in effect. By default is set to None, which starts SAM from the
+            first steps. Mutually exclusive with ``skip_epoch_count``.
+        skip_epoch_count : int | float | None, default None
+            Specifies the number of epochs to skip before SAM is in effect.
+            If an integer is passed, this corresponds to the exact epoch
+            count to wait before SAM is used. If a float between [0,1]
+            is passed, this corresponds to the fraction of the ``trainer.max_epochs``
+            to wait before SAM triggers. The default setting, None, will not
+            wait any epochs before invoking SAM. Mutually exclusive with
+            ``skip_step_count``.
 
         Examples
         --------
@@ -747,6 +765,8 @@ class SAM(Callback):
         super().__init__()
         self.rho = rho
         self.adaptive = adaptive
+        self.skip_step_count = skip_step_count
+        self.skip_epoch_count = skip_epoch_count
 
     @staticmethod
     def _get_params(optimizer: Optimizer) -> Iterator[torch.Tensor]:
