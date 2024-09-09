@@ -869,21 +869,25 @@ class SAM(Callback):
         task: BaseTaskModule,
         optimizer: Optimizer,
     ) -> None:
-        optimizer_is_used = self.is_optimizer_used(task, optimizer)
-        if optimizer_is_used:
-            with torch.no_grad():
-                org_weights = self._first_step(optimizer)
-            with torch.enable_grad():
-                loss = task._compute_losses(self.batch)
-                # this is for the multitask case where there is more than on optimizer
-                if not isinstance(task.optimizers(), Optimizer):
-                    loss = self.extract_optimizer_specific_loss(task, optimizer, loss)
-                loss = self._get_loss(loss)
-                if loss is not None:
-                    if torch.isfinite(loss):
-                        trainer.strategy.backward(loss, optimizer=optimizer)
-            with torch.no_grad():
-                self._second_step(optimizer, org_weights)
+        # check if SAM should have started yet before going through loop
+        if self.start_sam:
+            optimizer_is_used = self.is_optimizer_used(task, optimizer)
+            if optimizer_is_used:
+                with torch.no_grad():
+                    org_weights = self._first_step(optimizer)
+                with torch.enable_grad():
+                    loss = task._compute_losses(self.batch)
+                    # this is for the multitask case where there is more than on optimizer
+                    if not isinstance(task.optimizers(), Optimizer):
+                        loss = self.extract_optimizer_specific_loss(
+                            task, optimizer, loss
+                        )
+                    loss = self._get_loss(loss)
+                    if loss is not None:
+                        if torch.isfinite(loss):
+                            trainer.strategy.backward(loss, optimizer=optimizer)
+                with torch.no_grad():
+                    self._second_step(optimizer, org_weights)
 
     def _norm_weights(self, p: torch.Tensor) -> torch.Tensor:
         return torch.abs(p) if self.adaptive else torch.ones_like(p)
