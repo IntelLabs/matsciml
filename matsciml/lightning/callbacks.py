@@ -836,8 +836,16 @@ class SAM(Callback):
         start_sam = True
         if self.skip_epoch_count and self.skip_epoch_count < current_epoch:
             start_sam = False
+            if self.logger:
+                self.logger.info(
+                    "Required number of steps not met; not running SAM yet."
+                )
         if self.skip_step_count and self.skip_step_count < current_step:
             start_sam = False
+            if self.logger:
+                self.logger.info(
+                    "Required number of steps not met; not running SAM yet."
+                )
         self.start_sam = start_sam
 
     def extract_optimizer_specific_loss(self, task, optimizer, loss):
