@@ -781,7 +781,7 @@ class SAM(Callback):
                 "`skip_epoch_count` and `skip_step_count` are mutually exclusive for SAM."
             )
         self.skip_step_count = skip_step_count
-        if skip_epoch_count and not skip_epoch_count.is_integer():
+        if skip_epoch_count and isinstance(skip_epoch_count, float):
             assert (
                 0 < skip_epoch_count < 1.0
             ), "Decimal `skip_epoch_count` passed not within [0,1]."
