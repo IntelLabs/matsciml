@@ -36,6 +36,8 @@ dm = MatSciMLDataModule.from_devset(
     },
 )
 
-# run a quick training loop
-trainer = pl.Trainer(fast_dev_run=1000, callbacks=[SAM()])
+# run a quick training loop, skipping the first five steps
+trainer = pl.Trainer(
+    fast_dev_run=100, callbacks=[SAM(skip_step_count=5, logging=True, log_level="INFO")]
+)
 trainer.fit(task, datamodule=dm)
