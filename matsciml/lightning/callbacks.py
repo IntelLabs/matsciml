@@ -808,7 +808,7 @@ class SAM(Callback):
             self.max_steps = train_len * self.max_epochs
         # if a fractional epoch skip is specified, convert it to
         # an integer count for easier comparison
-        if self.skip_epoch_count and not self.skip_epoch_count.is_integer():
+        if self.skip_epoch_count and isinstance(self.skip_epoch_count, float):
             self.skip_epoch_count = int(self.max_epochs * self.skip_epoch_count)
         # add floating point epsilon for later use
         self.epsilon = torch.tensor(
