@@ -776,7 +776,7 @@ class SAM(Callback):
         super().__init__()
         self.rho = rho
         self.adaptive = adaptive
-        if skip_epoch_count and skip_epoch_count:
+        if skip_step_count and skip_epoch_count:
             raise ValueError(
                 "`skip_epoch_count` and `skip_step_count` are mutually exclusive for SAM."
             )
