@@ -810,6 +810,10 @@ class SAM(Callback):
         # an integer count for easier comparison
         if self.skip_epoch_count and isinstance(self.skip_epoch_count, float):
             self.skip_epoch_count = int(self.max_epochs * self.skip_epoch_count)
+            if self.logger:
+                self.logger.info(
+                    f"Fractional epoch skip - will start SAM from epoch {self.skip_epoch_count}, max epochs {self.max_epochs}."
+                )
         # add floating point epsilon for later use
         self.epsilon = torch.tensor(
             [torch.finfo(pl_module.dtype).eps],
