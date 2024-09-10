@@ -19,3 +19,6 @@ html_static_path = ["_static"]
 # configure napoleon docstrings
 napoleon_numpy_docstring = True
 napoleon_preprocess_types = True
+
+# ensure __init__ is used for class documentation
+autoclass_content = "both"
