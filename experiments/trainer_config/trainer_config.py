@@ -31,11 +31,14 @@ def setup_trainer(
     trainer_args = setup_extra_trainer_args(config["log_path"], trainer_args)
     trainer_args = instantiate_arg_dict(deepcopy(trainer_args))
     trainer_args = update_arg_dict("trainer", trainer_args, config["cli_args"])
+    # if loggers were requested, configure them
     if "loggers" in trainer_args:
         loggers = []
         for logger in trainer_args["loggers"]:
             loggers.append(logger)
         trainer_args.pop("loggers")
+    else:
+        loggers = None
     if "callbacks" in trainer_args:
         callbacks = []
         for callback in trainer_args["callbacks"]:
