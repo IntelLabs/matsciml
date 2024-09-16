@@ -24,9 +24,7 @@ def setup_extra_trainer_args(
     return trainer_args
 
 
-def setup_trainer(
-    config: dict[str, Any], trainer_args: dict[str, Any]
-) -> pl.LightningModule:
+def setup_trainer(config: dict[str, Any], trainer_args: dict[str, Any]) -> pl.Trainer:
     run_type = config["run_type"]
     trainer_args = setup_extra_trainer_args(config["log_path"], trainer_args)
     trainer_args = instantiate_arg_dict(deepcopy(trainer_args))
