@@ -37,11 +37,14 @@ def setup_trainer(config: dict[str, Any], trainer_args: dict[str, Any]) -> pl.Tr
         trainer_args.pop("loggers")
     else:
         loggers = None
+    # if callbacks were requested, configure them
     if "callbacks" in trainer_args:
         callbacks = []
         for callback in trainer_args["callbacks"]:
             callbacks.append(callback)
         trainer_args.pop("callbacks")
+    else:
+        callbacks = None
 
     trainer_kwargs = trainer_args["generic"]
     trainer_kwargs.update(trainer_args[run_type])
