@@ -35,7 +35,11 @@ def instantiate_arg_dict(input: Union[list, dict[str, Any]]) -> dict[str, Any]:
                 else:
                     transform_args = input_args
                 class_path = get_class_from_name(class_path)
-                return class_path(**transform_args)
+                if "class_path" in transform_args:
+                    args = instantiate_arg_dict(transform_args)
+                    return class_path(args)
+                else:
+                    return class_path(**transform_args)
             if key == "encoder_class":
                 input[key] = get_class_from_name(value["class_path"])
             elif isinstance(value, dict) and "class_path" in value:
