@@ -104,6 +104,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         num_workers: int = 0,
         val_split: str | Path | float | None = 0.0,
         test_split: str | Path | float | None = 0.0,
+        pred_split: str | Path | None = None,
         seed: int | None = None,
         dset_kwargs: dict[str, Any] | None = None,
         persistent_workers: bool | None = None,
@@ -111,7 +112,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         super().__init__()
         # make sure we have something to work with
         assert any(
-            [i for i in [dataset, train_path, val_split, test_split]],
+            [i for i in [dataset, train_path, val_split, test_split, pred_split]],
         ), "No splits provided to datamodule."
         # if floats are passed to splits, make sure dataset is provided for inference
         if any([isinstance(i, float) for i in [val_split, test_split]]):
@@ -122,7 +123,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             assert any(
                 [
                     isinstance(p, (str, Path))
-                    for p in [train_path, val_split, test_split]
+                    for p in [train_path, val_split, test_split, pred_split]
                 ],
             ), "Dataset type passed, but no paths to construct with."
         self.dataset = dataset
@@ -248,6 +249,17 @@ class MatSciMLDataModule(pl.LightningDataModule):
             if isinstance(split_path, (str, Path)):
                 dset = self._make_dataset(split_path, self.dataset)
                 splits[key] = dset
+        # specialty case for 'inference' or prediction runs
+        if hasattr(self.hparams, "pred_split"):
+            pred_split_path = self.hparams.pred_split
+            if isinstance(pred_split_path, str):
+                pred_split_path = Path(pred_split_path)
+            if not pred_split_path.exists():
+                raise FileNotFoundError(
+                    f"Prediction split provided, but not found: {pred_split_path}"
+                )
+            dset = self._make_dataset(pred_split_path, self.dataset)
+            splits["pred"] = dset
         # the last case assumes only the dataset is passed, we will treat it as train
         if len(splits) == 0:
             splits["train"] = self.dataset
@@ -268,8 +280,12 @@ class MatSciMLDataModule(pl.LightningDataModule):
         """
         Predict behavior just assumes the whole dataset is used for inference.
         """
+        if "pred" in self.splits:
+            target = self.splits["pred"]
+        else:
+            target = self.dataset
         return DataLoader(
-            self.dataset,
+            target,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             collate_fn=self.dataset.collate_fn,
