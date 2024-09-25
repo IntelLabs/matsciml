@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import pytorch_lightning as pl
 import torch
@@ -23,8 +23,7 @@ class BaseInferenceTask(ABC, pl.LightningModule):
         batch: BatchDict,
         batch_idx: int,
         dataloader_idx: int = 0,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     @classmethod
     def from_pretrained_checkpoint(
@@ -58,7 +57,7 @@ class BaseInferenceTask(ABC, pl.LightningModule):
             task_ckpt_path = Path(task_ckpt_path)
         assert (
             task_ckpt_path.exists()
-        ), f"Encoder checkpoint filepath specified but does not exist."
+        ), "Encoder checkpoint filepath specified but does not exist."
         ckpt = torch.load(task_ckpt_path)
         select_kwargs = {}
         for key in ["encoder_class", "encoder_kwargs"]:
