@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
+from logging import getLogger
 
 import pytorch_lightning as pl
 import torch
@@ -10,6 +12,82 @@ from torch import nn
 
 from matsciml.common.registry import registry
 from matsciml.common.types import BatchDict, DataDict
+
+
+class ParityData:
+    def __init__(self, name: str) -> None:
+        """
+        Class to help accumulate inference results.
+
+        This class should be created per target, and uses property
+        setters to accumulate target and prediction tensors,
+        and at the final step, aggregate them all into a single
+        tensor and with the `to_json` method, produce serializable
+        data.
+
+        Parameters
+        ----------
+        name : str
+            Name of the target property being tracked.
+        """
+        super().__init__()
+        self.name = name
+        self.logger = getLogger(f"matsciml.inference.{name}-parity")
+
+    @property
+    def ndim(self) -> int:
+        if not hasattr(self, "_targets"):
+            raise RuntimeError("No data set to accumulator yet.")
+        sample = self._targets[0]
+        if isinstance(sample, torch.Tensor):
+            return sample.ndim
+        else:
+            return 0
+
+    @property
+    def targets(self) -> torch.Tensor:
+        return torch.vstack(self._targets)
+
+    @targets.setter
+    def targets(self, values: torch.Tensor) -> None:
+        if not hasattr(self, "_targets"):
+            self._targets = []
+        if isinstance(values, torch.Tensor):
+            # remove errenous "empty" dimensions
+            values.squeeze_()
+        self._targets.append(values)
+
+    @property
+    def predictions(self) -> torch.Tensor:
+        return torch.vstack(self._targets)
+
+    @predictions.setter
+    def predictions(self, values: torch.Tensor) -> None:
+        if not hasattr(self, "_predictions"):
+            self._predictions = []
+        if isinstance(values, torch.Tensor):
+            values.squeeze_()
+        self._predictions.append(values)
+
+    def to_json(self) -> str:
+        return_dict = {}
+        targets = self.targets
+        predictions = self.predictions
+        # do some preliminary checks to the data
+        if targets.ndim != predictions.ndim:
+            self.logger.warning(
+                "Target/prediction dimensionality mismatch\n"
+                f"  Target: {targets.ndim}, predictions: {predictions.ndim}"
+            )
+        if targets.shape != predictions.shape:
+            self.logger.warning(
+                "Target/prediction shape mismatch\n"
+                f"  Target: {targets.shape}, predictions: {predictions.shape}."
+            )
+        return_dict["predictions"] = predictions.tolist()
+        return_dict["targets"] = targets.tolist()
+        return_dict["name"] = self.name
+        return json.dumps(return_dict)
 
 
 class BaseInferenceTask(ABC, pl.LightningModule):
