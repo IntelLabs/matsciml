@@ -12,6 +12,7 @@ from torch import nn
 
 from matsciml.common.registry import registry
 from matsciml.common.types import BatchDict, DataDict
+from matsciml.models.base import BaseTaskModule, MultiTaskLitModule
 
 
 class ParityData:
@@ -200,3 +201,51 @@ class EmbeddingInferenceTask(BaseInferenceTask):
         for key in ["targets", "symmetry"]:
             return_dict[key] = batch.get(key)
         return return_dict
+
+
+@registry.register_task("ParityInferenceTask")
+class ParityInferenceTask(BaseInferenceTask):
+    def __init__(self, pretrained_model: BaseTaskModule, *args, **kwargs):
+        if isinstance(pretrained_model, MultiTaskLitModule):
+            raise NotImplementedError(
+                "ParityInferenceTask currently only supports single task modules."
+            )
+        assert hasattr(pretrained_model, "predict") and callable(
+            pretrained_model.predict
+        ), "Model passed does not have a `predict` method; is it a `matsciml` task?"
+        super().__init__(pretrained_model)
+        self.common_keys = set()
+        self.accumulators = {}
+
+    def forward(self, batch: BatchDict) -> dict[str, float | torch.Tensor]:
+        # initially try using the predict method
+        preds = self.model.predict(batch)
+        return preds
+
+    def on_predict_start(self) -> None:
+        if not self.trainer.log_dir:
+            raise RuntimeError(
+                "ParityInferenceTask requires logging to be enabled; no `log_dir` detected in Trainer."
+            )
+
+    def predict_step(
+        self, batch: BatchDict, batch_idx: int, dataloader_idx: int = 0
+    ) -> None:
+        predictions = self(batch)
+        pred_keys = set(list(predictions.keys()))
+        batch_keys = set(list(batch["targets"].keys()))
+        self.common_keys = pred_keys.intersection(batch_keys)
+        # loop over keys that are mutually available in predictions and data
+        for key in self.common_keys:
+            if key not in self.accumulators:
+                self.accumulators[key] = ParityData(key)
+            acc = self.accumulators[key]
+            acc.targets = batch["targets"][key].detach()
+            acc.predictions = predictions[key].detach()
+
+    def on_predict_epoch_end(self) -> None:
+        log_dir = Path(self.trainer.log_dir)
+        output_file = log_dir.joinpath("inference_data.json")
+        with open(output_file, "w+") as write_file:
+            data = {key: acc.to_json() for key, acc in self.accumulators.items()}
+            json.dump(data, write_file, indent=2)
