@@ -71,8 +71,8 @@ class ParityData:
 
     def to_json(self) -> str:
         return_dict = {}
-        targets = self.targets
-        predictions = self.predictions
+        targets = self.targets.cpu()
+        predictions = self.predictions.cpu()
         # do some preliminary checks to the data
         if targets.ndim != predictions.ndim:
             self.logger.warning(
