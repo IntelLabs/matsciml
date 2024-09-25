@@ -250,7 +250,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
                 dset = self._make_dataset(split_path, self.dataset)
                 splits[key] = dset
         # specialty case for 'inference' or prediction runs
-        if hasattr(self.hparams, "pred_split"):
+        if isinstance(self.hparams.pred_split, (str, Path)):
             pred_split_path = self.hparams.pred_split
             if isinstance(pred_split_path, str):
                 pred_split_path = Path(pred_split_path)

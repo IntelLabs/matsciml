@@ -36,7 +36,9 @@ The ``ParityInferenceTask`` helps perform this task by using the PyTorch Lightni
 The default ``Trainer`` settings will create a ``lightning_logs`` directory, followed by an experiment
 number. Within it, once your inference run completes, there will be a ``inference_data.json`` that you
 can then load in. The data is sorted by the name of the target (e.g. ``energy``, ``bandgap``), under
-these keys, ``predictions`` and ``targets``.
+these keys, ``predictions`` and ``targets``. Note that ``pred_split`` does not necessarily have to be
+a completely different hold out: you can pass your training LMDB path if you wish to double check the
+performance of your model after training, or you can use it with unseen samples.
 
 .. note::
 
