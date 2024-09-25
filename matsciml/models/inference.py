@@ -17,6 +17,12 @@ class BaseInferenceTask(ABC, pl.LightningModule):
         super().__init__()
         self.model = pretrained_model
 
+    def training_step(self, *args, **kwargs) -> None:
+        """Overrides Lightning method to prevent task being used for training."""
+        raise NotImplementedError(
+            f"{self.__class__.__name__} is not intended for training."
+        )
+
     @abstractmethod
     def predict_step(
         self,
