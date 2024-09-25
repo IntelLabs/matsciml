@@ -70,7 +70,7 @@ class ParityData:
             values.squeeze_()
         self._predictions.append(values)
 
-    def to_json(self) -> str:
+    def to_json(self) -> dict[str, list]:
         return_dict = {}
         targets = self.targets.cpu()
         predictions = self.predictions.cpu()
@@ -88,7 +88,7 @@ class ParityData:
         return_dict["predictions"] = predictions.tolist()
         return_dict["targets"] = targets.tolist()
         return_dict["name"] = self.name
-        return json.dumps(return_dict)
+        return return_dict
 
 
 class BaseInferenceTask(ABC, pl.LightningModule):

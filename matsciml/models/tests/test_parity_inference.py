@@ -19,7 +19,22 @@ from matsciml.datasets.transforms import (
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "dset_params", [("MaterialsProjectDataset", "efermi"), ("LiPSDataset", "energy")]
+    "dset_params",
+    [
+        (
+            "MaterialsProjectDataset",
+            [
+                "efermi",
+            ],
+        ),
+        (
+            "LiPSDataset",
+            [
+                "energy",
+            ],
+        ),
+        ("OQMDDataset", ["stability", "band_gap"]),
+    ],
 )
 def test_parity_inference_workflow(dset_params):
     dataset_name, keys = dset_params
@@ -37,9 +52,7 @@ def test_parity_inference_workflow(dset_params):
         encoder_class=EGNN,
         encoder_kwargs={"hidden_dim": 16, "output_dim": 16, "num_conv": 2},
         output_kwargs={"hidden_dim": 16},
-        task_keys=[
-            keys,
-        ],
+        task_keys=keys,
     )
     # train the model briefly to initialize output heads
     trainer = pl.Trainer(max_epochs=1, limit_train_batches=10, limit_val_batches=0)
@@ -54,4 +67,8 @@ def test_parity_inference_workflow(dset_params):
     with open(log_dir.joinpath("inference_data.json"), "r") as read_file:
         data = json.load(read_file)
     assert len(data) != 0
+    assert sorted(list(data.keys())) == sorted(task.task_keys)
+    # make sure there are actually predictions and targets available
+    for subdict in data.values():
+        assert len(subdict["predictions"]) == len(subdict["targets"])
     shutil.rmtree("lightning_logs", ignore_errors=True)
