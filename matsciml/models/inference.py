@@ -112,8 +112,7 @@ class BaseInferenceTask(ABC, pl.LightningModule):
 
     @classmethod
     def from_pretrained_checkpoint(
-        cls,
-        task_ckpt_path: str | Path,
+        cls, task_ckpt_path: str | Path, ckpt_class_name: str | None = None
     ) -> BaseInferenceTask:
         """
         Instantiate a ``BaseInferenceTask`` from an existing Lightning checkpoint
@@ -124,9 +123,15 @@ class BaseInferenceTask(ABC, pl.LightningModule):
 
         Parameters
         ----------
-        task_ckpt_path : Union[str, Path]
+        task_ckpt_path : str | Path
             Path to an existing task checkpoint file. Typically, this
             would be a PyTorch Lightning checkpoint.
+        ckpt_class_name : str, optional
+            If specified, this will load the task based on its native
+            ``load_from_checkpoint`` method. This is a good alternative
+            if this method is unable to resolve parameter naming, etc,
+            and if your inference task depends on specific methods in
+            the task.
 
         Examples
         --------
@@ -143,6 +148,13 @@ class BaseInferenceTask(ABC, pl.LightningModule):
         assert (
             task_ckpt_path.exists()
         ), "Encoder checkpoint filepath specified but does not exist."
+        # if a task name for the checkpoint is given, use that task's
+        # loading method directly
+        if ckpt_class_name:
+            task_cls = registry.get_task_class(ckpt_class_name)
+            if not task_cls:
+                raise KeyError(f"Requested {task_cls}, which is not a registered task.")
+            return cls(task_cls.load_from_checkpoint(str(task_ckpt_path)))
         ckpt = torch.load(task_ckpt_path)
         select_kwargs = {}
         for key in ["encoder_class", "encoder_kwargs"]:
