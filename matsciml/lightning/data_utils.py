@@ -259,6 +259,9 @@ class MatSciMLDataModule(pl.LightningDataModule):
                     f"Prediction split provided, but not found: {pred_split_path}"
                 )
             dset = self._make_dataset(pred_split_path, self.dataset)
+            # assumes that if we're providing a predict set, we're not going
+            # to be doing training in the same run
+            self.dataset = dset
             splits["pred"] = dset
         # the last case assumes only the dataset is passed, we will treat it as train
         if len(splits) == 0:
