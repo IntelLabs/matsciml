@@ -254,3 +254,87 @@ Only arguments which contain dict: \[str, int, float\] mapping all the way
 through to the target value may be updated. Parameters which map to lists at any
 point are not updatable through ``cli_args``, for example callbacks, loggers, and
 transforms.
+
+Commonly Updated Parameters
+---------------------------
+
+Parameters that are frequently updated are highlighted below and sectioned off by their respective configs. To see a full set of parameters, it is recommended to navigate to the modules specific documentation.
+
+Common Trainer Config Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Anything that would go in ``pl.Trainer()`` can be found here, including hardware setup, number of epochs to train for, callbacks, and loggers.
+
+.. code-block:: yaml
+
+  min_epochs: 0
+  max_epochs: 1000
+  accelerator: gpu          # can be cpu, gpu, xpu
+  strategy: null            # can be ddp, ddp_with_unused_parameters, etc.
+  callbacks:
+    class_path: pytorch_lightning.callbacks.EarlyStopping
+      monitor: value_to_monitor
+    class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: value_to_monitor
+    class_path: matsciml.lightning.callbacks.GradientCheckCallback
+    class_path: matsciml.lightning.callbacks.TrainingHelperCallback
+  loggers:
+    class_path: pytorch_lightning.loggers.CSVLogger
+    class_path: pytorch_lightning.loggers.WandbLogger
+
+
+Common Model Config Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: yaml
+
+  transforms
+    class_path: matsciml.datasets.transforms.PeriodicPropertiesTransform
+    class_path: matsciml.datasets.transforms.PointCloudToGraphTransform
+  encoder_kwargs
+    lr: 0.001
+  loss_func:
+  output_kwargs
+    input_dim: 256
+    hidden_dim: 256
+
+
+Common Dataset Config Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Commonly updated dataset parameters
+
+.. code-block:: yaml
+
+  batch_size: 4
+  num_workers: 16
+  train_path: "./path/to/dataset"
+  val_split: "./path/to/dataset" or fraction of train_path
+  test_split: "./path/to/dataset" or fraction of train_path
+  target_keys:
+  - energy
+  - band_gap
+  task_args:
+    normalize_kwargs:
+        energy_mean: 0.0
+        energy_std: 1.0
+    task_loss_scaling:
+        energy: 1.0
+
+Experiment CLI and Downstream Tasks
+-----------------------------------
+
+The experiment cli provides some helpful utilities to enable downstream task development by removing boilerplate which would otherwise become time consuming and hard to track. Specifically, loading models, datasets, and tasks from yaml files makes it simple to pop in and out different transforms, callbacks, and datasets by simply updating yaml files instead of parsing out relevant sections of code. For example, to quickly load in a model and associated transforms, the following code block may be used:
+
+.. code-block:: python
+  :caption: Load in transforms from a yaml file
+
+  import yaml
+
+  from experiments.utils.utils import instantiate_arg_dict
+
+  model_config = "./experiments/configs/models/mace_pyg.yaml"
+  model_yaml = yaml.safe_load(open(model_config, "r"))
+  transforms = instantiate_arg_dict(model_yaml["transforms"])
+
+This utility may be used to load and instantiate any of the model, dataset, or trainer configs for easy reuse of configurations.
