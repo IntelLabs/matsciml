@@ -40,6 +40,12 @@ these keys, ``predictions`` and ``targets``. Note that ``pred_split`` does not n
 a completely different hold out: you can pass your training LMDB path if you wish to double check the
 performance of your model after training, or you can use it with unseen samples.
 
+Note that by default, `predict` triggers PyTorch's inference mode, which is a specialized case where
+absolutely no autograd is enabled. ``ForceRegressionTask`` uses automatic differentiation to evaluate
+forces, and so for inference tasks that require gradients, you **must** pass `inference_mode=False` to
+``pl.Trainer``.
+
+
 .. note::
 
     For developers, this is handled by the ``matsciml.models.inference.ParityData`` class. This is
