@@ -258,7 +258,7 @@ transforms.
 Commonly Updated Parameters
 ---------------------------
 
-Parameters that are frequently updated are highlighted below and sectioned off by thier respective configs. To see a full set of parameters, it is recommended to navigate to the modules specific documentation.
+Parameters that are frequently updated are highlighted below and sectioned off by their respective configs. To see a full set of parameters, it is recommended to navigate to the modules specific documentation.
 
 Common Trainer Config Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -267,10 +267,10 @@ Anything that would go in ``pl.Trainer()`` can be found here, including hardware
 
 .. code-block:: yaml
 
-  min_epochs
-  max_epochs
-  accelerator
-  strategy (ddp, etc.)
+  min_epochs: 0
+  max_epochs: 1000
+  accelerator: gpu          # can be cpu, gpu, xpu
+  strategy: null            # can be ddp, ddp_with_unused_parameters, etc.
   callbacks:
     class_path: pytorch_lightning.callbacks.EarlyStopping
       monitor: value_to_monitor
@@ -292,11 +292,11 @@ Common Model Config Parameters
     class_path: matsciml.datasets.transforms.PeriodicPropertiesTransform
     class_path: matsciml.datasets.transforms.PointCloudToGraphTransform
   encoder_kwargs
-    lr
-  loss_func
+    lr: 0.001
+  loss_func:
   output_kwargs
-    input_dim
-    hidden_dim
+    input_dim: 256
+    hidden_dim: 256
 
 
 Common Dataset Config Parameters
@@ -306,16 +306,20 @@ Commonly updated dataset parameters
 
 .. code-block:: yaml
 
-  batch_size
-  num_workers
-  train_path
-  val_split
-  test_split
-  target_keys
-  task_args
-    normalize_kwargs
-    task_loss_scaling
-
+  batch_size: 4
+  num_workers: 16
+  train_path: "./path/to/dataset"
+  val_split: "./path/to/dataset" or fraction of train_path
+  test_split: "./path/to/dataset" or fraction of train_path
+  target_keys:
+  - energy
+  - band_gap
+  task_args:
+    normalize_kwargs:
+        energy_mean: 0.0
+        energy_std: 1.0
+    task_loss_scaling:
+        energy: 1.0
 
 Experiment CLI and Downstream Tasks
 -----------------------------------
@@ -324,12 +328,13 @@ The experiment cli provides some helpful utilities to enable downstream task dev
 
 .. code-block:: python
   :caption: Load in transforms from a yaml file
-    import yaml
 
-    from experiments.utils.utils import instantiate_arg_dict
+  import yaml
 
-    model_config = "./experiments/configs/models/mace_pyg.yaml"
-    model_yaml = yaml.safe_load(open(model_config, "r"))
-    transforms = instantiate_arg_dict(model_yaml["transforms"])
+  from experiments.utils.utils import instantiate_arg_dict
+
+  model_config = "./experiments/configs/models/mace_pyg.yaml"
+  model_yaml = yaml.safe_load(open(model_config, "r"))
+  transforms = instantiate_arg_dict(model_yaml["transforms"])
 
 This utility may be used to load and instantiate any of the model, dataset, or trainer configs for easy reuse of configurations.
