@@ -291,7 +291,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             target,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
-            collate_fn=self.dataset.collate_fn,
+            collate_fn=target.collate_fn,
             persistent_workers=self.persistent_workers,
         )
 
