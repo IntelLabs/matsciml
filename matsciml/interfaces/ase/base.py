@@ -99,6 +99,7 @@ class MatSciMLCalculator(Calculator):
         multitask_strategy: str | Callable | mt.AbstractStrategy = "AverageTasks",
         data_type: torch.dtype | None = None,
         output_map: dict[str, str] | None = None,
+        matsciml_model: bool = True,
         **kwargs,
     ):
         """
@@ -149,38 +150,43 @@ class MatSciMLCalculator(Calculator):
             to ``ase``. If a single ``float`` is passed, we assume that
             the conversion is applied to the energy output. Each factor
             is multiplied with the result.
-        data_type: if specified, will convert data to this type instead
+        data_type : torch.dtype | None, default None
+            if specified, will convert data to this type instead
             of looking at ``self.task_module.dtype`` which may not be
             available in the case of 3rd party models.
-        output_map: specifies how model outputs should be mapped to Calculator expected
+        output_map : dict[str, str] | None, default None
+            specifies how model outputs should be mapped to Calculator expected
             results. for example {"ase_expected": "model_output"} -> {"forces": "force"}
+        matsciml_model : bool, default True
+            flag indiciating whether model was trained with matsciml or not.
         """
         super().__init__(
             restart, label=label, atoms=atoms, directory=directory, **kwargs
         )
-        assert isinstance(
-            task_module,
-            (
-                ForceRegressionTask,
-                ScalarRegressionTask,
-                GradFreeForceRegressionTask,
-                MultiTaskLitModule,
-            ),
-        ), f"Expected task to be one that is capable of energy/force prediction. Got {task_module.__type__}."
-        if isinstance(task_module, MultiTaskLitModule):
-            assert any(
-                [
-                    isinstance(
-                        subtask,
-                        (
-                            ForceRegressionTask,
-                            ScalarRegressionTask,
-                            GradFreeForceRegressionTask,
-                        ),
-                    )
-                    for subtask in task_module.task_list
-                ]
-            ), "Expected at least one subtask to be energy/force predictor."
+        if matsciml_model:
+            assert isinstance(
+                task_module,
+                (
+                    ForceRegressionTask,
+                    ScalarRegressionTask,
+                    GradFreeForceRegressionTask,
+                    MultiTaskLitModule,
+                ),
+            ), f"Expected task to be one that is capable of energy/force prediction. Got {task_module.__type__}."
+            if isinstance(task_module, MultiTaskLitModule):
+                assert any(
+                    [
+                        isinstance(
+                            subtask,
+                            (
+                                ForceRegressionTask,
+                                ScalarRegressionTask,
+                                GradFreeForceRegressionTask,
+                            ),
+                        )
+                        for subtask in task_module.task_list
+                    ]
+                ), "Expected at least one subtask to be energy/force predictor."
         self.task_module = task_module
         self.transforms = transforms
         self.conversion_factor = conversion_factor
@@ -193,6 +199,7 @@ class MatSciMLCalculator(Calculator):
             multitask_strategy = cls_name()
         self.multitask_strategy = multitask_strategy
         self.data_type = data_type
+        self.matsciml_model = matsciml_model
         self.output_map = dict(
             zip(self.implemented_properties, self.implemented_properties)
         )
@@ -268,16 +275,22 @@ class MatSciMLCalculator(Calculator):
     ) -> None:
         # retrieve atoms even if not passed
         Calculator.calculate(self, atoms)
-        # get into format ready for matsciml model
-        data_dict = self._format_pipeline(atoms)
-        # concatenate_keys batches data and adds some attributes that may be expected, like ptr.
-        data_dict = concatenate_keys([data_dict])
-        # type cast into the type expected by the model
-        data_dict = recursive_type_cast(
-            data_dict, self.dtype, ignore_keys=["atomic_numbers"], convert_numpy=True
-        )
-        # run the data structure through the model
-        output = self.task_module.predict(data_dict)
+        if self.matsciml_model:
+            # get into format ready for matsciml model
+            data_dict = self._format_pipeline(atoms)
+            # concatenate_keys batches data and adds some attributes that may be expected, like ptr.
+            data_dict = concatenate_keys([data_dict])
+            # type cast into the type expected by the model
+            data_dict = recursive_type_cast(
+                data_dict,
+                self.dtype,
+                ignore_keys=["atomic_numbers"],
+                convert_numpy=True,
+            )
+            # run the data structure through the model
+            output = self.task_module.predict(data_dict)
+        else:
+            output = self.task_module.predict(atoms)
         if isinstance(self.task_module, MultiTaskLitModule):
             # use a more complicated parser for multitasks
             results = self.multitask_strategy(output, self.task_module)
