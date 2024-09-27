@@ -84,10 +84,12 @@ class MatSciMLCalculator(Calculator):
 
     def __init__(
         self,
-        task_module: ScalarRegressionTask
-        | GradFreeForceRegressionTask
-        | ForceRegressionTask
-        | MultiTaskLitModule,
+        task_module: (
+            ScalarRegressionTask
+            | GradFreeForceRegressionTask
+            | ForceRegressionTask
+            | MultiTaskLitModule
+        ),
         transforms: list[AbstractDataTransform | Callable] | None = None,
         restart=None,
         label=None,
@@ -96,6 +98,7 @@ class MatSciMLCalculator(Calculator):
         conversion_factor: float | dict[str, float] = 1.0,
         multitask_strategy: str | Callable | mt.AbstractStrategy = "AverageTasks",
         data_type: torch.dtype | None = None,
+        output_map: dict[str, str] | None = None,
         **kwargs,
     ):
         """
@@ -149,6 +152,8 @@ class MatSciMLCalculator(Calculator):
         data_type: if specified, will convert data to this type instead
             of looking at ``self.task_module.dtype`` which may not be
             available in the case of 3rd party models.
+        output_map: specifies how model outputs should be mapped to Calculator expected
+            results. for example {"ase_expected": "model_output"} -> {"forces": "force"}
         """
         super().__init__(
             restart, label=label, atoms=atoms, directory=directory, **kwargs
@@ -188,6 +193,17 @@ class MatSciMLCalculator(Calculator):
             multitask_strategy = cls_name()
         self.multitask_strategy = multitask_strategy
         self.data_type = data_type
+        self.output_map = dict(
+            zip(self.implemented_properties, self.implemented_properties)
+        )
+        if output_map is not None:
+            for k, v in output_map.items():
+                if k not in self.output_map:
+                    raise KeyError(
+                        f"Specified key {k} is not one of the implemented_properties of this calculator: {self.implemented_properties}"
+                    )
+                else:
+                    self.output_map[k] = v
 
     @property
     def conversion_factor(self) -> dict[str, float]:
@@ -267,15 +283,12 @@ class MatSciMLCalculator(Calculator):
             results = self.multitask_strategy(output, self.task_module)
             self.results = results
         else:
-            # add outputs to self.results as expected by ase
-            if "energy" in output:
-                self.results["energy"] = output["energy"].detach().item()
-            if "force" in output:
-                self.results["forces"] = output["force"].detach().numpy()
-            if "stress" in output:
-                self.results["stress"] = output["stress"].detach().numpy()
-            if "dipole" in output:
-                self.results["dipole"] = output["dipole"].detach().numpy()
+            # add outputs to self.results as expected by ase, as specified by ``properties``
+            # "ase_properties" are those in ``properties``.
+            for ase_property in properties:
+                model_output = output.get(self.output_map[ase_property], None)
+                if model_output is not None:
+                    self.results[ase_property] = model_output.detach().numpy()
             if len(self.results) == 0:
                 raise RuntimeError(
                     f"No expected properties were written. Output dict: {output}"

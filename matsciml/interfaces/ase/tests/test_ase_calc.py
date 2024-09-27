@@ -48,7 +48,9 @@ def test_egnn_energy_forces(egnn_config: dict, test_pbc: Atoms, pbc_transform: l
     task = ForceRegressionTask(
         encoder_class=EGNN, encoder_kwargs=egnn_config, output_kwargs={"hidden_dim": 32}
     )
-    calc = MatSciMLCalculator(task, transforms=pbc_transform)
+    calc = MatSciMLCalculator(
+        task, transforms=pbc_transform, output_map={"forces": "force"}
+    )
     atoms = test_pbc.copy()
     atoms.calc = calc
     energy = atoms.get_potential_energy()
@@ -62,7 +64,9 @@ def test_egnn_dynamics(egnn_config: dict, test_pbc: Atoms, pbc_transform: list):
     task = ForceRegressionTask(
         encoder_class=EGNN, encoder_kwargs=egnn_config, output_kwargs={"hidden_dim": 32}
     )
-    calc = MatSciMLCalculator(task, transforms=pbc_transform)
+    calc = MatSciMLCalculator(
+        task, transforms=pbc_transform, output_map={"forces": "force"}
+    )
     atoms = test_pbc.copy()
     atoms.calc = calc
     dyn = VelocityVerlet(atoms, timestep=5 * units.fs, logfile="md.log")
