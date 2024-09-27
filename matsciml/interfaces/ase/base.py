@@ -94,6 +94,7 @@ class MatSciMLCalculator(Calculator):
         directory=".",
         conversion_factor: float | dict[str, float] = 1.0,
         multitask_strategy: str | Callable | mt.AbstractStrategy = "AverageTasks",
+        data_type: torch.dtype | None = None,
         **kwargs,
     ):
         """
@@ -144,6 +145,9 @@ class MatSciMLCalculator(Calculator):
             to ``ase``. If a single ``float`` is passed, we assume that
             the conversion is applied to the energy output. Each factor
             is multiplied with the result.
+        data_type: if specified, will convert data to this type instead
+            of looking at ``self.task_module.dtype`` which may not be
+            available in the case of 3rd party models.
         """
         super().__init__(
             restart, label=label, atoms=atoms, directory=directory, **kwargs
@@ -182,6 +186,7 @@ class MatSciMLCalculator(Calculator):
                 )
             multitask_strategy = cls_name()
         self.multitask_strategy = multitask_strategy
+        self.data_type = data_type
 
     @property
     def conversion_factor(self) -> dict[str, float]:
@@ -200,7 +205,10 @@ class MatSciMLCalculator(Calculator):
 
     @property
     def dtype(self) -> torch.dtype | str:
-        dtype = self.task_module.dtype
+        if self.data_type:
+            dtype = self.data_type
+        else:
+            dtype = self.task_module.dtype
         return dtype
 
     def _format_atoms(self, atoms: Atoms) -> DataDict:
