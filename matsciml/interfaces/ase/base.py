@@ -17,6 +17,7 @@ from matsciml.models.base import (
 )
 from matsciml.datasets.transforms.base import AbstractDataTransform
 from matsciml.interfaces.ase import multitask as mt
+from matsciml.datasets.utils import concatenate_keys
 
 __all__ = ["MatSciMLCalculator"]
 
@@ -220,9 +221,8 @@ class MatSciMLCalculator(Calculator):
         data_dict["pos"] = pos
         data_dict["atomic_numbers"] = atomic_numbers
         data_dict["cell"] = cell
-        # ptr and batch are usually expected by MACE even if it's a single graph
-        data_dict["ptr"] = torch.tensor([0])
-        data_dict["batch"] = torch.zeros((pos.size(0)))
+        data_dict["frac_coords"] = torch.from_numpy(atoms.get_scaled_positions())
+        data_dict["natoms"] = pos.size(0)
         return data_dict
 
     def _format_pipeline(self, atoms: Atoms) -> DataDict:
@@ -238,10 +238,6 @@ class MatSciMLCalculator(Calculator):
         """
         # initial formatting to get something akin to dataset outputs
         data_dict = self._format_atoms(atoms)
-        # type cast into the type expected by the model
-        data_dict = recursive_type_cast(
-            data_dict, self.dtype, ignore_keys=["atomic_numbers"], convert_numpy=True
-        )
         # now run through the same transform pipeline as for datasets
         if self.transforms:
             for transform in self.transforms:
@@ -258,6 +254,12 @@ class MatSciMLCalculator(Calculator):
         Calculator.calculate(self, atoms)
         # get into format ready for matsciml model
         data_dict = self._format_pipeline(atoms)
+        # concatenate_keys batches data and adds some attributes that may be expected, like ptr.
+        data_dict = concatenate_keys([data_dict])
+        # type cast into the type expected by the model
+        data_dict = recursive_type_cast(
+            data_dict, self.dtype, ignore_keys=["atomic_numbers"], convert_numpy=True
+        )
         # run the data structure through the model
         output = self.task_module.predict(data_dict)
         if isinstance(self.task_module, MultiTaskLitModule):
