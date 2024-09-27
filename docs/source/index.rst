@@ -17,6 +17,7 @@ The Open MatSciML Toolkit
    training
    callbacks
    experiment-interface
+   inference
    best-practices
    how-to
    developers
