@@ -60,7 +60,7 @@ class ParityData:
 
     @property
     def predictions(self) -> torch.Tensor:
-        return torch.vstack(self._targets)
+        return torch.vstack(self._predictions)
 
     @predictions.setter
     def predictions(self, values: torch.Tensor) -> None:
