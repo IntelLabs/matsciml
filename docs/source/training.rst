@@ -1,6 +1,3 @@
-Training pipeline
-=================
-
 Task abstraction
 ================
 
