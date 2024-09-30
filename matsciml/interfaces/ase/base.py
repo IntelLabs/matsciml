@@ -97,7 +97,6 @@ class MatSciMLCalculator(Calculator):
         directory=".",
         conversion_factor: float | dict[str, float] = 1.0,
         multitask_strategy: str | Callable | mt.AbstractStrategy = "AverageTasks",
-        data_type: torch.dtype | None = None,
         output_map: dict[str, str] | None = None,
         matsciml_model: bool = True,
         **kwargs,
@@ -150,10 +149,6 @@ class MatSciMLCalculator(Calculator):
             to ``ase``. If a single ``float`` is passed, we assume that
             the conversion is applied to the energy output. Each factor
             is multiplied with the result.
-        data_type : torch.dtype | None, default None
-            if specified, will convert data to this type instead
-            of looking at ``self.task_module.dtype`` which may not be
-            available in the case of 3rd party models.
         output_map : dict[str, str] | None, default None
             specifies how model outputs should be mapped to Calculator expected
             results. for example {"ase_expected": "model_output"} -> {"forces": "force"}
@@ -198,7 +193,6 @@ class MatSciMLCalculator(Calculator):
                 )
             multitask_strategy = cls_name()
         self.multitask_strategy = multitask_strategy
-        self.data_type = data_type
         self.matsciml_model = matsciml_model
         self.output_map = dict(
             zip(self.implemented_properties, self.implemented_properties)
@@ -229,10 +223,7 @@ class MatSciMLCalculator(Calculator):
 
     @property
     def dtype(self) -> torch.dtype | str:
-        if self.data_type:
-            dtype = self.data_type
-        else:
-            dtype = self.task_module.dtype
+        dtype = self.task_module.dtype
         return dtype
 
     def _format_atoms(self, atoms: Atoms) -> DataDict:
