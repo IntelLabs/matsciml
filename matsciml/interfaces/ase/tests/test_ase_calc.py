@@ -106,10 +106,11 @@ def test_matgl():
     matgl_model.forward = MethodType(forward, matgl_model)
     matgl_model.predict = MethodType(forward, matgl_model)
 
-    matgl_model.predict = MethodType(forward, matgl_model)
     calc = MatSciMLCalculator(matgl_model, matsciml_model=False)
     pos = np.random.normal(0.0, 1.0, size=(10, 3))
-    atomic_numbers = np.random.randint(1, 89, size=(10,))
+    # Using a different atoms object due to pretrained model atom embedding expecting
+    # a different range of atomic numbers.
+    atomic_numbers = np.random.randint(1, 94, size=(10,))
     atoms = Atoms(numbers=atomic_numbers, positions=pos)
     atoms = atoms.copy()
     atoms.calc = calc
