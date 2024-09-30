@@ -4,6 +4,24 @@ Inference
 "Inference" can be a bit of an overloaded term, and this page is broken down into different possible
 downstream use cases for trained models.
 
+Task ``predict`` and ``forward`` methods
+----------------------------------------
+
+``matsciml`` tasks implement separate ``forward`` and ``predict`` methods. Both take a
+``BatchDict`` as input, and the latter wraps the former. The difference, however, is that
+``predict`` is intended for inference use primarily because it will also take care of
+reversing the normalization procedure, if they were provided during training, *and* perhaps
+more importantly, will ensure that the exponential moving average weights are used instead
+of the training ones.
+
+In the special case of force prediction (as a derivative of the energy) tasks, you should
+only need to specify normalization ``kwargs`` for energy: the scale value is taking automatically
+from the energy value, and applied to forces.
+
+In short, if you are writing functionality that requires unnormalized outputs (e.g. ``ase`` calculators),
+please ensure you are using ``predict`` instead of ``forward`` directly.
+
+
 Parity plots and model evaluations
 ----------------------------------
 
