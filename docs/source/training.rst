@@ -55,9 +55,6 @@ the ``IrrepOutputBlock`` allows users to specify transformations per-representat
    :members:
 
 
-Task API reference
-##################
-
 Scalar regression
 -----------------
 
