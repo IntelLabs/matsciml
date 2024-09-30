@@ -79,7 +79,7 @@ def test_egnn_dynamics(egnn_config: dict, test_pbc: Atoms, pbc_transform: list):
     dyn.run(3)
 
 
-def test_matƒgl():
+def test_matgl():
     matgl_model = matgl.load_model("CHGNet-MPtrj-2024.2.13-PES-11M")
 
     def forward(self, atoms):

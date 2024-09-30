@@ -158,7 +158,7 @@ class MatSciMLCalculator(Calculator):
             specifies how model outputs should be mapped to Calculator expected
             results. for example {"ase_expected": "model_output"} -> {"forces": "force"}
         matsciml_model : bool, default True
-            flag indiciating whether model was trained with matsciml or not.
+            flag indicating whether model was trained with matsciml or not.
         """
         super().__init__(
             restart, label=label, atoms=atoms, directory=directory, **kwargs
