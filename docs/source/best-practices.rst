@@ -223,6 +223,20 @@ inspired by observations made in LLM training research, where the breakdown of
 assumptions in the convergent properties of ``Adam``-like optimizers causes large
 spikes in the training loss. This callback can help identify these occurrences.
 
+The ``devset``/``fast_dev_run`` approach detailed above is also useful for testing
+engineering/infrastructure (e.g. accelerator offload and logging), but not necessarily
+for probing training dynamics. Instead, we recommend using the ``overfit_batches``
+argument in ``pl.Trainer``
+
+.. code-block:: python
+   import pytorch_lightning as pl
+
+   trainer = pl.Trainer(overfit_batches=100)
+
+
+This will disable shuffling in the training and validation splits (per the PyTorch Lightning
+documentation), and ensure that the same batches are being reused every epoch.
+
 .. _e3nn documentation: https://docs.e3nn.org/en/latest/
 
 .. _IPEX installation: https://intel.github.io/intel-extension-for-pytorch/index.html#installation?platform=gpu
