@@ -299,7 +299,7 @@ assumptions in the convergent properties of ``Adam``-like optimizers causes larg
 spikes in the training loss. This callback can help identify these occurrences.
 
 The ``devset``/``fast_dev_run`` approach detailed above is also useful for testing
-engineering/infrastructure (e.g. accelerator offload and logging), but not necessarily
+engineering/infrastructure (e.g. accelerator offload), but not necessarily
 for probing training dynamics. Instead, we recommend using the ``overfit_batches``
 argument in ``pl.Trainer``
 
