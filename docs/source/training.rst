@@ -87,6 +87,9 @@ classifications with a shared embedding. This can be something like a ``stabilit
 label like in the Materials Project. Keep in mind, however, that a special class
 exists for crystal symmetry classification.
 
+.. autoclass:: matsciml.models.base.BinaryClassificationTask
+   :members:
+
 .. _crystal_symmetry:
 
 Crystal symmetry classification
