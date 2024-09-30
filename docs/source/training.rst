@@ -131,7 +131,7 @@ prediction as opposed to the derivative of an energy value using ``autograd``.
 .. note::
    This task expects that your data includes ``force`` target key.
 
-.. autoclass:: matsciml.models.base.GradFreeForceRegression
+.. autoclass:: matsciml.models.base.GradFreeForceRegressionTask
    :members:
 
 
