@@ -181,6 +181,81 @@ the accelerator.
 Training
 --------
 
+Target normalization
+^^^^^^^^^^^^^^^^^^^^
+
+Tasks can be provided with ``normalize_kwargs``, which are key/value mappings
+that specify the mean and standard deviation of a target; an example is given below.
+
+.. code-block: python
+
+   Task(
+       ...,
+       normalize_kwargs={
+         "energy_mean": 0.0,
+         "energy_std": 1.0,
+   }
+   )
+
+The example above will normalize ``energy`` labels and can be substituted with
+any of target key of interest (e.g. ``force``, ``bandgap``, etc.)
+
+Target loss scaling
+^^^^^^^^^^^^^^^^^^^
+
+A generally common practice is to scale some targets relative to others (e.g. force over
+energy, etc). To specify this, you can pass a ``task_loss_scaling``  dictionary to
+any task module, which maps target keys to a floating point value that will be used
+to multiply the corresponding target loss value before summation and backpropagation.
+
+.. code-block: python
+   Task(
+       ...,
+       task_loss_scaling={
+           "energy": 1.0,
+           "force": 10.0
+   }
+   )
+
+
+A related, but alternative way to specify target scaling is to apply a *schedule* to
+the training loss contributions: essentially, this provides a way to smoothly ramp
+up (or down) different targets, i.e. to allow for more complex training curricula.
+To achieve this, you will need to use the ``LossScalingScheduler`` callback,
+
+.. autoclass:: matsciml.lightning.callbacks.LossScalingScheduler
+   :members:
+
+
+To specify this callback, you must pass subclasses of ``BaseScalingSchedule`` as arguments.
+Each schedule type implements the functional form of a schedule, and currently
+there are two concrete schedules. Composed together, an example would look like this
+
+.. code-block: python
+
+   import pytorch_lightning as pl
+   from matsciml.lightning.callbacks import LossScalingScheduler
+   from matsciml.lightning.loss_scaling import LinearScalingSchedule
+
+   scheduler = LossScalingScheduler(
+      LinearScalingSchedule("energy", initial_value=1.0, end_value=5.0, step_frequency="epoch")
+   )
+   trainer = pl.Trainer(callbacks=[scheduler])
+
+
+The stepping schedule is determined during ``setup`` (as training begins), where the callback will
+inspect ``Trainer`` arguments to determine how many steps will be taken. The ``step_frequency``
+just specifies how often the learning rate is updated.
+
+
+.. autoclass:: matsciml.lightning.loss_scaling.LinearScalingSchedule
+   :members:
+
+
+.. autoclass:: matsciml.lightning.loss_scaling.SigmoidScalingSchedule
+   :members:
+
+
 Quick debugging
 ^^^^^^^^^^^^^^^
 
@@ -222,6 +297,20 @@ Similarly, the ``matsciml.lightning.callbacks.ModelAutocorrelation`` callback wa
 inspired by observations made in LLM training research, where the breakdown of
 assumptions in the convergent properties of ``Adam``-like optimizers causes large
 spikes in the training loss. This callback can help identify these occurrences.
+
+The ``devset``/``fast_dev_run`` approach detailed above is also useful for testing
+engineering/infrastructure (e.g. accelerator offload), but not necessarily
+for probing training dynamics. Instead, we recommend using the ``overfit_batches``
+argument in ``pl.Trainer``
+
+.. code-block:: python
+   import pytorch_lightning as pl
+
+   trainer = pl.Trainer(overfit_batches=100)
+
+
+This will disable shuffling in the training and validation splits (per the PyTorch Lightning
+documentation), and ensure that the same batches are being reused every epoch.
 
 .. _e3nn documentation: https://docs.e3nn.org/en/latest/
 
