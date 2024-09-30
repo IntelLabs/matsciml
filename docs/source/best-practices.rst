@@ -197,7 +197,7 @@ that specify the mean and standard deviation of a target; an example is given be
    }
    )
 
-The example above will normalize ``energy`` labelsm and can be substituted with
+The example above will normalize ``energy`` labels and can be substituted with
 any of target key of interest (e.g. ``force``, ``bandgap``, etc.)
 
 Target loss scaling
