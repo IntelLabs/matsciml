@@ -181,6 +181,80 @@ the accelerator.
 Training
 --------
 
+Target normalization
+^^^^^^^^^^^^^^^^^^^^
+
+Tasks can be provided with ``normalize_kwargs``, which are key/value mappings
+that specify the mean and standard deviation of a target; an example is given below.
+
+.. code-block: python
+
+   Task(
+       ...,
+       normalize_kwargs={
+         "energy_mean": 0.0,
+         "energy_std": 1.0,
+   }
+   )
+
+The example above will normalize ``energy`` labelsm and can be substituted with
+any of target key of interest (e.g. ``force``, ``bandgap``, etc.)
+
+Target loss scaling
+^^^^^^^^^^^^^^^^^^^
+
+A generally common practice is to scale some targets relative to others (e.g. force over
+energy, etc). To specify this, you can pass a ``task_loss_scaling``  dictionary to
+any task module, which maps target keys to a floating point value that will be used
+to multiply the corresponding target loss value before summation and backpropagation.
+
+.. code-block: python
+   Task(
+       ...,
+       task_loss_scaling={
+           "energy": 1.0,
+           "force": 10.0
+   }
+   )
+
+
+A related, but alternative way to specify target scaling is to apply a *schedule* to
+the training loss contributions: essentially, this provides a way to smoothly ramp
+up (or down) different targets, i.e. to allow for more complex training curricula.
+To achieve this, you will need to use the ``LossScalingScheduler`` callback,
+
+.. autoclass:: matsciml.lightning.callbacks.LossScalingScheduler
+   :members:
+
+
+To specify this callback, you must pass subclasses of ``BaseScalingSchedule`` as arguments.
+Each schedule type implements the functional form of a schedule, and currently
+there are two concrete schedules;
+
+.. autoclass:: matsciml.lightning.loss_scaling.BaseScalingSchedule
+   :members:
+   :inherited-members:
+
+
+Composed together, an example would look like this
+
+.. code-block: python
+
+   import pytorch_lightning as pl
+   from matsciml.lightning.callbacks import LossScalingScheduler
+   from matsciml.lightning.loss_scaling import LinearScalingSchedule
+
+   scheduler = LossScalingScheduler(
+      LinearScalingSchedule("energy", initial_value=1.0, end_value=5.0, step_frequency="epoch")
+   )
+   trainer = pl.Trainer(callbacks=[scheduler])
+
+
+The stepping schedule is determined during ``setup`` (as training begins), where the callback will
+inspect ``Trainer`` arguments to determine how many steps will be taken. The ``step_frequency``
+just specifies how often the learning rate is updated.
+
+
 Quick debugging
 ^^^^^^^^^^^^^^^
 
