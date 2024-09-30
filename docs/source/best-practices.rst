@@ -229,14 +229,7 @@ To achieve this, you will need to use the ``LossScalingScheduler`` callback,
 
 To specify this callback, you must pass subclasses of ``BaseScalingSchedule`` as arguments.
 Each schedule type implements the functional form of a schedule, and currently
-there are two concrete schedules;
-
-.. autoclass:: matsciml.lightning.loss_scaling.BaseScalingSchedule
-   :members:
-   :inherited-members:
-
-
-Composed together, an example would look like this
+there are two concrete schedules. Composed together, an example would look like this
 
 .. code-block: python
 
@@ -253,6 +246,14 @@ Composed together, an example would look like this
 The stepping schedule is determined during ``setup`` (as training begins), where the callback will
 inspect ``Trainer`` arguments to determine how many steps will be taken. The ``step_frequency``
 just specifies how often the learning rate is updated.
+
+
+.. autoclass:: matsciml.lightning.loss_scaling.LinearScalingSchedule
+   :members:
+
+
+.. autoclass:: matsciml.lightning.loss_scaling.SigmoidScalingSchedule
+   :members:
 
 
 Quick debugging
