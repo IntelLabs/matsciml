@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 from logging import getLogger
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import torch
 from torch import nn
 

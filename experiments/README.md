@@ -79,21 +79,21 @@ experiment:
   accelerator: gpu
   strategy: ddp_find_unused_parameters_true
 callbacks:
-  - class_path: pytorch_lightning.callbacks.EarlyStopping
+  - class_path: lightning.pytorch.callbacks.EarlyStopping
     init_args:
       patience: 5
       monitor: val_energy
       mode: min
       verbose: True
       check_finite: False
-  - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+  - class_path: lightning.pytorch.callbacks.ModelCheckpoint
     init_args:
       monitor: val_energy
       save_top_k: 3
   - class_path: matsciml.lightning.callbacks.GradientCheckCallback
   - class_path: matsciml.lightning.callbacks.SAM
 loggers:
-  - class_path: pytorch_lightning.loggers.CSVLogger # can omit init_args['save_dir'] for auto directory
+  - class_path: lightning.pytorch.loggers.CSVLogger # can omit init_args['save_dir'] for auto directory
 ```
 
 

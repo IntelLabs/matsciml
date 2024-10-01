@@ -2,21 +2,13 @@
 # SPDX-License-Identifier: MIT License
 from __future__ import annotations
 
-import logging
-from abc import abstractmethod
-from collections.abc import Iterable
-from contextlib import ExitStack, nullcontext
-from typing import Any, ContextManager, Dict, List, Optional, Tuple, Type, Union
-from warnings import warn
+from typing import Any
 
 import dgl
 import numpy as np
-import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-from dgl.utils import data
-from torch import Tensor, nn
-from torch.optim import AdamW, Optimizer
+from torch import nn
 from torch_scatter import scatter
 from tqdm import tqdm
 
@@ -24,14 +16,12 @@ from matsciml.models.base import BaseTaskModule
 from matsciml.models.common import OutputHead
 from matsciml.models.diffusion_utils import KHOT_EMBEDDINGS, MAX_ATOMIC_NUM
 from matsciml.models.diffusion_utils.data_utils import (
-    EPSILON,
     cart_to_frac_coords,
     frac_to_cart_coords,
     lengths_angles_to_volume,
     mard,
     min_distance_sqr_pbc,
 )
-from matsciml.modules.normalizer import Normalizer
 
 
 def build_mlp(in_dim, hidden_dim, fc_num_layers, out_dim):
@@ -77,7 +67,7 @@ class GenerationTask(BaseTaskModule):
         if decoder is not None:
             self.decoder = decoder
         else:
-            raise ValueError(f"No valid decoder passed.")
+            raise ValueError("No valid decoder passed.")
 
         self.save_hyperparameters(ignore=["encoder", "decoder", "loss_func"])
 
@@ -710,13 +700,13 @@ class GenerationTask(BaseTaskModule):
         )
 
         log_dict = {
-            f"loss": loss,
-            f"natom_loss": num_atom_loss,
-            f"lattice_loss": lattice_loss,
-            f"coord_loss": coord_loss,
-            f"type_loss": type_loss,
-            f"kld_loss": kld_loss,
-            f"composition_loss": composition_loss,
+            "loss": loss,
+            "natom_loss": num_atom_loss,
+            "lattice_loss": lattice_loss,
+            "coord_loss": coord_loss,
+            "type_loss": type_loss,
+            "kld_loss": kld_loss,
+            "composition_loss": composition_loss,
         }
 
         if not self.training:
@@ -764,13 +754,13 @@ class GenerationTask(BaseTaskModule):
 
             log_dict.update(
                 {
-                    f"loss": loss,
-                    f"property_loss": property_loss,
-                    f"natom_accuracy": num_atom_accuracy,
-                    f"lengths_mard": lengths_mard,
-                    f"angles_mae": angles_mae,
-                    f"volumes_mard": volumes_mard,
-                    f"type_accuracy": type_accuracy,
+                    "loss": loss,
+                    "property_loss": property_loss,
+                    "natom_accuracy": num_atom_accuracy,
+                    "lengths_mard": lengths_mard,
+                    "angles_mae": angles_mae,
+                    "volumes_mard": volumes_mard,
+                    "type_accuracy": type_accuracy,
                 },
             )
 

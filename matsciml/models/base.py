@@ -12,8 +12,8 @@ from warnings import warn
 from logging import getLogger
 from inspect import signature
 
-import pytorch_lightning as pl
-from pytorch_lightning import loggers as pl_loggers
+import lightning.pytorch as pl
+from lightning.pytorch import loggers as pl_loggers
 import torch
 from einops import reduce
 from torch import Tensor, nn

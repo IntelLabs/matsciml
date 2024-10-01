@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 import pytest
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.models.inference import ParityInferenceTask
 from matsciml.models.base import ScalarRegressionTask

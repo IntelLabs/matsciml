@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import pytorch_lightning as pl
-from pytorch_lightning.loggers import WandbLogger
+import lightning.pytorch as pl
+from lightning.pytorch.loggers import WandbLogger
 
 from matsciml.datasets.transforms import DistancesTransform, PointCloudToGraphTransform
 from matsciml.lightning.data_utils import MatSciMLDataModule

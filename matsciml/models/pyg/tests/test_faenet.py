@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 import torch
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 # this import is not used, but ensures that the registry is updated
 from matsciml.common.registry import registry

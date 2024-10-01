@@ -13,12 +13,12 @@ from typing import Any, Callable, Dict, Iterator, Literal, Optional
 from queue import Queue
 
 import numpy as np
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import torch
-from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.callbacks import BasePredictionWriter, Callback
-from pytorch_lightning.utilities.rank_zero import rank_zero_only
-from pytorch_lightning import loggers as pl_loggers
+from lightning.pytorch import LightningModule, Trainer
+from lightning.pytorch.callbacks import BasePredictionWriter, Callback
+from lightning.pytorch.utilities.rank_zero import rank_zero_only
+from lightning.pytorch import loggers as pl_loggers
 from torch import distributed as dist
 from torch import nn
 from torch.optim import Optimizer
@@ -180,7 +180,7 @@ class GradientCheckCallback(Callback):
     ) -> None:
         super().__init__()
         self.thres = thres
-        self.logger = getLogger("pytorch_lightning")
+        self.logger = getLogger("lightning.pytorch")
         if verbose:
             self.logger.setLevel(DEBUG)
         self.num_steps = num_steps
@@ -527,7 +527,7 @@ class InferenceWriter(BasePredictionWriter):
         --------
         Add the writer as a callback to ``Trainer``
 
-        >>> import pytorch_lightning as pl
+        >>> import lightning.pytorch as pl
         >>> from matsciml.lightning.callbacks import InferenceWriter
         >>> trainer = pl.Trainer(callbacks=[InferenceWriter("./predictions")])
         >>> trainer.predict(...)
@@ -767,7 +767,7 @@ class SAM(Callback):
         Examples
         --------
 
-        >>> import pytorch_lightning as pl
+        >>> import lightning.pytorch as pl
         >>> from matsciml.lightning.callbacks import SAM
         >>> trainer = pl.Trainer(callbacks=[SAM()])
         >>> trainer.fit(...)

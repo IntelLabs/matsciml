@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from torch import nn
 from torch import distributed as dist
 from mace.modules import RealAgnosticInteractionBlock

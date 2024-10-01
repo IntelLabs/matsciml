@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.lightning.callbacks import LeaderboardWriter
 from matsciml.lightning.data_utils import IS2REDGLDataModule, is2re_devset
