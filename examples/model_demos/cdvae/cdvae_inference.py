@@ -6,11 +6,9 @@ import argparse
 import os
 import sys
 import time
-from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytorch_lightning as pl
 import torch
 from torch.optim import Adam
 from torch_geometric.data import Batch

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.datasets import IS2REDataset, S2EFDataset
 from matsciml.datasets.multi_dataset import MultiDataset

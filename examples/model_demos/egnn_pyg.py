@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.datasets.transforms import PointCloudToGraphTransform
 from matsciml.lightning.data_utils import MatSciMLDataModule
@@ -33,5 +33,5 @@ dm = MatSciMLDataModule.from_devset(
 )
 
 # run a quick training loop
-trainer = pl.Trainer(fast_dev_run=10)
+trainer = pl.Trainer(fast_dev_run=10, accelerator="cpu")
 trainer.fit(task, datamodule=dm)

@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from subprocess import run
-from typing import Union
 
 import psutil
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.utilities.rank_zero import rank_zero_only
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import Callback
 from torch import distributed as dist
 
 

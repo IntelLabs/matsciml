@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from torch.nn import L1Loss, LayerNorm, SiLU
 
-from matsciml.datasets import MaterialsProjectDataset
 from matsciml.datasets.transforms import (
     COMShift,
     CoordinateScaling,

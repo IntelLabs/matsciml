@@ -12,12 +12,12 @@ import torch
 from torch import distributed as dist
 from torch import nn
 from torch.nn.parallel.distributed import DistributedDataParallel
-import pytorch_lightning as pl
-from pytorch_lightning.plugins import CheckpointIO
-from pytorch_lightning.strategies.ddp import DDPStrategy
-from pytorch_lightning.plugins.environments import LightningEnvironment
-from pytorch_lightning.plugins.precision import Precision
-from pytorch_lightning.strategies import StrategyRegistry
+import lightning.pytorch as pl
+from lightning.pytorch.plugins import CheckpointIO
+from lightning.pytorch.strategies.ddp import DDPStrategy
+from lightning.pytorch.plugins.environments import LightningEnvironment
+from lightning.pytorch.plugins.precision import Precision
+from lightning.pytorch.strategies import StrategyRegistry
 
 from matsciml.common.packages import package_registry
 

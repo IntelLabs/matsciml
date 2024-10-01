@@ -344,7 +344,7 @@ point onwards it depends entirely on what you want to do with your data, and so 
 provide a very minimal example.
 
 ```python
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.datasets import new_materials_data
 from matsciml.lightning.data_utils import MatSciMLDataModule

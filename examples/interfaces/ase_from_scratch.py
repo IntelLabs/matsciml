@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from ase import Atoms, units
 from ase.md.verlet import VelocityVerlet
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.lightning import MatSciMLDataModule
 from matsciml.models.base import ForceRegressionTask

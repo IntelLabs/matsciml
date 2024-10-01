@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from torch import nn
 from e3nn.o3 import Irreps
 from mace.modules.blocks import RealAgnosticInteractionBlock

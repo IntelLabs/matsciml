@@ -4,8 +4,7 @@ import shutil
 
 import pytest
 
-from matsciml.datasets.nomad import NomadRequest
-from matsciml.datasets.nomad.dataset import NomadDataset
+from matsciml.datasets.nomad import NomadRequest, NomadDataset
 
 TEST_IDS = {
     0: "GjAKByPxraKfkFCdFrwp0omDVQZ7",
@@ -44,7 +43,7 @@ def test_download_data(nomad_module):
     assert datum.get("material") is not None
 
 
-@pytest.mark.dependency(depends=["test_download_dadta"])
+@pytest.mark.dependency(depends=["test_download_data"])
 @pytest.mark.remote_request
 def test_serialize_lmdb(nomad_module):
     _ = nomad_module.nomad_request()

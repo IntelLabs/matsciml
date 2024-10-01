@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.datasets.transforms import (
     FrameAveraging,
@@ -25,7 +25,7 @@ task = ForceRegressionTask(
         "out_dim": 128,
         "tag_hidden_channels": 0,
     },
-     output_kwargs={"lazy": False, "input_dim": 128, "hidden_dim": 128},
+    output_kwargs={"lazy": False, "input_dim": 128, "hidden_dim": 128},
     task_keys=["force"],
 )
 

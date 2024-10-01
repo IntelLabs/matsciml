@@ -5,7 +5,7 @@ from typing import Any
 from pathlib import Path
 
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.common.registry import registry
 from matsciml.models.base import MultiTaskLitModule, BaseTaskModule

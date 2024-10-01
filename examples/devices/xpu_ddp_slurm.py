@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from matsciml.datasets.transforms import (
     PointCloudToGraphTransform,
     PeriodicPropertiesTransform,

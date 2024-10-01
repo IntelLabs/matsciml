@@ -6,7 +6,7 @@ from os import getenv
 from pathlib import Path
 from typing import Any
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset as TorchDataset

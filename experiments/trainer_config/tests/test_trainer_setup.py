@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 import tempfile
 
-from pytorch_lightning.loggers import CSVLogger
-from pytorch_lightning.callbacks import EarlyStopping
+from lightning.pytorch.loggers import CSVLogger
+from lightning.pytorch.callbacks import EarlyStopping
 
 from experiments.trainer_config import setup_trainer
 
@@ -26,7 +26,7 @@ def trainer_args() -> dict:
         "generic": {"min_epochs": 15, "max_epochs": 100},
         "callbacks": [
             {
-                "class_path": "pytorch_lightning.callbacks.EarlyStopping",
+                "class_path": "lightning.pytorch.callbacks.EarlyStopping",
                 "init_args": [
                     {"patience": 5},
                     {"mode": "min"},
@@ -36,13 +36,13 @@ def trainer_args() -> dict:
                 ],
             },
             {
-                "class_path": "pytorch_lightning.callbacks.ModelCheckpoint",
+                "class_path": "lightning.pytorch.callbacks.ModelCheckpoint",
                 "init_args": [{"save_top_k": 3}, {"monitor": "val_energy"}],
             },
         ],
         "loggers": [
             {
-                "class_path": "pytorch_lightning.loggers.CSVLogger",
+                "class_path": "lightning.pytorch.loggers.CSVLogger",
                 "init_args": {"save_dir": "./temp"},
             },
         ],

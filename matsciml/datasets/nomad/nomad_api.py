@@ -2,16 +2,12 @@ from __future__ import annotations
 
 import multiprocessing
 import os
-import re
-import time
 import traceback
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
-from functools import cached_property
 from pathlib import Path
 from time import sleep, time
-from typing import Dict, List, Optional, Tuple, Union
 
 import lmdb
 import requests
@@ -77,9 +73,9 @@ class NomadRequest:
         # Can specify material ids' or split_files, but not both. If neither are
         # supplied, the full dataset is downloaded.
         if material_ids and split_files:
-            raise Exception(f"Only one of material_ids and split_files may be supplied")
+            raise Exception("Only one of material_ids and split_files may be supplied")
         if split_dir and split_files:
-            raise Exception(f"Only one of split_dir and split_files may be supplied")
+            raise Exception("Only one of split_dir and split_files may be supplied")
 
     @property
     def material_ids(self) -> dict[int, str] | None:
@@ -179,9 +175,9 @@ class NomadRequest:
                 entry_ids.update(ids)
                 if len(entry_ids) > num_entries and len(ids) == 10000:
                     more_ids = True
-                    NomadRequest.id_query["pagination"][
-                        "page_after_value"
-                    ] = response_json["pagination"]["next_page_after_value"]
+                    NomadRequest.id_query["pagination"]["page_after_value"] = (
+                        response_json["pagination"]["next_page_after_value"]
+                    )
                 else:
                     more_ids = False
 
@@ -191,7 +187,7 @@ class NomadRequest:
                     f"Total IDs: {num_entries}\tThroughput: {avg_query_time}",
                     end="\r",
                 )
-            except Exception as e:
+            except Exception:
                 start_page = NomadRequest.id_query["pagination"]["page_after_value"]
                 end_page = NomadRequest.id_query["pagination"]["next_page_after_value"]
                 failed_pages[start_page] = end_page
@@ -279,7 +275,7 @@ class NomadRequest:
         warning_message = f"Sample {id_idx} from {self.data_dir} failed to download with: {requested_data.status_code}\n"
         warnings.warn(warning_message, category=Warning)
         with open(
-            os.path.join(os.path.dirname(self.data_dir), f"failed.txt"),
+            os.path.join(os.path.dirname(self.data_dir), "failed.txt"),
             "a",
         ) as f:
             f.write(warning_message)
@@ -297,7 +293,7 @@ class NomadRequest:
             zip(list(self.material_ids.keys()), [None] * len(self.material_ids)),
         )
         with suppress(OSError):
-            os.remove(os.path.join(self.data_dir, f"failed.txt"))
+            os.remove(os.path.join(self.data_dir, "failed.txt"))
 
         with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
             # List to store the future objects
@@ -342,7 +338,7 @@ class NomadRequest:
             [TODO:description]
         """
         os.makedirs(lmdb_path, exist_ok=True)
-        lmdb_file = f"data.lmdb"
+        lmdb_file = "data.lmdb"
         target_env = lmdb.open(
             os.path.join(lmdb_path, lmdb_file),
             subdir=False,
@@ -359,7 +355,7 @@ class NomadRequest:
                 write_lmdb_data(index, entry, target_env)
         else:
             raise ValueError(
-                f"No data was available for serializing - did you run `retrieve_data`?",
+                "No data was available for serializing - did you run `retrieve_data`?",
             )
 
     @classmethod
