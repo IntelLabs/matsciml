@@ -1,5 +1,5 @@
 import pytest
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.datasets.transforms import (
     PeriodicPropertiesTransform,

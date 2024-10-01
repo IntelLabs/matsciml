@@ -7,8 +7,8 @@ from typing import Union, List, Dict, Any
 
 
 from matsciml.common.packages import package_registry
-from pytorch_lightning.accelerators import Accelerator, AcceleratorRegistry
-from pytorch_lightning.strategies import SingleDeviceStrategy, StrategyRegistry
+from lightning.pytorch.accelerators import Accelerator, AcceleratorRegistry
+from lightning.pytorch.strategies import SingleDeviceStrategy, StrategyRegistry
 import torch
 from torch import distributed as dist
 

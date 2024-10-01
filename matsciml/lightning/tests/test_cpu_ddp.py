@@ -8,7 +8,7 @@ else:
     _has_ccl = False
 
 import pytest
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from torch import distributed as dist
 
 from matsciml.datasets import transforms

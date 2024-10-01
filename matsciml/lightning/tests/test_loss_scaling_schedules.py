@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 import numpy as np
-from pytorch_lightning import Trainer
+from lightning.pytorch import Trainer
 
 from matsciml.lightning.loss_scaling import (
     LinearScalingSchedule,

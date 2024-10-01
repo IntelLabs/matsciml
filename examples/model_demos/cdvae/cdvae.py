@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import torch
 from tqdm import tqdm
 

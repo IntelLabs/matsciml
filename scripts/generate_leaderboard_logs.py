@@ -4,18 +4,16 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from pathlib import Path
 
-import pytorch_lightning as pl
-from munch import Munch, munchify, unmunchify
-from pytorch_lightning.loggers import CSVLogger
+import lightning.pytorch as pl
+from munch import munchify
+from lightning.pytorch.loggers import CSVLogger
 from tqdm import tqdm
 from yaml import safe_load
 
 from matsciml import datasets as dsets
 from matsciml.datasets.transforms import DistancesTransform, GraphVariablesTransform
-from matsciml.lightning.callbacks import ForwardNaNDetection, LeaderboardWriter
+from matsciml.lightning.callbacks import LeaderboardWriter
 from matsciml.lightning.cli import DATAMODULE_REGISTRY, MODEL_REGISTRY
-from matsciml.lightning.data_utils import IS2REDGLDataModule, is2re_devset
-from matsciml.models import GraphConvModel, IS2RELitModule
 
 # import the callback responsible for aggregating and formatting
 # prediction results

@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from experiments.utils.utils import instantiate_arg_dict, update_arg_dict
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.datasets.transforms import (
     PeriodicPropertiesTransform,
@@ -99,6 +99,7 @@ def test_mace_with_SAM():
             "correlation": 1,
             "radial_type": "bessel",
             "gate": nn.Identity(),
+            "distance_transform": None,
         },
         task_keys=["energy_relaxed"],
     )

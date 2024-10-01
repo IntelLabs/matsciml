@@ -6,7 +6,7 @@ from functools import cached_property
 from logging import getLogger
 
 import numpy as np
-from pytorch_lightning import Trainer, LightningModule
+from lightning.pytorch import Trainer, LightningModule
 
 __all__ = ["LinearScalingSchedule", "SigmoidScalingSchedule"]
 

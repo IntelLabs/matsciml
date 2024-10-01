@@ -4,7 +4,7 @@ from copy import deepcopy
 from typing import Any
 import sys
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from matsciml.lightning.data_utils import (
     MatSciMLDataModule,

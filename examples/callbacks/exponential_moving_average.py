@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import StochasticWeightAveraging
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import StochasticWeightAveraging
 
 from matsciml.datasets.transforms import DistancesTransform, PointCloudToGraphTransform
 from matsciml.lightning.data_utils import MatSciMLDataModule

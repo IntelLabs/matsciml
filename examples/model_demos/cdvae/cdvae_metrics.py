@@ -7,11 +7,9 @@ import json
 import os
 import sys
 from collections import Counter
-from functools import partial
 from pathlib import Path
 
 import numpy as np
-import pytorch_lightning as pl
 from matminer.featurizers.composition.composite import ElementProperty
 from matminer.featurizers.site.fingerprint import CrystalNNFingerprint
 from p_tqdm import p_map
@@ -39,7 +37,6 @@ except:
         compute_cov,
         get_crystals_list,
         get_fp_pdist,
-        load_config,
         load_data,
         prop_model_eval,
         smact_validity,

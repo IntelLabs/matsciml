@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import pytest
 
 from matsciml.datasets.transforms import (
@@ -138,6 +138,7 @@ def test_mace_with_ema():
             "correlation": 1,
             "radial_type": "bessel",
             "gate": nn.Identity(),
+            "distance_transform": None,
         },
         task_keys=["energy_relaxed"],
         output_kwargs={"lazy": False, "hidden_dim": 128, "input_dim": 128},
