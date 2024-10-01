@@ -17,6 +17,7 @@ from matsciml.models.base import (
 )
 from matsciml.datasets.transforms.base import AbstractDataTransform
 from matsciml.interfaces.ase import multitask as mt
+from matsciml.datasets.utils import concatenate_keys
 
 __all__ = ["MatSciMLCalculator"]
 
@@ -83,10 +84,12 @@ class MatSciMLCalculator(Calculator):
 
     def __init__(
         self,
-        task_module: ScalarRegressionTask
-        | GradFreeForceRegressionTask
-        | ForceRegressionTask
-        | MultiTaskLitModule,
+        task_module: (
+            ScalarRegressionTask
+            | GradFreeForceRegressionTask
+            | ForceRegressionTask
+            | MultiTaskLitModule
+        ),
         transforms: list[AbstractDataTransform | Callable] | None = None,
         restart=None,
         label=None,
@@ -94,6 +97,8 @@ class MatSciMLCalculator(Calculator):
         directory=".",
         conversion_factor: float | dict[str, float] = 1.0,
         multitask_strategy: str | Callable | mt.AbstractStrategy = "AverageTasks",
+        output_map: dict[str, str] | None = None,
+        matsciml_model: bool = True,
         **kwargs,
     ):
         """
@@ -144,33 +149,39 @@ class MatSciMLCalculator(Calculator):
             to ``ase``. If a single ``float`` is passed, we assume that
             the conversion is applied to the energy output. Each factor
             is multiplied with the result.
+        output_map : dict[str, str] | None, default None
+            specifies how model outputs should be mapped to Calculator expected
+            results. for example {"ase_expected": "model_output"} -> {"forces": "force"}
+        matsciml_model : bool, default True
+            flag indicating whether model was trained with matsciml or not.
         """
         super().__init__(
             restart, label=label, atoms=atoms, directory=directory, **kwargs
         )
-        assert isinstance(
-            task_module,
-            (
-                ForceRegressionTask,
-                ScalarRegressionTask,
-                GradFreeForceRegressionTask,
-                MultiTaskLitModule,
-            ),
-        ), f"Expected task to be one that is capable of energy/force prediction. Got {task_module.__type__}."
-        if isinstance(task_module, MultiTaskLitModule):
-            assert any(
-                [
-                    isinstance(
-                        subtask,
-                        (
-                            ForceRegressionTask,
-                            ScalarRegressionTask,
-                            GradFreeForceRegressionTask,
-                        ),
-                    )
-                    for subtask in task_module.task_list
-                ]
-            ), "Expected at least one subtask to be energy/force predictor."
+        if matsciml_model:
+            assert isinstance(
+                task_module,
+                (
+                    ForceRegressionTask,
+                    ScalarRegressionTask,
+                    GradFreeForceRegressionTask,
+                    MultiTaskLitModule,
+                ),
+            ), f"Expected task to be one that is capable of energy/force prediction. Got {task_module.__type__}."
+            if isinstance(task_module, MultiTaskLitModule):
+                assert any(
+                    [
+                        isinstance(
+                            subtask,
+                            (
+                                ForceRegressionTask,
+                                ScalarRegressionTask,
+                                GradFreeForceRegressionTask,
+                            ),
+                        )
+                        for subtask in task_module.task_list
+                    ]
+                ), "Expected at least one subtask to be energy/force predictor."
         self.task_module = task_module
         self.transforms = transforms
         self.conversion_factor = conversion_factor
@@ -182,6 +193,18 @@ class MatSciMLCalculator(Calculator):
                 )
             multitask_strategy = cls_name()
         self.multitask_strategy = multitask_strategy
+        self.matsciml_model = matsciml_model
+        self.output_map = dict(
+            zip(self.implemented_properties, self.implemented_properties)
+        )
+        if output_map is not None:
+            for k, v in output_map.items():
+                if k not in self.output_map:
+                    raise KeyError(
+                        f"Specified key {k} is not one of the implemented_properties of this calculator: {self.implemented_properties}"
+                    )
+                else:
+                    self.output_map[k] = v
 
     @property
     def conversion_factor(self) -> dict[str, float]:
@@ -212,9 +235,8 @@ class MatSciMLCalculator(Calculator):
         data_dict["pos"] = pos
         data_dict["atomic_numbers"] = atomic_numbers
         data_dict["cell"] = cell
-        # ptr and batch are usually expected by MACE even if it's a single graph
-        data_dict["ptr"] = torch.tensor([0])
-        data_dict["batch"] = torch.zeros((pos.size(0)))
+        data_dict["frac_coords"] = torch.from_numpy(atoms.get_scaled_positions())
+        data_dict["natoms"] = pos.size(0)
         return data_dict
 
     def _format_pipeline(self, atoms: Atoms) -> DataDict:
@@ -230,10 +252,6 @@ class MatSciMLCalculator(Calculator):
         """
         # initial formatting to get something akin to dataset outputs
         data_dict = self._format_atoms(atoms)
-        # type cast into the type expected by the model
-        data_dict = recursive_type_cast(
-            data_dict, self.dtype, ignore_keys=["atomic_numbers"], convert_numpy=True
-        )
         # now run through the same transform pipeline as for datasets
         if self.transforms:
             for transform in self.transforms:
@@ -248,24 +266,39 @@ class MatSciMLCalculator(Calculator):
     ) -> None:
         # retrieve atoms even if not passed
         Calculator.calculate(self, atoms)
-        # get into format ready for matsciml model
-        data_dict = self._format_pipeline(atoms)
-        # run the data structure through the model
-        output = self.task_module.predict(data_dict)
+        if self.matsciml_model:
+            # get into format ready for matsciml model
+            data_dict = self._format_pipeline(atoms)
+            # concatenate_keys batches data and adds some attributes that may be expected, like ptr.
+            data_dict = concatenate_keys([data_dict])
+            # type cast into the type expected by the model
+            data_dict = recursive_type_cast(
+                data_dict,
+                self.dtype,
+                ignore_keys=["atomic_numbers"],
+                convert_numpy=True,
+            )
+            # run the data structure through the model
+            output = self.task_module.predict(data_dict)
+        else:
+            output = self.task_module.forward(atoms)
         if isinstance(self.task_module, MultiTaskLitModule):
             # use a more complicated parser for multitasks
             results = self.multitask_strategy(output, self.task_module)
             self.results = results
         else:
-            # add outputs to self.results as expected by ase
-            if "energy" in output:
-                self.results["energy"] = output["energy"].detach().item()
-            if "force" in output:
-                self.results["forces"] = output["force"].detach().numpy()
-            if "stress" in output:
-                self.results["stress"] = output["stress"].detach().numpy()
-            if "dipole" in output:
-                self.results["dipole"] = output["dipole"].detach().numpy()
+            # add outputs to self.results as expected by ase, as specified by ``properties``
+            # "ase_properties" are those in ``properties``.
+            for ase_property in properties:
+                model_property = self.output_map[ase_property]
+                model_output = output.get(model_property, None)
+                if model_output is not None:
+                    self.results[ase_property] = model_output.detach().numpy()
+                else:
+                    raise KeyError(
+                        f"Expected model to return {model_property} as an output."
+                    )
+
             if len(self.results) == 0:
                 raise RuntimeError(
                     f"No expected properties were written. Output dict: {output}"
