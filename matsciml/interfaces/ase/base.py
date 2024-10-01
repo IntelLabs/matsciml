@@ -281,7 +281,7 @@ class MatSciMLCalculator(Calculator):
             # run the data structure through the model
             output = self.task_module.predict(data_dict)
         else:
-            output = self.task_module.predict(atoms)
+            output = self.task_module.forward(atoms)
         if isinstance(self.task_module, MultiTaskLitModule):
             # use a more complicated parser for multitasks
             results = self.multitask_strategy(output, self.task_module)
@@ -290,9 +290,15 @@ class MatSciMLCalculator(Calculator):
             # add outputs to self.results as expected by ase, as specified by ``properties``
             # "ase_properties" are those in ``properties``.
             for ase_property in properties:
-                model_output = output.get(self.output_map[ase_property], None)
+                model_property = self.output_map[ase_property]
+                model_output = output.get(model_property, None)
                 if model_output is not None:
                     self.results[ase_property] = model_output.detach().numpy()
+                else:
+                    raise KeyError(
+                        f"Expected model to return {model_property} as an output."
+                    )
+
             if len(self.results) == 0:
                 raise RuntimeError(
                     f"No expected properties were written. Output dict: {output}"
