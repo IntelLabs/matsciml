@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from matsciml.datasets.nomad import NomadRequest
+from matsciml.datasets.nomad import NomadRequest, NomadDataset
 
 TEST_IDS = {
     0: "GjAKByPxraKfkFCdFrwp0omDVQZ7",
@@ -43,53 +43,53 @@ def test_download_data(nomad_module):
     assert datum.get("material") is not None
 
 
-# @pytest.mark.dependency(depends=["test_download_data"])
-# @pytest.mark.remote_request
-# def test_serialize_lmdb(nomad_module):
-#     _ = nomad_module.nomad_request()
-#     nomad_module.to_lmdb(nomad_module.data_dir)
+@pytest.mark.dependency(depends=["test_download_data"])
+@pytest.mark.remote_request
+def test_serialize_lmdb(nomad_module):
+    _ = nomad_module.nomad_request()
+    nomad_module.to_lmdb(nomad_module.data_dir)
 
 
-# @pytest.mark.dependency(depends=["test_serialize_lmdb"])
-# @pytest.mark.remote_request
-# def test_dataset_load(devset_dir):
-#     dset = NomadDataset(devset_dir)
-#     for index in range(3):
-#         data = dset.__getitem__(index)
-#         assert all(
-#             [
-#                 key in data.keys()
-#                 for key in ["pos", "atomic_numbers", "pc_features", "dataset"]
-#             ],
-#         )
+@pytest.mark.dependency(depends=["test_serialize_lmdb"])
+@pytest.mark.remote_request
+def test_dataset_load(devset_dir):
+    dset = NomadDataset(devset_dir)
+    for index in range(3):
+        data = dset.__getitem__(index)
+        assert all(
+            [
+                key in data.keys()
+                for key in ["pos", "atomic_numbers", "pc_features", "dataset"]
+            ],
+        )
 
 
-# @pytest.mark.dependency(depends=["test_dataset_load"])
-# @pytest.mark.remote_request
-# def test_dataset_collate(devset_dir):
-#     dset = NomadDataset(devset_dir)
-#     data = [dset.__getitem__(index) for index in range(len(TEST_IDS))]
-#     batch = dset.collate_fn(data)
-#     # check the nuclear coordinates and numbers match what is expected
-#     assert batch["pos"].size(0) == sum(batch["sizes"])
-#     assert batch["pos"].ndim == 2
-#     assert len(batch["atomic_numbers"]) == len(TEST_IDS)
-#     # assert batch["atomic_numbers"].ndim == 2
+@pytest.mark.dependency(depends=["test_dataset_load"])
+@pytest.mark.remote_request
+def test_dataset_collate(devset_dir):
+    dset = NomadDataset(devset_dir)
+    data = [dset.__getitem__(index) for index in range(len(TEST_IDS))]
+    batch = dset.collate_fn(data)
+    # check the nuclear coordinates and numbers match what is expected
+    assert batch["pos"].size(0) == sum(batch["sizes"])
+    assert batch["pos"].ndim == 2
+    assert len(batch["atomic_numbers"]) == len(TEST_IDS)
+    # assert batch["atomic_numbers"].ndim == 2
 
 
-# @pytest.mark.dependency(depends=["test_dataset_load"])
-# @pytest.mark.remote_request
-# def test_dataset_target_keys(devset_dir):
-#     # this tests target key property without manually grabbing a batch
-#     dset = NomadDataset(devset_dir)
-#     assert dset.target_keys == {
-#         "regression": ["energy_total", "efermi"],
-#         "classification": ["spin_polarized"],
-#     }
+@pytest.mark.dependency(depends=["test_dataset_load"])
+@pytest.mark.remote_request
+def test_dataset_target_keys(devset_dir):
+    # this tests target key property without manually grabbing a batch
+    dset = NomadDataset(devset_dir)
+    assert dset.target_keys == {
+        "regression": ["energy_total", "efermi"],
+        "classification": ["spin_polarized"],
+    }
 
 
-# def test_saved_devset():
-#     dset = NomadDataset(str(NomadDataset.__devset__))
-#     samples = [dset.__getitem__(i) for i in range(16)]
-#     batch = dset.collate_fn(samples)
-#     assert all([key in batch for key in ["pos", "pc_features", "mask", "targets"]])
+def test_saved_devset():
+    dset = NomadDataset(str(NomadDataset.__devset__))
+    samples = [dset.__getitem__(i) for i in range(16)]
+    batch = dset.collate_fn(samples)
+    assert all([key in batch for key in ["pos", "pc_features", "mask", "targets"]])
