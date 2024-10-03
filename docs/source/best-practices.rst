@@ -282,6 +282,63 @@ This callback will also zero out ``NaN`` gradients, allowing training to resume
 and hoping for the problem to self-correct as the model has a chance to learn
 from various training samples.
 
+Inspecting the data
+^^^^^^^^^^^^^^^^^^^
+
+When things are not behaving as intended, it can be beneficial to inspect the
+data whether you are training or making predictions off new data. The ``lmdb_cli``
+is a simple command-line interface that provides rudimentary functions to
+inspect LMDB contents without writing a script to do so.
+
+A good place to start would be to accumulate running statistics over the dataset
+using ``lmdb_cli dump_statistics``, which will compute a running average over a
+specified window length, reporting these values live and dumping them to a JSON
+file when completed as well.
+
+
+.. code-block:: console
+
+  ❯ lmdb_cli dump-statistics --help
+  Usage: lmdb_cli dump-statistics [OPTIONS] LMDB_DIR
+
+    Loads an LMDB dataset and iterates through the dataset, computing a running
+    average for numeric properties that updates interactively and written to a
+    JSON file afterwards.
+
+    The JSON file will be named after the dataset class used to interpret the
+    data followed by the specific directory/split name and written to the
+    current folder.
+
+    Parameters ---------- lmdb_dir : PathLike     Path to an LMDB folder
+    structure. dataset_type : str, optional     Class name for the dataset to
+    interpret the LMDB data. By     default is ``None``, which uses
+    ``BaseLMDBDataset`` to     load the data. Checks against the ``matsciml``
+    registry for     available datasets. periodic : bool, default True
+    Whether to enable periodic properties transform. radius : float     Cut-off
+    radius used by the periodic property transform. adaptive_cutoff : bool,
+    default True     Whether to enable the adapative cut-off in the periodic
+    properties transform. graph_backend : Optional, Literal['pyg', 'dgl']
+    Optional choice for graph backend to use. The default is ``pyg``,     which
+    emits PyTorch Geometric graphs. num_samples : int, optional     If provided,
+    sets the maximum number of samples to iterate     over.
+
+  Options:
+    -d, --dataset_type [AlexandriaDataset|CMDataset|CdvaeLMDBDataset|ColabFitDataset|IS2REDataset|LiPSDataset|MaterialsProjectDataset|MaterialsTrajectoryDataset|MultiDataset|NomadDataset|OQMDDataset|PyGCdvaeDataset|PyGMaterialsProjectDataset|S2EFDataset|SyntheticPointGroupDataset]
+                                    Dataset class name to use to map the data.
+    -p, --periodic                  Flag to disable the periodic transform.
+    -r, --radius FLOAT              Cut-off radius for periodic property
+                                    transform.  [default: 6.0]
+    -a, --adaptive_cutoff           Flag to disable the adaptive cutoff used in
+                                    periodic transform.
+    -g, --graph_backend [pyg|dgl]   Graph backend for transformation.
+    -n, --num_samples INTEGER       If specified, corresponds to the maximum
+                                    number of samples to compute with.
+    -w, --window_size INTEGER       Window size for computing the running
+                                    average over.
+    --help                          Show this message and exit.
+
+
+
 Understanding training dynamics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
