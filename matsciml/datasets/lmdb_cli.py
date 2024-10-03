@@ -70,7 +70,92 @@ def print_structure(lmdb_dir: PathLike):
 @click.argument(
     "lmdb_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True)
 )
-def summarize(lmdb_dir: PathLike): ...
+@click.argument("index", type=int)
+@click.option(
+    "-d",
+    "--dataset_type",
+    type=click.Choice(__available_datasets__),
+    default=None,
+    help="Dataset class name to use to map the data.",
+)
+@click.option(
+    "-p",
+    "--periodic",
+    is_flag=True,
+    default=True,
+    help="Flag to disable the periodic transform.",
+)
+@click.option(
+    "-r",
+    "--radius",
+    type=float,
+    default=6.0,
+    show_default=True,
+    help="Cut-off radius for periodic property transform.",
+)
+@click.option(
+    "-a",
+    "--adaptive_cutoff",
+    is_flag=True,
+    default=True,
+    help="Flag to disable the adaptive cutoff used in periodic transform.",
+)
+@click.option(
+    "-g",
+    "--graph_backend",
+    type=click.Choice(["pyg", "dgl"], case_sensitive=False),
+    default="pyg",
+    help="Graph backend for transformation.",
+)
+def check_sample(
+    lmdb_dir: PathLike,
+    index: int,
+    periodic,
+    graph_backend,
+    dataset_type,
+    radius,
+    adaptive_cutoff,
+):
+    """
+    Given an LMDB path and a data index, perform optional transforms
+    and print out what the specific sample contains.
+
+    Parameters
+    ----------
+    lmdb_dir : PathLike
+        Path to an LMDB folder structure.
+    index : int
+        Index to the data sample.
+    dataset_type : str, optional
+        Class name for the dataset to interpret the LMDB data. By
+        default is ``None``, which uses ``BaseLMDBDataset`` to
+        load the data. Checks against the ``matsciml`` registry for
+        available datasets.
+    periodic : bool, default True
+        Whether to enable periodic properties transform.
+    radius : float
+        Cut-off radius used by the periodic property transform.
+    adaptive_cutoff : bool, default True
+        Whether to enable the adapative cut-off in the periodic
+        properties transform.
+    graph_backend : Optional, Literal['pyg', 'dgl']
+        Optional choice for graph backend to use. The default is ``pyg``,
+        which emits PyTorch Geometric graphs.
+    """
+    transforms = []
+    if periodic:
+        transforms.append(PeriodicPropertiesTransform(radius, adaptive_cutoff))
+    if graph_backend:
+        transforms.append(PointCloudToGraphTransform(graph_backend))
+    target_class = (
+        BaseLMDBDataset
+        if not dataset_type
+        else registry.get_dataset_class(dataset_type)
+    )
+    dataset = target_class(Path(lmdb_dir).resolve(), transforms=transforms)
+    sample = dataset.__getitem__(index)
+    for key, value in sample.items():
+        click.echo(f"Key - {key}, value: {value}")
 
 
 @main.command()
