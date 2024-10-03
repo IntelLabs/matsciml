@@ -388,14 +388,13 @@ def dump_statistics(
     window_size: int,
 ):
     """
-    Loads an LMDB dataset and switches over to an interactive session.
+    Loads an LMDB dataset and iterates through the dataset,
+    computing a running average for numeric properties that
+    updates interactively and written to a JSON file afterwards.
 
-    This allows you to quickly load up an LMDB dataset and perform some interactive
-    debugging. The additional options provide control over graph creation (or lack
-    thereof).
-
-    You can subsequently iterate through the ``dataset`` variable however you
-    wish, but typically with the ``__getitem__(<index>)`` method.
+    The JSON file will be named after the dataset class used
+    to interpret the data followed by the specific directory/split
+    name and written to the current folder.
 
     Parameters
     ----------
