@@ -4,9 +4,14 @@ import code
 from os import PathLike
 from pathlib import Path
 from typing import Any, Literal
-from json import dumps
+from json import dumps, dump
+from collections import deque
+from logging import getLogger
 
 import click
+import torch
+import numpy as np
+from tqdm import tqdm
 
 from matsciml import datasets  # noqa: F401
 from matsciml.common.registry import registry
@@ -18,6 +23,74 @@ from matsciml.datasets.transforms import (
 
 
 __available_datasets__ = sorted(list(registry.__entries__["datasets"].keys()))
+
+
+class Accumulator:
+    def __init__(self, name: str, maxlen: int):
+        self._queue = deque(maxlen=maxlen)
+        self.name = name
+        self._logger = getLogger(f"lmdb_cli.Accumulator.{name}")
+
+    def append(self, data: Any):
+        self._queue.append(data)
+
+    @property
+    def array(self) -> np.ndarray:
+        data = list(self._queue)
+        try:
+            if isinstance(data[0], torch.Tensor):
+                data = torch.vstack(data).numpy()
+            elif isinstance(data[0], np.ndarray):
+                data = np.vstack(data)
+        except Exception:
+            data = np.concatenate([sample.flatten() for sample in data])
+        data = np.array(data)
+        return data
+
+    def __str__(self) -> str:
+        data = self.array
+        mean = data.mean()
+        std = data.std()
+        return f"{mean:.3f}±{std:.3f}"
+
+    def __repr__(self) -> str:
+        return dumps(self.to_json())
+
+    def to_json(self) -> dict[str, str | float]:
+        data = self.array
+        mean = data.mean()
+        std = data.std()
+        return {"name": self.name, "mean": float(mean), "std": float(std)}
+
+
+def _update_accumulators(
+    sample: dict[str, Any], accumulators: dict[str, Accumulator], maxlen: int = 10
+):
+    """
+    Helper function that will recursively update (or create) accumulators
+    for numeric data.
+
+    Parameters
+    ----------
+    sample : dict[str, Any]
+        Data sample from a dataset.
+    accumulators : dict[str, Accumulator]
+        Dictionary mapping of accumulators. Can be empty, as
+        keys that are detected that do not exist already will
+        be created with ``maxlen`` as the running average.
+    maxlen : int
+        Length of the buffer used to compute the running average.
+    """
+    for key, value in sample.items():
+        if isinstance(value, dict):
+            _update_accumulators(value, accumulators)
+        elif isinstance(value, (int, float, np.ndarray, torch.Tensor)):
+            if key not in accumulators:
+                accumulators[key] = Accumulator(key, maxlen=maxlen)
+            a = accumulators[key]
+            a.append(value)
+        else:
+            pass
 
 
 def _recurse_dictionary_types(input_dict: dict[Any, Any]) -> dict[Any, str]:
@@ -248,6 +321,135 @@ def interactive(
     )
     dataset = target_class(Path(lmdb_dir).resolve(), transforms=transforms)  # noqa: F401
     code.interact(local=locals())
+
+
+@main.command()
+@click.argument(
+    "lmdb_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True)
+)
+@click.option(
+    "-d",
+    "--dataset_type",
+    type=click.Choice(__available_datasets__),
+    default=None,
+    help="Dataset class name to use to map the data.",
+)
+@click.option(
+    "-p",
+    "--periodic",
+    is_flag=True,
+    default=True,
+    help="Flag to disable the periodic transform.",
+)
+@click.option(
+    "-r",
+    "--radius",
+    type=float,
+    default=6.0,
+    show_default=True,
+    help="Cut-off radius for periodic property transform.",
+)
+@click.option(
+    "-a",
+    "--adaptive_cutoff",
+    is_flag=True,
+    default=True,
+    help="Flag to disable the adaptive cutoff used in periodic transform.",
+)
+@click.option(
+    "-g",
+    "--graph_backend",
+    type=click.Choice(["pyg", "dgl"], case_sensitive=False),
+    default="pyg",
+    help="Graph backend for transformation.",
+)
+@click.option(
+    "-n",
+    "--num_samples",
+    type=int,
+    default=None,
+    help="If specified, corresponds to the maximum number of samples to compute with.",
+)
+@click.option(
+    "-w",
+    "--window_size",
+    type=int,
+    default=10,
+    help="Window size for computing the running average over.",
+)
+def dump_statistics(
+    lmdb_dir: PathLike,
+    dataset_type: str | None,
+    periodic: bool,
+    radius: float,
+    adaptive_cutoff: bool,
+    graph_backend: Literal["pyg", "dgl"] | None,
+    num_samples: int | None,
+    window_size: int,
+):
+    """
+    Loads an LMDB dataset and switches over to an interactive session.
+
+    This allows you to quickly load up an LMDB dataset and perform some interactive
+    debugging. The additional options provide control over graph creation (or lack
+    thereof).
+
+    You can subsequently iterate through the ``dataset`` variable however you
+    wish, but typically with the ``__getitem__(<index>)`` method.
+
+    Parameters
+    ----------
+    lmdb_dir : PathLike
+        Path to an LMDB folder structure.
+    dataset_type : str, optional
+        Class name for the dataset to interpret the LMDB data. By
+        default is ``None``, which uses ``BaseLMDBDataset`` to
+        load the data. Checks against the ``matsciml`` registry for
+        available datasets.
+    periodic : bool, default True
+        Whether to enable periodic properties transform.
+    radius : float
+        Cut-off radius used by the periodic property transform.
+    adaptive_cutoff : bool, default True
+        Whether to enable the adapative cut-off in the periodic
+        properties transform.
+    graph_backend : Optional, Literal['pyg', 'dgl']
+        Optional choice for graph backend to use. The default is ``pyg``,
+        which emits PyTorch Geometric graphs.
+    num_samples : int, optional
+        If provided, sets the maximum number of samples to iterate
+        over.
+    """
+    transforms = []
+    if periodic:
+        transforms.append(PeriodicPropertiesTransform(radius, adaptive_cutoff))
+    if graph_backend:
+        transforms.append(PointCloudToGraphTransform(graph_backend))
+    target_class = (
+        BaseLMDBDataset
+        if not dataset_type
+        else registry.get_dataset_class(dataset_type)
+    )
+    accum = {}
+    stats = []
+    dataset = target_class(Path(lmdb_dir).resolve(), transforms=transforms)  # noqa: F401
+    if not num_samples:
+        num_samples = len(dataset)
+    num_samples = min(num_samples, len(dataset))
+    pbar = tqdm(range(num_samples), total=num_samples, unit=" samples")
+    for index in pbar:
+        sample = dataset.__getitem__(index)
+        _update_accumulators(sample, accum, window_size)
+        # now update the progress bar with the statistics
+        desc = ""
+        for key, a in accum.items():
+            desc += f"{key}: {str(a)} "
+        pbar.set_description(desc)
+        stats.append([a.to_json() for a in accum.values()])
+    with open(
+        f"{target_class.__name__}-{Path(lmdb_dir).stem}_statistics.json", "w+"
+    ) as write_file:
+        dump(stats, write_file, indent=2)
 
 
 if __name__ == "__main__":
