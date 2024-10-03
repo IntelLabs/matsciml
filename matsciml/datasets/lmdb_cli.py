@@ -12,6 +12,8 @@ import click
 import torch
 import numpy as np
 from tqdm import tqdm
+from torch_geometric.data import Data as PyGGraph
+from torch_geometric.utils import degree
 
 from matsciml import datasets  # noqa: F401
 from matsciml.common.registry import registry
@@ -91,6 +93,21 @@ def _update_accumulators(
             a.append(value)
         else:
             pass
+    # for pyg so far, we also accumulate graph node/edge metrics
+    if "graph" in sample:
+        graph = sample["graph"]
+        if isinstance(graph, PyGGraph):
+            agg_dict = {
+                "num_nodes": graph.num_nodes,
+                "avg_degree": degree(graph.edge_index[:, 0], graph.num_nodes)
+                .float()
+                .mean(),
+            }
+            for key, value in agg_dict.items():
+                if key not in accumulators:
+                    accumulators[key] = Accumulator(key, maxlen=maxlen)
+                a = accumulators[key]
+                a.append(value)
 
 
 def _recurse_dictionary_types(input_dict: dict[Any, Any]) -> dict[Any, str]:
