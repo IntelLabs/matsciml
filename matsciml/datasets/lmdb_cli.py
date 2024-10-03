@@ -110,6 +110,51 @@ def _update_accumulators(
                 a.append(value)
 
 
+def _make_dataset(
+    lmdb_dir: PathLike,
+    dataset_type: str | None,
+    periodic: bool,
+    radius: float,
+    adaptive_cutoff: bool,
+    graph_backend: Literal["pyg", "dgl"] | None,
+):
+    """
+    Abstracted out function that will instantiate a dataset object.
+
+    Parameters
+    ----------
+    lmdb_dir : PathLike
+        Path to an LMDB folder structure.
+    dataset_type : str, optional
+        Class name for the dataset to interpret the LMDB data. By
+        default is ``None``, which uses ``BaseLMDBDataset`` to
+        load the data. Checks against the ``matsciml`` registry for
+        available datasets.
+    periodic : bool, default True
+        Whether to enable periodic properties transform.
+    radius : float
+        Cut-off radius used by the periodic property transform.
+    adaptive_cutoff : bool, default True
+        Whether to enable the adapative cut-off in the periodic
+        properties transform.
+    graph_backend : Optional, Literal['pyg', 'dgl']
+        Optional choice for graph backend to use. The default is ``pyg``,
+        which emits PyTorch Geometric graphs.
+    """
+    transforms = []
+    if periodic:
+        transforms.append(PeriodicPropertiesTransform(radius, adaptive_cutoff))
+    if graph_backend:
+        transforms.append(PointCloudToGraphTransform(graph_backend))
+    target_class = (
+        BaseLMDBDataset
+        if not dataset_type
+        else registry.get_dataset_class(dataset_type)
+    )
+    dataset = target_class(Path(lmdb_dir).resolve(), transforms=transforms)
+    return dataset
+
+
 def _recurse_dictionary_types(input_dict: dict[Any, Any]) -> dict[Any, str]:
     return_dict = {}
     for key, value in input_dict.items():
