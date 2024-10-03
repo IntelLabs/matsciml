@@ -277,17 +277,9 @@ def check_sample(
         Optional choice for graph backend to use. The default is ``pyg``,
         which emits PyTorch Geometric graphs.
     """
-    transforms = []
-    if periodic:
-        transforms.append(PeriodicPropertiesTransform(radius, adaptive_cutoff))
-    if graph_backend:
-        transforms.append(PointCloudToGraphTransform(graph_backend))
-    target_class = (
-        BaseLMDBDataset
-        if not dataset_type
-        else registry.get_dataset_class(dataset_type)
+    dataset = _make_dataset(
+        lmdb_dir, dataset_type, periodic, radius, adaptive_cutoff, graph_backend
     )
-    dataset = target_class(Path(lmdb_dir).resolve(), transforms=transforms)
     sample = dataset.__getitem__(index)
     for key, value in sample.items():
         click.echo(f"Key - {key}, value: {value}")
@@ -371,17 +363,9 @@ def interactive(
         Optional choice for graph backend to use. The default is ``pyg``,
         which emits PyTorch Geometric graphs.
     """
-    transforms = []
-    if periodic:
-        transforms.append(PeriodicPropertiesTransform(radius, adaptive_cutoff))
-    if graph_backend:
-        transforms.append(PointCloudToGraphTransform(graph_backend))
-    target_class = (
-        BaseLMDBDataset
-        if not dataset_type
-        else registry.get_dataset_class(dataset_type)
-    )
-    dataset = target_class(Path(lmdb_dir).resolve(), transforms=transforms)  # noqa: F401
+    dataset = _make_dataset(
+        lmdb_dir, dataset_type, periodic, radius, adaptive_cutoff, graph_backend
+    )  #  noqa: F401
     code.interact(local=locals())
 
 
@@ -481,19 +465,11 @@ def dump_statistics(
         If provided, sets the maximum number of samples to iterate
         over.
     """
-    transforms = []
-    if periodic:
-        transforms.append(PeriodicPropertiesTransform(radius, adaptive_cutoff))
-    if graph_backend:
-        transforms.append(PointCloudToGraphTransform(graph_backend))
-    target_class = (
-        BaseLMDBDataset
-        if not dataset_type
-        else registry.get_dataset_class(dataset_type)
+    dataset = _make_dataset(
+        lmdb_dir, dataset_type, periodic, radius, adaptive_cutoff, graph_backend
     )
     accum = {}
     stats = []
-    dataset = target_class(Path(lmdb_dir).resolve(), transforms=transforms)  # noqa: F401
     if not num_samples:
         num_samples = len(dataset)
     num_samples = min(num_samples, len(dataset))
@@ -508,7 +484,7 @@ def dump_statistics(
         pbar.set_description(desc)
         stats.append([a.to_json() for a in accum.values()])
     with open(
-        f"{target_class.__name__}-{Path(lmdb_dir).stem}_statistics.json", "w+"
+        f"{dataset.__class__.__name__}-{Path(lmdb_dir).stem}_statistics.json", "w+"
     ) as write_file:
         dump(stats, write_file, indent=2)
 
