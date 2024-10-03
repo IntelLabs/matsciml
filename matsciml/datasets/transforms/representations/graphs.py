@@ -299,8 +299,8 @@ class PointCloudToGraphTransform(RepresentationTransform):
             "pc_features",
             "distance_matrix",
             "atomic_numbers",
-            "src_nodes",
-            "dst_nodes",
+            # "src_nodes",
+            # "dst_nodes",
             "sizes",
         ]:
             try:
