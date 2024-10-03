@@ -70,6 +70,32 @@ the full functional pipeline; perfect for development!
    :members:
 
 
+Inspecting LMDB datasets in the command-line
+############################################
+
+It can be useful to inspect the data you are trying to train or predict off of, especially
+when things are not behaving as intended. Unfortunately, LMDB is a binary format, and with
+it, makes inspecting data a little harder than plain text like CSV or JSON.
+
+To help with this, ``matsciml`` comes with a ``lmdb_cli`` command line interface that
+provides a few helper functions to inspect data contained in LMDB, ranging from looking
+at the expected data structure and types, to generating and retrieving graphs and computing
+statistics for them.
+
+The currently implemented commands are:
+
+.. autofunction:: matsciml.datasets.lmdb_cli.print_structure
+
+
+.. autofunction:: matsciml.datasets.lmdb_cli.check_sample
+
+
+.. autofunction:: matsciml.datasets.lmdb_cli.interactive
+
+
+.. autofunction:: matsciml.datasets.lmdb_cli.dump_statistics
+
+
 Dataset API reference
 #####################
 

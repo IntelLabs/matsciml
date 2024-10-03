@@ -46,6 +46,9 @@ license = {file = "LICENSE.md"}
 name = "matsciml"
 requires-python = ">=3.8"
 
+[project.scripts]
+lmdb_cli = "matsciml.datasets.lmdb_cli:main"
+
 [project.optional-dependencies]
 all = [
   "matsciml[dev,symmetry,pyg]",
