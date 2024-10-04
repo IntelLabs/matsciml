@@ -14,7 +14,7 @@ classifiers = [
 ]
 dependencies = [
   "psutil",
-  "lightning==2.4.0",
+  "lightning>=2.4.0",
   "dgl==2.0.0",
   "dgllife==0.3.2",
   "rdkit==2023.9.5",
@@ -45,9 +45,6 @@ keywords = ["performance", "portability"]
 license = {file = "LICENSE.md"}
 name = "matsciml"
 requires-python = ">=3.8"
-
-[project.scripts]
-lmdb_cli = "matsciml.datasets.lmdb_cli:main"
 
 [project.optional-dependencies]
 all = [
