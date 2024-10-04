@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 import lightning.pytorch as pl
 
+from matsciml.datasets import MaterialsProjectDataset
 from matsciml.datasets.transforms import (
     PointCloudToGraphTransform,
     PeriodicPropertiesTransform,
@@ -20,8 +21,8 @@ from matsciml.models.base import (
 pl.seed_everything(2156161)
 
 
-# def test_regression_devset():
-#     dset = MaterialsProjectDataset.from_devset()  # noqa: F841
+def test_regression_devset():
+    dset = MaterialsProjectDataset.from_devset()  # noqa: F841
 
 
 @pytest.fixture
