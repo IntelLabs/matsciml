@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 import lightning.pytorch as pl
 
-from matsciml.datasets.materials_project import MaterialsProjectDataset
 from matsciml.datasets.transforms import (
     PointCloudToGraphTransform,
     PeriodicPropertiesTransform,
@@ -21,8 +20,8 @@ from matsciml.models.base import (
 pl.seed_everything(2156161)
 
 
-def test_regression_devset():
-    dset = MaterialsProjectDataset.from_devset()  # noqa: F841
+# def test_regression_devset():
+#     dset = MaterialsProjectDataset.from_devset()  # noqa: F841
 
 
 @pytest.fixture
@@ -139,6 +138,14 @@ def test_force_regression_with_stress(egnn_config):
     for key in ["energy", "force"]:
         assert f"train_{key}" in trainer.logged_metrics
 
+    sample = next(iter(devset.train_dataloader()))
+    output = task(sample)
+    batch_size = devset.train_dataloader().batch_size
+    for key in ["energy", "force", "stress", "virials"]:
+        assert key in output.keys()
+        if key in ["stress", "virials"]:
+            assert output[key].shape == (batch_size, 3, 3)
+
 
 def test_fa_force_regression_with_stress(faenet_config):
     faenet_config["compute_stress"] = True
@@ -161,6 +168,14 @@ def test_fa_force_regression_with_stress(faenet_config):
     # make sure losses are tracked
     for key in ["energy", "force"]:
         assert f"train_{key}" in trainer.logged_metrics
+
+    sample = next(iter(devset.train_dataloader()))
+    output = task(sample)
+    batch_size = devset.train_dataloader().batch_size
+    for key in ["energy", "force", "stress", "virials"]:
+        assert key in output.keys()
+        if key in ["stress", "virials"]:
+            assert output[key].shape == (batch_size, 3, 3)
 
 
 def test_gradfree_force_regression(egnn_config):

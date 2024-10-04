@@ -1947,7 +1947,6 @@ class ForceRegressionTask(BaseTaskModule):
             )
 
             if self.compute_stress:
-                force = outputs[0]
                 virials = outputs[1]
                 stress = torch.zeros_like(displacement)
                 cell = batch["cell"].view(-1, 3, 3)
@@ -1956,11 +1955,12 @@ class ForceRegressionTask(BaseTaskModule):
                 stress = torch.where(
                     torch.abs(stress) < 1e10, stress, torch.zeros_like(stress)
                 )
+                stress = -1 * stress
             else:
-                force = outputs
                 stress = None
                 virials = None
-            return energy, -1 * force, -1 * stress, virials
+            force = -1 * outputs[0]
+            return energy, force, stress, virials
 
         # not using frame averaging
         if fa_pos is None:
@@ -2002,34 +2002,24 @@ class ForceRegressionTask(BaseTaskModule):
                     .bmm(force_repeat_rot.transpose(1, 2))
                 )
                 all_forces.append(rotated_forces)
-            if stress is not None and virials is not None:
-                for frame_idx, stress_rot in enumerate(stress):
-                    stress_repeat_rot = torch.repeat_interleave(
-                        stress_rot,
-                        3,
-                        dim=0,
-                    ).to(self.device)
-                    rotated_stress = (
-                        stress[frame_idx]
-                        .view(-1, 1, 3)
-                        .bmm(stress_repeat_rot.transpose(1, 2))
-                    )
-                    rotated_virials = (
-                        virials[frame_idx]
-                        .view(-1, 1, 3)
-                        .bmm(stress_repeat_rot.transpose(1, 2))
-                    )
+            if self.compute_stress:
+                for frame_idx, frame_rot in enumerate(fa_rot):
+                    rotated_stress = stress[frame_idx].bmm(frame_rot.transpose(1, 2))
+                    rotated_virials = virials[frame_idx].bmm(frame_rot.transpose(1, 2))
+                    # adding dim to concat on
+                    all_stress.append(rotated_stress.unsqueeze(1))
+                    all_virials.append(rotated_virials.unsqueeze(1))
 
-                    all_stress.append(rotated_stress)
-                    all_virials.append(rotated_virials)
             # combine all the force and energy data into a single tensor
             # using frame averaging, the expected shapes after concatenation are:
             # force - [num positions, num frames, 3]
             # energy - [batch size, num frames, 1]
+            # stress/virials - [batch size, 3, 3]
             force = torch.cat(all_forces, dim=1)
-            stress = torch.cat(all_stress, dim=1)
-            virials = torch.cat(all_virials, dim=1)
             energy = torch.cat(energy, dim=1)
+            if self.compute_stress:
+                stress = torch.cat(all_stress, dim=1)
+                virials = torch.cat(all_virials, dim=1)
         # reduce outputs to what are expected shapes
         outputs["force"] = reduce(
             force,
@@ -2037,18 +2027,19 @@ class ForceRegressionTask(BaseTaskModule):
             self.embedding_reduction_type,
             d=3,
         )
-        outputs["stress"] = reduce(
-            stress,
-            "n ... d -> n d",
-            self.embedding_reduction_type,
-            d=3,
-        )
-        outputs["virials"] = reduce(
-            virials,
-            "n ... d -> n d",
-            self.embedding_reduction_type,
-            d=3,
-        )
+        if self.compute_stress:
+            outputs["stress"] = reduce(
+                stress,
+                "b ... n d -> b n d",
+                self.embedding_reduction_type,
+                d=3,
+            )
+            outputs["virials"] = reduce(
+                virials,
+                "b ... n d -> b n d",
+                self.embedding_reduction_type,
+                d=3,
+            )
         # this may not do anything if we aren't frame averaging
         # since the reduction is also done in the energy_and_force call
         outputs["energy"] = reduce(
