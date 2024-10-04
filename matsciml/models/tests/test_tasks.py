@@ -84,9 +84,7 @@ def test_force_regression(egnn_config):
         },
     )
     task = ForceRegressionTask(**egnn_config)
-    trainer = pl.Trainer(
-        num_sanity_val_steps=0, max_steps=5, logger=False, enable_checkpointing=False
-    )
+    trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
     trainer.fit(task, datamodule=devset)
     # make sure losses are tracked
     for key in ["energy", "force"]:
@@ -131,9 +129,7 @@ def test_force_regression_with_stress(egnn_config):
         },
     )
     task = ForceRegressionTask(**egnn_config)
-    trainer = pl.Trainer(
-        num_sanity_val_steps=0, max_steps=5, logger=False, enable_checkpointing=False
-    )
+    trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
     trainer.fit(task, datamodule=devset)
     # make sure losses are tracked
     for key in ["energy", "force"]:
