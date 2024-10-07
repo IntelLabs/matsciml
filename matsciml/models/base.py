@@ -2271,6 +2271,10 @@ class ForceRegressionTask(BaseTaskModule):
         num_graphs: int,
         batch: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """virial/stress computation inspired from:
+        https://github.com/ACEsuit/mace/blob/main/mace/modules/utils.py
+        https://github.com/mir-group/nequip
+        """
         if cell is None:
             cell = torch.zeros(
                 num_graphs * 3,
@@ -2284,9 +2288,7 @@ class ForceRegressionTask(BaseTaskModule):
             device=positions.device,
         )
         displacement.requires_grad_(True)
-        symmetric_displacement = 0.5 * (
-            displacement + displacement.transpose(-1, -2)
-        )  # From https://github.com/mir-group/nequip
+        symmetric_displacement = 0.5 * (displacement + displacement.transpose(-1, -2))
         positions = positions + torch.einsum(
             "be,bec->bc", positions, symmetric_displacement[batch]
         )
