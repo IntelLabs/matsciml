@@ -179,7 +179,7 @@ class BatchQuantileLoss(nn.Module):
             )
             target_weights[mask] = curr_weight
         # the last bin
-        target_weights[target_quantity > target_quantiles[-1]] = self.weights[-1]
+        target_weights[target_quantity >= target_quantiles[-1]] = self.weights[-1]
         unweighted_loss = self.loss_func(input, target)
         weighted_loss = unweighted_loss * target_weights
         return weighted_loss.mean()
