@@ -166,7 +166,7 @@ class BatchQuantileLoss(nn.Module):
         # define the first quantile bracket
         target_weights[target_quantity < target_quantiles[0]] = self.weights[0]
         # now do quantiles in between
-        for index in range(1, len(self.weights) - 1):
+        for index in range(len(self.weights) - 1):
             curr_quantile = self.quantiles[index]
             next_quantile = self.quantiles[index + 1]
             curr_weight = self.weights[index]
