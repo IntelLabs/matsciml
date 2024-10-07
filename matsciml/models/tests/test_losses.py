@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import pytest
 import torch
+from lightning import pytorch as pl
 
+from matsciml.lightning import MatSciMLDataModule
+from matsciml.datasets.transforms import (
+    PeriodicPropertiesTransform,
+    PointCloudToGraphTransform,
+)
+from matsciml.models.base import ForceRegressionTask
+from matsciml.models.pyg import EGNN
 from matsciml.models import losses
 
 
@@ -47,3 +55,30 @@ def test_quantile_loss(shape, quantiles, use_norm, loss_func):
     l_func = losses.BatchQuantileLoss(quantiles, loss_func, use_norm, huber_delta=0.01)
     loss = l_func(x, y)
     loss.mean().backward()
+
+
+def test_quantile_loss_egnn():
+    task = ForceRegressionTask(
+        encoder_class=EGNN,
+        encoder_kwargs={"hidden_dim": 64, "output_dim": 64},
+        output_kwargs={"lazy": False, "input_dim": 64, "hidden_dim": 64},
+        loss_func={
+            "energy": torch.nn.MSELoss,
+            "force": losses.BatchQuantileLoss(
+                {0.1: 0.5, 0.25: 0.9, 0.5: 1.5, 0.85: 2.0, 0.95: 1.0},
+                loss_func="huber",
+                huber_delta=0.01,
+            ),
+        },
+    )
+    dm = MatSciMLDataModule.from_devset(
+        "LiPSDataset",
+        dset_kwargs={
+            "transforms": [
+                PeriodicPropertiesTransform(6.0),
+                PointCloudToGraphTransform("pyg"),
+            ]
+        },
+    )
+    trainer = pl.Trainer(fast_dev_run=10)
+    trainer.fit(task, datamodule=dm)
