@@ -90,6 +90,10 @@ class BatchQuantileLoss(nn.Module):
         weight predicted vs. actual margins, as computed with ``loss_func``.
         The mean of the weighted loss is then returned.
 
+        In the case of ``loss_func='huber'``, the ``huber_delta`` argument specifies
+        the margin used to switch between MAE and MSE losses. This value
+        is applied globally (i.e. regardless of the quantile).
+
         Parameters
         ----------
         quantile_weights : dict[float, float]
