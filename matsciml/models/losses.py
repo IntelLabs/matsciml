@@ -158,7 +158,11 @@ class BatchQuantileLoss(nn.Module):
 
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         if self.use_norm:
-            target_quantity = target.norm(dim=-1, keepdim=True)
+            if target.ndim == 1:
+                temp_target = target.unsqueeze(-1)
+            else:
+                temp_target = target
+            target_quantity = temp_target.norm(dim=-1, keepdim=True)
         else:
             target_quantity = target
         target_quantiles = torch.quantile(target_quantity, q=self.quantiles)
