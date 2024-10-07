@@ -150,3 +150,21 @@ potential difficulty in the task.
 
 .. autoclass:: matsciml.models.base.NodeDenoisingTask
    :members:
+
+
+Loss functions
+==============
+
+Each task will have a default loss function that is ensured to work for that particular task.
+Some tasks and datasets may need more flexibility in how training signals are computed, and
+the currently implemented interface for tasks allows a dictionary mapping of task key and
+loss function to be passed as a hyperparameter. In addition to the typical PyTorch losses
+like ``L1Loss`` and ``MSELoss``, we also implement some loss functions based on ideas borrowed
+from other repositories, such as MACE.
+
+.. autoclass:: matsciml.models.losses.AtomWeightedMSE
+   :members:
+
+
+.. autoclass:: matsciml.models.losses.BatchQuantileLoss
+   :members:
