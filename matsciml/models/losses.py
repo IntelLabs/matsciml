@@ -75,6 +75,53 @@ class BatchQuantileLoss(nn.Module):
         use_norm: bool = True,
         huber_delta: float | None = None,
     ) -> None:
+        """
+        Implements a batch-based or dynamic quantile loss function.
+
+        This loss function uses user-defined quantiles and associated
+        weights for training: the high-level idea is to allow flexibility
+        in optimizing model performance against certain outliers, and
+        ensuring that the model generalizes well.
+
+        The function will either use the target values, or the norm of
+        the target values (more meaningful for vector quantities like
+        forces) to compute quantile values based on bins requested. A weight
+        tensor is then generated (with the same shape as the targets) to
+        weight predicted vs. actual margins, as computed with ``loss_func``.
+        The mean of the weighted loss is then returned.
+
+        Parameters
+        ----------
+        quantile_weights : dict[float, float]
+            Dictionary mapping of quantile and the weighting to ascribe
+            to that bin. Values smaller than the first bin, and larger
+            than the last bin take on these respective values, while
+            quantile in between bin ranges include the lower quantile
+            and up to (not including) the next bin.
+        loss_func : Callable | Literal['mse', 'rmse', 'huber']
+            Actual metric function. If a string literal is given, then
+            one of the built-in PyTorch functional losses are used
+            based on either MSE, RMSE, or Huber loss. If a ``Callable``
+            is passed, the output **must** be of the same dimension
+            as the targets, i.e. the behavior of ``keepdim`` or no
+            reduction, as the weights are applied afterwards.
+        use_norm : bool, default True
+            Whether to use the norm of targets, instead of an elementwise
+            wise application. This makes sense for vector quantities that
+            are coupled, e.g. force vectors. If ``False``, this will still
+            work with scalar and vector quantities-alike, but requires an
+            intuition for one over the other.
+        huber_delta : float, optional
+            If ``loss_func`` is set to 'huber', this value is used as the
+            ``delta`` argument in ``torch.nn.functional.huber_loss``, which
+            corresponds to the margin between MAE/L1 and MSE functions.
+
+        Raises
+        ------
+        NotImplementedError:
+            Currently RMSE is not implemented, and will trigger this
+            exception.
+        """
         super().__init__()
         for key, value in quantile_weights.items():
             assert isinstance(
