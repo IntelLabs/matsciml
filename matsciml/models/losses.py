@@ -71,7 +71,7 @@ class BatchQuantileLoss(nn.Module):
     def __init__(
         self,
         quantile_weights: dict[float, float],
-        loss_func: Callable | Literal["mse", "rmse", "huber"],
+        loss_func: Callable | Literal["mse", "mae", "rmse", "huber"],
         use_norm: bool = True,
         huber_delta: float | None = None,
     ) -> None:
@@ -98,7 +98,7 @@ class BatchQuantileLoss(nn.Module):
             than the last bin take on these respective values, while
             quantile in between bin ranges include the lower quantile
             and up to (not including) the next bin.
-        loss_func : Callable | Literal['mse', 'rmse', 'huber']
+        loss_func : Callable | Literal['mse', 'mae', 'rmse', 'huber']
             Actual metric function. If a string literal is given, then
             one of the built-in PyTorch functional losses are used
             based on either MSE, RMSE, or Huber loss. If a ``Callable``
@@ -143,6 +143,8 @@ class BatchQuantileLoss(nn.Module):
         if isinstance(loss_func, str):
             if loss_func == "mse":
                 loss_func = partial(torch.nn.functional.mse_loss, reduction="none")
+            elif loss_func == "mae":
+                loss_func = partial(torch.nn.functional.l1_loss, reduction="none")
             elif loss_func == "rmse":
                 raise NotImplementedError("RMSE function has not yet been implemented.")
             elif loss_func == "huber":
