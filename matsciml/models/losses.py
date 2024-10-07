@@ -108,9 +108,8 @@ class BatchQuantileLoss(nn.Module):
         self.loss_func = loss_func
 
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        assert target.ndim >= 2, "BatchQuantileLoss assumes vector quantites."
         if self.use_norm:
-            target_quantity = target.norm(dim=-1)
+            target_quantity = target.norm(dim=-1, keepdim=True)
         else:
             target_quantity = target
         target_quantiles = torch.quantile(target_quantity, q=self.quantiles)
