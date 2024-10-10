@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from importlib import util
+from loguru import logger
+from importlib import util, import_module
 
 from packaging.version import parse
 from pkg_resources import DistributionNotFound, get_distribution
+
+logger = logger.bind(name="matsciml.packages")
 
 """
 The `package_registry` object is a convenient way to determine which packages have
@@ -16,9 +19,19 @@ package_registry["ipex"] = (
 package_registry["ccl"] = (
     True if util.find_spec("oneccl_bindings_for_pytorch") else False
 )
-# graph specific packages
-package_registry["pyg"] = True if util.find_spec("torch_geometric") else False
-package_registry["dgl"] = True if util.find_spec("dgl") else False
+# graph specific packages; slightly more involved because we should try import
+for package in ["torch_geometric", "torch_scatter", "torch_sparse", "dgl"]:
+    success = False
+    try:
+        import_module(package)
+        success = True
+    except Exception:
+        logger.opt(exception=True).warning(
+            f"Could not import {package}, which may impact functionality."
+        )
+    package_registry[package] = success
+# for backwards compatibility and looks better anyway
+package_registry["pyg"] = package_registry["torch_geometric"]
 package_registry["codecarbon"] = True if util.find_spec("codecarbon") else False
 
 
