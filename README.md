@@ -52,7 +52,8 @@ For CPU only (good for local laptop development):
 pip install -f https://data.pyg.org/whl/torch-2.4.0+cpu.html -f https://data.dgl.ai/wheels/torch-2.4/repo.html -e './[all]'
 ```
 
-For XPU usage, you will need to install PyTorch separately first, followed by `matsciml`:
+For XPU usage, you will need to install PyTorch separately first, followed by `matsciml`; note that the PyTorch version is lower
+as 2.3.1 is the latest XPU binary distributed.
 
 ```console
 pip install torch==2.3.1+cxx11.abi torchvision==0.18.1+cxx11.abi torchaudio==2.3.1+cxx11.abi intel-extension-for-pytorch==2.3.110+xpu oneccl_bind_pt==2.3.100+xpu --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/xpu/us/
