@@ -44,7 +44,7 @@ The examples outlined in the next section how to get started with Open MatSci ML
 
 - `Docker`: We provide a Dockerfile inside the `docker` that can be run to install a container using standard docker commands.
 - `mamba`: We have included a `mamba` specification that provides a complete out-of-the-box installation. Run `mamba env create -n matsciml --file conda.yml`, and will install all dependencies and `matsciml` as an editable install.
-- `pip`: In this case, we assume you are bringing your own virtual environment. Depending on what hardware platform you have, you can copy-paste the following commands.
+- `pip`: In this case, we assume you are bringing your own virtual environment. Depending on what hardware platform you have, you can copy-paste the following commands; because the absolute mess that is modern Python packaging, these commands include the URLs for binary distributions of PyG and DGL graph backends.
 
 For CPU only (good for local laptop development):
 
