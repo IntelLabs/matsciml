@@ -16,7 +16,7 @@ classifiers = [
 dependencies = [
   "psutil",
   "lightning>=2.4.0",
-  "dgl==2.0.0",
+  "dgl>=2.0.0",
   "dgllife==0.3.2",
   "rdkit==2023.9.5",
   "numba>=0.55.0",
