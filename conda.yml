@@ -1,20 +1,14 @@
 name: matsciml
 channels:
-  - dglteam
   - conda-forge
-  - pyg
   - pytorch
 dependencies:
-  - scipy
-  - numba
-  - numpy
-  - dglteam::dgl=2.0.0
   - setuptools
-  - pybind11
-  - python=3.11
-  - pytorch::pytorch=2.3.0
+  - pytorch::pytorch=2.4.0
   - pip
   - pip:
+    - "-f https://data.pyg.org/whl/torch-2.4.0+cpu.html"
+    - "-f https://data.dgl.ai/wheels/torch-2.4/repo.html"
     - "-e ./[all]"
     - intel-openmp
 variables:
