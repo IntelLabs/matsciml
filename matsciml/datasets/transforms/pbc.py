@@ -60,7 +60,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             angles = torch.FloatTensor(
                 tuple(angle * (180.0 / torch.pi) for angle in angles),
             )
-            lattice = Lattice.from_parameters(*abc, *angles)
+            lattice = Lattice.from_parameters(*abc, *angles, vesta=True)
         structure = make_pymatgen_periodic_structure(
             data["atomic_numbers"],
             data["pos"],
