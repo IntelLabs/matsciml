@@ -5,6 +5,7 @@ channels:
 dependencies:
   - setuptools
   - pytorch::pytorch=2.4.0
+  - python=3.12
   - pip
   - pip:
     - "-f https://data.pyg.org/whl/torch-2.4.0+cpu.html"
