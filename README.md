@@ -5,10 +5,10 @@
 
 [![Documentation](https://readthedocs.org/projects/matsciml/badge/?version=latest)](https://matsciml.readthedocs.io/en/latest/?badge=latest)
 [![Datasets on Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.10768743.svg)](https://doi.org/10.5281/zenodo.10768743)
-[![lightning](https://img.shields.io/badge/Lightning-v2.2.4%2B-792ee5?logo=pytorchlightning)](https://lightning.ai/docs/pytorch/1.8.6)
-[![pytorch](https://img.shields.io/badge/PyTorch-v2.1.0%2B-red?logo=pytorch)](https://pytorch.org/get-started/locally/)
+[![lightning](https://img.shields.io/badge/Lightning-v2.4.0%2B-792ee5?logo=pytorchlightning)](https://lightning.ai/docs/pytorch/1.8.6)
+[![pytorch](https://img.shields.io/badge/PyTorch-v2.4.0%2B-red?logo=pytorch)](https://pytorch.org/get-started/locally/)
 [![dgl](https://img.shields.io/badge/DGL-v2.0%2B-blue?logo=dgl)](https://docs.dgl.ai/en/latest/)
-[![pyg](https://img.shields.io/badge/PyG-2.4.0-red?logo=pyg)](https://pytorch-geometric.readthedocs.io/en/2.3.1/)
+[![pyg](https://img.shields.io/badge/PyG-2.4.0%2B-red?logo=pyg)](https://pytorch-geometric.readthedocs.io/en/2.3.1/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![matsciml-preprint](https://img.shields.io/badge/TMLR-Open_MatSciML_Toolkit-blue)](https://openreview.net/forum?id=QBMyDZsPMd)
 [![hpo-paper](https://img.shields.io/badge/OpenReview-AI4Mat_2022_HPO-blue)](https://openreview.net/forum?id=_7bEq9JQKIJ)
