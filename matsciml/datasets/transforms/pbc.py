@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import torch
-from pymatgen.core import Lattice
+import numpy as np
+from pymatgen.core import Lattice, Structure
 
 from matsciml.common.types import DataDict
 from matsciml.datasets.transforms.base import AbstractDataTransform
@@ -35,9 +36,54 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
         self.adaptive_cutoff = adaptive_cutoff
 
     def __call__(self, data: DataDict) -> DataDict:
+        """
+        Given a data sample, generate graph edges with periodic boundary conditions
+        as specified by ``cutoff_radius`` and ``adaptive_cutoff``.
+
+        This function has several nested conditions, depending on the availability
+        of data pertaining to periodic structures. First and foremost, if there
+        is a serialized ``pymatgen.core.Structure`` object, we will take that
+        directly and use it to compute the periodic shifts as to minimize ambiguituies.
+        If there isn't one available, we then check for the presence of a ``cell``
+        or lattice matrix, from which we use to create a ``Lattice`` object that
+        is *then* used to create a ``pymatgen.core.Structure``. If a ``cell`` isn't
+        available, the final check is to look for keys related to lattice parameters,
+        and use those instead.
+
+        Parameters
+        ----------
+        data : DataDict
+            Data sample retrieved from a dataset.
+
+        Returns
+        -------
+        DataDict : DataDict
+            Data sample, now with updated key/values based on periodic
+            properties. See ``calculate_periodic_shifts`` for the additional
+            keys.
+
+        Raises
+        ------
+        RuntimeError:
+            If the final check for lattice parameters fails, there is nothing
+            we can base the periodic boundary calculation off of.
+        """
         for key in ["atomic_numbers", "pos"]:
             assert key in data, f"{key} missing from data sample!"
+        # if we have a pymatgen structure serialized already use it directly
+        if "structure" in data:
+            structure = data["structure"]
+            if isinstance(structure, Structure):
+                graph_props = calculate_periodic_shifts(
+                    structure, self.cutoff_radius, self.adaptive_cutoff
+                )
+                data.update(graph_props)
+                return data
+        # continue this branch if the structure doesn't qualify
         if "cell" in data:
+            assert isinstance(
+                data["cell"], (torch.Tensor, np.ndarray)
+            ), "Lattice matrix is not array-like."
             # squeeze is used to make sure we remove empty dims
             lattice = Lattice(data["cell"].squeeze())
         else:
@@ -48,7 +94,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             elif "lattice_params" in data:
                 lattice_key = "lattice_params"
             else:
-                raise KeyError(
+                raise RuntimeError(
                     "Data sample is missing lattice parameters. "
                     "Ensure `lattice_features` or `lattice_params` is available"
                     " in the data.",
@@ -60,7 +106,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             angles = torch.FloatTensor(
                 tuple(angle * (180.0 / torch.pi) for angle in angles),
             )
-            lattice = Lattice.from_parameters(*abc, *angles)
+            lattice = Lattice.from_parameters(*abc, *angles, vesta=True)
         structure = make_pymatgen_periodic_structure(
             data["atomic_numbers"],
             data["pos"],

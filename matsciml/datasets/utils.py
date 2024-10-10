@@ -644,7 +644,7 @@ def make_pymatgen_periodic_structure(
                 "Unable to construct Lattice object without parameters:"
                 f" Angles: {lat_angles}, ABC: {lat_abc}",
             )
-        lattice = Lattice(*lat_abc, *lat_angles)
+        lattice = Lattice(*lat_abc, *lat_angles, vesta=True)
     structure = Structure(
         lattice,
         atomic_numbers,
