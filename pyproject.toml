@@ -8,9 +8,10 @@ authors = [
 ]
 classifiers = [
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "psutil",
@@ -44,7 +45,7 @@ dynamic = ["version", "readme"]
 keywords = ["performance", "portability"]
 license = {file = "LICENSE.md"}
 name = "matsciml"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [project.scripts]
 lmdb_cli = "matsciml.datasets.lmdb_cli:main"
