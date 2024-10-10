@@ -57,7 +57,6 @@ all = [
 dev = [
   "ruff==0.4.0",
   "pre-commit",
-  "pytest",
   "sphinx==7.2.6",
   "sphinx-theme-pd==0.8.3",
   "sphinxawesome-theme",
