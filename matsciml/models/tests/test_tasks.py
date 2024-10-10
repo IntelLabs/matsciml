@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import lightning.pytorch as pl
 
-from matsciml.datasets.materials_project import MaterialsProjectDataset
+from matsciml.datasets import MaterialsProjectDataset
 from matsciml.datasets.transforms import (
     PointCloudToGraphTransform,
     PeriodicPropertiesTransform,
@@ -74,6 +74,7 @@ def test_force_regression(egnn_config):
         "S2EFDataset",
         dset_kwargs={
             "transforms": [
+                PeriodicPropertiesTransform(cutoff_radius=6.0, adaptive_cutoff=True),
                 PointCloudToGraphTransform(
                     "dgl",
                     cutoff_dist=20.0,
@@ -110,6 +111,68 @@ def test_fa_force_regression(faenet_config):
     # make sure losses are tracked
     for key in ["energy", "force"]:
         assert f"train_{key}" in trainer.logged_metrics
+
+
+def test_force_regression_with_stress(egnn_config):
+    egnn_config["compute_stress"] = True
+    devset = MatSciMLDataModule.from_devset(
+        "S2EFDataset",
+        dset_kwargs={
+            "transforms": [
+                PeriodicPropertiesTransform(cutoff_radius=6.0, adaptive_cutoff=True),
+                PointCloudToGraphTransform(
+                    "dgl",
+                    cutoff_dist=20.0,
+                    node_keys=["pos", "atomic_numbers"],
+                ),
+            ],
+        },
+    )
+    task = ForceRegressionTask(**egnn_config)
+    trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
+    trainer.fit(task, datamodule=devset)
+    # make sure losses are tracked
+    for key in ["energy", "force"]:
+        assert f"train_{key}" in trainer.logged_metrics
+
+    sample = next(iter(devset.train_dataloader()))
+    output = task(sample)
+    batch_size = devset.train_dataloader().batch_size
+    for key in ["energy", "force", "stress", "virials"]:
+        assert key in output.keys()
+        if key in ["stress", "virials"]:
+            assert output[key].shape == (batch_size, 3, 3)
+
+
+def test_fa_force_regression_with_stress(faenet_config):
+    faenet_config["compute_stress"] = True
+    devset = MatSciMLDataModule.from_devset(
+        "S2EFDataset",
+        dset_kwargs={
+            "transforms": [
+                PeriodicPropertiesTransform(6.0, True),
+                PointCloudToGraphTransform(
+                    "pyg",
+                    node_keys=["pos", "force", "atomic_numbers"],
+                ),
+                FrameAveraging(frame_averaging="3D", fa_method="stochastic"),
+            ],
+        },
+    )
+    task = ForceRegressionTask(**faenet_config)
+    trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
+    trainer.fit(task, datamodule=devset)
+    # make sure losses are tracked
+    for key in ["energy", "force"]:
+        assert f"train_{key}" in trainer.logged_metrics
+
+    sample = next(iter(devset.train_dataloader()))
+    output = task(sample)
+    batch_size = devset.train_dataloader().batch_size
+    for key in ["energy", "force", "stress", "virials"]:
+        assert key in output.keys()
+        if key in ["stress", "virials"]:
+            assert output[key].shape == (batch_size, 3, 3)
 
 
 def test_gradfree_force_regression(egnn_config):
