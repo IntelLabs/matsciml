@@ -5,10 +5,10 @@
 
 [![Documentation](https://readthedocs.org/projects/matsciml/badge/?version=latest)](https://matsciml.readthedocs.io/en/latest/?badge=latest)
 [![Datasets on Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.10768743.svg)](https://doi.org/10.5281/zenodo.10768743)
-[![lightning](https://img.shields.io/badge/Lightning-v2.2.4%2B-792ee5?logo=pytorchlightning)](https://lightning.ai/docs/pytorch/1.8.6)
-[![pytorch](https://img.shields.io/badge/PyTorch-v2.1.0%2B-red?logo=pytorch)](https://pytorch.org/get-started/locally/)
+[![lightning](https://img.shields.io/badge/Lightning-v2.4.0%2B-792ee5?logo=pytorchlightning)](https://lightning.ai/docs/pytorch/1.8.6)
+[![pytorch](https://img.shields.io/badge/PyTorch-v2.4.0%2B-red?logo=pytorch)](https://pytorch.org/get-started/locally/)
 [![dgl](https://img.shields.io/badge/DGL-v2.0%2B-blue?logo=dgl)](https://docs.dgl.ai/en/latest/)
-[![pyg](https://img.shields.io/badge/PyG-2.4.0-red?logo=pyg)](https://pytorch-geometric.readthedocs.io/en/2.3.1/)
+[![pyg](https://img.shields.io/badge/PyG-2.4.0%2B-red?logo=pyg)](https://pytorch-geometric.readthedocs.io/en/2.3.1/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![matsciml-preprint](https://img.shields.io/badge/TMLR-Open_MatSciML_Toolkit-blue)](https://openreview.net/forum?id=QBMyDZsPMd)
 [![hpo-paper](https://img.shields.io/badge/OpenReview-AI4Mat_2022_HPO-blue)](https://openreview.net/forum?id=_7bEq9JQKIJ)
@@ -43,23 +43,38 @@ The examples outlined in the next section how to get started with Open MatSci ML
 ### Installation
 
 - `Docker`: We provide a Dockerfile inside the `docker` that can be run to install a container using standard docker commands.
-- `Conda`: We have included a `conda` specification that provides a complete installation including XPU support for PyTorch. Run `conda env create -n matsciml --file conda.yml`, and in the newly created environment, run `pip install './[all]'` to install all of the dependencies.
-- `pip`: In some cases, you might want to install `matsciml` to an existing environment. Due to how DGL distributes wheels, you will need to add an extra index URL when installing via `pip`. As an example: `pip install -f https://data.dgl.ai/wheels/repo.html './[all]'` will install all the `matsciml` dependencies, in addition to telling `pip` where to look for CPU-only DGL wheels for your particular platform and Python version. Please consult the [DGL documentation](https://www.dgl.ai/pages/start.html) for additional help.
+- `mamba`: We have included a `mamba` specification that provides a complete out-of-the-box installation. Run `mamba env create -n matsciml --file conda.yml`, and will install all dependencies and `matsciml` as an editable install.
+- `pip`: In this case, we assume you are bringing your own virtual environment. Depending on what hardware platform you have, you can copy-paste the following commands; because the absolute mess that is modern Python packaging, these commands include the URLs for binary distributions of PyG and DGL graph backends.
+
+For CPU only (good for local laptop development):
+
+```console
+pip install -f https://data.pyg.org/whl/torch-2.4.0+cpu.html -f https://data.dgl.ai/wheels/torch-2.4/repo.html -e './[all]'
+```
+
+For XPU usage, you will need to install PyTorch separately first, followed by `matsciml`; note that the PyTorch version is lower
+as 2.3.1 is the latest XPU binary distributed.
+
+```console
+pip install torch==2.3.1+cxx11.abi torchvision==0.18.1+cxx11.abi torchaudio==2.3.1+cxx11.abi intel-extension-for-pytorch==2.3.110+xpu oneccl_bind_pt==2.3.100+xpu --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/xpu/us/
+pip install -f https://data.pyg.org/whl/torch-2.3.0+cpu.html -f https://data.dgl.ai/wheels/torch-2.3/repo.html -e './[all]'
+```
+
+For CUDA usage, substitute the index links with your particular toolkit version (e.g. 12.1 below):
+
+```console
+pip install -f https://data.dgl.ai/wheels/torch-2.4/cu121/repo.html -f https://data.pyg.org/whl/torch-2.4.0+cu121.html -e './[all]'
+```
 
 Additionally, for a development install, one can specify the extra packages like `black` and `pytest` with `pip install './[dev]'`. These can be
 added to the commit workflow by running `pre-commit install` to generate `git` hooks.
 
 ### Intel XPU capabilities
 
-There are currently extra requirements in getting a complete software environment in order to run
-on Intel XPUs, namely runtime libraries that can't be packaged cohesively together (yet). While
-`conda.yml` provides all of the high performance Python requirements (i.e. PyTorch and IPEX),
-we assume you have downloaded and sourced the oneAPI base toolkit (==2024.0.0). On managed
-clusters, sysadmins will usually provide modules (i.e. `module avail`/`module load oneapi`);
-on free clusters or workstations, please refer to instructions found [here](https://intel.github.io/intel-extension-for-pytorch/index.html#installation?platform=gpu) with
-the appropriate version (currently `2.1.0`). Specific requirements are MKL==2024.0,
-and oneCCL==2021.11.0 with the current IPEX (2.1.10+xpu) and `oneccl_bind_pt` (2.1.100+xpu).
-MKL>=2024.1, at the time of writing, is incompatiable with the IPEX version.
+>[!NOTE]
+> As of PyTorch 2.4+, XPU support has been upstreamed to PyTorch and starting from `torch>=2.5.0` onwards, should be available as a `pip` install.
+> We will update the instructions accordingly when it does. We recommend consulting the [PyTorch documentation](https://pytorch.org/docs/main/notes/get_start_xpu.html)
+> for updates and instructions on how to get started with XPU use. In the meantime, please consult [this page](https://intel.github.io/intel-extension-for-pytorch/index.html#installation?platform=gpu) to see how to set up PyTorch on XPUs.
 
 The module `matsciml.lightning.xpu` implements interfaces for Intel XPU to Lightning abstractions, including
 the `XPUAccelerator` and two strategies for deployment (single XPU/tile and distributed data parallel).
