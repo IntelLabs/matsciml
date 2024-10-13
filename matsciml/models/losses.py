@@ -6,7 +6,7 @@ import torch
 from torch import nn
 
 
-__all__ = ["AtomWeightedL1", "AtomWeightedMSE"]
+__all__ = ["AtomWeightedL1", "AtomWeightedMSE", "BatchQuantileLoss"]
 
 
 class AtomWeightedL1(nn.Module):
