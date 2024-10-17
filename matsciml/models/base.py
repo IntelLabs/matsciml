@@ -899,6 +899,9 @@ class BaseTaskModule(pl.LightningModule):
         else:
             # here we assume that encoder model is predicting directly
             outputs = encoder_outputs
+            # optionally if we still have embeddings, keep em
+            if "embeddings" in encoder_outputs:
+                batch["embeddings"] = encoder_outputs["embeddings"]
         return outputs
 
     def process_embedding(self, embeddings: Embeddings) -> dict[str, torch.Tensor]:
