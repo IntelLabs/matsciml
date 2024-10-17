@@ -892,9 +892,13 @@ class BaseTaskModule(pl.LightningModule):
         self,
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
     ) -> dict[str, torch.Tensor]:
-        embeddings = self.encoder(batch)
-        batch["embeddings"] = embeddings
-        outputs = self.process_embedding(embeddings)
+        encoder_outputs = self.encoder(batch)
+        if isinstance(encoder_outputs, Embeddings):
+            batch["embeddings"] = encoder_outputs
+            outputs = self.process_embedding(encoder_outputs)
+        else:
+            # here we assume that encoder model is predicting directly
+            outputs = encoder_outputs
         return outputs
 
     def process_embedding(self, embeddings: Embeddings) -> dict[str, torch.Tensor]:
