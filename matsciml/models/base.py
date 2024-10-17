@@ -1894,7 +1894,21 @@ class ForceRegressionTask(BaseTaskModule):
             if "embeddings" in batch:
                 embeddings = batch.get("embeddings")
             else:
-                embeddings = self.encoder(batch)
+                encoder_outputs = self.encoder(batch)
+                if not isinstance(encoder_outputs, (Embeddings, dict)):
+                    raise RuntimeError(
+                        f"Encoder model must emit a dict or `Embeddings` object. Got {encoder_outputs} instead."
+                    )
+                # sets the embeddings variable
+                if isinstance(encoder_outputs, Embeddings):
+                    embeddings = encoder_outputs
+                # in the alternative case we assume the encoder is emitting predictions
+                else:
+                    for key in ["energy", "force"]:
+                        assert (
+                            key in encoder_outputs
+                        ), f"Expected {key} to be in encoder outputs."
+                    return encoder_outputs
 
             outputs = self.process_embedding(embeddings, batch, pos, fa_rot, fa_pos)
         return outputs
