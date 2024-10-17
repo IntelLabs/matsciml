@@ -770,7 +770,9 @@ class BaseTaskModule(pl.LightningModule):
             else:
                 # keeping the keys to allow functionality that doesn't need
                 # the actual weights
-                self.output_heads = {key: None for key in self._task_keys}
+                self.output_heads = nn.ModuleDict(
+                    {key: None for key in self._task_keys}
+                )
             self.normalizers = self._make_normalizers()
         # homogenize it into a dictionary mapping
         if isinstance(self.loss_func, nn.Module) and not isinstance(
