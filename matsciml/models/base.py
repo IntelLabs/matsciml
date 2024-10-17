@@ -893,6 +893,10 @@ class BaseTaskModule(pl.LightningModule):
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
     ) -> dict[str, torch.Tensor]:
         encoder_outputs = self.encoder(batch)
+        if not isinstance(encoder_outputs, (Embeddings, dict)):
+            raise RuntimeError(
+                f"Encoder model must emit a dict or `Embeddings` object. Got {encoder_outputs} instead."
+            )
         if isinstance(encoder_outputs, Embeddings):
             batch["embeddings"] = encoder_outputs
             outputs = self.process_embedding(encoder_outputs)
