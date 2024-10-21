@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import pickle
+import ase
 from collections.abc import Generator
 from functools import lru_cache, partial
+from ase.neighborlist import NeighborList
 from os import makedirs
 from pathlib import Path
 from typing import Any, Callable
@@ -719,6 +721,7 @@ def calculate_periodic_shifts(
             f"No neighbors detected for structure with cutoff {cutoff}; {structure}"
         )
     # process the neighbors now
+
     all_src, all_dst, all_images = [], [], []
     for src_idx, dst_sites in enumerate(neighbors):
         for site in dst_sites:
@@ -747,6 +750,72 @@ def calculate_periodic_shifts(
     return_dict["offsets"] = einsum(return_dict["images"], cell, "v i, n i j -> v j")
     src, dst = return_dict["src_nodes"], return_dict["dst_nodes"]
     # this corresponds to distances between nodes based on unit cell images
+    return_dict["unit_offsets"] = (
+        frac_coords[dst] - frac_coords[src] + return_dict["offsets"]
+    )
+    return return_dict
+
+
+def calculate_ase_periodic_shifts(data, cutoff_radius, adaptive_cutoff):
+    cell = data["cell"]
+
+    atoms = ase.Atoms(
+        positions=data["pos"],
+        numbers=data["atomic_numbers"],
+        cell=cell.squeeze(0),
+        pbc=(True, True, True),
+    )
+    cutoff = [cutoff_radius] * atoms.positions.shape[0]
+    # Create a neighbor list
+    nl = NeighborList(cutoff, skin=0.0, self_interaction=False, bothways=True)
+    nl.update(atoms)
+
+    neighbors = nl.nl.neighbors
+
+    def _all_sites_have_neighbors(neighbors):
+        return all([len(n) for n in neighbors])
+
+    # if there are sites without neighbors and user requested adaptive
+    # cut off, we'll keep trying
+    if not _all_sites_have_neighbors(neighbors) and adaptive_cutoff:
+        while not _all_sites_have_neighbors(neighbors) and cutoff < 30.0:
+            # increment radial cutoff progressively
+            cutoff_radius += 0.5
+            cutoff = [cutoff_radius] * atoms.positions.shape[0]
+            nl = NeighborList(cutoff, skin=0.0, self_interaction=False, bothways=True)
+            nl.update(atoms)
+
+    # and we still don't find a neighbor, we have a problem with the structure
+    if not _all_sites_have_neighbors(neighbors):
+        raise ValueError(f"No neighbors detected for structure with cutoff {cutoff}")
+
+    all_src, all_dst, all_images = [], [], []
+    for src_idx in range(len(atoms)):
+        dst_index, image = nl.get_neighbors(src_idx)
+        for index in range(len(dst_index)):
+            all_src.append(src_idx)
+            all_dst.append(dst_index[index])
+            all_images.append(image[index])
+
+    if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
+        raise ValueError(
+            f"No images or edges to work off for cutoff {cutoff}."
+            f" Please inspect your atoms object and neighbors: {atoms}."
+        )
+
+    frac_coords = torch.from_numpy(atoms.get_scaled_positions()).float()
+    coords = torch.from_numpy(atoms.positions).float()
+
+    return_dict = {
+        "src_nodes": torch.LongTensor(all_src),
+        "dst_nodes": torch.LongTensor(all_dst),
+        "images": torch.FloatTensor(all_images),
+        "cell": cell,
+        "pos": coords,
+    }
+
+    return_dict["offsets"] = einsum(return_dict["images"], cell, "v i, n i j -> v j")
+    src, dst = return_dict["src_nodes"], return_dict["dst_nodes"]
     return_dict["unit_offsets"] = (
         frac_coords[dst] - frac_coords[src] + return_dict["offsets"]
     )

@@ -177,5 +177,23 @@ def test_graph_sorting():
     )
     dm.setup()
     loader = dm.train_dataloader()
-    graph = next(iter(loader))["graph"]
+    _ = next(iter(loader))["graph"]
     # not really anything to test, but just make sure it runs :D
+
+
+@pytest.mark.parametrize("backend", ["ase", "pymatgen"])
+def test_ase_periodic(backend):
+    trans = [
+        transforms.PeriodicPropertiesTransform(
+            cutoff_radius=6.0, adaptive_cutoff=True, backend=backend
+        )
+    ]
+    dm = MatSciMLDataModule.from_devset(
+        "S2EFDataset",
+        dset_kwargs={"transforms": trans},
+    )
+    dm.setup()
+    loader = dm.train_dataloader()
+    batch = next(iter(loader))
+    # check if periodic properties transform was applied
+    assert "unit_offsets" in batch
