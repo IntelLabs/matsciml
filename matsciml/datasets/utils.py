@@ -763,6 +763,7 @@ def calculate_ase_periodic_shifts(data, cutoff_radius, adaptive_cutoff):
         positions=data["pos"],
         numbers=data["atomic_numbers"],
         cell=cell.squeeze(0),
+        # Hard coding in the PBC direction for x, y, z.
         pbc=(True, True, True),
     )
     cutoff = [cutoff_radius] * atoms.positions.shape[0]
