@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-import torch
+from typing import Literal
+
 import numpy as np
+import torch
 from pymatgen.core import Lattice, Structure
 
 from matsciml.common.types import DataDict
 from matsciml.datasets.transforms.base import AbstractDataTransform
 from matsciml.datasets.utils import (
     calculate_periodic_shifts,
+    calculate_ase_periodic_shifts,
     make_pymatgen_periodic_structure,
 )
 
@@ -30,10 +33,16 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
     a large cut off for the entire dataset.
     """
 
-    def __init__(self, cutoff_radius: float, adaptive_cutoff: bool = False) -> None:
+    def __init__(
+        self,
+        cutoff_radius: float,
+        adaptive_cutoff: bool = False,
+        backend: Literal["pymatgen", "ase"] = "pymatgen",
+    ) -> None:
         super().__init__()
         self.cutoff_radius = cutoff_radius
         self.adaptive_cutoff = adaptive_cutoff
+        self.backend = backend
 
     def __call__(self, data: DataDict) -> DataDict:
         """
@@ -107,13 +116,23 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
                 tuple(angle * (180.0 / torch.pi) for angle in angles),
             )
             lattice = Lattice.from_parameters(*abc, *angles, vesta=True)
+            # We need cell in data for ase backend.
+            data["cell"] = torch.tensor(lattice.matrix).unsqueeze(0).float()
+
         structure = make_pymatgen_periodic_structure(
             data["atomic_numbers"],
             data["pos"],
             lattice=lattice,
         )
-        graph_props = calculate_periodic_shifts(
-            structure, self.cutoff_radius, self.adaptive_cutoff
-        )
+        if self.backend == "pymatgen":
+            graph_props = calculate_periodic_shifts(
+                structure, self.cutoff_radius, self.adaptive_cutoff
+            )
+        elif self.backend == "ase":
+            graph_props = calculate_ase_periodic_shifts(
+                data, self.cutoff_radius, self.adaptive_cutoff
+            )
+        else:
+            raise RuntimeError(f"Requested backend f{self.backend} not available.")
         data.update(graph_props)
         return data
