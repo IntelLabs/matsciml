@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 import numpy as np
 import torch
 from pymatgen.core import Lattice, Structure
@@ -35,7 +37,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
         self,
         cutoff_radius: float,
         adaptive_cutoff: bool = False,
-        backend: str = "pymatgen",
+        backend: Literal["pymatgen", "ase"] = "pymatgen",
     ) -> None:
         super().__init__()
         self.cutoff_radius = cutoff_radius
