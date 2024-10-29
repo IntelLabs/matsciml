@@ -19,6 +19,7 @@ else:
 # load models if we have PyG installed
 if _has_pyg:
     from matsciml.models.pyg.egnn import EGNN
+    from matsciml.models.pyg.faenet import FAENet
     from matsciml.models.pyg.mace import MACE, ScaleShiftMACE
 
     __all__ = ["EGNN", "FAENet", "MACE", "ScaleShiftMACE"]
@@ -36,7 +37,6 @@ if _has_pyg:
     if package_registry["torch_scatter"]:
         from matsciml.models.pyg.forcenet import ForceNet  # noqa: F401
         from matsciml.models.pyg.schnet import SchNetWrap  # noqa: F401
-        from matsciml.models.pyg.faenet import FAENet  # noqa: F401
         from matsciml.models.pyg.cgcnn import CGCNN  # noqa: F401
 
         __all__.extend(["ForceNet", "SchNetWrap", "FAENet", "CGCNN"])
