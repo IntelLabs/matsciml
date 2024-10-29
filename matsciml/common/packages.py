@@ -13,14 +13,15 @@ The `package_registry` object is a convenient way to determine which packages ha
 been installed.
 """
 package_registry = {}
-package_registry["ipex"] = (
-    True if util.find_spec("intel_extension_for_pytorch") else False
-)
-package_registry["ccl"] = (
-    True if util.find_spec("oneccl_bindings_for_pytorch") else False
-)
 # graph specific packages; slightly more involved because we should try import
-for package in ["torch_geometric", "torch_scatter", "torch_sparse", "dgl"]:
+for package in [
+    "torch_geometric",
+    "torch_scatter",
+    "torch_sparse",
+    "dgl",
+    "intel_extension_for_pytorch",
+    "oneccl_bindings_for_pytorch",
+]:
     success = False
     try:
         import_module(package)
@@ -32,6 +33,8 @@ for package in ["torch_geometric", "torch_scatter", "torch_sparse", "dgl"]:
     package_registry[package] = success
 # for backwards compatibility and looks better anyway
 package_registry["pyg"] = package_registry["torch_geometric"]
+package_registry["ipex"] = package_registry["intel_extension_for_pytorch"]
+package_registry["ccl"] = package_registry["oneccl_bindings_for_pytorch"]
 package_registry["codecarbon"] = True if util.find_spec("codecarbon") else False
 
 
