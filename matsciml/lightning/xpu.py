@@ -159,3 +159,7 @@ if package_registry["ipex"] or torch.xpu.is_available():
         SingleXPUStrategy,
         description="Strategy utilizing a single Intel GPU device or tile.",
     )
+else:
+    logger.warning(
+        "IPEX was not installed or XPU is not available. `matsciml.lightning.xpu` will be empty."
+    )
