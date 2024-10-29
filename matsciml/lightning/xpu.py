@@ -16,12 +16,8 @@ default_pg_timeout = timedelta(seconds=1800)
 
 logger = getLogger(__file__)
 
-if package_registry["ipex"]:
-    try:
-        import intel_extension_for_pytorch as ipex  # noqa: F401
-    except ImportError as e:
-        logger.warning(f"Unable to import IPEX due to {e} - XPU may not function.")
-
+# IPEX is not absolutely required for XPU usage for torch>=2.5.0
+if package_registry["ipex"] or torch.xpu.is_available():
     __all__ = ["XPUAccelerator", "SingleXPUStrategy"]
 
     class XPUAccelerator(Accelerator):
