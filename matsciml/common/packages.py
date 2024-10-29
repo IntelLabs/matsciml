@@ -27,9 +27,7 @@ for package in [
         import_module(package)
         success = True
     except Exception:
-        logger.opt(exception=True).warning(
-            f"Could not import {package}, which may impact functionality."
-        )
+        logger.warning(f"Could not import {package}, which may impact functionality.")
     package_registry[package] = success
 # for backwards compatibility and looks better anyway
 package_registry["pyg"] = package_registry["torch_geometric"]
