@@ -54,6 +54,9 @@ class DataSampleSchema(BaseModel):
     edge_index: nt.ArrayLike | None = None  # allows for precomputed edges
     charge: float | None = None  # overall system charge
     multiplicity: float | None = None  # overall system multiplicity
+    images: nt.ArrayLike | None = None
+    offsets: nt.ArrayLike | None = None
+    unit_offsets: nt.ArrayLike | None = None
 
     def to_ase_atoms(self) -> Atoms:
         return Atoms(
