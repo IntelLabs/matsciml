@@ -23,10 +23,7 @@ class DatasetSchema(BaseModel):
     creation: datetime
     blake2s: str
     target_keys: list[str]
-    train_indices: list[int] | None = None
-    val_indices: list[int] | None = None
-    test_indices: list[int] | None = None
-    predict_indices: list[int] | None = None
+    splits: set
     modified: datetime | None = None
 
 
