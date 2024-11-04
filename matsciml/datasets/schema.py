@@ -19,6 +19,16 @@ class DatasetEnum(str, Enum):
     generic = "GenericDataset"
 
 
+class PeriodicBoundarySchema(BaseModel):
+    """
+    Specifies periodic boundary conditions for each axis.
+    """
+
+    x: bool
+    y: bool
+    z: bool
+
+
 class DatasetSchema(BaseModel):
     name: DatasetEnum
     creation: datetime
@@ -40,6 +50,7 @@ class DataSampleSchema(BaseModel):
     num_atoms: int
     cart_coords: nt.ArrayLike
     atomic_numbers: nt.ArrayLike
+    pbc: PeriodicBoundarySchema
     electron_spins: nt.ArrayLike | None = None  # electronic spin at atom
     nuclear_spins: nt.ArrayLike | None = None  # optional nuclear spin at atom
     isotopic_masses: nt.ArrayLike | None = None
