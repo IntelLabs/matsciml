@@ -51,6 +51,12 @@ class PeriodicBoundarySchema(BaseModel):
     z: bool
 
 
+class NormalizationSchema(BaseModel):
+    target_key: str
+    mean: float
+    std: float
+
+
 class GraphWiringSchema(BaseModel):
     """
     Provides a specification for tracking how graphs within
