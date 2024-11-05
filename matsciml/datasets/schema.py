@@ -169,6 +169,8 @@ class DatasetSchema(BaseModel):
     description: str | None = None
     graph_schema: GraphWiringSchema | None = None
     normalization: dict[str, NormalizationSchema] | None = None
+    node_stats: NormalizationSchema | None = None
+    edge_stats: NormalizationSchema | None = None
 
     class Config:
         json_loads = orjson.loads
