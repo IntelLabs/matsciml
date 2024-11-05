@@ -191,6 +191,18 @@ class DatasetSchema(BaseModel):
         with open(json_path, "r") as read_file:
             return cls.model_validate_json(read_file.read(), strict=True)
 
+    @model_validator(mode="after")
+    def check_target_normalization(self):
+        if self.normalization is not None:
+            # first check every key is available as targets
+            target_keys = set(self.target_keys)
+            norm_keys = set(self.normalization.keys())
+            # check to see if we have unexpected norm keys
+            diff = norm_keys - target_keys
+            if len(diff) > 0:
+                raise ValidationError(f"Unexpected keys in normalization: {diff}")
+        return self
+
 
 class DataSampleSchema(BaseModel):
     """
