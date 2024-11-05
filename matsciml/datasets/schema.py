@@ -19,6 +19,7 @@ from numpydantic import NDArray, Shape
 from loguru import logger
 
 from matsciml.common.packages import package_registry
+from matsciml.modules.normalizer import Normalizer
 
 """This module defines schemas pertaining to data, using ``pydantic`` models
 to help with validation and (de)serialization.
@@ -66,6 +67,21 @@ class NormalizationSchema(BaseModel):
         if value < 0.0:
             raise ValidationError("Standard deviation cannot be negative.")
         return value
+
+    def to_normalizer(self) -> Normalizer:
+        """
+        Create ``Normalizer`` object for compatiability with training
+        pipelines.
+
+        TODO refactor the ``Normalizer`` class to be needed, and just
+        use this class directly.
+
+        Returns
+        -------
+        Normalizer
+            Normalizer object used for computation.
+        """
+        return Normalizer(mean=self.mean, std=self.std)
 
 
 class GraphWiringSchema(BaseModel):
