@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import cache
 from os import PathLike
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal
 from logging import getLogger
 
 import h5py
@@ -69,6 +69,29 @@ class MatSciMLDataModule(pl.LightningDataModule):
         transforms: list[Callable] | None = None,
         **loader_kwargs,
     ):
+        """
+        Initialize a ``MatSciMLDataModule`` that uses the HDF5
+        binary data format.
+
+        [TODO:description]
+
+        Parameters
+        ----------
+        filepath : PathLike
+            Filepath to a root folder containing HDF5 files
+            for each split, and a metadata JSON file.
+        transforms : list[Callable], optional
+            List of transforms to process data samples after loading.
+        loader_kwargs
+            Additional keyword arguments that are passed to
+            dataloaders.
+
+        Raises
+        ------
+        RuntimeError:
+            If the provided filepath is not a directory, this method
+            will raise a ``RuntimeError``.
+        """
         if not isinstance(filepath, Path):
             filepath = Path(filepath)
         if not filepath.is_dir():
@@ -92,11 +115,36 @@ class MatSciMLDataModule(pl.LightningDataModule):
         self._metadata = metadata
 
     @property
-    def h5_files(self) -> dict[str, Path]:
+    def h5_files(self) -> dict[Literal["train", "test", "validation", "predict"], Path]:
+        """
+        Returns a mapping of split to HDF5 filepaths within
+        the root folder. Entries will only be present if the file
+        can be found.
+
+        Returns
+        -------
+        dict[Literal["train", "test", "validation", "predict"], Path]
+            Available split to HDF5 filepath mapping.
+        """
         return self._h5_files
 
     @h5_files.setter
     def h5_files(self, root_dir: Path) -> None:
+        """
+        Given a root folder directory, discover subsplits of data
+        by matching the ``.h5`` file extension.
+
+        Parameters
+        ----------
+        root_dir : Path
+            Folder containing data splits and metadata.
+
+        Raises
+        ------
+        RuntimeError
+            If not ``.h5`` files were discovered within this folder,
+            we raise a ``RuntimeError``.
+        """
         h5_files = {}
         for prefix in ["train", "test", "validation", "predict"]:
             h5_file = root_dir.joinpath(prefix).with_suffix(".h5")
