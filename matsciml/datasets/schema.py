@@ -9,7 +9,13 @@ from pathlib import Path
 
 import orjson
 from ase import Atoms
-from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from numpydantic import NDArray, Shape
 from loguru import logger
 
@@ -55,6 +61,13 @@ class NormalizationSchema(BaseModel):
     target_key: str
     mean: float
     std: float
+
+    @field_validator("std")
+    @classmethod
+    def std_must_be_positive(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValidationError("Standard deviation cannot be negative.")
+        return value
 
 
 class GraphWiringSchema(BaseModel):
