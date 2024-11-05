@@ -154,7 +154,8 @@ class DatasetSchema(BaseModel):
     split_blake2s: set
     modified: datetime | None = None
     description: str | None = None
-    graph_schema: GraphWiringSchema | None
+    graph_schema: GraphWiringSchema | None = None
+    normalization: dict[str, NormalizationSchema] | None = None
 
     class Config:
         json_loads = orjson.loads
