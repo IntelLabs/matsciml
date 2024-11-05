@@ -7,7 +7,6 @@ from typing import Literal, Any
 from os import PathLike
 from pathlib import Path
 
-import orjson
 from ase import Atoms
 from pydantic import (
     BaseModel,
@@ -19,7 +18,6 @@ from pydantic import (
 from numpydantic import NDArray, Shape
 from loguru import logger
 
-from matsciml.datasets.utils import orjson_dumps
 from matsciml.common.packages import package_registry
 
 """This module defines schemas pertaining to data, using ``pydantic`` models
@@ -171,10 +169,6 @@ class DatasetSchema(BaseModel):
     normalization: dict[str, NormalizationSchema] | None = None
     node_stats: NormalizationSchema | None = None
     edge_stats: NormalizationSchema | None = None
-
-    class Config:
-        json_loads = orjson.loads
-        json_dumps = orjson_dumps
 
     @classmethod
     def from_json(cls, json_path: PathLike) -> DataSampleSchema:
