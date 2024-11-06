@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from hashlib import blake2s
 from functools import cache
 from os import PathLike
 from pathlib import Path
@@ -29,6 +30,26 @@ class MatSciMLDataset(Dataset):
         if not meta_target.exists():
             raise RuntimeError("No metadata for dataset.")
         return DatasetSchema.parse_file(meta_target)
+
+    @property
+    @cache
+    def blake2s_checksum(self) -> str:
+        """
+        Computes the BLAKE2s hash for the current dataset.
+
+        This functions by opening the binary file for reading and
+        iterating over lines in the file.
+
+        Returns
+        -------
+        str
+            BLAKE2s hash for the HDF5 file of this dataset.
+        """
+        with open(self.filepath, "rb") as read_file:
+            hasher = blake2s()
+            for line in read_file.readlines():
+                hasher.update(line)
+            return hasher.hexdigest()
 
     @property
     def data(self) -> h5py.File:
