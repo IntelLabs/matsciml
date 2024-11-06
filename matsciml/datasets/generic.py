@@ -19,6 +19,7 @@ logger = getLogger("matsciml.datasets.MatSciMLDataset")
 
 class MatSciMLDataset(Dataset):
     def __init__(self, filepath: PathLike, transforms: list[Callable] | None = None):
+        super().__init__()
         if not isinstance(filepath, Path):
             filepath = Path(filepath)
         self.filepath = filepath
@@ -114,6 +115,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             If the provided filepath is not a directory, this method
             will raise a ``RuntimeError``.
         """
+        super().__init__()
         if not isinstance(filepath, Path):
             filepath = Path(filepath)
         if not filepath.is_dir():
