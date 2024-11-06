@@ -19,6 +19,7 @@ from numpydantic import NDArray, Shape
 from loguru import logger
 
 from matsciml.common.packages import package_registry
+from matsciml.common.inspection import get_all_args
 from matsciml.modules.normalizer import Normalizer
 from matsciml.datasets.transforms import PeriodicPropertiesTransform
 
@@ -186,8 +187,15 @@ class GraphWiringSchema(BaseModel):
             schema settings mapped.
         """
         if self.algorithm in ["pymatgen", "ase"]:
+            possible_kwargs = get_all_args(PeriodicPropertiesTransform)
+            valid_kwargs = {
+                key: value
+                for key, value in self.kwargs.items()
+                if key in possible_kwargs
+            }
+            valid_kwargs.setdefault("adaptive", True)
             return PeriodicPropertiesTransform(
-                cutoff_radius=self.cutoff_radius, backend=self.algorithm
+                cutoff_radius=self.cutoff_radius, backend=self.algorithm, **valid_kwargs
             )
         else:
             raise NotImplementedError(
