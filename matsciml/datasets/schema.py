@@ -11,6 +11,7 @@ from ase import Atoms
 from pydantic import (
     BaseModel,
     ConfigDict,
+    Field,
     ValidationError,
     field_validator,
     model_validator,
@@ -131,7 +132,7 @@ class GraphWiringSchema(BaseModel):
     algo_hash_path: str | None = None
     algo_hash: str | None = None
     max_neighbors: int = -1
-    kwargs: dict[str, Any] | None = None
+    kwargs: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def check_algo_version(self):
