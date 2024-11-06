@@ -90,6 +90,9 @@ class MatSciMLDataset(Dataset):
             sample_data = {}
             for key, value in sample_group.items():
                 sample_data[key] = value
+            for key in self.metadata.target_keys:
+                if key not in sample_data:
+                    raise KeyError(f"Expected {key} in data sample but not found.")
             sample = DataSampleSchema(**sample_data)
             # now try to apply transforms
             if self.transforms:
