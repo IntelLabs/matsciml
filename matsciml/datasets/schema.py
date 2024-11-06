@@ -20,6 +20,7 @@ from loguru import logger
 
 from matsciml.common.packages import package_registry
 from matsciml.modules.normalizer import Normalizer
+from matsciml.datasets.transforms import PeriodicPropertiesTransform
 
 """This module defines schemas pertaining to data, using ``pydantic`` models
 to help with validation and (de)serialization.
@@ -172,6 +173,26 @@ class GraphWiringSchema(BaseModel):
                 "Hash checking for custom algorithms is not currently implemented."
             )
             return self
+
+    def to_transform(self) -> PeriodicPropertiesTransform:
+        """
+        Generates the transform responsible for graph edge computation
+        based on the schema.
+
+        Returns
+        -------
+        PeriodicPropertiesTransform
+            Instance of the periodic properties transform with
+            schema settings mapped.
+        """
+        if self.algorithm in ["pymatgen", "ase"]:
+            return PeriodicPropertiesTransform(
+                cutoff_radius=self.cutoff_radius, backend=self.algorithm
+            )
+        else:
+            raise NotImplementedError(
+                "Custom backend for neighborhood algorithm not supported yet."
+            )
 
 
 class DatasetSchema(BaseModel):
