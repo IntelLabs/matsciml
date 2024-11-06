@@ -178,7 +178,7 @@ class DatasetSchema(BaseModel):
     name: DatasetEnum
     creation: datetime
     target_keys: list[str]
-    split_blake2s: set
+    split_blake2s: dict[str, str]
     modified: datetime | None = None
     description: str | None = None
     graph_schema: GraphWiringSchema | None = None
