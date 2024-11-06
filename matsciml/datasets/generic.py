@@ -29,7 +29,8 @@ class MatSciMLDataset(Dataset):
         meta_target = self.filepath.parent.joinpath("metadata.json")
         if not meta_target.exists():
             raise RuntimeError("No metadata for dataset.")
-        return DatasetSchema.parse_file(meta_target)
+        with open(meta_target) as read_file:
+            return DatasetSchema.model_validate_json(read_file.read(), strict=True)
 
     @property
     @cache
@@ -132,8 +133,9 @@ class MatSciMLDataModule(pl.LightningDataModule):
             raise RuntimeError(
                 "No metadata found in target directory. Expected a metadata.json to exist."
             )
-        metadata = DatasetSchema.parse_file(filepath)
-        self._metadata = metadata
+        with open(filepath, "r") as read_file:
+            metadata = DatasetSchema.model_validate_json(read_file.read(), strict=True)
+            self._metadata = metadata
 
     @property
     def h5_files(self) -> dict[Literal["train", "test", "validation", "predict"], Path]:
