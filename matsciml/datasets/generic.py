@@ -18,12 +18,30 @@ logger = getLogger("matsciml.datasets.MatSciMLDataset")
 
 
 class MatSciMLDataset(Dataset):
-    def __init__(self, filepath: PathLike, transforms: list[Callable] | None = None):
+    def __init__(
+        self,
+        filepath: PathLike,
+        transforms: list[Callable] | None = None,
+        strict_checksum: bool = False,
+    ):
         super().__init__()
         if not isinstance(filepath, Path):
             filepath = Path(filepath)
         self.filepath = filepath
         self.transforms = transforms
+        if strict_checksum:
+            metadata = self.metadata
+            success = False
+            for key, value in metadata.split_blake2s.items():
+                if value == self.blake2s_checksum:
+                    success = True
+                    logger.debug(
+                        f"Matched dataset checksum with {key} split from metadata."
+                    )
+            if not success:
+                raise RuntimeError(
+                    "Dataset checksum failed to validate against any splits in metadata."
+                )
 
     @property
     def metadata(self) -> DatasetSchema:
