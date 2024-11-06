@@ -108,6 +108,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         self,
         filepath: PathLike,
         transforms: list[Callable] | None = None,
+        strict_checksum: bool = False,
         **loader_kwargs,
     ):
         """
@@ -139,9 +140,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
         if not filepath.is_dir():
             raise RuntimeError(f"Expected filepath to be a directory; got {filepath}")
         self.metadata = filepath.joinpath("metadata.json")
-        self.filepath = filepath
-        self.transforms = transforms
-        self.loader_kwargs = loader_kwargs
+        self.save_hyperparameters()
 
     @property
     def metadata(self) -> DatasetSchema:
@@ -200,9 +199,11 @@ class MatSciMLDataModule(pl.LightningDataModule):
 
     def setup(self, stage: str):
         # check and set the available HDF5 data files
-        self.h5_files = self.filepath
+        self.h5_files = self.hparams.filepath
         self.datasets = {
-            key: MatSciMLDataset(path, self.transforms)
+            key: MatSciMLDataset(
+                path, self.hparams.transforms, self.hparams.strict_checksum
+            )
             for key, path in self.h5_files.items()
         }
         if stage == "fit":
