@@ -49,6 +49,12 @@ class DatasetEnum(str, Enum):
     generic = "GenericDataset"
 
 
+class DataSampleEnum(str, Enum):
+    scf = "SCFCycle"
+    opt_trajectory = "OptimizationCycle"
+    property = "Property"
+
+
 class PeriodicBoundarySchema(BaseModel):
     """
     Specifies periodic boundary conditions for each axis.
@@ -271,6 +277,7 @@ class DataSampleSchema(BaseModel):
     cart_coords: NDArray[Shape["*, 3"], float]
     atomic_numbers: NDArray[Shape["*"], int]
     pbc: PeriodicBoundarySchema
+    datatype: DataSampleEnum
     electron_spins: NDArray[Shape["*"], float] | None = None  # electronic spin at atom
     nuclear_spins: NDArray[Shape["*"], float] | None = (
         None  # optional nuclear spin at atom
