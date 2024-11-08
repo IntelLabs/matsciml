@@ -145,3 +145,36 @@ class ModelOutput:
                 f"Expected graph/system energies to be scalar; got shape {values.shape}"
             )
         return values
+
+    @field_validator("forces", mode="after")
+    @classmethod
+    def check_force_shape(cls, forces: torch.Tensor) -> torch.Tensor:
+        """
+        Check to ensure that the force tensor has the expected
+        shape. Runs after the type checking by ``pydantic``.
+
+        Parameters
+        ----------
+        forces : torch.Tensor
+            Force tensor to check.
+
+        Returns
+        -------
+        torch.Tensor
+            Validated force tensor without modifications.
+
+        Raises
+        ------
+        ValidationError:
+            If the dimensionality of the tensor is not 2D, and/or
+            if the last dimensionality of the tensor is not 3-long.
+        """
+        if forces.ndim != 2:
+            raise ValidationError(
+                f"Expected force tensor to be 2D; got {forces.shape}."
+            )
+        if forces.size(-1) != 3:
+            raise ValidationError(
+                f"Expected last dimension of forces to be length 3; got {forces.shape}."
+            )
+        return forces
