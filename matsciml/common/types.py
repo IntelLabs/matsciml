@@ -202,4 +202,10 @@ class ModelOutput(BaseModel):
                 raise RuntimeError(
                     f"Batch size ({self.batch_size}) and energy mismatch ({len(self.total_energy)})."
                 )
+        if isinstance(self.embeddings, Embeddings):
+            if not self.embeddings.system_embedding.size(0) == self.batch_size:
+                raise RuntimeError(
+                    f"Expected {self.batch_size} system embeddings; got {self.embeddings.system_embedding.size(0)}."
+                )
+
         return self
