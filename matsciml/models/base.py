@@ -271,7 +271,7 @@ class AbstractTask(ABC, pl.LightningModule):
         """
         ...
 
-    def forward(self, batch: BatchDict) -> Embeddings:
+    def forward(self, batch: BatchDict) -> Embeddings | Any:
         """
         Given a batch structure, extract out data and pass it into the
         neural network architecture. This implements the 'forward' method
@@ -286,16 +286,20 @@ class AbstractTask(ABC, pl.LightningModule):
 
         Returns
         -------
-        Embeddings
-            Data structure containing system/graph and point/node level embeddings.
+        Embeddings | Any
+            For models that do not have their own output mechanism, this
+            emits a data structure containing system/graph and point/node
+            level embeddings. If they provide their own outputs, it may
+            be in whate
         """
         input_data = self.read_batch(batch)
         outputs = self._forward(**input_data)
-        # raise an error to help spot models that have not yet been refactored
-        if not isinstance(outputs, Embeddings):
-            raise ValueError(
-                "Encoder did not return `Embeddings` data structure: please refactor your model!",
-            )
+        if not self.__skip_output_heads__:
+            # raise an error to help spot models that have not yet been refactored
+            if not isinstance(outputs, Embeddings):
+                raise ValueError(
+                    "Encoder did not return `Embeddings` data structure: please refactor your model!",
+                )
         return outputs
 
 
