@@ -205,7 +205,8 @@ class BaseModel(nn.Module):
 
 
 class AbstractTask(ABC, pl.LightningModule):
-    # TODO the intention is for this class to supersede AbstractEnergyModel for DGL
+    __skip_output_heads__ = False  # allows wrapper models to bypass output heads
+
     def __init__(
         self,
         atom_embedding_dim: int,
