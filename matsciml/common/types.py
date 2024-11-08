@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable, Union
 
 import torch
-from pydantic import Field
+from pydantic import Field, ValidationError, field_validator
 from pydantic.dataclasses import dataclass
 
 from matsciml.common import package_registry
@@ -110,3 +110,38 @@ class ModelOutput:
     total_energy: torch.Tensor | None = None
     forces: torch.Tensor | None = None
     stresses: torch.Tensor | None = None
+
+    @field_validator("total_energy", mode="before")
+    @classmethod
+    def standardize_total_energy(cls, values: torch.Tensor) -> torch.Tensor:
+        """
+        Check to ensure the total energy tensor being passed
+        is ultimately scalar.
+
+        Parameters
+        ----------
+        values : torch.Tensor
+            Tensor holding energy values for each graph/system
+            within a batch.
+
+        Returns
+        -------
+        torch.Tensor
+            1-D tensor containing energies for each graph/system
+            within a batch.
+
+        Raises
+        ------
+        ValidationError:
+            If after running ``squeeze`` on the input tensor, the
+            dimensions are still greater than one we raise a
+            ``ValidationError``.
+        """
+        # drop all redundant dimensions
+        values = values.squeeze()
+        # last step is an assertion check for QA
+        if values.ndim != 1:
+            raise ValidationError(
+                f"Expected graph/system energies to be scalar; got shape {values.shape}"
+            )
+        return values
