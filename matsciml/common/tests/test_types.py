@@ -44,5 +44,5 @@ def test_consistency_check_fail():
             batch_size=8, forces=torch.rand(32, 3), node_energies=torch.rand(64, 1)
         )
     with pytest.raises(RuntimeError):
-        # check mismatch in
+        # check mismatch in number of energies and batch size
         types.ModelOutput(batch_size=4, total_energy=torch.rand(16, 1))
