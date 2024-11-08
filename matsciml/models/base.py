@@ -900,7 +900,7 @@ class BaseTaskModule(pl.LightningModule):
     def forward(
         self,
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
-    ) -> dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor] | ModelOutput:
         encoder_outputs = self.encoder(batch)
         # in the case that the model does not produce its own outputs,
         # we will pass them through the output heads.
