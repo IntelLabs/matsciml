@@ -4,7 +4,10 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+
 from __future__ import annotations
+
+from loguru import logger
 
 from matsciml.common.packages import package_registry
 
@@ -16,10 +19,28 @@ else:
 # load models if we have PyG installed
 if _has_pyg:
     from matsciml.models.pyg.cgcnn import CGCNN
-    from matsciml.models.pyg.dimenet import DimeNetWrap
-    from matsciml.models.pyg.dimenet_plus_plus import DimeNetPlusPlusWrap
     from matsciml.models.pyg.egnn import EGNN
-    from matsciml.models.pyg.faenet import FAENet
-    from matsciml.models.pyg.forcenet import ForceNet
     from matsciml.models.pyg.mace import MACE, ScaleShiftMACE
-    from matsciml.models.pyg.schnet import SchNetWrap
+
+    __all__ = ["CGCNN", "EGNN", "FAENet", "MACE", "ScaleShiftMACE"]
+
+    # these packages need additional pyg dependencies
+    if package_registry["torch_sparse"] and package_registry["torch_scatter"]:
+        from matsciml.models.pyg.dimenet import DimeNetWrap
+        from matsciml.models.pyg.dimenet_plus_plus import DimeNetPlusPlusWrap
+
+        __all__.extend(["DimeNetWrap", "DimeNetPlusPlusWrap"])
+    else:
+        logger.warning(
+            "Missing torch_sparse and torch_scatter; DimeNet models will not be available."
+        )
+    if package_registry["torch_scatter"]:
+        from matsciml.models.pyg.forcenet import ForceNet
+        from matsciml.models.pyg.schnet import SchNetWrap
+        from matsciml.models.pyg.faenet import FAENet
+
+        __all__.extend(["ForceNet", "SchNetWrap", "FAENet"])
+    else:
+        logger.warning(
+            "Missing torch_scatter; ForceNet, SchNet, and FAENet models will not be available."
+        )
