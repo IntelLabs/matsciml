@@ -21,7 +21,13 @@ from torch.optim import AdamW, Optimizer, lr_scheduler
 
 from matsciml.common import package_registry
 from matsciml.common.registry import registry
-from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
+from matsciml.common.types import (
+    AbstractGraph,
+    BatchDict,
+    DataDict,
+    Embeddings,
+    ModelOutput,
+)
 from matsciml.models.common import OutputHead
 from matsciml.modules.normalizer import Normalizer
 from matsciml.models import losses as matsciml_losses
@@ -259,7 +265,7 @@ class AbstractTask(ABC, pl.LightningModule):
     def read_batch_size(self, batch: BatchDict) -> int | None: ...
 
     @abstractmethod
-    def _forward(self, *args, **kwargs) -> Embeddings:
+    def _forward(self, *args, **kwargs) -> Embeddings | ModelOutput:
         """
         Implements the actual logic of the architecture. Given a set
         of input features, produce outputs/predictions from the model.
@@ -271,7 +277,7 @@ class AbstractTask(ABC, pl.LightningModule):
         """
         ...
 
-    def forward(self, batch: BatchDict) -> Embeddings | Any:
+    def forward(self, batch: BatchDict) -> Embeddings | ModelOutput:
         """
         Given a batch structure, extract out data and pass it into the
         neural network architecture. This implements the 'forward' method
@@ -286,11 +292,11 @@ class AbstractTask(ABC, pl.LightningModule):
 
         Returns
         -------
-        Embeddings | Any
+        Embeddings | ModelOutput
             For models that do not have their own output mechanism, this
             emits a data structure containing system/graph and point/node
-            level embeddings. If they provide their own outputs, it may
-            be in whate
+            level embeddings. If they provide their own outputs, it should
+            be packaged in the ``ModelOutput`` data structure.
         """
         input_data = self.read_batch(batch)
         outputs = self._forward(**input_data)
