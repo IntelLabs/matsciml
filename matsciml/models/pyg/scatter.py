@@ -3,6 +3,7 @@
 # (https://github.com/ACEsuit/mace)
 # Original Authors: Ilyes Batatia, Gregor Simm
 # Integrated into matsciml by Vaibhav Bihani, Sajid Mannan
+# Refactors and improved docstrings by Kelvin Lee
 # This program is distributed under the MIT License
 ###########################################################################################
 """basic scatter_sum operations from torch_scatter from
@@ -23,7 +24,25 @@ import torch
 __all__ = ["scatter_sum", "scatter_std", "scatter_mean"]
 
 
-def _broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
+def _broadcast(src: torch.Tensor, other: torch.Tensor, dim: int) -> torch.Tensor:
+    """
+    Broadcasts ``src`` to yield a tensor with equivalent shape to ``other``
+    along dimension ``dim``.
+
+    Parameters
+    ----------
+    src : torch.Tensor
+        Tensor to broadcast into a new shape.
+    other : torch.Tensor
+        Tensor to match shape against.
+    dim : int
+        Dimension to broadcast values along.
+
+    Returns
+    -------
+    torch.Tensor
+        Broadcasted values of ``src``, with the same shape as ``other``.
+    """
     if dim < 0:
         dim = other.dim() + dim
     if src.dim() == 1:
@@ -40,10 +59,43 @@ def scatter_sum(
     src: torch.Tensor,
     index: torch.Tensor,
     dim: int = -1,
-    out: Optional[torch.Tensor] = None,
-    dim_size: Optional[int] = None,
+    out: torch.Tensor | None = None,
+    dim_size: int | None = None,
     reduce: str = "sum",
 ) -> torch.Tensor:
+    """
+    Apply a scatter operation with sum reduction, from ``src``
+    to ``out`` at indices ``index`` along the specified
+    dimension.
+
+    The function will apply a ``_broadcast`` with ``index``
+    to reshape it to the same as ``src`` first, then allocate
+    a new tensor based on the expected final shape (depending
+    on ``dim``).
+
+    Parameters
+    ----------
+    src : torch.Tensor
+        Tensor containing source values to scatter add.
+    index : torch.Tensor
+        Indices for the scatter add operation.
+    dim : int, optional
+        Dimension to apply the scatter add operation, by default -1
+    out : torch.Tensor, optional
+        Output tensor to store the scatter sum result, by default None,
+        which will create a tensor with the correct shape within
+        this function.
+    dim_size : int, optional
+        Used to determine the output shape, by default None, which
+        will then infer the output shape from ``dim``.
+    reduce : str, optional
+        Unused and kept for backwards compatibility.
+
+    Returns
+    -------
+    torch.Tensor
+        Resulting scatter sum output.
+    """
     assert reduce == "sum"  # for now, TODO
     index = _broadcast(index, src, dim)
     if out is None:
