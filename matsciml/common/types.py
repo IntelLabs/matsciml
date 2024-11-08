@@ -149,7 +149,7 @@ class ModelOutput(BaseModel):
 
     @field_validator("forces", mode="after")
     @classmethod
-    def check_force_shape(cls, forces: torch.Tensor) -> torch.Tensor:
+    def check_force_shape(cls, forces: torch.Tensor | None) -> torch.Tensor | None:
         """
         Check to ensure that the force tensor has the expected
         shape. Runs after the type checking by ``pydantic``.
@@ -170,12 +170,13 @@ class ModelOutput(BaseModel):
             If the dimensionality of the tensor is not 2D, and/or
             if the last dimensionality of the tensor is not 3-long.
         """
-        if forces.ndim != 2:
-            raise ValueError(f"Expected force tensor to be 2D; got {forces.shape}.")
-        if forces.size(-1) != 3:
-            raise ValueError(
-                f"Expected last dimension of forces to be length 3; got {forces.shape}."
-            )
+        if isinstance(forces, torch.Tensor):
+            if forces.ndim != 2:
+                raise ValueError(f"Expected force tensor to be 2D; got {forces.shape}.")
+            if forces.size(-1) != 3:
+                raise ValueError(
+                    f"Expected last dimension of forces to be length 3; got {forces.shape}."
+                )
         return forces
 
     @model_validator(mode="after")
