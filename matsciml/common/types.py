@@ -3,8 +3,7 @@ from __future__ import annotations
 from typing import Callable, Union
 
 import torch
-from pydantic import Field, ValidationError, field_validator
-from pydantic.dataclasses import dataclass
+from pydantic import ConfigDict, Field, ValidationError, field_validator, BaseModel
 
 from matsciml.common import package_registry
 
@@ -36,8 +35,7 @@ DataDict = dict[str, Union[float, DataType]]
 BatchDict = dict[str, Union[float, DataType, DataDict]]
 
 
-@dataclass
-class Embeddings:
+class Embeddings(BaseModel):
     """
     Data structure that packs together embeddings from a model.
     """
@@ -46,6 +44,8 @@ class Embeddings:
     point_embedding: torch.Tensor | None = None
     reduction: str | Callable | None = None
     reduction_kwargs: dict[str, str | float] = Field(default_factory=dict)
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
     def num_points(self) -> int:
@@ -93,8 +93,7 @@ class Embeddings:
         return system_embeddings
 
 
-@dataclass
-class ModelOutput:
+class ModelOutput(BaseModel):
     """
     Standardized output data structure out of models.
 
@@ -110,6 +109,8 @@ class ModelOutput:
     total_energy: torch.Tensor | None = None
     forces: torch.Tensor | None = None
     stresses: torch.Tensor | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @field_validator("total_energy", mode="before")
     @classmethod
