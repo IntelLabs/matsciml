@@ -91,3 +91,22 @@ class Embeddings:
         system_embeddings = reduction(self.point_embedding, **self.reduction_kwargs)
         self.system_embedding = system_embeddings
         return system_embeddings
+
+
+@dataclass
+class ModelOutput:
+    """
+    Standardized output data structure out of models.
+
+    The advantage of doing is to standardize keys, as well
+    as to standardize shapes the are produced by models;
+    i.e. remove unused dimensions using ``pydantic``
+    validation mechanisms.
+    """
+
+    batch_size: int
+    embeddings: Embeddings | None = None
+    node_energies: torch.Tensor | None = None
+    total_energy: torch.Tensor | None = None
+    forces: torch.Tensor | None = None
+    stresses: torch.Tensor | None = None
