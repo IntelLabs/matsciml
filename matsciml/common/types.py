@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Callable, Union
 
 import torch
@@ -35,7 +36,8 @@ DataDict = dict[str, Union[float, DataType]]
 BatchDict = dict[str, Union[float, DataType, DataDict]]
 
 
-class Embeddings(BaseModel):
+@dataclass
+class Embeddings:
     """
     Data structure that packs together embeddings from a model.
     """
@@ -44,8 +46,6 @@ class Embeddings(BaseModel):
     point_embedding: torch.Tensor | None = None
     reduction: str | Callable | None = None
     reduction_kwargs: dict[str, str | float] = Field(default_factory=dict)
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
     def num_points(self) -> int:
