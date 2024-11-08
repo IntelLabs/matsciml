@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import torch
 from torch_geometric.nn import SchNet
-from torch_scatter import scatter
+from matsciml.models.pyg.scatter import scatter_sum, scatter_mean
 
 from matsciml.common.utils import conditional_grad, get_pbc_distances, radius_graph_pbc
 
@@ -81,6 +81,11 @@ class SchNetWrap(SchNet):
             cutoff=cutoff,
             readout=readout,
         )
+        # map literal readout choice to functions
+        if readout == "add":
+            self.readout = scatter_sum
+        else:
+            self.readout = scatter_mean
 
     @conditional_grad(torch.enable_grad())
     def _forward(self, data):
@@ -124,7 +129,7 @@ class SchNetWrap(SchNet):
             h = self.lin2(h)
 
             batch = torch.zeros_like(z) if batch is None else batch
-            energy = scatter(h, batch, dim=0, reduce=self.readout)
+            energy = self.readout(h, batch, dim=0)
         else:
             energy = super().forward(z, pos, batch)
         return energy
