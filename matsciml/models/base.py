@@ -1093,7 +1093,9 @@ class BaseTaskModule(pl.LightningModule):
             loss_func = self.loss_func[key]
             # determine if we need additional arguments
             loss_func_signature = signature(loss_func.forward).parameters
-            kwargs = {"input": predictions[key], "target": target_val}
+            kwargs = {"input": getattr(predictions, key), "target": target_val}
+            if not isinstance(kwargs["input"], torch.Tensor):
+                raise KeyError(f"Expected model to produce output with key {key}.")
             # pack atoms per graph information too
             if "atoms_per_graph" in loss_func_signature:
                 if graph := batch.get("graph", None):
