@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable, Union
 
 import torch
-from pydantic import ConfigDict, Field, field_validator, BaseModel
+from pydantic import ConfigDict, Field, field_validator, BaseModel, model_validator
 
 from matsciml.common import package_registry
 
@@ -177,3 +177,29 @@ class ModelOutput(BaseModel):
                 f"Expected last dimension of forces to be length 3; got {forces.shape}."
             )
         return forces
+
+    @model_validator(mode="after")
+    def consistency_checks(self) -> ModelOutput:
+        """
+        Performs general consistency checks based on what data is provided.
+
+        Raises
+        ------
+        RuntimeError:
+            If the number of node energies and forces are mismatched;
+            if the number of predicted system/graph energies do not
+            match the batch size.
+        """
+        if isinstance(self.node_energies, torch.Tensor) and isinstance(
+            self.forces, torch.Tensor
+        ):
+            if not self.node_energies.size(0) == self.forces.size(0):
+                raise RuntimeError(
+                    f"Expected node energies and forces to be same shape; got {self.node_energies.shape} node energies and {self.forces.shape} forces."
+                )
+        if isinstance(self.total_energy, torch.Tensor):
+            if not len(self.total_energy) == self.batch_size:
+                raise RuntimeError(
+                    f"Batch size ({self.batch_size}) and energy mismatch ({len(self.total_energy)})."
+                )
+        return self

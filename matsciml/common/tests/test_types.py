@@ -22,3 +22,20 @@ def test_incorrect_force_shape():
     """This passes a force tensor with too many dimensions"""
     with pytest.raises(ValidationError):
         types.ModelOutput(batch_size=8, forces=torch.rand(32, 4, 3))
+
+
+def test_consistency_check_pass():
+    types.ModelOutput(
+        batch_size=8, forces=torch.rand(32, 3), node_energies=torch.rand(32, 1)
+    )
+
+
+def test_consistency_check_fail():
+    with pytest.raises(ValidationError):
+        # check mismatching node energies and forces
+        types.ModelOutput(
+            batch_size=8, forces=torch.rand(32, 3), node_energies=torch.rand(64, 1)
+        )
+    with pytest.raises(ValidationError):
+        # check mismatch in
+        types.ModelOutput(batch_size=4, total_energy=torch.rand(16, 1))
