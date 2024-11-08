@@ -63,7 +63,7 @@ class MACEWrapper(AbstractPyGModel):
         embedding_kwargs: Any = None,
         encoder_only: bool = True,
         readout_method: str | Callable = "add",
-        disable_forces: bool = False,
+        disable_forces: bool = True,
         **mace_kwargs,
     ) -> None:
         if embedding_kwargs is not None:
