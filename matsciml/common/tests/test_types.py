@@ -18,6 +18,13 @@ def test_invalid_embeddings():
         types.ModelOutput(batch_size=8, embeddings="aggaga")
 
 
+def test_valid_embeddings():
+    embeddings = types.Embeddings(
+        system_embedding=torch.rand(64, 32), point_embedding=torch.rand(162, 32)
+    )
+    types.ModelOutput(batch_size=64, embeddings=embeddings)
+
+
 def test_incorrect_force_shape():
     """This passes a force tensor with too many dimensions"""
     with pytest.raises(ValidationError):
