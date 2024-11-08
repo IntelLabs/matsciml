@@ -384,7 +384,7 @@ class AbstractPointCloudModel(AbstractTask):
         mask: torch.Tensor | None = None,
         sizes: list[int] | None = None,
         **kwargs,
-    ) -> Embeddings:
+    ) -> Embeddings | ModelOutput:
         """
         Sets expected patterns for args for point cloud based modeling, whereby
         the bare minimum expected data are 'pos' and 'pc_features' akin to graph
@@ -527,7 +527,7 @@ class AbstractGraphModel(AbstractTask):
         edge_feats: torch.Tensor | None = None,
         graph_feats: torch.Tensor | None = None,
         **kwargs,
-    ) -> Embeddings:
+    ) -> Embeddings | ModelOutput:
         """
         Sets args/kwargs for the expected components of a graph-based
         model. At the bare minimum, we expect some kind of abstract
