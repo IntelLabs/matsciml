@@ -700,7 +700,6 @@ class BaseTaskModule(pl.LightningModule):
         scheduler_kwargs: dict[str, dict[str, Any]] | None = None,
         log_embeddings: bool = False,
         log_embeddings_every_n_steps: int = 50,
-        use_encoder_predictions: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -749,7 +748,6 @@ class BaseTaskModule(pl.LightningModule):
         if len(self.task_keys) > 0:
             self.task_loss_scaling = self._task_loss_scaling
         self.embedding_reduction_type = embedding_reduction_type
-        self.use_encoder_predictions = use_encoder_predictions
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
 
     @property
@@ -776,7 +774,7 @@ class BaseTaskModule(pl.LightningModule):
         # if we're setting task keys we have enough to initialize
         # the output heads
         if not self.has_initialized:
-            if not self.use_encoder_predictions:
+            if not self.encoder.__skip_output_heads__:
                 self.output_heads = self._make_output_heads()
             else:
                 # keeping the keys to allow functionality that doesn't need
