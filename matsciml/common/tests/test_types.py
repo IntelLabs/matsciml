@@ -31,11 +31,11 @@ def test_consistency_check_pass():
 
 
 def test_consistency_check_fail():
-    with pytest.raises(ValidationError):
+    with pytest.raises(RuntimeError):
         # check mismatching node energies and forces
         types.ModelOutput(
             batch_size=8, forces=torch.rand(32, 3), node_energies=torch.rand(64, 1)
         )
-    with pytest.raises(ValidationError):
+    with pytest.raises(RuntimeError):
         # check mismatch in
         types.ModelOutput(batch_size=4, total_energy=torch.rand(16, 1))
