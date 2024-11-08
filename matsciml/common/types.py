@@ -114,7 +114,9 @@ class ModelOutput(BaseModel):
 
     @field_validator("total_energy", mode="before")
     @classmethod
-    def standardize_total_energy(cls, values: torch.Tensor) -> torch.Tensor:
+    def standardize_total_energy(
+        cls, values: torch.Tensor | None
+    ) -> torch.Tensor | None:
         """
         Check to ensure the total energy tensor being passed
         is ultimately scalar.
@@ -138,13 +140,14 @@ class ModelOutput(BaseModel):
             dimensions are still greater than one we raise a
             ``ValueError``.
         """
-        # drop all redundant dimensions
-        values = values.squeeze()
-        # last step is an assertion check for QA
-        if values.ndim != 1:
-            raise ValueError(
-                f"Expected graph/system energies to be scalar; got shape {values.shape}"
-            )
+        if isinstance(values, torch.Tensor):
+            # drop all redundant dimensions
+            values = values.squeeze()
+            # last step is an assertion check for QA
+            if values.ndim != 1:
+                raise ValueError(
+                    f"Expected graph/system energies to be scalar; got shape {values.shape}"
+                )
         return values
 
     @field_validator("forces", mode="after")
