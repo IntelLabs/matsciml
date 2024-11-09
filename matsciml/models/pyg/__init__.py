@@ -20,9 +20,9 @@ else:
 if _has_pyg:
     from matsciml.models.pyg.cgcnn import CGCNN
     from matsciml.models.pyg.egnn import EGNN
-    from matsciml.models.pyg.mace import MACE, ScaleShiftMACE
+    from matsciml.models.pyg.mace import MACE, ScaleShiftMACE, MACEWrapper
 
-    __all__ = ["CGCNN", "EGNN", "FAENet", "MACE", "ScaleShiftMACE"]
+    __all__ = ["CGCNN", "EGNN", "FAENet", "MACE", "ScaleShiftMACE", "MACEWrapper"]
 
     # these packages need additional pyg dependencies
     if package_registry["torch_sparse"] and package_registry["torch_scatter"]:
