@@ -173,6 +173,7 @@ class MACEWrapper(AbstractPyGModel):
                 "node_feats": one_hot_atoms,
                 "cell": batch["cell"],
                 "shifts": batch["offsets"],
+                "unit_shifts": batch["unit_offsets"],
             }
         )
         return data
@@ -211,6 +212,7 @@ class MACEWrapper(AbstractPyGModel):
             "ptr": graph.ptr,
             "cell": kwargs["cell"],
             "shifts": kwargs["shifts"],
+            "unit_shifts": kwargs["unit_shifts"],
             "batch": graph.batch,
             "edge_index": graph.edge_index,
         }
