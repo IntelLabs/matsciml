@@ -1914,17 +1914,25 @@ class ForceRegressionTask(BaseTaskModule):
                 fa_pos.requires_grad_(True)
             elif isinstance(fa_pos, list):
                 [f_p.requires_grad_(True) for f_p in fa_pos]
+            # check to see if embeddings were stashed away
             if "embeddings" in batch:
                 embeddings = batch.get("embeddings")
             else:
                 encoder_outputs = self.encoder(batch)
-                if not isinstance(encoder_outputs, (Embeddings, dict)):
+                if not isinstance(encoder_outputs, (Embeddings, dict, ModelOutput)):
                     raise RuntimeError(
-                        f"Encoder model must emit a dict or `Embeddings` object. Got {encoder_outputs} instead."
+                        f"Encoder model must emit a dict, `ModelOutput`, or `Embeddings` object. Got {encoder_outputs} instead."
                     )
                 # sets the embeddings variable
                 if isinstance(encoder_outputs, Embeddings):
                     embeddings = encoder_outputs
+                # for BYO output head cases
+                elif isinstance(encoder_outputs, ModelOutput):
+                    # map the outputs as expected by the task
+                    return {
+                        "energy": encoder_outputs.total_energy,
+                        "force": encoder_outputs.forces,
+                    }
                 # in the alternative case we assume the encoder is emitting predictions
                 else:
                     for key in ["energy", "force"]:
