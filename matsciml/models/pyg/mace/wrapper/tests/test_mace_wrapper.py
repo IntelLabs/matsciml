@@ -97,10 +97,18 @@ def test_model_forward_nograd(dset_class_name: str, mace_architecture: MACEWrapp
     batch = next(iter(loader))
     # run the model without gradient tracking
     with torch.no_grad():
-        embeddings = mace_architecture(batch)
+        model_output = mace_architecture(batch)
+    embeddings = model_output.embeddings
     # returns embeddings, and runs numerical checks
     for z in [embeddings.system_embedding, embeddings.point_embedding]:
         assert torch.isreal(z).all()
         assert ~torch.isnan(z).all()  # check there are no NaNs
         assert torch.isfinite(z).all()
         assert torch.all(torch.abs(z) <= 1000)  # ensure reasonable values
+    # check energies as finite
+    graph_energies = model_output.total_energy
+    assert torch.isreal(graph_energies).all()
+    assert torch.isfinite(graph_energies).all()
+    node_energies = model_output.node_energies
+    assert torch.isreal(node_energies).all()
+    assert torch.isfinite(node_energies).all()
