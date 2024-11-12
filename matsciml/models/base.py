@@ -912,7 +912,7 @@ class BaseTaskModule(pl.LightningModule):
         encoder_outputs = self.encoder(batch)
         # in the case that the model does not produce its own outputs,
         # we will pass them through the output heads.
-        if not self.model.__skip_output_heads__:
+        if not self.encoder.__skip_output_heads__:
             if not isinstance(encoder_outputs, (Embeddings, dict, ModelOutput)):
                 raise RuntimeError(
                     f"Encoder model must emit a dict, `ModelOutput`, or `Embeddings` object. Got {encoder_outputs} instead."
