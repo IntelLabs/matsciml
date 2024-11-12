@@ -1928,6 +1928,12 @@ class ForceRegressionTask(BaseTaskModule):
                     embeddings = encoder_outputs
                 # for BYO output head cases
                 elif isinstance(encoder_outputs, ModelOutput):
+                    # this checks to make sure we have the expected attributes
+                    for key in ["total_energy", "forces"]:
+                        if getattr(encoder_outputs, key, None) is None:
+                            raise RuntimeError(
+                                f"Model {self.encoder.__class__.__name__} is not emitting {key} in model outputs."
+                            )
                     # map the outputs as expected by the task
                     return {
                         "energy": encoder_outputs.total_energy,
