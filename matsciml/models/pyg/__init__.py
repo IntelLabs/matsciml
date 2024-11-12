@@ -20,6 +20,7 @@ else:
 if _has_pyg:
     from matsciml.models.pyg.egnn import EGNN
     from matsciml.models.pyg.mace import MACE, ScaleShiftMACE, MACEWrapper
+    from matsciml.models.pyg.faenet import FAENet
 
     __all__ = ["CGCNN", "EGNN", "FAENet", "MACE", "ScaleShiftMACE", "MACEWrapper"]
 
@@ -38,7 +39,7 @@ if _has_pyg:
         from matsciml.models.pyg.schnet import SchNetWrap  # noqa: F401
         from matsciml.models.pyg.cgcnn import CGCNN  # noqa: F401
 
-        __all__.extend(["ForceNet", "SchNetWrap", "FAENet", "CGCNN"])
+        __all__.extend(["ForceNet", "SchNetWrap", "CGCNN"])
     else:
         logger.warning(
             "Missing torch_scatter; ForceNet, SchNet, and FAENet models will not be available."
