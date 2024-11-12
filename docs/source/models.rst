@@ -19,6 +19,42 @@ The model interfaces we have depend on their original implementation:
 currently, we support models from DGL, PyG, and point clouds (specifically
 GALA).
 
+Implementing interfaces
+-----------------------
+
+.. note::
+   This section is primarily a detail for developers. If you are a user
+   and aren't interested in implementation details, feel free to skip ahead.
+
+As mentioned earlier, models in Open MatSciML Toolkit come in two flavors:
+wrappers of upstream implementations, or self-contained implementations.
+Ultimately, the output of models should be standardized in one of two ways:
+every model `_forward` call should return either an ``Embeddings`` (at the minimum)
+or a ``ModelOutput`` object. The latter is implemented with ``pydantic`` and
+therefore takes advantage of data validation workflows, including standardizing
+and checking tensor shapes, which is currently the **recommended** way for model
+outputs. It also allows flexibility in wrapper models to produce their own
+outputs with their own algorithm, but still be used seamlessly through the pipeline.
+An example of this can be found in the ``MACEWrapper``. The ``ModelOutput`` class also
+includes an ``embeddings`` field, which makes it  compatible with the traditional
+Open MatSciML Toolkit workflow of leveraging one or more output heads.
+
+
+.. autoclass:: matsciml.common.types.Embeddings
+   :members:
+
+
+.. autoclass:: matsciml.common.types.ModelOutput
+   :members:
+
+
+.. important::
+   Training tasks and workflows should branch based on the prescence of either
+   objects, taking ``ModelOutput`` as the priority. For specific tasks, we can
+   check if properties are set (e.g. ``total_energy`` and ``forces``), and if
+   they aren't there, we should pass the ``embeddings`` to output heads.
+
+
 PyG models
 ----------
 

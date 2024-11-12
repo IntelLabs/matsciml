@@ -19,10 +19,10 @@ else:
 # load models if we have PyG installed
 if _has_pyg:
     from matsciml.models.pyg.egnn import EGNN
+    from matsciml.models.pyg.mace import MACE, ScaleShiftMACE, MACEWrapper
     from matsciml.models.pyg.faenet import FAENet
-    from matsciml.models.pyg.mace import MACE, ScaleShiftMACE
 
-    __all__ = ["EGNN", "FAENet", "MACE", "ScaleShiftMACE"]
+    __all__ = ["CGCNN", "EGNN", "FAENet", "MACE", "ScaleShiftMACE", "MACEWrapper"]
 
     # these packages need additional pyg dependencies
     if package_registry["torch_sparse"] and package_registry["torch_scatter"]:
@@ -39,7 +39,7 @@ if _has_pyg:
         from matsciml.models.pyg.schnet import SchNetWrap  # noqa: F401
         from matsciml.models.pyg.cgcnn import CGCNN  # noqa: F401
 
-        __all__.extend(["ForceNet", "SchNetWrap", "FAENet", "CGCNN"])
+        __all__.extend(["ForceNet", "SchNetWrap", "CGCNN"])
     else:
         logger.warning(
             "Missing torch_scatter; ForceNet, SchNet, and FAENet models will not be available."

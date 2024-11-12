@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import pytest
 import lightning.pytorch as pl
+import e3nn
+import torch
+import mace
 
 from matsciml.datasets import MaterialsProjectDataset
 from matsciml.datasets.transforms import (
@@ -11,7 +14,7 @@ from matsciml.datasets.transforms import (
     FrameAveraging,
 )
 from matsciml.lightning.data_utils import MatSciMLDataModule
-from matsciml.models import PLEGNNBackbone, FAENet
+from matsciml.models import PLEGNNBackbone, FAENet, MACEWrapper
 from matsciml.models.base import (
     ForceRegressionTask,
     GradFreeForceRegressionTask,
@@ -69,6 +72,33 @@ def faenet_config():
     return {"encoder_class": FAENet, "encoder_kwargs": model_args}
 
 
+@pytest.fixture
+def mace_config():
+    model_args = {
+        "r_max": 6.0,
+        "radial_type": "bessel",
+        "distance_transform": None,
+        "num_polynomial_cutoff": 5.0,
+        "num_interactions": 2,
+        "num_bessel": 8,
+        "num_atom_embedding": 100,
+        "max_ell": 3,
+        "gate": torch.nn.SiLU(),
+        "interaction_cls": mace.modules.blocks.RealAgnosticResidualInteractionBlock,
+        "interaction_cls_first": mace.modules.blocks.RealAgnosticResidualInteractionBlock,
+        "correlation": 3,
+        "avg_num_neighbors": 31.0,
+        "atomic_inter_scale": 0.21,
+        "atomic_inter_shift": 0.0,
+        "atom_embedding_dim": 128,
+        "MLP_irreps": e3nn.o3.Irreps("16x0e"),
+        "hidden_irreps": e3nn.o3.Irreps("128x0e + 128x1o"),
+        "mace_module": mace.modules.ScaleShiftMACE,
+        "disable_forces": False,
+    }
+    return {"encoder_class": MACEWrapper, "encoder_kwargs": model_args}
+
+
 def test_force_regression(egnn_config):
     devset = MatSciMLDataModule.from_devset(
         "S2EFDataset",
@@ -84,6 +114,27 @@ def test_force_regression(egnn_config):
         },
     )
     task = ForceRegressionTask(**egnn_config)
+    trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
+    trainer.fit(task, datamodule=devset)
+    # make sure losses are tracked
+    for key in ["energy", "force"]:
+        assert f"train_{key}" in trainer.logged_metrics
+
+
+def test_force_regression_byo_output(mace_config):
+    devset = MatSciMLDataModule.from_devset(
+        "S2EFDataset",
+        dset_kwargs={
+            "transforms": [
+                PeriodicPropertiesTransform(cutoff_radius=6.0, adaptive_cutoff=True),
+                PointCloudToGraphTransform(
+                    "pyg",
+                    node_keys=["pos", "atomic_numbers"],
+                ),
+            ],
+        },
+    )
+    task = ForceRegressionTask(**mace_config)
     trainer = pl.Trainer(max_steps=5, logger=False, enable_checkpointing=False)
     trainer.fit(task, datamodule=devset)
     # make sure losses are tracked

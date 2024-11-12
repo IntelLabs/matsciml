@@ -21,7 +21,13 @@ from torch.optim import AdamW, Optimizer, lr_scheduler
 
 from matsciml.common import package_registry
 from matsciml.common.registry import registry
-from matsciml.common.types import AbstractGraph, BatchDict, DataDict, Embeddings
+from matsciml.common.types import (
+    AbstractGraph,
+    BatchDict,
+    DataDict,
+    Embeddings,
+    ModelOutput,
+)
 from matsciml.models.common import OutputHead
 from matsciml.modules.normalizer import Normalizer
 from matsciml.models import losses as matsciml_losses
@@ -205,7 +211,8 @@ class BaseModel(nn.Module):
 
 
 class AbstractTask(ABC, pl.LightningModule):
-    # TODO the intention is for this class to supersede AbstractEnergyModel for DGL
+    __skip_output_heads__ = False  # allows wrapper models to bypass output heads
+
     def __init__(
         self,
         atom_embedding_dim: int,
@@ -258,7 +265,7 @@ class AbstractTask(ABC, pl.LightningModule):
     def read_batch_size(self, batch: BatchDict) -> int | None: ...
 
     @abstractmethod
-    def _forward(self, *args, **kwargs) -> Embeddings:
+    def _forward(self, *args, **kwargs) -> Embeddings | ModelOutput:
         """
         Implements the actual logic of the architecture. Given a set
         of input features, produce outputs/predictions from the model.
@@ -270,7 +277,7 @@ class AbstractTask(ABC, pl.LightningModule):
         """
         ...
 
-    def forward(self, batch: BatchDict) -> Embeddings:
+    def forward(self, batch: BatchDict) -> Embeddings | ModelOutput:
         """
         Given a batch structure, extract out data and pass it into the
         neural network architecture. This implements the 'forward' method
@@ -285,16 +292,20 @@ class AbstractTask(ABC, pl.LightningModule):
 
         Returns
         -------
-        Embeddings
-            Data structure containing system/graph and point/node level embeddings.
+        Embeddings | ModelOutput
+            For models that do not have their own output mechanism, this
+            emits a data structure containing system/graph and point/node
+            level embeddings. If they provide their own outputs, it should
+            be packaged in the ``ModelOutput`` data structure.
         """
         input_data = self.read_batch(batch)
         outputs = self._forward(**input_data)
-        # raise an error to help spot models that have not yet been refactored
-        if not isinstance(outputs, Embeddings):
-            raise ValueError(
-                "Encoder did not return `Embeddings` data structure: please refactor your model!",
-            )
+        if not self.__skip_output_heads__:
+            # raise an error to help spot models that have not yet been refactored
+            if not isinstance(outputs, Embeddings):
+                raise ValueError(
+                    "Encoder did not return `Embeddings` data structure: please refactor your model!",
+                )
         return outputs
 
 
@@ -373,7 +384,7 @@ class AbstractPointCloudModel(AbstractTask):
         mask: torch.Tensor | None = None,
         sizes: list[int] | None = None,
         **kwargs,
-    ) -> Embeddings:
+    ) -> Embeddings | ModelOutput:
         """
         Sets expected patterns for args for point cloud based modeling, whereby
         the bare minimum expected data are 'pos' and 'pc_features' akin to graph
@@ -516,7 +527,7 @@ class AbstractGraphModel(AbstractTask):
         edge_feats: torch.Tensor | None = None,
         graph_feats: torch.Tensor | None = None,
         **kwargs,
-    ) -> Embeddings:
+    ) -> Embeddings | ModelOutput:
         """
         Sets args/kwargs for the expected components of a graph-based
         model. At the bare minimum, we expect some kind of abstract
@@ -728,9 +739,17 @@ class BaseTaskModule(pl.LightningModule):
             # convert to a module dict for consistent API usage
             loss_func = nn.ModuleDict({key: value for key, value in loss_func.items()})
         self.loss_func = loss_func
-        default_heads = {"act_last": None, "hidden_dim": 128}
-        default_heads.update(output_kwargs)
-        self.output_kwargs = default_heads
+        # only add output kwargs if we are going to use them
+        if not encoder.__skip_output_heads__:
+            default_heads = {"act_last": None, "hidden_dim": 128}
+            default_heads.update(output_kwargs)
+            self.output_kwargs = default_heads
+        else:
+            # emit warning to user if the kwargs aren't being used
+            if output_kwargs:
+                logger.warning(
+                    f"Specified encoder {encoder.__class__.__name__} skips output heads; ignoring output kwargs."
+                )
         self.normalize_kwargs = normalize_kwargs
         self.task_keys = task_keys
         self._task_loss_scaling = kwargs.get("task_loss_scaling", {})
@@ -763,7 +782,14 @@ class BaseTaskModule(pl.LightningModule):
         # if we're setting task keys we have enough to initialize
         # the output heads
         if not self.has_initialized:
-            self.output_heads = self._make_output_heads()
+            if not self.encoder.__skip_output_heads__:
+                self.output_heads = self._make_output_heads()
+            else:
+                # keeping the keys to allow functionality that doesn't need
+                # the actual weights
+                self.output_heads = nn.ModuleDict(
+                    {key: None for key in self._task_keys}
+                )
             self.normalizers = self._make_normalizers()
         # homogenize it into a dictionary mapping
         if isinstance(self.loss_func, nn.Module) and not isinstance(
@@ -882,10 +908,29 @@ class BaseTaskModule(pl.LightningModule):
     def forward(
         self,
         batch: dict[str, torch.Tensor | dgl.DGLGraph | dict[str, torch.Tensor]],
-    ) -> dict[str, torch.Tensor]:
-        embeddings = self.encoder(batch)
-        batch["embeddings"] = embeddings
-        outputs = self.process_embedding(embeddings)
+    ) -> dict[str, torch.Tensor] | ModelOutput:
+        encoder_outputs = self.encoder(batch)
+        # in the case that the model does not produce its own outputs,
+        # we will pass them through the output heads.
+        if not self.encoder.__skip_output_heads__:
+            if not isinstance(encoder_outputs, (Embeddings, dict, ModelOutput)):
+                raise RuntimeError(
+                    f"Encoder model must emit a dict, `ModelOutput`, or `Embeddings` object. Got {encoder_outputs} instead."
+                )
+            if isinstance(encoder_outputs, Embeddings):
+                batch["embeddings"] = encoder_outputs
+                outputs = self.process_embedding(encoder_outputs)
+            elif isinstance(encoder_outputs, ModelOutput):
+                batch["embeddings"] = encoder_outputs.embeddings
+                outputs = self.process_embedding(encoder_outputs.embeddings)
+            else:
+                # here we assume that encoder model is predicting directly
+                outputs = encoder_outputs
+                # optionally if we still have embeddings, keep em
+                if "embeddings" in encoder_outputs:
+                    batch["embeddings"] = encoder_outputs["embeddings"]
+        else:
+            outputs = encoder_outputs
         return outputs
 
     def process_embedding(self, embeddings: Embeddings) -> dict[str, torch.Tensor]:
@@ -1056,7 +1101,13 @@ class BaseTaskModule(pl.LightningModule):
             loss_func = self.loss_func[key]
             # determine if we need additional arguments
             loss_func_signature = signature(loss_func.forward).parameters
-            kwargs = {"input": predictions[key], "target": target_val}
+            # TODO refactor this once outputs are homogenized
+            if isinstance(predictions, dict):
+                kwargs = {"input": predictions[key], "target": target_val}
+            else:
+                kwargs = {"input": getattr(predictions, key), "target": target_val}
+            if not isinstance(kwargs["input"], torch.Tensor):
+                raise KeyError(f"Expected model to produce output with key {key}.")
             # pack atoms per graph information too
             if "atoms_per_graph" in loss_func_signature:
                 if graph := batch.get("graph", None):
@@ -1871,10 +1922,38 @@ class ForceRegressionTask(BaseTaskModule):
                 fa_pos.requires_grad_(True)
             elif isinstance(fa_pos, list):
                 [f_p.requires_grad_(True) for f_p in fa_pos]
+            # check to see if embeddings were stashed away
             if "embeddings" in batch:
                 embeddings = batch.get("embeddings")
             else:
-                embeddings = self.encoder(batch)
+                encoder_outputs = self.encoder(batch)
+                if not isinstance(encoder_outputs, (Embeddings, dict, ModelOutput)):
+                    raise RuntimeError(
+                        f"Encoder model must emit a dict, `ModelOutput`, or `Embeddings` object. Got {encoder_outputs} instead."
+                    )
+                # sets the embeddings variable
+                if isinstance(encoder_outputs, Embeddings):
+                    embeddings = encoder_outputs
+                # for BYO output head cases
+                elif isinstance(encoder_outputs, ModelOutput):
+                    # this checks to make sure we have the expected attributes
+                    for key in ["total_energy", "forces"]:
+                        if getattr(encoder_outputs, key, None) is None:
+                            raise RuntimeError(
+                                f"Model {self.encoder.__class__.__name__} is not emitting {key} in model outputs."
+                            )
+                    # map the outputs as expected by the task
+                    return {
+                        "energy": encoder_outputs.total_energy,
+                        "force": encoder_outputs.forces,
+                    }
+                # in the alternative case we assume the encoder is emitting predictions
+                else:
+                    for key in ["energy", "force"]:
+                        assert (
+                            key in encoder_outputs
+                        ), f"Expected {key} to be in encoder outputs."
+                    return encoder_outputs
 
             outputs = self.process_embedding(embeddings, batch, pos, fa_rot, fa_pos)
         return outputs

@@ -11,7 +11,13 @@ from torch_geometric.nn import pool
 from mendeleev import element
 
 from matsciml.models.base import AbstractPyGModel
-from matsciml.common.types import BatchDict, DataDict, AbstractGraph, Embeddings
+from matsciml.common.types import (
+    BatchDict,
+    DataDict,
+    AbstractGraph,
+    ModelOutput,
+    Embeddings,
+)
 from matsciml.common.registry import registry
 from matsciml.common.inspection import get_model_required_args, get_model_all_args
 
@@ -47,6 +53,8 @@ def free_ion_energy_table(num_elements: int = 100) -> torch.Tensor:
 
 @registry.register_model("MACEWrapper")
 class MACEWrapper(AbstractPyGModel):
+    __skip_output_heads__ = True  # MACE is BYO output head due to expansion
+
     def __init__(
         self,
         atom_embedding_dim: int,
@@ -55,6 +63,7 @@ class MACEWrapper(AbstractPyGModel):
         embedding_kwargs: Any = None,
         encoder_only: bool = True,
         readout_method: str | Callable = "add",
+        disable_forces: bool = True,
         **mace_kwargs,
     ) -> None:
         if embedding_kwargs is not None:
@@ -164,6 +173,7 @@ class MACEWrapper(AbstractPyGModel):
                 "node_feats": one_hot_atoms,
                 "cell": batch["cell"],
                 "shifts": batch["offsets"],
+                "unit_shifts": batch["unit_offsets"],
             }
         )
         return data
@@ -174,7 +184,7 @@ class MACEWrapper(AbstractPyGModel):
         node_feats: torch.Tensor,
         pos: torch.Tensor,
         **kwargs,
-    ) -> Embeddings:
+    ) -> ModelOutput:
         """
         Takes arguments in the standardized format, and passes them into MACE
         with some redundant mapping.
@@ -192,8 +202,8 @@ class MACEWrapper(AbstractPyGModel):
 
         Returns
         -------
-        Embeddings
-            MatSciML ``Embeddings`` structure
+        ModelOutput
+            MatSciML ``ModelOutput`` data structure.
         """
         # repack data into MACE format
         mace_data = {
@@ -202,17 +212,26 @@ class MACEWrapper(AbstractPyGModel):
             "ptr": graph.ptr,
             "cell": kwargs["cell"],
             "shifts": kwargs["shifts"],
+            "unit_shifts": kwargs["unit_shifts"],
             "batch": graph.batch,
             "edge_index": graph.edge_index,
         }
         outputs = self.encoder(
             mace_data,
             training=self.training,
-            compute_force=False,
+            compute_force=not self.hparams["disable_forces"],
             compute_virials=False,
             compute_stress=False,
-            compute_displacement=False,
+            compute_displacement=not self.hparams["disable_forces"],
         )
         node_embeddings = outputs["node_feats"]
         graph_embeddings = self.readout(node_embeddings, graph.batch)
-        return Embeddings(graph_embeddings, node_embeddings)
+        embeddings = Embeddings(graph_embeddings, node_embeddings)
+        output = ModelOutput(
+            batch_size=graph.batch_size,
+            forces=outputs["forces"],
+            total_energy=outputs["energy"],
+            node_energies=outputs["node_energy"],
+            embeddings=embeddings,
+        )
+        return output
