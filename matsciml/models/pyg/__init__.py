@@ -18,7 +18,6 @@ else:
 
 # load models if we have PyG installed
 if _has_pyg:
-    from matsciml.models.pyg.cgcnn import CGCNN
     from matsciml.models.pyg.egnn import EGNN
     from matsciml.models.pyg.mace import MACE, ScaleShiftMACE, MACEWrapper
 
@@ -26,8 +25,8 @@ if _has_pyg:
 
     # these packages need additional pyg dependencies
     if package_registry["torch_sparse"] and package_registry["torch_scatter"]:
-        from matsciml.models.pyg.dimenet import DimeNetWrap
-        from matsciml.models.pyg.dimenet_plus_plus import DimeNetPlusPlusWrap
+        from matsciml.models.pyg.dimenet import DimeNetWrap  # noqa: F401
+        from matsciml.models.pyg.dimenet_plus_plus import DimeNetPlusPlusWrap  # noqa: F401
 
         __all__.extend(["DimeNetWrap", "DimeNetPlusPlusWrap"])
     else:
@@ -35,11 +34,11 @@ if _has_pyg:
             "Missing torch_sparse and torch_scatter; DimeNet models will not be available."
         )
     if package_registry["torch_scatter"]:
-        from matsciml.models.pyg.forcenet import ForceNet
-        from matsciml.models.pyg.schnet import SchNetWrap
-        from matsciml.models.pyg.faenet import FAENet
+        from matsciml.models.pyg.forcenet import ForceNet  # noqa: F401
+        from matsciml.models.pyg.schnet import SchNetWrap  # noqa: F401
+        from matsciml.models.pyg.cgcnn import CGCNN  # noqa: F401
 
-        __all__.extend(["ForceNet", "SchNetWrap", "FAENet"])
+        __all__.extend(["ForceNet", "SchNetWrap", "FAENet", "CGCNN"])
     else:
         logger.warning(
             "Missing torch_scatter; ForceNet, SchNet, and FAENet models will not be available."

@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-from typing import Tuple, Union
-
 import pandas as pd
 import torch
 import torch.nn as nn
 from mendeleev.fetch import fetch_ionization_energies, fetch_table
-from torch import nn
 from torch.nn import Embedding, Linear
 from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.norm import GraphNorm
-from torch_scatter import scatter
 
 from matsciml.models.pyg.faenet.helper import *
+from matsciml.models.pyg.scatter import scatter_sum
 
 
 class PhysEmbedding(nn.Module):
@@ -508,7 +505,7 @@ class OutputBlock(nn.Module):
             h = h * alpha
 
         # Global pooling
-        out = scatter(h, batch, dim=0, reduce="add")
+        out = scatter_sum(h, batch, dim=0)
 
         return out
 
