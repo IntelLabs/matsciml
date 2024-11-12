@@ -739,9 +739,17 @@ class BaseTaskModule(pl.LightningModule):
             # convert to a module dict for consistent API usage
             loss_func = nn.ModuleDict({key: value for key, value in loss_func.items()})
         self.loss_func = loss_func
-        default_heads = {"act_last": None, "hidden_dim": 128}
-        default_heads.update(output_kwargs)
-        self.output_kwargs = default_heads
+        # only add output kwargs if we are going to use them
+        if not encoder.__skip_output_heads__:
+            default_heads = {"act_last": None, "hidden_dim": 128}
+            default_heads.update(output_kwargs)
+            self.output_kwargs = default_heads
+        else:
+            # emit warning to user if the kwargs aren't being used
+            if output_kwargs:
+                logger.warning(
+                    f"Specified encoder {encoder.__class__.__name__} skips output heads; ignoring output kwargs."
+                )
         self.normalize_kwargs = normalize_kwargs
         self.task_keys = task_keys
         self._task_loss_scaling = kwargs.get("task_loss_scaling", {})
