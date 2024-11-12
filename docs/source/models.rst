@@ -48,6 +48,13 @@ Open MatSciML Toolkit workflow of leveraging one or more output heads.
    :members:
 
 
+.. important::
+   Training tasks and workflows should branch based on the prescence of either
+   objects, taking ``ModelOutput`` as the priority. For specific tasks, we can
+   check if properties are set (e.g. ``total_energy`` and ``forces``), and if
+   they aren't there, we should pass the ``embeddings`` to output heads.
+
+
 PyG models
 ----------
 
