@@ -840,11 +840,16 @@ def calculate_ase_periodic_shifts(
 
     all_src, all_dst, all_images = [], [], []
     for src_idx in range(len(atoms)):
+        site_count = 0
         dst_index, image = nl.get_neighbors(src_idx)
         for index in range(len(dst_index)):
             all_src.append(src_idx)
             all_dst.append(dst_index[index])
             all_images.append(image[index])
+            # determine if we terminate the site loop earlier
+            site_count += 1
+            if site_count > max_neighbors:
+                break
 
     if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
         raise ValueError(
