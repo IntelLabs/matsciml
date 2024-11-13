@@ -827,7 +827,7 @@ def calculate_ase_periodic_shifts(
     # if there are sites without neighbors and user requested adaptive
     # cut off, we'll keep trying
     if not _all_sites_have_neighbors(neighbors) and adaptive_cutoff:
-        while not _all_sites_have_neighbors(neighbors) and cutoff < 30.0:
+        while not _all_sites_have_neighbors(neighbors) and cutoff_radius < 30.0:
             # increment radial cutoff progressively
             cutoff_radius += 0.5
             cutoff = [cutoff_radius] * atoms.positions.shape[0]
