@@ -39,12 +39,14 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
         adaptive_cutoff: bool = False,
         backend: Literal["pymatgen", "ase"] = "pymatgen",
         max_neighbors: int = 1000,
+        allow_self_loops: bool = False,
     ) -> None:
         super().__init__()
         self.cutoff_radius = cutoff_radius
         self.adaptive_cutoff = adaptive_cutoff
         self.backend = backend
         self.max_neighbors = max_neighbors
+        self.allow_self_loops = allow_self_loops
 
     def __call__(self, data: DataDict) -> DataDict:
         """
