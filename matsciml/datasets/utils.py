@@ -658,7 +658,10 @@ def make_pymatgen_periodic_structure(
 
 
 def calculate_periodic_shifts(
-    structure: Structure, cutoff: float, adaptive_cutoff: bool = False
+    structure: Structure,
+    cutoff: float,
+    adaptive_cutoff: bool = False,
+    max_neighbors: int = 1000,
 ) -> dict[str, torch.Tensor]:
     """
     Compute properties with respect to periodic boundary conditions.
@@ -681,6 +684,10 @@ def calculate_periodic_shifts(
         Pymatgen periodic structure.
     cutoff
         Radial cut off for defining edges.
+    max_neighbors : int
+        Maximum number of neighbors a given site can have. This method
+        will count the number of edges per site, and the loop will
+        terminate earlier if the count exceeds this value.
 
     Returns
     -------
@@ -724,10 +731,15 @@ def calculate_periodic_shifts(
 
     all_src, all_dst, all_images = [], [], []
     for src_idx, dst_sites in enumerate(neighbors):
+        site_count = 0
         for site in dst_sites:
             all_src.append(src_idx)
             all_dst.append(site.index)
             all_images.append(site.image)
+            # determine if we terminate the site loop earlier
+            site_count += 1
+            if site_count > max_neighbors:
+                break
     if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
         raise ValueError(
             f"No images or edges to work off for cutoff {cutoff}."
