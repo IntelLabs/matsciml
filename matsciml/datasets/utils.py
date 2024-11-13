@@ -768,7 +768,43 @@ def calculate_periodic_shifts(
     return return_dict
 
 
-def calculate_ase_periodic_shifts(data, cutoff_radius, adaptive_cutoff):
+def calculate_ase_periodic_shifts(
+    data: DataDict,
+    cutoff_radius: float,
+    adaptive_cutoff: bool,
+    max_neighbors: int = 1000,
+) -> dict[str, torch.Tensor]:
+    """
+    Calculate edges for the system using ``ase`` routines.
+
+    This function will create an ``ase.Atoms`` object from the available data,
+    which should mirror in functionality to the ``pymatgen`` counterpart of
+    this function.
+
+    Parameters
+    ----------
+    data : DataDict
+        Dictionary containing a single data sample.
+    cutoff_radius : float
+        Distance to use for the neighborlist calculation.
+    adaptive_cutoff : bool
+        Whether to use the adaptive cut off algorithm. In the event
+        we arrive at a structure with atoms that are too far away
+        (i.e. a disconnected subgraph), we will progressively increase
+        the cutoff value. This allows the majority of graphs to have
+        a smaller cutoff value, while still allowing more troublesome
+        interactions to be modeled up to a maximum of 30 angstroms.
+    max_neighbors : int, default 1000
+        Set the maximum number of edges a given atom can have.
+        The edges are not explicitly sorted in this function,
+        and we terminate the edge addition for a site once the
+        count exceeds this value.
+
+    Returns
+    -------
+    dict[str, torch.Tensor]
+        Dictionary containing key/value mappings for periodic properties.
+    """
     cell = data["cell"]
 
     atoms = ase.Atoms(
