@@ -138,6 +138,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             )
         else:
             raise RuntimeError(f"Requested backend f{self.backend} not available.")
+        data.update(graph_props)
         if not self.allow_self_loops:
             mask = data["src_nodes"] == data["dst_nodes"]
             # only mask out self-loops within the same image
@@ -145,5 +146,4 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             # apply mask to each of the tensors that depend on edges
             for key in ["src_nodes", "dst_nodes", "images", "unit_offsets", "offsets"]:
                 data[key] = data[key][mask]
-        data.update(graph_props)
         return data
