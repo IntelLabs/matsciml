@@ -38,7 +38,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
         cutoff_radius: float,
         adaptive_cutoff: bool = False,
         backend: Literal["pymatgen", "ase"] = "pymatgen",
-        max_neighbors: int = -1,
+        max_neighbors: int = 1000,
     ) -> None:
         super().__init__()
         self.cutoff_radius = cutoff_radius
@@ -128,11 +128,11 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
         )
         if self.backend == "pymatgen":
             graph_props = calculate_periodic_shifts(
-                structure, self.cutoff_radius, self.adaptive_cutoff
+                structure, self.cutoff_radius, self.adaptive_cutoff, self.max_neighbors
             )
         elif self.backend == "ase":
             graph_props = calculate_ase_periodic_shifts(
-                data, self.cutoff_radius, self.adaptive_cutoff
+                data, self.cutoff_radius, self.adaptive_cutoff, self.max_neighbors
             )
         else:
             raise RuntimeError(f"Requested backend f{self.backend} not available.")
