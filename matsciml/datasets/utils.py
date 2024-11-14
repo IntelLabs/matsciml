@@ -974,8 +974,5 @@ def cart_frac_conversion(
     if to_fractional:
         # invert elements for the opposite conversion
         rotation = torch.linalg.inv(rotation)
-    output = torch.zeros_like(coords)
-    for index, row in enumerate(coords):
-        output[index] = rotation @ row
-    assert torch.allclose(output, coords @ rotation)
+    output = coords @ rotation
     return output
