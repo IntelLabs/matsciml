@@ -875,3 +875,107 @@ def calculate_ase_periodic_shifts(
         frac_coords[dst] - frac_coords[src] + return_dict["offsets"]
     )
     return return_dict
+
+
+def cart_frac_conversion(
+    coords: torch.Tensor,
+    a: float,
+    b: float,
+    c: float,
+    alpha: float,
+    beta: float,
+    gamma: float,
+    angles_are_degrees: bool = True,
+    to_fractional: bool = True,
+) -> torch.Tensor:
+    """
+    Convert coordinates from cartesians to fractional, or vice versa.
+
+    Distances are expected to be in angstroms, while angles
+    are expected to be in degrees by default, but can be
+    passed directly as radians as well.
+
+    Parameters
+    ----------
+    coords : torch.Tensor
+        Coordinates of atoms; expects shape [N, 3] for
+        N atoms.
+    a : float
+        Cell length a.
+    b : float
+        Cell length b.
+    c : float
+        Cell length c.
+    alpha : float
+        Lattice angle alpha; expected units depend on
+        the ``angles_are_degrees`` flag.
+    beta : float
+        Lattice angle beta; expected units depend on
+        the ``angles_are_degrees`` flag.
+    gamma : float
+        Lattice angle gamma; expected units depend on
+        the ``angles_are_degrees`` flag.
+    angles_are_degrees : bool, default True
+        Flag to designate whether the angles passed
+        to this function are in degrees. Defaults to
+        True, which then assumes the angles are in degrees
+        and conversion to radians are done within the function.
+    to_fractional : bool, default True
+        Specifies that the input coordinates are cartesian,
+        and that we are transforming them into fractional
+        coordinates.
+
+    Returns
+    -------
+    torch.Tensor
+        Fractional coordinate representation
+    """
+
+    def cot(x: float) -> float:
+        """cotangent of x"""
+        return -np.tan(x + np.pi / 2)
+
+    def csc(x: float) -> float:
+        """cosecant of x"""
+        return 1 / np.sin(x)
+
+    # convert to radians if angles are passed as degrees
+    if angles_are_degrees:
+        alpha = alpha * np.pi / 180.0
+        beta = beta * np.pi / 180.0
+        gamma = gamma * np.pi / 180.0
+
+    # this matrix is normally for fractional to cart
+    rotation = torch.tensor(
+        [
+            [
+                a
+                * np.sin(beta)
+                * np.sqrt(
+                    1
+                    - (
+                        (cot(alpha) * cot(beta))
+                        - (csc(alpha) * csc(beta) * np.cos(gamma))
+                    )
+                    ** 2.0
+                ),
+                0.0,
+                0.0,
+            ],
+            [
+                a * csc(alpha) * np.cos(gamma) - a * cot(alpha) * np.cos(beta),
+                b * np.sin(alpha),
+                0.0,
+            ],
+            [a * np.cos(beta), b * np.cos(alpha), c],
+        ],
+        dtype=coords.dtype,
+    )
+    if to_fractional:
+        # invert elements for the opposite conversion
+        rotation = torch.linalg.inv(rotation)
+    output = torch.zeros_like(coords)
+    for index, row in enumerate(coords):
+        output[index] = rotation @ row
+    assert torch.allclose(output, coords @ rotation)
+    return output
