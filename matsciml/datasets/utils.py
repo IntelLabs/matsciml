@@ -733,13 +733,13 @@ def calculate_periodic_shifts(
     for src_idx, dst_sites in enumerate(neighbors):
         site_count = 0
         for site in dst_sites:
+            if site_count > max_neighbors:
+                break
             all_src.append(src_idx)
             all_dst.append(site.index)
             all_images.append(site.image)
             # determine if we terminate the site loop earlier
             site_count += 1
-            if site_count > max_neighbors:
-                break
     if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
         raise ValueError(
             f"No images or edges to work off for cutoff {cutoff}."
@@ -843,13 +843,13 @@ def calculate_ase_periodic_shifts(
         site_count = 0
         dst_index, image = nl.get_neighbors(src_idx)
         for index in range(len(dst_index)):
+            if site_count > max_neighbors:
+                break
             all_src.append(src_idx)
             all_dst.append(dst_index[index])
             all_images.append(image[index])
             # determine if we terminate the site loop earlier
             site_count += 1
-            if site_count > max_neighbors:
-                break
 
     if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
         raise ValueError(
