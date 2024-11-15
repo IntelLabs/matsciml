@@ -8,6 +8,7 @@ from ase.neighborlist import NeighborList
 from os import makedirs
 from pathlib import Path
 from typing import Any, Callable
+from itertools import product
 
 import lmdb
 import torch
@@ -976,3 +977,31 @@ def cart_frac_conversion(
         rotation = torch.linalg.inv(rotation)
     output = coords @ rotation
     return output
+
+
+def build_nearest_images(max_image_number: int) -> torch.Tensor:
+    """
+    Utility function to exhaustively construct images based off
+    a maximum (absolute value) image number.
+
+    These images can be used for tiling primarily for testing
+    and development.
+
+    Parameters
+    ----------
+    max_image_number : int
+        Maximum image number (absolute value) to consider. The
+        resulting tensor will span +/- this value.
+
+    Returns
+    -------
+    torch.Tensor
+        Float tensor containing image indices.
+    """
+    indices = product(
+        range(-max_image_number, max_image_number),
+        range(-max_image_number, max_image_number),
+        range(-max_image_number, max_image_number),
+    )
+    images = torch.FloatTensor(list(indices))
+    return images
