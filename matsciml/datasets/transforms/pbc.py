@@ -40,6 +40,8 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
         backend: Literal["pymatgen", "ase"] = "pymatgen",
         max_neighbors: int = 1000,
         allow_self_loops: bool = False,
+        convert_to_unit_cell: bool = False,
+        is_cartesian: bool | None = None,
     ) -> None:
         super().__init__()
         self.cutoff_radius = cutoff_radius
@@ -47,6 +49,8 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
         self.backend = backend
         self.max_neighbors = max_neighbors
         self.allow_self_loops = allow_self_loops
+        self.is_cartesian = is_cartesian
+        self.convert_to_unit_cell = convert_to_unit_cell
 
     def __call__(self, data: DataDict) -> DataDict:
         """
@@ -127,6 +131,8 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             data["atomic_numbers"],
             data["pos"],
             lattice=lattice,
+            convert_to_unit_cell=self.convert_to_unit_cell,
+            is_cartesian=self.is_cartesian,
         )
         if self.backend == "pymatgen":
             graph_props = calculate_periodic_shifts(
