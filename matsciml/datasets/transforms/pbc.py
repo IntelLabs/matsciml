@@ -5,6 +5,7 @@ from typing import Literal
 import numpy as np
 import torch
 from pymatgen.core import Lattice, Structure
+from loguru import logger
 
 from matsciml.common.types import DataDict
 from matsciml.datasets.transforms.base import AbstractDataTransform
@@ -49,6 +50,10 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
         self.backend = backend
         self.max_neighbors = max_neighbors
         self.allow_self_loops = allow_self_loops
+        if is_cartesian is not None and backend == "ase":
+            logger.warning(
+                "`is_cartesian` passed but using `ase` backend; option will not affect anything."
+            )
         self.is_cartesian = is_cartesian
         self.convert_to_unit_cell = convert_to_unit_cell
 
