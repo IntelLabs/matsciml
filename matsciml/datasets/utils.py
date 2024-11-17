@@ -610,6 +610,8 @@ def make_pymatgen_periodic_structure(
     lat_angles: torch.Tensor | None = None,
     lat_abc: torch.Tensor | None = None,
     lattice: Lattice | None = None,
+    convert_to_unit_cell: bool = False,
+    is_cartesian: bool | None = None,
 ) -> Structure:
     """
     Construct a Pymatgen structure from available information
@@ -631,16 +633,26 @@ def make_pymatgen_periodic_structure(
         1D tensor containing three elements for the lattice angles.
     lat_abc
         1D tensor containing three elements for the lattice abc values.
-
+    convert_to_unit_cell : bool, default False
+        If set to ``True``, the output structure have coordinates transformed
+        into fractional coordinates.
+    is_cartesian : bool | None, default None
+        If ``None``, the workflow makes an educated guess based on whether
+        coordinates are all within the range of [0, 1] - if not then they
+        are definitely cartesian. The user can override this by setting it
+        to ``True`` or ``False``.
     Returns
     -------
     Structure
         Periodic structure object
     """
-    if coords.max() > 1.0 or coords.min() < 0.0:
-        is_frac = False
+    if is_cartesian is None:
+        if coords.max() > 1.0 or coords.min() < 0.0:
+            is_frac = False
+        else:
+            is_frac = True
     else:
-        is_frac = True
+        is_frac = not is_cartesian  # TODO this is logically confusing
     if not lattice:
         if lat_angles is None or lat_abc is None:
             raise ValueError(
@@ -652,7 +664,7 @@ def make_pymatgen_periodic_structure(
         lattice,
         atomic_numbers,
         coords,
-        to_unit_cell=True,
+        to_unit_cell=convert_to_unit_cell,
         coords_are_cartesian=not is_frac,
     )
     return structure
