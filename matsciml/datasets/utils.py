@@ -753,7 +753,7 @@ def calculate_periodic_shifts(
             all_images.append(site.image)
             # determine if we terminate the site loop earlier
             site_count += 1
-    if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
+    if any([len(obj) == 0 for obj in [all_src, all_dst, all_images]]):
         raise ValueError(
             f"No images or edges to work off for cutoff {cutoff}."
             f" Please inspect your structure and neighbors: {structure} {neighbors} {structure.cart_coords}"
@@ -864,7 +864,7 @@ def calculate_ase_periodic_shifts(
             # determine if we terminate the site loop earlier
             site_count += 1
 
-    if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
+    if any([len(obj) == 0 for obj in [all_src, all_dst, all_images]]):
         raise ValueError(
             f"No images or edges to work off for cutoff {cutoff}."
             f" Please inspect your atoms object and neighbors: {atoms}."
