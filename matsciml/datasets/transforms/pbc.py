@@ -97,7 +97,10 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             structure = data["structure"]
             if isinstance(structure, Structure):
                 graph_props = calculate_periodic_shifts(
-                    structure, self.cutoff_radius, self.adaptive_cutoff
+                    structure,
+                    self.cutoff_radius,
+                    self.adaptive_cutoff,
+                    max_neighbors=self.max_neighbors,
                 )
                 data.update(graph_props)
                 return data
