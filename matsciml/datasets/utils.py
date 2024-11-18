@@ -721,6 +721,7 @@ def calculate_periodic_shifts(
     if np.any(structure.frac_coords > 1.0):
         logger.warning(
             f"Structure has fractional coordinates greater than 1! Check structure:\n{structure}"
+            f"\n fractional coordinates: {structure.frac_coords}"
         )
 
     def _all_sites_have_neighbors(neighbors):
