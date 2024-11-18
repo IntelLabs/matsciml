@@ -64,9 +64,47 @@ class MACEWrapper(AbstractPyGModel):
         encoder_only: bool = True,
         readout_method: str | Callable = "add",
         atomic_energies: dict[int, float] | list | torch.Tensor | None = None,
-        disable_forces: bool = True,
+        disable_forces: bool = False,
         **mace_kwargs,
     ) -> None:
+        """
+        Initializes a wrapper for MACE architectures.
+
+        This wrapper integrates MACE models into the ``matsciml`` pipeline
+        by ensuring that the inputs are what MACE expects, and that the
+        outputs are what tasks expect to see.
+
+        Parameters
+        ----------
+        atom_embedding_dim : int
+            Embedding dimensionality for atoms.
+        mace_module : Type[MACE], default MACE
+            Reference to the MACE architecture class. Defaults to
+            the ``MACE`` class, but can be swapped out for references
+            to e.g. ``ScaleShiftMACE``.
+        num_atom_embedding : int, default 100
+            Number of atoms expected to be trained on for this dataset.
+            This is common to other ``matsciml`` models/wrappers, and
+            refers to the maximum atomic number to include in the modeling;
+            this differs slightly from how MACE treats the periodic table.
+        embedding_kwargs : Any, default None
+            Unused by MACE models, as we do not use an embedding table.
+        encoder_only : bool, default True
+            Unintended for usage but kept for continuity of ``matsciml``
+            models/wrappers.
+        readout_method : str | Callable, default 'add'
+            Method or string for the node reduction to obtain graph-level
+            energies/properties. If a string is passed, we use this to
+            map to the ``global_<readout_method>_pool`` function in PyG.
+        atomic_energies : dict[int, float] | list | torch.Tensor | None, default None
+            If None, uses the ``free_ion_energy_table`` function to obtain ionization
+            energies to use as a basis for the atom bias. If a dictionary is passed,
+            the keys should correspond to the atomic number, and value the associated
+            atomic energy. This then gets mapped to a tensor where unmapped values are
+            ones.
+        disable_forces : bool, default False
+            If set to ``True``, force computation by MACE is disabled.
+        """
         if embedding_kwargs is not None:
             logger.warning("`embedding_kwargs` is not used for MACE models.")
         super().__init__(atom_embedding_dim, num_atom_embedding, {}, encoder_only)
