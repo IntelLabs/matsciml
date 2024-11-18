@@ -11,6 +11,7 @@ from typing import Any, Callable
 from itertools import product
 
 import lmdb
+from loguru import logger
 import torch
 import numpy as np
 from einops import einsum, rearrange
@@ -718,7 +719,7 @@ def calculate_periodic_shifts(
     )
     # check to make sure the cell definition is valid
     if np.any(structure.frac_coords > 1.0):
-        raise ValueError(
+        logger.warning(
             f"Structure has fractional coordinates greater than 1! Check structure:\n{structure}"
         )
 
