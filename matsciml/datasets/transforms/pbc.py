@@ -19,21 +19,6 @@ __all__ = ["PeriodicPropertiesTransform"]
 
 
 class PeriodicPropertiesTransform(AbstractDataTransform):
-    """
-    Rewires an already present graph to include periodic boundary conditions.
-
-    Since graphs are normally bounded within a unit cell, they may not capture
-    the necessary dependencies for atoms connected to neighboring cells. This
-    transform will compute the unit cell, tile it, and then rewire the graph
-    edges such that it can capture connectivity given a radial cutoff given
-    in Angstroms.
-
-    Cut off radius is specified in Angstroms. An additional flag, ``adaptive_cutoff``,
-    allows the cut off value to grow up to 100 angstroms in order to find neighbors.
-    This allows larger (typically unstable) structures to be modeled without applying
-    a large cut off for the entire dataset.
-    """
-
     def __init__(
         self,
         cutoff_radius: float,
@@ -44,6 +29,54 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
         convert_to_unit_cell: bool = False,
         is_cartesian: bool | None = None,
     ) -> None:
+        """
+        Rewires an already present graph to include periodic boundary conditions.
+
+        Since graphs are normally bounded within a unit cell, they may not capture
+        the necessary dependencies for atoms connected to neighboring cells. This
+        transform will compute the unit cell, tile it, and then rewire the graph
+        edges such that it can capture connectivity given a radial cutoff given
+        in Angstroms.
+
+        Cut off radius is specified in Angstroms. An additional flag, ``adaptive_cutoff``,
+        allows the cut off value to grow up to 100 angstroms in order to find neighbors.
+        This allows larger (typically unstable) structures to be modeled without applying
+        a large cut off for the entire dataset.
+
+        Parameters
+        ----------
+        cutoff_radius : float
+            Cutoff radius to use to truncate the neighbor list calculation.
+        adaptive_cutoff : bool, default False
+            If set to ``True``, will allow ``cutoff_radius`` to grow up to
+            30 angstroms if there are any disconnected subgraphs present.
+            This is to allow distant nodes to be captured in some structures
+            only as needed, keeping the computational requirements low for
+            other samples within a dataset.
+        backend : Literal['pymatgen', 'ase'], default 'pymatgen'
+            Which algorithm to use for the neighbor list calculation. Nominally
+            settings can be mapped to have the two produce equivalent results.
+            'pymatgen' is kept as the default, but at some point 'ase' will
+            become the default option. See the hosted documentation 'Best practices'
+            page for details.
+        max_neighbors : int, default 1000
+            Forcibly truncate the number of edges at any given node. Internally,
+            a counter is used to track the number of destination nodes when
+            looping over a node's neighbor list; when the counter exceeds this
+            value we immediately stop counting neighbors for the current node.
+        allow_self_loops : bool, default False
+            If ``True``, the edges will include self-interactions within the
+            original unit cell. If set to ``False``, these self-loops are
+            purged before returning edges.
+        convert_to_unit_cell : bool, default False
+            This argument is specific to ``pymatgen``, which is passed to the
+            ``to_unit_cell`` argument during the ``Structure`` construction step.
+        is_cartesian : bool | None, default None
+            If set to ``None``, we will try and determine if the structure has
+            fractional coordinates as input or not. If a boolean is provided,
+            this is passed into the ``pymatgen.Structure`` construction step.
+            This is specific to ``pymatgen``, and is not used by ``ase``.
+        """
         super().__init__()
         self.cutoff_radius = cutoff_radius
         self.adaptive_cutoff = adaptive_cutoff
