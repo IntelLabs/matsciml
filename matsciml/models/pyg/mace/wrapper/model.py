@@ -96,17 +96,30 @@ class MACEWrapper(AbstractPyGModel):
         # pack stuff into the mace kwargs
         mace_kwargs["num_elements"] = num_atom_embedding
         mace_kwargs["hidden_irreps"] = hidden_irreps
-        mace_kwargs["atomic_numbers"] = list(range(1, num_atom_embedding + 1))
         if atomic_energies is None:
             logger.warning(
                 "No ``atomic_energies`` provided, defaulting to total ionization energy."
             )
             atomic_energies = free_ion_energy_table(num_atom_embedding)
+        if isinstance(atomic_energies, dict):
+            max_atom_num = max(list(atomic_energies.keys()))
+            if max_atom_num > num_atom_embedding:
+                logger.warning(
+                    "atomic_energies contains higher atom number than num_atom_embedding;"
+                    " setting a larger value for the latter."
+                )
+                num_atom_embedding = max_atom_num
+            temp_tensor = torch.ones(num_atom_embedding).double()
+            # iterate through the atomic numbers and map to values
+            for index, value in atomic_energies.items():
+                temp_tensor[index] = value
+            atomic_energies = temp_tensor
         if isinstance(atomic_energies, list):
             assert (
                 len(atomic_energies) == num_atom_embedding
             ), "Mismatch in number of atomic energies and expected atom table."
             atomic_energies = torch.Tensor(atomic_energies).double()
+        mace_kwargs["atomic_numbers"] = list(range(1, num_atom_embedding + 1))
         mace_kwargs["atomic_energies"] = atomic_energies
         # check to make sure all that's required is
         for key in __mace_required_args + __mace_submodule_required_args:
