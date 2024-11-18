@@ -63,6 +63,7 @@ class MACEWrapper(AbstractPyGModel):
         embedding_kwargs: Any = None,
         encoder_only: bool = True,
         readout_method: str | Callable = "add",
+        atomic_energies: dict[int, float] | list | torch.Tensor | None = None,
         disable_forces: bool = True,
         **mace_kwargs,
     ) -> None:
@@ -96,11 +97,17 @@ class MACEWrapper(AbstractPyGModel):
         mace_kwargs["num_elements"] = num_atom_embedding
         mace_kwargs["hidden_irreps"] = hidden_irreps
         mace_kwargs["atomic_numbers"] = list(range(1, num_atom_embedding + 1))
-        if "atomic_energies" not in mace_kwargs:
+        if atomic_energies is None:
             logger.warning(
                 "No ``atomic_energies`` provided, defaulting to total ionization energy."
             )
-            mace_kwargs["atomic_energies"] = free_ion_energy_table(num_atom_embedding)
+            atomic_energies = free_ion_energy_table(num_atom_embedding)
+        if isinstance(atomic_energies, list):
+            assert (
+                len(atomic_energies) == num_atom_embedding
+            ), "Mismatch in number of atomic energies and expected atom table."
+            atomic_energies = torch.Tensor(atomic_energies).double()
+        mace_kwargs["atomic_energies"] = atomic_energies
         # check to make sure all that's required is
         for key in __mace_required_args + __mace_submodule_required_args:
             if key not in mace_kwargs:
