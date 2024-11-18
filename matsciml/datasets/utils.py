@@ -882,7 +882,9 @@ def calculate_ase_periodic_shifts(
         "pos": coords,
     }
 
-    cell = rearrange(cell, "i j -> () i j")
+    # only do the reshape if we are missing a dimension
+    if cell.ndim == 2:
+        cell = rearrange(cell, "i j -> () i j")
     return_dict["offsets"] = einsum(return_dict["images"], cell, "v i, n i j -> v j")
     src, dst = return_dict["src_nodes"], return_dict["dst_nodes"]
     return_dict["unit_offsets"] = (
