@@ -64,7 +64,7 @@ class MACEWrapper(AbstractPyGModel):
         encoder_only: bool = True,
         readout_method: str | Callable = "add",
         atomic_energies: dict[int, float] | list | torch.Tensor | None = None,
-        disable_forces: bool = False,
+        disable_forces: bool = True,
         **mace_kwargs,
     ) -> None:
         """
@@ -73,6 +73,10 @@ class MACEWrapper(AbstractPyGModel):
         This wrapper integrates MACE models into the ``matsciml`` pipeline
         by ensuring that the inputs are what MACE expects, and that the
         outputs are what tasks expect to see.
+
+        Additional ``mace_kwargs`` are passed into the the model constructor
+        after validating them with what is expected by that particular
+        variant.
 
         Parameters
         ----------
@@ -102,8 +106,10 @@ class MACEWrapper(AbstractPyGModel):
             the keys should correspond to the atomic number, and value the associated
             atomic energy. This then gets mapped to a tensor where unmapped values are
             ones.
-        disable_forces : bool, default False
+        disable_forces : bool, default True
             If set to ``True``, force computation by MACE is disabled.
+            The default value is set to ensure backwards and general
+            task compatibility.
         """
         if embedding_kwargs is not None:
             logger.warning("`embedding_kwargs` is not used for MACE models.")
