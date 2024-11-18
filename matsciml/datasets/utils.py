@@ -962,7 +962,8 @@ def cart_frac_conversion(
         beta = beta * np.pi / 180.0
         gamma = gamma * np.pi / 180.0
 
-    # this matrix is normally for fractional to cart
+    # This matrix is normally for fractional to cart. Implements the matrix found in
+    # https://en.wikipedia.org/wiki/Fractional_coordinates#General_transformations_between_fractional_and_Cartesian_coordinates
     rotation = torch.tensor(
         [
             [
