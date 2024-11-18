@@ -5,6 +5,7 @@ from typing import Literal
 import numpy as np
 import torch
 from pymatgen.core import Lattice, Structure
+from loguru import logger
 
 from matsciml.common.types import DataDict
 from matsciml.datasets.transforms.base import AbstractDataTransform
@@ -18,31 +19,76 @@ __all__ = ["PeriodicPropertiesTransform"]
 
 
 class PeriodicPropertiesTransform(AbstractDataTransform):
-    """
-    Rewires an already present graph to include periodic boundary conditions.
-
-    Since graphs are normally bounded within a unit cell, they may not capture
-    the necessary dependencies for atoms connected to neighboring cells. This
-    transform will compute the unit cell, tile it, and then rewire the graph
-    edges such that it can capture connectivity given a radial cutoff given
-    in Angstroms.
-
-    Cut off radius is specified in Angstroms. An additional flag, ``adaptive_cutoff``,
-    allows the cut off value to grow up to 100 angstroms in order to find neighbors.
-    This allows larger (typically unstable) structures to be modeled without applying
-    a large cut off for the entire dataset.
-    """
-
     def __init__(
         self,
         cutoff_radius: float,
         adaptive_cutoff: bool = False,
         backend: Literal["pymatgen", "ase"] = "pymatgen",
+        max_neighbors: int = 1000,
+        allow_self_loops: bool = False,
+        convert_to_unit_cell: bool = False,
+        is_cartesian: bool | None = None,
     ) -> None:
+        """
+        Rewires an already present graph to include periodic boundary conditions.
+
+        Since graphs are normally bounded within a unit cell, they may not capture
+        the necessary dependencies for atoms connected to neighboring cells. This
+        transform will compute the unit cell, tile it, and then rewire the graph
+        edges such that it can capture connectivity given a radial cutoff given
+        in Angstroms.
+
+        Cut off radius is specified in Angstroms. An additional flag, ``adaptive_cutoff``,
+        allows the cut off value to grow up to 100 angstroms in order to find neighbors.
+        This allows larger (typically unstable) structures to be modeled without applying
+        a large cut off for the entire dataset.
+
+        Parameters
+        ----------
+        cutoff_radius : float
+            Cutoff radius to use to truncate the neighbor list calculation.
+        adaptive_cutoff : bool, default False
+            If set to ``True``, will allow ``cutoff_radius`` to grow up to
+            30 angstroms if there are any disconnected subgraphs present.
+            This is to allow distant nodes to be captured in some structures
+            only as needed, keeping the computational requirements low for
+            other samples within a dataset.
+        backend : Literal['pymatgen', 'ase'], default 'pymatgen'
+            Which algorithm to use for the neighbor list calculation. Nominally
+            settings can be mapped to have the two produce equivalent results.
+            'pymatgen' is kept as the default, but at some point 'ase' will
+            become the default option. See the hosted documentation 'Best practices'
+            page for details.
+        max_neighbors : int, default 1000
+            Forcibly truncate the number of edges at any given node. Internally,
+            a counter is used to track the number of destination nodes when
+            looping over a node's neighbor list; when the counter exceeds this
+            value we immediately stop counting neighbors for the current node.
+        allow_self_loops : bool, default False
+            If ``True``, the edges will include self-interactions within the
+            original unit cell. If set to ``False``, these self-loops are
+            purged before returning edges.
+        convert_to_unit_cell : bool, default False
+            This argument is specific to ``pymatgen``, which is passed to the
+            ``to_unit_cell`` argument during the ``Structure`` construction step.
+        is_cartesian : bool | None, default None
+            If set to ``None``, we will try and determine if the structure has
+            fractional coordinates as input or not. If a boolean is provided,
+            this is passed into the ``pymatgen.Structure`` construction step.
+            This is specific to ``pymatgen``, and is not used by ``ase``.
+        """
         super().__init__()
         self.cutoff_radius = cutoff_radius
         self.adaptive_cutoff = adaptive_cutoff
         self.backend = backend
+        self.max_neighbors = max_neighbors
+        self.allow_self_loops = allow_self_loops
+        if is_cartesian is not None and backend == "ase":
+            logger.warning(
+                "`is_cartesian` passed but using `ase` backend; option will not affect anything."
+            )
+        self.is_cartesian = is_cartesian
+        self.convert_to_unit_cell = convert_to_unit_cell
 
     def __call__(self, data: DataDict) -> DataDict:
         """
@@ -84,7 +130,10 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             structure = data["structure"]
             if isinstance(structure, Structure):
                 graph_props = calculate_periodic_shifts(
-                    structure, self.cutoff_radius, self.adaptive_cutoff
+                    structure,
+                    self.cutoff_radius,
+                    self.adaptive_cutoff,
+                    max_neighbors=self.max_neighbors,
                 )
                 data.update(graph_props)
                 return data
@@ -123,16 +172,25 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             data["atomic_numbers"],
             data["pos"],
             lattice=lattice,
+            convert_to_unit_cell=self.convert_to_unit_cell,
+            is_cartesian=self.is_cartesian,
         )
         if self.backend == "pymatgen":
             graph_props = calculate_periodic_shifts(
-                structure, self.cutoff_radius, self.adaptive_cutoff
+                structure, self.cutoff_radius, self.adaptive_cutoff, self.max_neighbors
             )
         elif self.backend == "ase":
             graph_props = calculate_ase_periodic_shifts(
-                data, self.cutoff_radius, self.adaptive_cutoff
+                data, self.cutoff_radius, self.adaptive_cutoff, self.max_neighbors
             )
         else:
             raise RuntimeError(f"Requested backend f{self.backend} not available.")
         data.update(graph_props)
+        if not self.allow_self_loops:
+            mask = data["src_nodes"] == data["dst_nodes"]
+            # only mask out self-loops within the same image
+            mask &= data["unit_offsets"].sum(dim=-1) == 0
+            # apply mask to each of the tensors that depend on edges
+            for key in ["src_nodes", "dst_nodes", "images", "unit_offsets", "offsets"]:
+                data[key] = data[key][mask]
         return data

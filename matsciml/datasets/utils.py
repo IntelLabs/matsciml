@@ -8,8 +8,10 @@ from ase.neighborlist import NeighborList
 from os import makedirs
 from pathlib import Path
 from typing import Any, Callable
+from itertools import product
 
 import lmdb
+from loguru import logger
 import torch
 import numpy as np
 from einops import einsum, rearrange
@@ -609,6 +611,8 @@ def make_pymatgen_periodic_structure(
     lat_angles: torch.Tensor | None = None,
     lat_abc: torch.Tensor | None = None,
     lattice: Lattice | None = None,
+    convert_to_unit_cell: bool = False,
+    is_cartesian: bool | None = None,
 ) -> Structure:
     """
     Construct a Pymatgen structure from available information
@@ -630,16 +634,26 @@ def make_pymatgen_periodic_structure(
         1D tensor containing three elements for the lattice angles.
     lat_abc
         1D tensor containing three elements for the lattice abc values.
-
+    convert_to_unit_cell : bool, default False
+        If set to ``True``, the output structure have coordinates transformed
+        into fractional coordinates.
+    is_cartesian : bool | None, default None
+        If ``None``, the workflow makes an educated guess based on whether
+        coordinates are all within the range of [0, 1] - if not then they
+        are definitely cartesian. The user can override this by setting it
+        to ``True`` or ``False``.
     Returns
     -------
     Structure
         Periodic structure object
     """
-    if coords.max() > 1.0 or coords.min() < 0.0:
-        is_frac = False
+    if is_cartesian is None:
+        if coords.max() > 1.0 or coords.min() < 0.0:
+            is_frac = False
+        else:
+            is_frac = True
     else:
-        is_frac = True
+        is_frac = not is_cartesian  # TODO this is logically confusing
     if not lattice:
         if lat_angles is None or lat_abc is None:
             raise ValueError(
@@ -651,14 +665,17 @@ def make_pymatgen_periodic_structure(
         lattice,
         atomic_numbers,
         coords,
-        to_unit_cell=True,
+        to_unit_cell=convert_to_unit_cell,
         coords_are_cartesian=not is_frac,
     )
     return structure
 
 
 def calculate_periodic_shifts(
-    structure: Structure, cutoff: float, adaptive_cutoff: bool = False
+    structure: Structure,
+    cutoff: float,
+    adaptive_cutoff: bool = False,
+    max_neighbors: int = 1000,
 ) -> dict[str, torch.Tensor]:
     """
     Compute properties with respect to periodic boundary conditions.
@@ -681,6 +698,10 @@ def calculate_periodic_shifts(
         Pymatgen periodic structure.
     cutoff
         Radial cut off for defining edges.
+    max_neighbors : int
+        Maximum number of neighbors a given site can have. This method
+        will count the number of edges per site, and the loop will
+        terminate earlier if the count exceeds this value.
 
     Returns
     -------
@@ -698,8 +719,9 @@ def calculate_periodic_shifts(
     )
     # check to make sure the cell definition is valid
     if np.any(structure.frac_coords > 1.0):
-        raise ValueError(
+        logger.warning(
             f"Structure has fractional coordinates greater than 1! Check structure:\n{structure}"
+            f"\n fractional coordinates: {structure.frac_coords}"
         )
 
     def _all_sites_have_neighbors(neighbors):
@@ -724,11 +746,16 @@ def calculate_periodic_shifts(
 
     all_src, all_dst, all_images = [], [], []
     for src_idx, dst_sites in enumerate(neighbors):
+        site_count = 0
         for site in dst_sites:
+            if site_count > max_neighbors:
+                break
             all_src.append(src_idx)
             all_dst.append(site.index)
             all_images.append(site.image)
-    if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
+            # determine if we terminate the site loop earlier
+            site_count += 1
+    if any([len(obj) == 0 for obj in [all_src, all_dst, all_images]]):
         raise ValueError(
             f"No images or edges to work off for cutoff {cutoff}."
             f" Please inspect your structure and neighbors: {structure} {neighbors} {structure.cart_coords}"
@@ -756,7 +783,43 @@ def calculate_periodic_shifts(
     return return_dict
 
 
-def calculate_ase_periodic_shifts(data, cutoff_radius, adaptive_cutoff):
+def calculate_ase_periodic_shifts(
+    data: DataDict,
+    cutoff_radius: float,
+    adaptive_cutoff: bool,
+    max_neighbors: int = 1000,
+) -> dict[str, torch.Tensor]:
+    """
+    Calculate edges for the system using ``ase`` routines.
+
+    This function will create an ``ase.Atoms`` object from the available data,
+    which should mirror in functionality to the ``pymatgen`` counterpart of
+    this function.
+
+    Parameters
+    ----------
+    data : DataDict
+        Dictionary containing a single data sample.
+    cutoff_radius : float
+        Distance to use for the neighborlist calculation.
+    adaptive_cutoff : bool
+        Whether to use the adaptive cut off algorithm. In the event
+        we arrive at a structure with atoms that are too far away
+        (i.e. a disconnected subgraph), we will progressively increase
+        the cutoff value. This allows the majority of graphs to have
+        a smaller cutoff value, while still allowing more troublesome
+        interactions to be modeled up to a maximum of 30 angstroms.
+    max_neighbors : int, default 1000
+        Set the maximum number of edges a given atom can have.
+        The edges are not explicitly sorted in this function,
+        and we terminate the edge addition for a site once the
+        count exceeds this value.
+
+    Returns
+    -------
+    dict[str, torch.Tensor]
+        Dictionary containing key/value mappings for periodic properties.
+    """
     cell = data["cell"]
 
     atoms = ase.Atoms(
@@ -779,7 +842,7 @@ def calculate_ase_periodic_shifts(data, cutoff_radius, adaptive_cutoff):
     # if there are sites without neighbors and user requested adaptive
     # cut off, we'll keep trying
     if not _all_sites_have_neighbors(neighbors) and adaptive_cutoff:
-        while not _all_sites_have_neighbors(neighbors) and cutoff < 30.0:
+        while not _all_sites_have_neighbors(neighbors) and cutoff_radius < 30.0:
             # increment radial cutoff progressively
             cutoff_radius += 0.5
             cutoff = [cutoff_radius] * atoms.positions.shape[0]
@@ -792,13 +855,18 @@ def calculate_ase_periodic_shifts(data, cutoff_radius, adaptive_cutoff):
 
     all_src, all_dst, all_images = [], [], []
     for src_idx in range(len(atoms)):
+        site_count = 0
         dst_index, image = nl.get_neighbors(src_idx)
         for index in range(len(dst_index)):
+            if site_count > max_neighbors:
+                break
             all_src.append(src_idx)
             all_dst.append(dst_index[index])
             all_images.append(image[index])
+            # determine if we terminate the site loop earlier
+            site_count += 1
 
-    if any([len(obj) == 0 for obj in [all_images, all_dst, all_images]]):
+    if any([len(obj) == 0 for obj in [all_src, all_dst, all_images]]):
         raise ValueError(
             f"No images or edges to work off for cutoff {cutoff}."
             f" Please inspect your atoms object and neighbors: {atoms}."
@@ -815,9 +883,142 @@ def calculate_ase_periodic_shifts(data, cutoff_radius, adaptive_cutoff):
         "pos": coords,
     }
 
+    # only do the reshape if we are missing a dimension
+    if cell.ndim == 2:
+        cell = rearrange(cell, "i j -> () i j")
     return_dict["offsets"] = einsum(return_dict["images"], cell, "v i, n i j -> v j")
     src, dst = return_dict["src_nodes"], return_dict["dst_nodes"]
     return_dict["unit_offsets"] = (
         frac_coords[dst] - frac_coords[src] + return_dict["offsets"]
     )
     return return_dict
+
+
+def cart_frac_conversion(
+    coords: torch.Tensor,
+    a: float,
+    b: float,
+    c: float,
+    alpha: float,
+    beta: float,
+    gamma: float,
+    angles_are_degrees: bool = True,
+    to_fractional: bool = True,
+) -> torch.Tensor:
+    """
+    Convert coordinates from cartesians to fractional, or vice versa.
+
+    Distances are expected to be in angstroms, while angles
+    are expected to be in degrees by default, but can be
+    passed directly as radians as well.
+
+    Parameters
+    ----------
+    coords : torch.Tensor
+        Coordinates of atoms; expects shape [N, 3] for
+        N atoms.
+    a : float
+        Cell length a.
+    b : float
+        Cell length b.
+    c : float
+        Cell length c.
+    alpha : float
+        Lattice angle alpha; expected units depend on
+        the ``angles_are_degrees`` flag.
+    beta : float
+        Lattice angle beta; expected units depend on
+        the ``angles_are_degrees`` flag.
+    gamma : float
+        Lattice angle gamma; expected units depend on
+        the ``angles_are_degrees`` flag.
+    angles_are_degrees : bool, default True
+        Flag to designate whether the angles passed
+        to this function are in degrees. Defaults to
+        True, which then assumes the angles are in degrees
+        and conversion to radians are done within the function.
+    to_fractional : bool, default True
+        Specifies that the input coordinates are cartesian,
+        and that we are transforming them into fractional
+        coordinates.
+
+    Returns
+    -------
+    torch.Tensor
+        Fractional coordinate representation
+    """
+
+    def cot(x: float) -> float:
+        """cotangent of x"""
+        return -np.tan(x + np.pi / 2)
+
+    def csc(x: float) -> float:
+        """cosecant of x"""
+        return 1 / np.sin(x)
+
+    # convert to radians if angles are passed as degrees
+    if angles_are_degrees:
+        alpha = alpha * np.pi / 180.0
+        beta = beta * np.pi / 180.0
+        gamma = gamma * np.pi / 180.0
+
+    # This matrix is normally for fractional to cart. Implements the matrix found in
+    # https://en.wikipedia.org/wiki/Fractional_coordinates#General_transformations_between_fractional_and_Cartesian_coordinates
+    rotation = torch.tensor(
+        [
+            [
+                a
+                * np.sin(beta)
+                * np.sqrt(
+                    1
+                    - (
+                        (cot(alpha) * cot(beta))
+                        - (csc(alpha) * csc(beta) * np.cos(gamma))
+                    )
+                    ** 2.0
+                ),
+                0.0,
+                0.0,
+            ],
+            [
+                a * csc(alpha) * np.cos(gamma) - a * cot(alpha) * np.cos(beta),
+                b * np.sin(alpha),
+                0.0,
+            ],
+            [a * np.cos(beta), b * np.cos(alpha), c],
+        ],
+        dtype=coords.dtype,
+    )
+    if to_fractional:
+        # invert elements for the opposite conversion
+        rotation = torch.linalg.inv(rotation)
+    output = coords @ rotation
+    return output
+
+
+def build_nearest_images(max_image_number: int) -> torch.Tensor:
+    """
+    Utility function to exhaustively construct images based off
+    a maximum (absolute value) image number.
+
+    These images can be used for tiling primarily for testing
+    and development.
+
+    Parameters
+    ----------
+    max_image_number : int
+        Maximum image number (absolute value) to consider. The
+        resulting tensor will span +/- this value.
+
+    Returns
+    -------
+    torch.Tensor
+        Float tensor containing image indices.
+    """
+    indices = product(
+        range(-max_image_number, max_image_number),
+        range(-max_image_number, max_image_number),
+        range(-max_image_number, max_image_number),
+    )
+    images = torch.FloatTensor(list(indices))
+    return images
