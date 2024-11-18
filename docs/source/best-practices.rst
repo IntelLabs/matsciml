@@ -20,17 +20,22 @@ The way this is implemented in ``matsciml`` is to include the transform,
 
 .. autofunction:: matsciml.datasets.transforms.PeriodicPropertiesTransform
 
-This implementation is heavily based off
-the tutorial outlined in the `e3nn documentation`_ where we use ``pymatgen``
-to generate images, and for every atom in the graph,
-compute nearest neighbors with some specified radius cutoff. One additional
-detail we include in this approach is the ``adaptive_cutoff`` flag: if set to ``True``, will ensure
-that all nodes are connected by gradually increasing the radius cutoff up
-to a hard coded limit of 100 angstroms. This is intended to facilitate the
-a small nominal cutoff, even if some data samples contain (intentionally)
-significantly more distant atoms than the average sample. By doing so, we
-improve computational efficiency by not needing to consider many more edges
-than required.
+This implementation was originally based off
+the tutorial outlined in the `e3nn documentation`_. We initially provided
+an implementation that uses `pymatgen` for the neighborhood calculation,
+but have since extended it to use `ase` as well. We find that `ase` is
+slightly less ambiguous with coordinate representations, but results from
+the two can be mapped to yield the same behavior. In either case, the coordinates
+and lattice parameters are passed into their respective backend representations
+(i.e. ``ase.Atoms`` and ``pymatgen.Structure``), and subsequently used to
+perform the neighborhood calculation to obtain source/destination node indices
+for the edges, as well as their associated periodic image indices.
+
+Below are descriptions of the two algorithms, and links to their source code.
+
+.. autofunction:: matsciml.datasets.utils.calculate_periodic_shifts
+
+.. autofunction:: matsciml.datasets.utils.calculate_ase_periodic_shifts
 
 Point clouds to graphs
 ^^^^^^^^^^^^^^^^^^^^^^
