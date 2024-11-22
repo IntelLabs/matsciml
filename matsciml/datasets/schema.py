@@ -252,16 +252,14 @@ class GraphWiringSchema(BaseModel):
     @model_validator(mode="after")
     def check_algo_version(self):
         if not self.algo_version and not self.algo_hash:
-            raise ValidationError(
-                "At least one form of algorithm versioning is required."
-            )
+            raise RuntimeError("At least one form of algorithm versioning is required.")
         if self.algo_version:
             actual_version = self._check_package_version(self.algorithm)
             if actual_version is None:
                 return self
             # throw validation error only if we don't allow mismatches
             if self.algo_version != actual_version and not self.allow_mismatch:
-                raise ValidationError(
+                raise RuntimeError(
                     f"GraphWiringSchema algorithm version mismatch for package {self.algorithm}"
                     f" installed {actual_version}, expected {self.algo_version}."
                 )
@@ -275,7 +273,7 @@ class GraphWiringSchema(BaseModel):
         if self.algo_hash:
             algo_path = getattr(self, "algo_hash_path", None)
             if not algo_path:
-                raise ValidationError(
+                raise RuntimeError(
                     "Graph wiring algorithm hash specified but no path to resolve."
                 )
             logger.warning(
