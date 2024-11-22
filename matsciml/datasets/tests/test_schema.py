@@ -4,6 +4,7 @@ from datetime import datetime
 import pytest
 
 from matsciml.datasets import schema
+from matsciml.datasets.transforms import PeriodicPropertiesTransform
 
 fake_hashes = {
     key: blake2s(bytes(key.encode("utf-8"))).hexdigest()
@@ -63,3 +64,12 @@ def test_dataset_minimal_schema_roundtrip():
     json_rep = dset.model_dump_json()
     reloaded_dset = dset.model_validate_json(json_rep)
     assert reloaded_dset == dset
+
+
+@pytest.mark.parametrize("backend", ["pymatgen", "ase"])
+@pytest.mark.parametrize("cutoff_radius", [3.0, 6.0, 10.0])
+def test_graph_wiring_from_transform(backend, cutoff_radius):
+    transform = PeriodicPropertiesTransform(cutoff_radius, backend=backend)
+    s = schema.GraphWiringSchema.from_transform(transform, allow_mismatch=False)
+    recreate = s.to_transform()
+    assert transform.__dict__ == recreate.__dict__
