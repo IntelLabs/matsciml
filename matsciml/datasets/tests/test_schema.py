@@ -1,4 +1,5 @@
 from hashlib import blake2s
+from datetime import datetime
 
 import pytest
 
@@ -31,3 +32,17 @@ def test_bad_hash_fail():
 def test_no_hashes():
     with pytest.raises(RuntimeError):
         s = schema.SplitHashSchema()  # noqa: F841
+
+
+def test_dataset_schema_pass():
+    splits = schema.SplitHashSchema(
+        train=fake_hashes["train"], validation=fake_hashes["validation"]
+    )
+    dset = schema.DatasetSchema(
+        name="GenericDataset",
+        creation=datetime.now(),
+        dataset_type="SCFCycle",
+        target_keys=["energy", "forces"],
+        split_blake2s=splits,
+    )
+    assert dset
