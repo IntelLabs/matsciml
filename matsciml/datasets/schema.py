@@ -331,7 +331,7 @@ class DatasetSchema(BaseModel):
     creation: datetime
     target_keys: list[str]
     split_blake2s: SplitHashSchema
-    dataset_type: DataSampleEnum | list[DataSampleEnum]
+    dataset_type: str | DataSampleEnum | list[DataSampleEnum | str]
     modified: datetime | None = None
     description: str | None = None
     graph_schema: GraphWiringSchema | None = None
@@ -368,6 +368,35 @@ class DatasetSchema(BaseModel):
             )
         with open(json_path, "r") as read_file:
             return cls.model_validate_json(read_file.read(), strict=True)
+
+    @field_validator("dataset_type")
+    @classmethod
+    def cast_dataset_type(
+        cls, value: str | DataSampleEnum | list[DataSampleEnum | str]
+    ) -> list[DataSampleEnum]:
+        """
+        Validate and cast string values into enums.
+
+        Returns
+        -------
+        list[DataSampleEnum]
+            Regardless of the number of types specified, return
+            a list of enum(s).
+        """
+        if isinstance(value, str):
+            value = DataSampleEnum(value)
+            assert value
+        if isinstance(value, list):
+            temp = []
+            for subvalue in value:
+                if isinstance(subvalue, str):
+                    subvalue = DataSampleEnum(subvalue)
+                    assert subvalue
+                temp.append(subvalue)
+            value = temp
+        else:
+            value = [value]
+        return value
 
     @model_validator(mode="after")
     def check_target_normalization(self) -> Self:
