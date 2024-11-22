@@ -84,7 +84,7 @@ def test_periodic_generation(
     counts = Counter(src_nodes)
     for index, count in counts.items():
         if not self_loops:
-            assert count <= 10, print(f"Node {index} has too many counts. {src_nodes}")
+            assert count <= 10, f"Node {index} has too many counts. {src_nodes}"
 
 
 def test_self_loop_condition():
