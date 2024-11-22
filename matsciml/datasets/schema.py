@@ -3,9 +3,10 @@ from __future__ import annotations
 from importlib import import_module
 from enum import Enum
 from datetime import datetime
-from typing import Literal, Any
+from typing import Literal, Any, Self
 from os import PathLike
 from pathlib import Path
+import re
 
 from ase import Atoms
 from pydantic import (
@@ -15,6 +16,7 @@ from pydantic import (
     ValidationError,
     field_validator,
     model_validator,
+    ValidationInfo,
 )
 from numpydantic import NDArray, Shape
 from loguru import logger
@@ -53,6 +55,77 @@ class DataSampleEnum(str, Enum):
     scf = "SCFCycle"
     opt_trajectory = "OptimizationCycle"
     property = "Property"
+
+
+class SplitHashSchema(BaseModel):
+    """
+    Schema for defining a set of data splits, with associated
+    hashes for each split.
+
+    This model will do a rudimentary check to make sure each
+    value resembles a 64-character long hash. This is intended
+    to work in tandem with the ``MatSciMLDataset.blake2s_checksum``
+    property. For producers of datasets, you will need to be able
+    to load in the dataset and record the checksum, and add it
+    to this data structure.
+
+    Attributes
+    ----------
+    train : str
+        blake2s hash for the training split.
+    test
+        blake2s hash for the test split.
+    validation
+        blake2s hash for the validation split.
+    predict
+        blake2s hash for the predict split.
+    """
+
+    train: str | None = None
+    test: str | None = None
+    validation: str | None = None
+    predict: str | None = None
+
+    @staticmethod
+    def string_is_hashlike(input_str: str) -> bool:
+        """
+        Simple method for checking if a string looks like a hash,
+        which is just a string of lowercase alphanumerals.
+
+        Parameters
+        ----------
+        input_str : str
+            String to check if it looks like a hash.
+
+        Returns
+        -------
+        bool
+            True if the string appears to be a hash, False
+            otherwise.
+        """
+        lookup = re.compile(r"[0-9a-f]{64}")
+        # returns None if there are no matches
+        if lookup.match(input_str):
+            return True
+        return False
+
+    @field_validator("*")
+    @classmethod
+    def check_hash_like(cls, value: str, info: ValidationInfo) -> str:
+        is_string_like_hash = SplitHashSchema.string_is_hashlike(value)
+        if not is_string_like_hash:
+            raise ValueError(
+                f"Entry for {info.field_name} does not appear to be a hash."
+            )
+        return value
+
+    @model_validator(mode="after")
+    def check_not_all_none(self) -> Self:
+        if not any(
+            [getattr(self, key) for key in ["train", "test", "validation", "predict"]]
+        ):
+            raise RuntimeError("No splits were defined.")
+        return self
 
 
 class PeriodicBoundarySchema(BaseModel):
