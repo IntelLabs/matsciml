@@ -85,3 +85,28 @@ def test_periodic_generation(
     for index, count in counts.items():
         if not self_loops:
             assert count < 10, print(f"Node {index} has too many counts. {src_nodes}")
+
+
+def test_self_loop_condition():
+    """Tests for whether the self-loops exclusion is behaving as intended"""
+    coords = torch.FloatTensor(alumina.cart_coords)
+    cell = torch.FloatTensor(alumina.lattice.matrix)
+    num_atoms = coords.size(0)
+    atomic_numbers = torch.ones(num_atoms)
+    packed_data = {"pos": coords, "cell": cell, "atomic_numbers": atomic_numbers}
+    no_loop_transform = PeriodicPropertiesTransform(
+        cutoff_radius=6.0, backend="ase", allow_self_loops=False
+    )
+    no_loop_result = no_loop_transform(packed_data)
+    # since it's no self loops this sum should be zero
+    same_node = no_loop_result["src_nodes"] == no_loop_result["dst_nodes"]
+    same_image = no_loop_result["images"].sum(dim=-1) == 0
+    assert torch.sum(torch.logical_and(same_node, same_image)) == 0
+    allow_loop_transform = PeriodicPropertiesTransform(
+        cutoff_radius=6.0, backend="ase", allow_self_loops=True
+    )
+    loop_result = allow_loop_transform(packed_data)
+    # there should be some self-loops in this graph
+    same_node = loop_result["src_nodes"] == loop_result["dst_nodes"]
+    same_image = loop_result["images"].sum(dim=-1) == 0
+    assert torch.sum(torch.logical_and(same_node, same_image)) > 0
