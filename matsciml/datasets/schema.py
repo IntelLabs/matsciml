@@ -20,6 +20,8 @@ from pydantic import (
 )
 from numpydantic import NDArray, Shape
 from loguru import logger
+import numpy as np
+import torch
 
 from matsciml.common.packages import package_registry
 from matsciml.common.inspection import get_all_args
@@ -475,6 +477,41 @@ class DataSampleSchema(BaseModel):
     graph: Any = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def __eq__(self, other: DataSampleSchema) -> bool:
+        """Overrides the equivalence test, including array allclose comparisons"""
+        assert isinstance(
+            other, DataSampleSchema
+        ), "Equal comparison can only be done against `DataSampleSchema`."
+        self_dict = self.model_dump()
+        other_dict = other.model_dump()
+        for key in self_dict.keys():
+            self_value = self_dict[key]
+            other_value = other_dict[key]
+            # skip None comparisons
+            if self_value is None and other_value is None:
+                continue
+            try:
+                if type(self_value) != type(other_value):
+                    return False
+                if isinstance(self_value, torch.Tensor):
+                    check = torch.allclose(self_value, other_value)
+                    if not check:
+                        return False
+                elif isinstance(self_value, np.ndarray):
+                    check = np.allclose(self_value, other_value)
+                    if not check:
+                        return False
+                else:
+                    # for everything else, str, int, float, etc. builtin types
+                    if not self_value == other_value:
+                        return False
+            except Exception:
+                # if at any point any exception is raised, they're
+                # not equal
+                logger.debug(f"Comparison failed on key {key}")
+                return False
+        return True
 
     def to_ase_atoms(self) -> Atoms:
         return Atoms(
