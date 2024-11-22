@@ -208,6 +208,7 @@ class GraphWiringSchema(BaseModel):
     cutoff_radius: float
     algorithm: Literal["pymatgen", "ase", "custom"]
     allow_mismatch: bool
+    adaptive_cutoff: bool
     algo_version: str | None = None
     algo_hash_path: str | None = None
     algo_hash: str | None = None
@@ -225,6 +226,7 @@ class GraphWiringSchema(BaseModel):
             algorithm=pbc_transform.backend,
             allow_mismatch=allow_mismatch,
             algo_version=version,
+            adaptive_cutoff=pbc_transform.adaptive_cutoff,
             max_neighbors=pbc_transform.max_neighbors,
             kwargs={
                 "is_cartesian": pbc_transform.is_cartesian,
@@ -299,7 +301,6 @@ class GraphWiringSchema(BaseModel):
                 for key, value in self.kwargs.items()
                 if key in possible_kwargs
             }
-            valid_kwargs.setdefault("adaptive_cutoff", True)
             return PeriodicPropertiesTransform(
                 cutoff_radius=self.cutoff_radius, backend=self.algorithm, **valid_kwargs
             )
