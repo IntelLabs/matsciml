@@ -331,9 +331,9 @@ class DatasetSchema(BaseModel):
     creation: datetime
     target_keys: list[str]
     split_blake2s: SplitHashSchema
+    dataset_type: DataSampleEnum | list[DataSampleEnum]
     modified: datetime | None = None
     description: str | None = None
-    dataset_type: DataSampleEnum | list[DataSampleEnum]
     graph_schema: GraphWiringSchema | None = None
     normalization: dict[str, NormalizationSchema] | None = None
     node_stats: NormalizationSchema | None = None
