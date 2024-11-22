@@ -112,11 +112,12 @@ class SplitHashSchema(BaseModel):
     @field_validator("*")
     @classmethod
     def check_hash_like(cls, value: str, info: ValidationInfo) -> str:
-        is_string_like_hash = SplitHashSchema.string_is_hashlike(value)
-        if not is_string_like_hash:
-            raise ValueError(
-                f"Entry for {info.field_name} does not appear to be a hash."
-            )
+        if value is not None:
+            is_string_like_hash = SplitHashSchema.string_is_hashlike(value)
+            if not is_string_like_hash:
+                raise ValueError(
+                    f"Entry for {info.field_name} does not appear to be a hash."
+                )
         return value
 
     @model_validator(mode="after")
