@@ -299,7 +299,7 @@ class GraphWiringSchema(BaseModel):
                 for key, value in self.kwargs.items()
                 if key in possible_kwargs
             }
-            valid_kwargs.setdefault("adaptive", True)
+            valid_kwargs.setdefault("adaptive_cutoff", True)
             return PeriodicPropertiesTransform(
                 cutoff_radius=self.cutoff_radius, backend=self.algorithm, **valid_kwargs
             )
