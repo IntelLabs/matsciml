@@ -121,3 +121,19 @@ def test_basic_data_sample_roundtrip(num_atoms):
     json = data.model_dump_json()
     recreate = schema.DataSampleSchema.model_validate_json(json)
     assert recreate == data
+
+
+@pytest.mark.parametrize("num_atoms", [3, 10, 25])
+def test_data_sample_fail_coord_shape(num_atoms):
+    coords = np.random.rand(num_atoms, 5)
+    numbers = np.random.randint(1, 100, (num_atoms))
+    pbc = {"x": True, "y": True, "z": True}
+    with pytest.raises(ValueError):
+        data = schema.DataSampleSchema(  # noqa: F841
+            index=0,
+            num_atoms=num_atoms,
+            cart_coords=coords,
+            atomic_numbers=numbers,
+            pbc=pbc,
+            datatype="SCFCycle",
+        )
