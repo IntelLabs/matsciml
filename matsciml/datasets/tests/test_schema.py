@@ -34,7 +34,7 @@ def test_no_hashes():
         s = schema.SplitHashSchema()  # noqa: F841
 
 
-def test_dataset_schema_pass():
+def test_dataset_minimal_schema_pass():
     splits = schema.SplitHashSchema(
         train=fake_hashes["train"], validation=fake_hashes["validation"]
     )
@@ -46,3 +46,20 @@ def test_dataset_schema_pass():
         split_blake2s=splits,
     )
     assert dset
+
+
+def test_dataset_minimal_schema_roundtrip():
+    """Make sure the dataset minimal schema can dump and reload"""
+    splits = schema.SplitHashSchema(
+        train=fake_hashes["train"], validation=fake_hashes["validation"]
+    )
+    dset = schema.DatasetSchema(
+        name="GenericDataset",
+        creation=datetime.now(),
+        dataset_type="SCFCycle",
+        target_keys=["energy", "forces"],
+        split_blake2s=splits,
+    )
+    json_rep = dset.model_dump_json()
+    reloaded_dset = dset.model_validate_json(json_rep)
+    assert reloaded_dset == dset
