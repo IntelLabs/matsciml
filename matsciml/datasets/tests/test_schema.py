@@ -135,9 +135,14 @@ def test_basic_data_sample_roundtrip(num_atoms, array_lib):
 
 
 @pytest.mark.parametrize("num_atoms", [3, 10, 25])
-def test_data_sample_fail_coord_shape(num_atoms):
-    coords = np.random.rand(num_atoms, 5)
-    numbers = np.random.randint(1, 100, (num_atoms))
+@pytest.mark.parametrize("array_lib", ["numpy", "torch"])
+def test_data_sample_fail_coord_shape(num_atoms, array_lib):
+    if array_lib == "numpy":
+        coords = np.random.rand(num_atoms, 5)
+        numbers = np.random.randint(1, 100, (num_atoms))
+    else:
+        coords = torch.rand(num_atoms, 5)
+        numbers = torch.randint(1, 100, (num_atoms,))
     pbc = {"x": True, "y": True, "z": True}
     with pytest.raises(ValueError):
         data = schema.DataSampleSchema(  # noqa: F841
