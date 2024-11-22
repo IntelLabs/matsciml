@@ -214,6 +214,39 @@ class GraphWiringSchema(BaseModel):
     max_neighbors: int = -1
     kwargs: dict[str, Any] = Field(default_factory=dict)
 
+    @classmethod
+    def from_transform(
+        cls, pbc_transform: PeriodicPropertiesTransform, allow_mismatch: bool
+    ) -> Self:
+        package = pbc_transform.backend
+        version = cls._check_package_version(package)
+        return cls(
+            cutoff_radius=pbc_transform.cutoff_radius,
+            algorithm=pbc_transform.backend,
+            allow_mismatch=allow_mismatch,
+            algo_version=version,
+            max_neighbors=pbc_transform.max_neighbors,
+            kwargs={
+                "is_cartesian": pbc_transform.is_cartesian,
+                "allow_self_loops": pbc_transform.allow_self_loops,
+                "convert_to_unit_cell": pbc_transform.convert_to_unit_cell,
+            },
+        )
+
+    @staticmethod
+    def _check_package_version(backend: str) -> str | None:
+        """Simple function for checking the version of pymatgen/ase"""
+        if backend == "pymatgen":
+            pmg = import_module("pymatgen.core")
+            actual_version = pmg.__version__
+        elif backend == "ase":
+            ase = import_module("ase")
+            actual_version = ase.__version__
+        else:
+            logger.warning("Periodic backend unsupported and cannot check version.")
+            actual_version = None
+        return actual_version
+
     @model_validator(mode="after")
     def check_algo_version(self):
         if not self.algo_version and not self.algo_hash:
@@ -221,16 +254,8 @@ class GraphWiringSchema(BaseModel):
                 "At least one form of algorithm versioning is required."
             )
         if self.algo_version:
-            if self.algorithm == "pymatgen":
-                pmg = import_module("pymatgen.core")
-                actual_version = pmg.__version__
-            elif self.algorithm == "ase":
-                ase = import_module("ase")
-                actual_version = ase.__version__
-            else:
-                logger.warning(
-                    "Using custom algorithm with version specified - checking is not currently supported."
-                )
+            actual_version = self._check_package_version(self.algorithm)
+            if actual_version is None:
                 return self
             # throw validation error only if we don't allow mismatches
             if self.algo_version != actual_version and not self.allow_mismatch:
