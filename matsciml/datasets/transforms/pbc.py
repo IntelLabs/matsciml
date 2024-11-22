@@ -187,9 +187,12 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             raise RuntimeError(f"Requested backend f{self.backend} not available.")
         data.update(graph_props)
         if not self.allow_self_loops:
-            mask = data["src_nodes"] == data["dst_nodes"]
+            # this looks for src and dst nodes that are the same, i.e. self-loops
+            loop_mask = data["src_nodes"] == data["dst_nodes"]
             # only mask out self-loops within the same image
-            mask &= data["unit_offsets"].sum(dim=-1) == 0
+            image_mask = data["images"].sum(dim=-1) == 0
+            # we negate the mask because we want to *exclude* what we've found
+            mask = ~torch.logical_and(loop_mask, image_mask)
             # apply mask to each of the tensors that depend on edges
             for key in ["src_nodes", "dst_nodes", "images", "unit_offsets", "offsets"]:
                 data[key] = data[key][mask]
