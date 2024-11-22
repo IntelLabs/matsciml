@@ -56,9 +56,7 @@ nac = Structure(
 )
 @pytest.mark.parametrize("self_loops", [True, False])
 @pytest.mark.parametrize("backend", ["pymatgen", "ase"])
-@pytest.mark.parametrize(
-    "cutoff_radius", [6.0, 9.0, 15.0]
-)  # TODO figure out why pmg fails on 3
+@pytest.mark.parametrize("cutoff_radius", [6.0, 9.0, 15.0])
 def test_periodic_generation(
     coords: np.ndarray,
     cell: np.ndarray,
@@ -84,6 +82,8 @@ def test_periodic_generation(
     counts = Counter(src_nodes)
     for index, count in counts.items():
         if not self_loops:
+            # TODO pymatgen backend fails this check at cutoff radius = 15
+            # and I don't know why
             assert count <= 10, f"Node {index} has too many counts. {src_nodes}"
 
 
