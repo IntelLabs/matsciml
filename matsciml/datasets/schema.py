@@ -284,19 +284,63 @@ class GraphWiringSchema(BaseModel):
 
 
 class DatasetSchema(BaseModel):
+    """
+    A schema for defining a collection of data samples.
+
+    This schema is to accompany all serialized datasets, which
+    simultaneously documents the data **and** improves its
+    reproducibility by defining
+
+    Attributes
+    ----------
+    name : str
+        Name of the dataset.
+    creation : datetime
+        An immutable ``datetime`` for when the dataset was
+        created.
+    target_keys : list[str]
+        List of keys that are expected to be treated as target
+        labels. This is used by the data pipeline to specifically
+        load and designate as targets.
+    split_blake2s : SplitHashSchema
+        Schema representing blake2s checksums for each dataset split.
+    modified : datetime, optional
+        Datetime object for recording when the dataset was last
+        modified.
+    description : str, optional
+        An optional, but highly recommended string for describing the
+        nature and origins of this dataset. There is no limit to how
+        long this description is, but ideally should be readable by
+        humans and whatever is not obvious (such as what target key
+        represents what property) should be included here.
+    graph_schema : GraphWiringSchema, optional
+        A schema that defines how the dataset is intended to build
+        edges. This defines dictates how edges are created at runtime.
+    normalization : dict[str, NormalizationSchema], optional
+        Defines a collection of normalization mean/std for targets.
+        If not None, this schema will validate against ``target_keys``
+        and raise an error if there are keys in ``normalization`` that
+        do not match ``target_keys``.
+    node_stats : NormalizationSchema, optional
+        Mean/std values for the nodes per data sample.
+    edge_stats : NormalizationSchema, optional
+        Mean/std values for the number of edges per data sample.
+    """
+
     name: DatasetEnum
     creation: datetime
     target_keys: list[str]
-    split_blake2s: dict[str, str]
+    split_blake2s: SplitHashSchema
     modified: datetime | None = None
     description: str | None = None
+    dataset_type: DataSampleEnum | list[DataSampleEnum]
     graph_schema: GraphWiringSchema | None = None
     normalization: dict[str, NormalizationSchema] | None = None
     node_stats: NormalizationSchema | None = None
     edge_stats: NormalizationSchema | None = None
 
     @classmethod
-    def from_json(cls, json_path: PathLike) -> DataSampleSchema:
+    def from_json(cls, json_path: PathLike) -> Self:
         """
         Deserialize a JSON file, validating against the expected dataset
         schema.
@@ -326,7 +370,7 @@ class DatasetSchema(BaseModel):
             return cls.model_validate_json(read_file.read(), strict=True)
 
     @model_validator(mode="after")
-    def check_target_normalization(self):
+    def check_target_normalization(self) -> Self:
         if self.normalization is not None:
             # first check every key is available as targets
             target_keys = set(self.target_keys)
