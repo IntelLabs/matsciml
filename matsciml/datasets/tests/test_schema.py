@@ -3,6 +3,7 @@ from datetime import datetime
 
 import pytest
 import numpy as np
+import torch
 
 from matsciml.datasets import schema
 from matsciml.datasets.transforms import PeriodicPropertiesTransform
@@ -90,10 +91,15 @@ def test_graph_wiring_version_mismatch(backend):
 
 
 @pytest.mark.parametrize("num_atoms", [5, 12, 16])
-def test_basic_data_sample_schema(num_atoms):
-    coords = np.random.rand(num_atoms, 3)
-    numbers = np.random.randint(1, 100, (num_atoms))
-    pbc = (True, True, True)
+@pytest.mark.parametrize("array_lib", ["numpy", "torch"])
+def test_basic_data_sample_schema(num_atoms, array_lib):
+    if array_lib == "numpy":
+        coords = np.random.rand(num_atoms, 3)
+        numbers = np.random.randint(1, 100, (num_atoms))
+    else:
+        coords = torch.rand(num_atoms, 3)
+        numbers = torch.randint(1, 100, (num_atoms,))
+    pbc = {"x": True, "y": True, "z": True}
     data = schema.DataSampleSchema(
         index=0,
         num_atoms=num_atoms,
@@ -106,9 +112,14 @@ def test_basic_data_sample_schema(num_atoms):
 
 
 @pytest.mark.parametrize("num_atoms", [5, 12, 16])
-def test_basic_data_sample_roundtrip(num_atoms):
-    coords = np.random.rand(num_atoms, 3)
-    numbers = np.random.randint(1, 100, (num_atoms))
+@pytest.mark.parametrize("array_lib", ["numpy", "torch"])
+def test_basic_data_sample_roundtrip(num_atoms, array_lib):
+    if array_lib == "numpy":
+        coords = np.random.rand(num_atoms, 3)
+        numbers = np.random.randint(1, 100, (num_atoms))
+    else:
+        coords = torch.rand(num_atoms, 3)
+        numbers = torch.randint(1, 100, (num_atoms,))
     pbc = {"x": True, "y": True, "z": True}
     data = schema.DataSampleSchema(
         index=0,
