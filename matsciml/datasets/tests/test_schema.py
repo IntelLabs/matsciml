@@ -73,3 +73,16 @@ def test_graph_wiring_from_transform(backend, cutoff_radius):
     s = schema.GraphWiringSchema.from_transform(transform, allow_mismatch=False)
     recreate = s.to_transform()
     assert transform.__dict__ == recreate.__dict__
+
+
+@pytest.mark.parametrize("backend", ["pymatgen", "ase"])
+def test_graph_wiring_version_mismatch(backend):
+    """Ensures that an exception is thrown when backend version does not match"""
+    with pytest.raises(RuntimeError):
+        s = schema.GraphWiringSchema(  # noqa: F841
+            cutoff_radius=10.0,
+            algorithm=backend,
+            allow_mismatch=False,
+            algo_version="fake_version",
+            adaptive_cutoff=False,
+        )
