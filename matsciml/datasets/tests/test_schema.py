@@ -2,6 +2,7 @@ from hashlib import blake2s
 from datetime import datetime
 
 import pytest
+import numpy as np
 
 from matsciml.datasets import schema
 from matsciml.datasets.transforms import PeriodicPropertiesTransform
@@ -86,3 +87,37 @@ def test_graph_wiring_version_mismatch(backend):
             algo_version="fake_version",
             adaptive_cutoff=False,
         )
+
+
+@pytest.mark.parametrize("num_atoms", [5, 12, 16])
+def test_basic_data_sample_schema(num_atoms):
+    coords = np.random.rand(num_atoms, 3)
+    numbers = np.random.randint(1, 100, (num_atoms))
+    pbc = (True, True, True)
+    data = schema.DataSampleSchema(
+        index=0,
+        num_atoms=num_atoms,
+        cart_coords=coords,
+        atomic_numbers=numbers,
+        pbc=pbc,
+        datatype="SCFCycle",
+    )
+    assert data
+
+
+@pytest.mark.parametrize("num_atoms", [5, 12, 16])
+def test_basic_data_sample_roundtrip(num_atoms):
+    coords = np.random.rand(num_atoms, 3)
+    numbers = np.random.randint(1, 100, (num_atoms))
+    pbc = {"x": True, "y": True, "z": True}
+    data = schema.DataSampleSchema(
+        index=0,
+        num_atoms=num_atoms,
+        cart_coords=coords,
+        atomic_numbers=numbers,
+        pbc=pbc,
+        datatype="SCFCycle",
+    )
+    json = data.model_dump_json()
+    recreate = schema.DataSampleSchema.model_validate_json(json)
+    assert recreate == data
