@@ -475,8 +475,51 @@ class DataSampleSchema(BaseModel):
     offsets: NDArray[Shape["*, 3"], float] | None = None
     unit_offsets: NDArray[Shape["*, 3"], float] | None = None
     graph: Any = None
+    extras: dict[str, Any] | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def __getattr__(self, name: str) -> Any | None:
+        """Overrides the behavior of `getattr` to also look in `extras` if available"""
+        if name in self.__dir__():
+            return self.__dict__[name]
+        if self.extras is not None and name in self.extras:
+            return self.extras[name]
+        return None
+
+    @model_validator(mode="after")
+    def atom_count_consistency(self) -> Self:
+        for key in [
+            "atomic_numbers",
+            "electron_spins",
+            "nuclear_spins",
+            "isotopic_masses",
+            "atomic_charges",
+            "atomic_energies",
+            "atomic_labels",
+        ]:
+            value = getattr(self, key, None)
+            if value is not None:
+                if len(value) != self.num_atoms:
+                    raise ValueError(
+                        f"Inconsistent number of elements for {key}; expected {self.num_atoms}, got {len(value)}."
+                    )
+        for key in ["forces", "stresses"]:
+            value = getattr(self, key, None)
+            if value is not None:
+                if value.shape[0] != self.num_atoms:
+                    raise ValueError(
+                        f"Inconsistent number of elements for node property {key}; expected {self.num_atoms}, got {value.shape[0]}."
+                    )
+        if self.edge_index is not None:
+            for key in ["images", "offsets", "unit_offsets"]:
+                value = getattr(self, key, None)
+                if value is not None:
+                    if value.shape[0] != self.edge_index:
+                        raise ValueError(
+                            f"Inconsistent number of elements for edge property {key}."
+                        )
+        return self
 
     def __eq__(self, other: DataSampleSchema) -> bool:
         """Overrides the equivalence test, including array allclose comparisons"""
