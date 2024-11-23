@@ -17,6 +17,45 @@ from matsciml.datasets.schema import DatasetSchema, DataSampleSchema
 logger = getLogger("matsciml.datasets.MatSciMLDataset")
 
 
+def write_data_to_hdf5(
+    h5_file: h5py.File, index: int, content: DataSampleSchema, overwrite: bool
+) -> None:
+    """
+    Functional way to write a data sample to an HDF5 file.
+
+    Parameters
+    ----------
+    h5_file : h5py.File
+        Open instance of an HDF5 file in ``h5py``.
+    index : int
+        Index to write data to.
+    content : DataSampleSchema
+        Data sample to write, contained in a ``DataSampleSchema`` instance.
+    overwrite : bool
+        If True, will delete an existing ``index`` group in the HDF5
+        file if it exists.
+
+    Raises
+    ------
+    RuntimeError:
+        [TODO:description]
+    """
+    assert h5_file.mode != "r"
+    if overwrite:
+        # if allowed to overwrite, we delete the existing
+        # data and group
+        if index in h5_file:
+            del h5_file[index]
+    # this will fail if it exists and overwrite is False
+    try:
+        group = h5_file.create_group(index)
+    except Exception as e:
+        raise IndexError(f"Index {index} already exists in HDF5 file.") from e
+    model_dict = content.model_dump()
+    for key, value in model_dict.items():
+        group[key] = value
+
+
 class MatSciMLDataset(Dataset):
     def __init__(
         self,
@@ -73,6 +112,29 @@ class MatSciMLDataset(Dataset):
 
     def read_data(self) -> h5py.File:
         return h5py.File(str(self.filepath.absolute()), mode="r")
+
+    def write_data(
+        self, index: int, sample: DataSampleSchema, overwrite: bool = False
+    ) -> None:
+        """
+        Writes a data sample at index to the current HDF5 file.
+
+        Most likely not the most performant way to write data
+        since it's in serial, but is easily accessible.
+
+        Parameters
+        ----------
+        index : int
+            Index to write the data to. Must not already be
+            present in the dataset if ``overwrite`` is False.
+        sample : DataSampleSchema
+            A data sample defined by an instance of ``DataSampleSchema``.
+        overwrite : bool, default False
+            If False, if ``index`` already exists in the file
+            a ``RuntimeError`` will be raised.
+        """
+        with h5py.File(str(self.filepath).absolute(), "w") as h5_file:
+            write_data_to_hdf5(h5_file, index, sample, overwrite)
 
     @cache
     def __len__(self) -> int:
