@@ -54,6 +54,34 @@ class DatasetEnum(str, Enum):
 
 
 class DataSampleEnum(str, Enum):
+    """
+    An Enum for categorizing data samples, which implicitly
+    informs us what the sample is intended to be used for
+    by virtue of what data is available, as well as how data
+    samples may relate to one another. An example would be
+    ``OptimizationCycle``, which implies the dataset should
+    contain multiple samples per structure of atomic forces.
+    ``SCFCycle`` on the other hand may be more fine grained,
+    as it may contain a wide array
+
+    These tend to map more directly to computational chemistry
+    workflows, and
+
+    Attributes
+    ----------
+    scf : str
+        Describes data pertaining to a single SCF cycle, which
+        comprises energy values, population analyses, orbital
+        coefficients, spin states, convergence properties etc.
+    opt_trajectory : str
+        Describes data comprising a single optimization or relaxation
+        step, which includes atomic forces, (partial) Hessians,
+        and geometry convergence metrics.
+    property : str
+        Describes a specific property calculation. This can range
+        from multipole moments, to polarization, etc.
+    """
+
     scf = "SCFCycle"
     opt_trajectory = "OptimizationCycle"
     property = "Property"
