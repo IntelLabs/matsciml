@@ -71,8 +71,7 @@ class MatSciMLDataset(Dataset):
                 hasher.update(line)
             return hasher.hexdigest()
 
-    @property
-    def data(self) -> h5py.File:
+    def read_data(self) -> h5py.File:
         return h5py.File(str(self.filepath.absolute()), mode="r")
 
     @cache
@@ -82,7 +81,7 @@ class MatSciMLDataset(Dataset):
 
     def __getitem__(self, index: int):
         index = str(index)
-        with self.data as h5_data:
+        with self.read_data() as h5_data:
             try:
                 sample_group = h5_data[index]
             except KeyError as e:
