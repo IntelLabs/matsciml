@@ -865,11 +865,14 @@ def calculate_ase_periodic_shifts(
         Dictionary containing key/value mappings for periodic properties.
     """
     cell = data["cell"]
+    # only remove redundant dimensions if needed
+    if cell.ndim == 3:
+        cell = cell.squeeze(0)
 
     atoms = ase.Atoms(
         positions=data["pos"],
         numbers=data["atomic_numbers"],
-        cell=cell.squeeze(0),
+        cell=cell,
         # Hard coding in the PBC direction for x, y, z.
         pbc=(True, True, True),
     )
