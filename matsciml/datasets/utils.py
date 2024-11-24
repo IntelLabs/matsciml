@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import pickle
-import ase
+from dataclasses import dataclass
 from collections.abc import Generator
 from functools import lru_cache, partial
-from ase.neighborlist import NeighborList
 from os import makedirs
 from pathlib import Path
 from typing import Any, Callable
@@ -18,6 +17,7 @@ from einops import einsum, rearrange
 from joblib import Parallel, delayed
 from pymatgen.core import Lattice, Structure
 from tqdm import tqdm
+import ase
 
 from matsciml.common import package_registry
 from matsciml.common.types import BatchDict, DataDict, GraphTypes
@@ -603,6 +603,50 @@ def atomic_number_map() -> dict[str, int]:
 @lru_cache(1)
 def element_types():
     return list(atomic_number_map().keys())
+
+
+@dataclass
+class Edge:
+    """
+    Implements a data structure for edge redundancy comparison
+    with a syntactic sugar.
+
+    Implements a ``sorted_index`` property to returns a pair
+    of indices for the edge, irrespective of direction. This,
+    in addition to the ``image`` of the edge is used in the
+    ``__eq__`` comparison.
+
+    Finally, ``__hash__`` is based off the string representation
+    of this object, making it hashable and usable in sets.
+
+    Attributes
+    ----------
+    src : int
+        Index of the source node of the edge.
+    dst : int
+        Index of the destination node of the edge.
+    image : np.ndarray
+        1D vector of three elements as a ``np.ndarray``.
+    """
+
+    src: int
+    dst: int
+    image: np.ndarray
+
+    @property
+    def sorted_index(self) -> tuple[int, int]:
+        return (min(self.src, self.dst), max(self.src, self.dst))
+
+    def __eq__(self, other: Edge) -> bool:
+        index_eq = self.sorted_index == other.sorted_index
+        image_eq = np.all(self.image == other.image)
+        return all([index_eq, image_eq])
+
+    def __str__(self) -> str:
+        return f"Sorted src/dst: {self.sorted_index}, image: {self.image}"
+
+    def __hash__(self) -> int:
+        return hash(str(self))
 
 
 def make_pymatgen_periodic_structure(
