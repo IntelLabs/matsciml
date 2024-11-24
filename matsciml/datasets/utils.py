@@ -18,6 +18,7 @@ from joblib import Parallel, delayed
 from pymatgen.core import Lattice, Structure
 from tqdm import tqdm
 import ase
+from ase.neighborlist import neighbor_list
 
 from matsciml.common import package_registry
 from matsciml.common.types import BatchDict, DataDict, GraphTypes
@@ -876,48 +877,19 @@ def calculate_ase_periodic_shifts(
         # Hard coding in the PBC direction for x, y, z.
         pbc=(True, True, True),
     )
-    cutoff = [cutoff_radius] * atoms.positions.shape[0]
-    # Create a neighbor list
-    nl = NeighborList(cutoff, skin=0.0, self_interaction=False, bothways=True)
-    nl.update(atoms)
+    all_src, all_dst, distances, all_images = neighbor_list(
+        "ijdS", atoms, cutoff=cutoff_radius, self_interaction=False
+    )
+    # not really needed but good sanity check
+    assert np.all(distances <= cutoff_radius)
+    keep = set()
+    # only keeps undirected edges that are unique
+    for src, dst, image in zip(all_src, all_dst, all_images):
+        keep.add(Edge(src, dst, image))
 
-    neighbors = nl.nl.neighbors
-
-    def _all_sites_have_neighbors(neighbors):
-        return all([len(n) for n in neighbors])
-
-    # if there are sites without neighbors and user requested adaptive
-    # cut off, we'll keep trying
-    if not _all_sites_have_neighbors(neighbors) and adaptive_cutoff:
-        while not _all_sites_have_neighbors(neighbors) and cutoff_radius < 30.0:
-            # increment radial cutoff progressively
-            cutoff_radius += 0.5
-            cutoff = [cutoff_radius] * atoms.positions.shape[0]
-            nl = NeighborList(cutoff, skin=0.0, self_interaction=False, bothways=True)
-            nl.update(atoms)
-
-    # and we still don't find a neighbor, we have a problem with the structure
-    if not _all_sites_have_neighbors(neighbors):
-        raise ValueError(f"No neighbors detected for structure with cutoff {cutoff}")
-
-    all_src, all_dst, all_images = [], [], []
-    for src_idx in range(len(atoms)):
-        site_count = 0
-        dst_index, image = nl.get_neighbors(src_idx)
-        for index in range(len(dst_index)):
-            if site_count > max_neighbors:
-                break
-            all_src.append(src_idx)
-            all_dst.append(dst_index[index])
-            all_images.append(image[index])
-            # determine if we terminate the site loop earlier
-            site_count += 1
-
-    if any([len(obj) == 0 for obj in [all_src, all_dst, all_images]]):
-        raise ValueError(
-            f"No images or edges to work off for cutoff {cutoff}."
-            f" Please inspect your atoms object and neighbors: {atoms}."
-        )
+    all_src = [edge.src for edge in keep]
+    all_dst = [edge.dst for edge in keep]
+    all_images = [edge.image for edge in keep]
 
     frac_coords = torch.from_numpy(atoms.get_scaled_positions()).float()
     coords = torch.from_numpy(atoms.positions).float()
