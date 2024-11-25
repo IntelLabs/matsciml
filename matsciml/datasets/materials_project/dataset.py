@@ -146,6 +146,7 @@ class MaterialsProjectDataset(PointCloudDataset):
             "lattice_params": lattice_params,
         }
         return_dict["lattice_features"] = lattice_features
+        return_dict["cell"] = structure.lattice.matrix
 
     def _parse_symmetry(
         self,

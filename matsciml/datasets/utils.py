@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import pickle
-import ase
+from dataclasses import dataclass
 from collections.abc import Generator
 from functools import lru_cache, partial
-from ase.neighborlist import NeighborList
 from os import makedirs
 from pathlib import Path
 from typing import Any, Callable
@@ -18,6 +17,8 @@ from einops import einsum, rearrange
 from joblib import Parallel, delayed
 from pymatgen.core import Lattice, Structure
 from tqdm import tqdm
+import ase
+from ase.neighborlist import neighbor_list
 
 from matsciml.common import package_registry
 from matsciml.common.types import BatchDict, DataDict, GraphTypes
@@ -605,6 +606,50 @@ def element_types():
     return list(atomic_number_map().keys())
 
 
+@dataclass
+class Edge:
+    """
+    Implements a data structure for edge redundancy comparison
+    with a syntactic sugar.
+
+    Implements a ``sorted_index`` property to returns a pair
+    of indices for the edge, irrespective of direction. This,
+    in addition to the ``image`` of the edge is used in the
+    ``__eq__`` comparison.
+
+    Finally, ``__hash__`` is based off the string representation
+    of this object, making it hashable and usable in sets.
+
+    Attributes
+    ----------
+    src : int
+        Index of the source node of the edge.
+    dst : int
+        Index of the destination node of the edge.
+    image : np.ndarray
+        1D vector of three elements as a ``np.ndarray``.
+    """
+
+    src: int
+    dst: int
+    image: np.ndarray
+
+    @property
+    def sorted_index(self) -> tuple[int, int]:
+        return (min(self.src, self.dst), max(self.src, self.dst))
+
+    def __eq__(self, other: Edge) -> bool:
+        index_eq = self.sorted_index == other.sorted_index
+        image_eq = np.all(self.image == other.image)
+        return all([index_eq, image_eq])
+
+    def __str__(self) -> str:
+        return f"Sorted src/dst: {self.sorted_index}, image: {self.image}"
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+
 def make_pymatgen_periodic_structure(
     atomic_numbers: torch.Tensor,
     coords: torch.Tensor,
@@ -654,7 +699,7 @@ def make_pymatgen_periodic_structure(
             is_frac = True
     else:
         is_frac = not is_cartesian  # TODO this is logically confusing
-    if not lattice:
+    if lattice is None:
         if lat_angles is None or lat_abc is None:
             raise ValueError(
                 "Unable to construct Lattice object without parameters:"
@@ -742,19 +787,25 @@ def calculate_periodic_shifts(
         raise ValueError(
             f"No neighbors detected for structure with cutoff {cutoff}; {structure}"
         )
-    # process the neighbors now
-
-    all_src, all_dst, all_images = [], [], []
+    keep = set()
+    # only keeps undirected edges that are unique through set
     for src_idx, dst_sites in enumerate(neighbors):
-        site_count = 0
         for site in dst_sites:
-            if site_count > max_neighbors:
-                break
-            all_src.append(src_idx)
-            all_dst.append(site.index)
-            all_images.append(site.image)
-            # determine if we terminate the site loop earlier
-            site_count += 1
+            keep.add(Edge(src_idx, site.index, np.array(site.image)))
+    # now only keep the edges after the first loop
+    all_src, all_dst, all_images = [], [], []
+    num_atoms = len(structure.atomic_numbers)
+    counter = {index: 0 for index in range(num_atoms)}
+    for edge in keep:
+        # stop adding edges if either src/dst have accumulated enough neighbors
+        if counter[edge.src] > max_neighbors or counter[edge.dst] > max_neighbors:
+            pass
+        else:
+            all_src.append(edge.src)
+            all_dst.append(edge.dst)
+            all_images.append(edge.image)
+            counter[edge.src] += 1
+            counter[edge.dst] += 1
     if any([len(obj) == 0 for obj in [all_src, all_dst, all_images]]):
         raise ValueError(
             f"No images or edges to work off for cutoff {cutoff}."
@@ -821,59 +872,47 @@ def calculate_ase_periodic_shifts(
         Dictionary containing key/value mappings for periodic properties.
     """
     cell = data["cell"]
+    # only remove redundant dimensions if needed
+    if cell.ndim == 3:
+        cell = cell.squeeze(0)
 
     atoms = ase.Atoms(
         positions=data["pos"],
         numbers=data["atomic_numbers"],
-        cell=cell.squeeze(0),
+        cell=cell,
         # Hard coding in the PBC direction for x, y, z.
         pbc=(True, True, True),
     )
-    cutoff = [cutoff_radius] * atoms.positions.shape[0]
-    # Create a neighbor list
-    nl = NeighborList(cutoff, skin=0.0, self_interaction=False, bothways=True)
-    nl.update(atoms)
-
-    neighbors = nl.nl.neighbors
-
-    def _all_sites_have_neighbors(neighbors):
-        return all([len(n) for n in neighbors])
-
-    # if there are sites without neighbors and user requested adaptive
-    # cut off, we'll keep trying
-    if not _all_sites_have_neighbors(neighbors) and adaptive_cutoff:
-        while not _all_sites_have_neighbors(neighbors) and cutoff_radius < 30.0:
-            # increment radial cutoff progressively
-            cutoff_radius += 0.5
-            cutoff = [cutoff_radius] * atoms.positions.shape[0]
-            nl = NeighborList(cutoff, skin=0.0, self_interaction=False, bothways=True)
-            nl.update(atoms)
-
-    # and we still don't find a neighbor, we have a problem with the structure
-    if not _all_sites_have_neighbors(neighbors):
-        raise ValueError(f"No neighbors detected for structure with cutoff {cutoff}")
+    all_src, all_dst, distances, all_images = neighbor_list(
+        "ijdS", atoms, cutoff=cutoff_radius, self_interaction=True
+    )
+    # not really needed but good sanity check
+    assert np.all(distances <= cutoff_radius)
+    keep = set()
+    # only keeps undirected edges that are unique
+    for src, dst, image in zip(all_src, all_dst, all_images):
+        keep.add(Edge(src, dst, image))
 
     all_src, all_dst, all_images = [], [], []
-    for src_idx in range(len(atoms)):
-        site_count = 0
-        dst_index, image = nl.get_neighbors(src_idx)
-        for index in range(len(dst_index)):
-            if site_count > max_neighbors:
-                break
-            all_src.append(src_idx)
-            all_dst.append(dst_index[index])
-            all_images.append(image[index])
-            # determine if we terminate the site loop earlier
-            site_count += 1
-
-    if any([len(obj) == 0 for obj in [all_src, all_dst, all_images]]):
-        raise ValueError(
-            f"No images or edges to work off for cutoff {cutoff}."
-            f" Please inspect your atoms object and neighbors: {atoms}."
-        )
+    num_atoms = len(atoms)
+    counter = {index: 0 for index in range(num_atoms)}
+    for edge in keep:
+        # obey max_neighbors by not adding any more edges
+        if counter[edge.src] > max_neighbors or counter[edge.dst] > max_neighbors:
+            pass
+        else:
+            all_src.append(edge.src)
+            all_dst.append(edge.dst)
+            all_images.append(edge.image)
+            counter[edge.src] += 1
+            counter[edge.dst] += 1
 
     frac_coords = torch.from_numpy(atoms.get_scaled_positions()).float()
     coords = torch.from_numpy(atoms.positions).float()
+
+    # convert numpy cells to torch in advance for einsum
+    if isinstance(cell, np.ndarray):
+        cell = torch.from_numpy(cell).float()
 
     return_dict = {
         "src_nodes": torch.LongTensor(all_src),

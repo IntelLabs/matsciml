@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from pymatgen.core import Lattice, Structure
 from loguru import logger
+from ase.cell import Cell
 
 from matsciml.common.types import DataDict
 from matsciml.datasets.transforms.base import AbstractDataTransform
@@ -164,18 +165,19 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             angles = torch.FloatTensor(
                 tuple(angle * (180.0 / torch.pi) for angle in angles),
             )
-            lattice = Lattice.from_parameters(*abc, *angles, vesta=True)
+            cell = Cell.new([*abc, *angles])
             # We need cell in data for ase backend.
-            data["cell"] = torch.tensor(lattice.matrix).unsqueeze(0).float()
+            data["cell"] = cell.array
+            lattice = data["cell"]
 
-        structure = make_pymatgen_periodic_structure(
-            data["atomic_numbers"],
-            data["pos"],
-            lattice=lattice,
-            convert_to_unit_cell=self.convert_to_unit_cell,
-            is_cartesian=self.is_cartesian,
-        )
         if self.backend == "pymatgen":
+            structure = make_pymatgen_periodic_structure(
+                data["atomic_numbers"],
+                data["pos"],
+                lattice=lattice,
+                convert_to_unit_cell=self.convert_to_unit_cell,
+                is_cartesian=self.is_cartesian,
+            )
             graph_props = calculate_periodic_shifts(
                 structure, self.cutoff_radius, self.adaptive_cutoff, self.max_neighbors
             )
@@ -190,7 +192,8 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             # this looks for src and dst nodes that are the same, i.e. self-loops
             loop_mask = data["src_nodes"] == data["dst_nodes"]
             # only mask out self-loops within the same image
-            image_mask = data["images"].sum(dim=-1) == 0
+            images = data["images"]
+            image_mask = (images[:, 0] == 0) & (images[:, 1] == 0) & (images[:, 2] == 0)
             # we negate the mask because we want to *exclude* what we've found
             mask = ~torch.logical_and(loop_mask, image_mask)
             # apply mask to each of the tensors that depend on edges
