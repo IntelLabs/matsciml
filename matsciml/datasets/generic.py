@@ -118,11 +118,34 @@ class MatSciMLDataset(Dataset):
 
     @property
     def metadata(self) -> DatasetSchema:
-        meta_target = self.filepath.parent.joinpath("metadata.json")
-        if not meta_target.exists():
-            raise RuntimeError("No metadata for dataset.")
-        with open(meta_target) as read_file:
-            return DatasetSchema.model_validate_json(read_file.read(), strict=True)
+        """
+        Underlying ``DatasetSchema`` that should accompany all ``matsciml`` datasets.
+
+        This schema should contain information about splits, target properties,
+        and if relevant, graph wiring and so on.
+
+        Returns
+        -------
+        DatasetSchema
+            Validated ``DatasetSchema`` object
+
+        Raises
+        ------
+        RuntimeError:
+            If there is no metadata
+        """
+        if not hasattr(self, "_metadata"):
+            meta_target = self.filepath.parent.joinpath("metadata.json")
+            if not meta_target.exists():
+                raise FileNotFoundError(
+                    "No `metadata.json` specifying DatasetSchema found in dataset directory.."
+                )
+            with open(meta_target) as read_file:
+                metadata = DatasetSchema.model_validate_json(
+                    read_file.read(), strict=True
+                )
+            self._metadata = metadata
+        return self._metadata
 
     @property
     @cache
