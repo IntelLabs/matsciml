@@ -673,23 +673,29 @@ class DataSampleSchema(BaseModel):
             value = getattr(self, key, None)
             if value is not None:
                 if len(value) != self.num_atoms:
-                    raise ValueError(
-                        f"Inconsistent number of elements for {key}; expected {self.num_atoms}, got {len(value)}."
+                    self._exception_wrapper(
+                        ValueError(
+                            f"Inconsistent number of elements for {key}; expected {self.num_atoms}, got {len(value)}."
+                        )
                     )
         for key in ["forces", "stresses"]:
             value = getattr(self, key, None)
             if value is not None:
                 if value.shape[0] != self.num_atoms:
-                    raise ValueError(
-                        f"Inconsistent number of elements for node property {key}; expected {self.num_atoms}, got {value.shape[0]}."
+                    self._exception_wrapper(
+                        ValueError(
+                            f"Inconsistent number of elements for node property {key}; expected {self.num_atoms}, got {value.shape[0]}."
+                        )
                     )
         if self.edge_index is not None:
             for key in ["images", "offsets", "unit_offsets"]:
                 value = getattr(self, key, None)
                 if value is not None:
                     if value.shape[0] != self.edge_index:
-                        raise ValueError(
-                            f"Inconsistent number of elements for edge property {key}."
+                        self._exception_wrapper(
+                            ValueError(
+                                f"Inconsistent number of elements for edge property {key}."
+                            )
                         )
         return self
 
@@ -737,9 +743,11 @@ class DataSampleSchema(BaseModel):
                 value = getattr(self, key)
                 if value is not None:
                     if value.shape[0] != num_edges:
-                        raise ValueError(
-                            f"Mismatch in edge property {key}. "
-                            "Expected the first dimension to match the number of edges."
+                        self._exception_wrapper(
+                            ValueError(
+                                f"Mismatch in edge property {key}. "
+                                "Expected the first dimension to match the number of edges."
+                            )
                         )
         return self
 
@@ -769,4 +777,6 @@ class DataSampleSchema(BaseModel):
                 if isinstance(self.graph, DGLGraph):
                     return "dgl"
             else:
-                raise TypeError(f"Unexpected graph type: {type(self.graph)}")
+                self._exception_wrapper(
+                    TypeError(f"Unexpected graph type: {type(self.graph)}")
+                )
