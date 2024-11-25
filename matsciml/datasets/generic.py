@@ -207,7 +207,15 @@ class MatSciMLDataModule(pl.LightningDataModule):
         if not filepath.is_dir():
             raise RuntimeError(f"Expected filepath to be a directory; got {filepath}")
         self.metadata = filepath.joinpath("metadata.json")
-        self.save_hyperparameters()
+        # add to things to save
+        hparams_to_save = {
+            "filepath": filepath,
+            "transforms": transforms,
+            "strict_checksum": strict_checksum,
+            "metadata": self.metadata.model_dump(),
+            "loader_kwargs": loader_kwargs,
+        }
+        self.save_hyperparameters(hparams_to_save)
 
     @property
     def metadata(self) -> DatasetSchema:
