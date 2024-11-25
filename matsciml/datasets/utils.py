@@ -787,19 +787,25 @@ def calculate_periodic_shifts(
         raise ValueError(
             f"No neighbors detected for structure with cutoff {cutoff}; {structure}"
         )
-    # process the neighbors now
-
-    all_src, all_dst, all_images = [], [], []
+    keep = set()
+    # only keeps undirected edges that are unique through set
     for src_idx, dst_sites in enumerate(neighbors):
-        site_count = 0
         for site in dst_sites:
-            if site_count > max_neighbors:
-                break
-            all_src.append(src_idx)
-            all_dst.append(site.index)
-            all_images.append(site.image)
-            # determine if we terminate the site loop earlier
-            site_count += 1
+            keep.add(Edge(src_idx, site.index, np.array(site.image)))
+    # now only keep the edges after the first loop
+    all_src, all_dst, all_images = [], [], []
+    num_atoms = len(structure.atomic_numbers)
+    counter = {index: 0 for index in range(num_atoms)}
+    for edge in keep:
+        # stop adding edges if either src/dst have accumulated enough neighbors
+        if counter[edge.src] > max_neighbors or counter[edge.dst] > max_neighbors:
+            pass
+        else:
+            all_src.append(edge.src)
+            all_dst.append(edge.dst)
+            all_images.append(edge.image)
+            counter[edge.src] += 1
+            counter[edge.dst] += 1
     if any([len(obj) == 0 for obj in [all_src, all_dst, all_images]]):
         raise ValueError(
             f"No images or edges to work off for cutoff {cutoff}."

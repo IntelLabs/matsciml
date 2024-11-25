@@ -84,7 +84,7 @@ def test_periodic_generation(
         if not self_loops:
             # TODO pymatgen backend fails this check at cutoff radius = 15
             # and I don't know why
-            assert count <= 10, f"Node {index} has too many counts. {src_nodes}"
+            assert count <= 10, f"Node {index} has too many counts. {counts}"
 
 
 def test_self_loop_condition():
