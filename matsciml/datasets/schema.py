@@ -382,7 +382,7 @@ class DatasetSchema(BaseModel):
         Mean/std values for the number of edges per data sample.
     """
 
-    name: DatasetEnum
+    name: str
     creation: datetime
     target_keys: list[str]
     split_blake2s: SplitHashSchema
