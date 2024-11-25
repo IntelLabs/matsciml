@@ -414,7 +414,7 @@ class DatasetSchema(BaseModel):
     edge_stats: NormalizationSchema | None = None
 
     @classmethod
-    def from_json(cls, json_path: PathLike) -> Self:
+    def from_json_file(cls, json_path: PathLike) -> Self:
         """
         Deserialize a JSON file, validating against the expected dataset
         schema.
