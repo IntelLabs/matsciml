@@ -457,9 +457,137 @@ class DatasetSchema(BaseModel):
 
 class DataSampleSchema(BaseModel):
     """
-    Intention behind this schema is to have a superset of
-    ``ase.Atoms``: a fully qualified description of an atomistic
-    system including spin.
+    Defines a schema for a single data sample.
+
+    Includes fields for the most commonly used properties, particularly
+    for interatomic potentials, and includes additional ones that help
+    fully specify the state of a atomic structure/material, such as
+    isotopic masses, charges, and electronic states.
+
+    This schema uses ``numpydantic`` for type and shape hinting;
+    it does not enforce what provides the array (e.g. ``torch``
+    or ``numpy``), and when dumping to JSON will ensure that it
+    is serializable (i.e. converts it to a list first). We also implement
+    a consistency check after model creation to validate that per-atom
+    fields have the right number of atoms.
+
+    Parameters
+    ----------
+    index : int
+        Integer counter for the sample within the full dataset.
+        This value is used to uniquely identify the sample within the
+        dataset, and is helpful during debugging.
+    num_atoms : int
+        Specifies the number of atoms to be expected of this data
+        sample. Recording this explicitly makes it accessible,
+        instead of relying on determination after batching, etc.
+        with tricks like ``graph.ptr``.
+    cart_coords : NDArray[Shape['*, 3'], float]
+        A variable length array of 3D vectors of floating point numbers
+        corresponding to the cartesian coordinates of the structure.
+    atomic_numbers : NDArray[Shape['*'], int]
+        A variable length array of integers corresponding to the
+        atomic numbers of each species.
+    pbc : PeriodicBoundarySchema
+        A schema that specifies which axes are periodic. Can also
+        pass a dictionary of coordinate/``bool`` values instead of
+        constructing the ``PeriodicBoundarySchema`` ahead of time.
+    datatype : DataSampleEnum
+        Categorizes the data sample according to types defined in
+        the ``DataSampleEnum``. This is mainly for documentation,
+        but allows users/developers to expect certain data fields
+        to be populated.
+    alpha_electron_spins : NDArray[Shape['*'], float], optional
+        Specifies the alpha spin value per-atom as a variable length
+        array of floating point values. Assumes unrestricted/open
+        shell species; alternatively, specify the same number in
+        ``beta_electron_spins``.
+    beta_electron_spins : NDArray[Shape['*'], float], optional
+        Specifies the beta spin value per-atom as a variable length
+        array of floating point values. Assumes unrestricted/open
+        shell species; alternatively, specify the same number in
+        ``alpha_electron_spins``.
+    nuclear_spins : NDArray[Shape['*'], float], optional
+        Specifies the nuclear spin value per-atom as a variable
+        length array of floating point values.
+    isotopic_masses : NDArray[Shape['*'], float], optional
+        Specifies isotopic masses for each atom as a variable
+        length array of floating point values.
+    atomic_charges: NDArray[Shape['*'], float], optional
+        Specifies some characterization of charge for each atom
+        as a variable length array of floating point values.
+    atomic_energies : NDArray[Shape['*'], float], optional
+        Ascribes energy values - i.e. contributions from each atom -
+        to each atom in the sample as a variable length array of
+        floating point values.
+    atomic_labels : NDArray[Shape['*'], int], optional
+        Indices to 'tag' atoms - useful for classification tasks
+        and masking. Specified as a variable length array of integers.
+    total_energy : float, optional
+        Total energy of the system by whatever definition. If there
+        are multiple types of total energy values, we recommend writing
+        the most primitive type (e.g. total electronic energy) available,
+        and add others (e.g. corrections, etc.) to ``extra``.
+    forces: NDArray[Shape['*, 3'], float], optional
+        Specifies atomic forces on each atom as a variable length
+        array of 3D vectors with floating point values.
+    stresses : NDArray[Shape['*, 3, 3'], float], optional
+        Specifies a stress tensor per atom as a variable length
+        array of 3x3 matrices of floating point values.
+    lattice_parameters : NDArray[Shape['6'], float], optional
+        Specifies a vector of lattice parameters in order of
+        ``a,b,c,alpha,beta,gamma``. Assumes angles ``alpha,beta,gamma``
+        are in degrees.
+    lattice_matrix : NDArray[Shape['3, 3'], float], optional
+        Specifies the fully specified lattice matrix as a 3x3 matrix
+        of floating point values. If the choice is between this field
+        or ``lattice_parameters``, populate this field but ideally both
+        as the matrix generated from parameters may not be unique.
+    edge_index : NDArray[Shape['2, *'], int], optional
+        Indices to indicate edges between atoms as a variable length
+        array of 2D vectors. The variable length in this case corresponds
+        to the number of **edges**, not atoms/nodes.
+    charge : float, optional
+        Some characterization of charge for the whole system as a floating
+        point value.
+    multiplicity : float, optional
+        Electronic multiplicity of the system as a floating point value.
+        While not explicitly checked, this couples with ``electronic_state_index``
+        to fully specify an electronic state. This value is defined as 2S+1,
+        with S being the number of unpaired electrons (or the total electron spin
+        angular momentum).
+    electronic_state_index : int, default 0
+        Specifies the electronic state, with zero (default) being the
+        electronic ground state for a given multiplicity. The index
+        should be ordered by energy, i.e. the first singlet excited state
+        would be given by a value of 1, and a multiplicity of 0.
+    images : NDArray[Shape['*, 3'], int], optional
+        Variable length array of 3D vectors of integers that index
+        periodic images (i.e. neighboring unit cells). The length
+        is expected to match that of ``edge_index``.
+    offsets : NDArray[Shape['*, 3'], float], optional
+        Variable length array of 3D vectors of floating points that
+        can be used to shift the point of reference from the origin
+        unit cell to the corresponding periodic image. The length
+        should be the same as ``edge_index``/``images``.
+    unit_offsets : NDArray[Shape['*, 3'], float], optional
+        Builds on top of ``offsets``, including the difference in
+        positions between two atoms in fractional coordinates.
+        Expects the length to be the same as ``edge_index``/``images``
+        and ``offsets``.
+    graph : Any, optional
+        This field is not intended to be serialized, but is included
+        to allow the field to be populated during runtime as a way
+        to store an arbitrary graph object. We do not want to serialize
+        the graph object directly, as reloading with version mismatches
+        can be made impossible with breaking API changes regardless of
+        the framework. Instead, opt to save ``edge_index``.
+    extras : dict[str, Any], optional
+        Provides a vehicle for out-of-spec data to be transported in
+        this schema. This is useful if the property you wish to save
+        does not fit under any of the currently defined fields, but
+        is not recommended as it bypasses any of the type and shape
+        validations that ``pydantic``/``numpydantic`` provides.
     """
 
     index: int
