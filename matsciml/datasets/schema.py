@@ -372,10 +372,10 @@ class DatasetSchema(BaseModel):
     creation : datetime
         An immutable ``datetime`` for when the dataset was
         created.
-    target_keys : list[str]
-        List of keys that are expected to be treated as target
-        labels. This is used by the data pipeline to specifically
-        load and designate as targets.
+    targets : list[TargetSchema]
+        A list of ``TargetSchema`` objects or dictionaries that satisfy
+        the schema. This is used simultaneously for documentation as
+        well as for data loading to look specifically for these keys.
     split_blake2s : SplitHashSchema
         Schema representing blake2s checksums for each dataset split.
     modified : datetime, optional
@@ -403,7 +403,7 @@ class DatasetSchema(BaseModel):
 
     name: str
     creation: datetime
-    target_keys: list[str]
+    targets: list[TargetSchema]
     split_blake2s: SplitHashSchema
     dataset_type: DataSampleEnum | list[DataSampleEnum]
     modified: datetime | None = None
