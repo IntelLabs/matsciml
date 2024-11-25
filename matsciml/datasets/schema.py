@@ -42,17 +42,6 @@ attribute names that should be
 # ruff: noqa: F722
 
 
-class DatasetEnum(str, Enum):
-    s2ef = "S2EFDataset"
-    is2re = "IS2REDataset"
-    mp20 = "MaterialsProjectDataset"
-    mptraj = "MaterialsTrajectoryDataset"
-    alexandria = "AlexandriaDataset"
-    nomad = "NomadDataset"
-    oqmd = "OQMDDataset"
-    generic = "GenericDataset"
-
-
 class DataSampleEnum(str, Enum):
     """
     An Enum for categorizing data samples, which implicitly
