@@ -67,7 +67,14 @@ def test_dataset_minimal_schema_roundtrip():
         name="GenericDataset",
         creation=datetime.now(),
         dataset_type="SCFCycle",
-        target_keys=["energy", "forces"],
+        targets=[
+            {
+                "name": "total_energy",
+                "shape": 0,
+                "description": "Total energy of the system.",
+            },
+            {"name": "forces", "shape": 3, "description": "Atomic forces per node."},
+        ],
         split_blake2s=splits,
     )
     json_rep = dset.model_dump_json()

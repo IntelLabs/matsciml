@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Literal, Any, Self
 from os import PathLike
 from pathlib import Path
+import json
 import re
 
 from ase import Atoms
@@ -42,6 +43,58 @@ attribute names that should be
 # ruff: noqa: F722
 
 
+class MatsciMLSchema(BaseModel):
+    """
+    Implements a base class with (de)serialization methods
+    for saving and loading JSON files.
+    """
+
+    @classmethod
+    def from_json_file(cls, json_path: PathLike) -> Self:
+        """
+        Deserialize a JSON file, validating against the expected dataset
+        schema.
+
+        Parameters
+        ----------
+        json_path : PathLike
+            Path to a JSON metadata file.
+
+        Returns
+        -------
+        DataSampleSchema
+            Instance of a validated ``DatasetSchema``.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the specified JSON file does not exist.
+        """
+        if not isinstance(json_path, Path):
+            json_path = Path(json_path)
+        if not json_path.exists():
+            raise FileNotFoundError(
+                f"{json_path} JSON metadata file could not be found."
+            )
+        with open(json_path, "r") as read_file:
+            return cls.model_validate_json(read_file.read(), strict=True)
+
+    def to_json_file(self, json_path: PathLike) -> None:
+        """
+        Write out the schema to a JSON file.
+
+        Parameters
+        ----------
+        json_path : PathLike
+            Filepath to save the data to. If unspecified, the
+            suffix ``.json`` will be used.
+        """
+        if not isinstance(json_path, Path):
+            json_path = Path(json_path)
+        with open(json_path.with_suffix(".json"), "r") as write_file:
+            json.dump(self.model_dump(), write_file, indent=2)
+
+
 class DataSampleEnum(str, Enum):
     """
     An Enum for categorizing data samples, which implicitly
@@ -76,7 +129,7 @@ class DataSampleEnum(str, Enum):
     property = "Property"
 
 
-class SplitHashSchema(BaseModel):
+class SplitHashSchema(MatsciMLSchema):
     """
     Schema for defining a set of data splits, with associated
     hashes for each split.
@@ -158,7 +211,7 @@ class PeriodicBoundarySchema(BaseModel):
     z: bool
 
 
-class NormalizationSchema(BaseModel):
+class NormalizationSchema(MatsciMLSchema):
     target_key: str
     mean: float
     std: float
@@ -186,7 +239,7 @@ class NormalizationSchema(BaseModel):
         return Normalizer(mean=self.mean, std=self.std)
 
 
-class GraphWiringSchema(BaseModel):
+class GraphWiringSchema(MatsciMLSchema):
     """
     Provides a specification for tracking how graphs within
     a dataset are wired. Primarily, a ``cutoff_radius`` is
@@ -327,7 +380,7 @@ class GraphWiringSchema(BaseModel):
             )
 
 
-class TargetSchema(BaseModel):
+class TargetSchema(MatsciMLSchema):
     """
     Schema that specifies a target label or property.
 
@@ -357,7 +410,7 @@ class TargetSchema(BaseModel):
     units: str | None = None
 
 
-class DatasetSchema(BaseModel):
+class DatasetSchema(MatsciMLSchema):
     """
     A schema for defining a collection of data samples.
 
@@ -485,7 +538,7 @@ class DatasetSchema(BaseModel):
         return self
 
 
-class DataSampleSchema(BaseModel):
+class DataSampleSchema(MatsciMLSchema):
     """
     Defines a schema for a single data sample.
 
