@@ -488,6 +488,7 @@ class DataSampleSchema(BaseModel):
     )
     charge: float | None = None  # overall system charge
     multiplicity: float | None = None  # overall system multiplicity
+    electronic_state_index: int = 0
     images: NDArray[Shape["*, 3"], int] | None = None
     offsets: NDArray[Shape["*, 3"], float] | None = None
     unit_offsets: NDArray[Shape["*, 3"], float] | None = None
