@@ -37,8 +37,9 @@ def write_data_to_hdf5(
 
     Raises
     ------
-    RuntimeError:
-        [TODO:description]
+    IndexError:
+        If a sample of data already exists at the specified index while
+        overwrite is set to False.
     """
     assert h5_file.mode != "r"
     if overwrite:
@@ -237,9 +238,9 @@ class MatSciMLDataModule(pl.LightningDataModule):
     ):
         """
         Initialize a ``MatSciMLDataModule`` that uses the HDF5
-        binary data format.
-
-        [TODO:description]
+        binary data format. Provides a ``Lightning`` wrapper around
+        the dataset class, which individually handles splits whereas
+        this class handles a collection of HDF5 files.
 
         Parameters
         ----------
