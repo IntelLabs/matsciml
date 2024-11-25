@@ -634,6 +634,31 @@ class DataSampleSchema(BaseModel):
             return self.extras[name]
         return None
 
+    def _exception_wrapper(self, exception: Exception):
+        """
+        Re-raises an exception that uses this class, and chains the sample index.
+
+        This is to make debugging more informative, as it allows
+        arbitrary exceptions to be raised while also informing us
+        which sample specifically is causing issues.
+
+        Parameters
+        ----------
+        exception : Exception
+            Any possible ``Exception``. The type of exception is
+            used to re-raise the exception including the sample index.
+
+        Raises
+        ------
+        exception_cls
+            Raises the same exception as the input one, with
+            an additional message.
+        """
+        exception_cls = exception.__class__
+        raise exception_cls(
+            f"Data schema validation failed at sample {self.index}."
+        ) from exception
+
     @model_validator(mode="after")
     def atom_count_consistency(self) -> Self:
         for key in [
