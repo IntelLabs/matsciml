@@ -138,7 +138,7 @@ class MatSciMLDataset(Dataset):
 
     @cache
     def __len__(self) -> int:
-        with self.data as h5_data:
+        with self.read_data() as h5_data:
             return len(h5_data.keys())
 
     def __getitem__(self, index: int):
