@@ -327,6 +327,36 @@ class GraphWiringSchema(BaseModel):
             )
 
 
+class TargetSchema(BaseModel):
+    """
+    Schema that specifies a target label or property.
+
+    The intention is to provide sufficient fields to make targets
+    in a dataset fully documented to leave zero ambiguities.
+
+    Attributes
+    ----------
+    name : str
+        String name of the target. This will be used to look up
+        targets throughout the pipeline.
+    shape : int | list[int]
+        Designated shape of the target. For scalar targets, pass
+        a value of zero to this field.
+    description : str
+        Long text description of what this target is and how it
+        was calculated.
+    units : str, optional
+        Expected units of this property. This is more for documentation
+        for now, but in the future it may be helpful to do unit
+        conversions with this field.
+    """
+
+    name: str
+    shape: int | list[int]
+    description: str
+    units: str | None = None
+
+
 class DatasetSchema(BaseModel):
     """
     A schema for defining a collection of data samples.
