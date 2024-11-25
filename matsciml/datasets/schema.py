@@ -703,6 +703,21 @@ class DataSampleSchema(BaseModel):
                 return False
         return True
 
+    @model_validator(mode="after")
+    def check_edge_data(self) -> Self:
+        """Ensure that if edge properties are consistent with number of edges."""
+        if self.edge_index is not None:
+            num_edges = self.edge_index.shape[1]
+            for key in ["images", "offsets", "unit_offsets"]:
+                value = getattr(self, key)
+                if value is not None:
+                    if value.shape[0] != num_edges:
+                        raise ValueError(
+                            f"Mismatch in edge property {key}. "
+                            "Expected the first dimension to match the number of edges."
+                        )
+        return self
+
     def to_ase_atoms(self) -> Atoms:
         return Atoms(
             positions=self.cart_coords,
