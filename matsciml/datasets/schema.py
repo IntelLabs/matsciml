@@ -468,7 +468,8 @@ class DataSampleSchema(BaseModel):
     atomic_numbers: NDArray[Shape["*"], int]
     pbc: PeriodicBoundarySchema
     datatype: DataSampleEnum
-    electron_spins: NDArray[Shape["*"], float] | None = None  # electronic spin at atom
+    alpha_electron_spins: NDArray[Shape["*"], float] | None = None
+    beta_electron_spins: NDArray[Shape["*"], float] | None = None
     nuclear_spins: NDArray[Shape["*"], float] | None = (
         None  # optional nuclear spin at atom
     )
