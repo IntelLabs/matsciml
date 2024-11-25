@@ -527,9 +527,10 @@ class DatasetSchema(MatsciMLSchema):
 
     @model_validator(mode="after")
     def check_target_normalization(self) -> Self:
+        """Cross-check target normalization specification with defined targets."""
         if self.normalization is not None:
             # first check every key is available as targets
-            target_keys = set(self.target_keys)
+            target_keys = set([target.name for target in self.targets])
             norm_keys = set(self.normalization.keys())
             # check to see if we have unexpected norm keys
             diff = norm_keys - target_keys
@@ -596,7 +597,7 @@ class DataSampleSchema(MatsciMLSchema):
     isotopic_masses : NDArray[Shape['*'], float], optional
         Specifies isotopic masses for each atom as a variable
         length array of floating point values.
-    atomic_charges: NDArray[Shape['*'], float], optional
+    atomic_charges : NDArray[Shape['*'], float], optional
         Specifies some characterization of charge for each atom
         as a variable length array of floating point values.
     atomic_energies : NDArray[Shape['*'], float], optional
@@ -611,7 +612,7 @@ class DataSampleSchema(MatsciMLSchema):
         are multiple types of total energy values, we recommend writing
         the most primitive type (e.g. total electronic energy) available,
         and add others (e.g. corrections, etc.) to ``extra``.
-    forces: NDArray[Shape['*, 3'], float], optional
+    forces : NDArray[Shape['*, 3'], float], optional
         Specifies atomic forces on each atom as a variable length
         array of 3D vectors with floating point values.
     stresses : NDArray[Shape['*, 3, 3'], float], optional
@@ -835,6 +836,19 @@ class DataSampleSchema(MatsciMLSchema):
         return self
 
     def to_ase_atoms(self) -> Atoms:
+        """
+        Provides a simple conversion to an ``ase.Atoms`` object.
+
+        This method does not strictly check that outputs are mapped
+        correctly, but at least maps the fields in the schema to
+        intended attributes in the ``Atoms`` class.
+
+        Returns
+        -------
+        Atoms
+            Instance of an ``Atoms`` object constructed with
+            the current data sample.
+        """
         return Atoms(
             positions=self.cart_coords,
             cell=self.lattice_matrix,
