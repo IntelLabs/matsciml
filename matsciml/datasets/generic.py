@@ -61,8 +61,42 @@ class MatSciMLDataset(Dataset):
         self,
         filepath: PathLike,
         transforms: list[Callable] | None = None,
-        strict_checksum: bool = False,
+        strict_checksum: bool = True,
     ):
+        """
+        Dataset class for generic ``MatSciMLDataset``s that use
+        the data schema specifications.
+
+        The main output of this class is mainly data loading from
+        HDF5 files, parsing ``DatasetSchema`` metadata that are
+        adjacent to HDF5 files, and returning data samples in the
+        form of ``DataSampleSchema`` objects, which in principle
+        should replace conventional ``DataDict`` (i.e. just plain
+        dictionaries with arbitrary key/value pairs) that were used
+        in earlier ``matsciml`` versions.
+
+        Parameters
+        ----------
+        filepath : PathLike
+            Filepath to a specific HDF5 file, containing a data split
+            of either ``train``, ``test``, ``validation``, or ``predict``.
+        transforms : list[Callable], optional
+            If provided, should be a list of Python callable objects
+            that will operate on the data.
+        strict_checksum : bool, default True
+            If ``True``, the dataset will refuse to run if it does not
+            match any of the checksums contained in the metadata. This
+            implementation does not **need** to know which split the data
+            is, but has to match at least one of the specified splits.
+            This can be disabled manually by setting to ``False``, but
+            means the dataset can be modified.
+
+        Raises
+        ------
+        RuntimeError:
+            If no checksums in the metadata match the current data
+            while ``strict_checksum`` is set to ``True``.
+        """
         super().__init__()
         if not isinstance(filepath, Path):
             filepath = Path(filepath)
