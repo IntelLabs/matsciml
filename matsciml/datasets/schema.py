@@ -392,9 +392,12 @@ class TargetSchema(MatsciMLSchema):
     name : str
         String name of the target. This will be used to look up
         targets throughout the pipeline.
-    shape : int | list[int]
-        Designated shape of the target. For scalar targets, pass
-        a value of zero to this field.
+    shape : str
+        Designated shape of the target. Use '*' to specify variable
+        dimensions, and integers for fixed dimensions separated
+        by commas. As an example, '*' could designate a number of
+        node features (since the number of nodes is variable), and
+        '*, 3' could represent a vector property also over nodes.
     description : str
         Long text description of what this target is and how it
         was calculated.
