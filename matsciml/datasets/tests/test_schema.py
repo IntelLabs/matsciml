@@ -48,10 +48,14 @@ def test_dataset_minimal_schema_pass():
         targets=[
             {
                 "name": "total_energy",
-                "shape": 0,
+                "shape": "0",
                 "description": "Total energy of the system.",
             },
-            {"name": "forces", "shape": 3, "description": "Atomic forces per node."},
+            {
+                "name": "forces",
+                "shape": "*,3",
+                "description": "Atomic forces per node.",
+            },
         ],
         split_blake2s=splits,
     )
@@ -70,10 +74,14 @@ def test_dataset_minimal_schema_roundtrip():
         targets=[
             {
                 "name": "total_energy",
-                "shape": 0,
+                "shape": "0",
                 "description": "Total energy of the system.",
             },
-            {"name": "forces", "shape": 3, "description": "Atomic forces per node."},
+            {
+                "name": "forces",
+                "shape": "*,3",
+                "description": "Atomic forces per node.",
+            },
         ],
         split_blake2s=splits,
     )
