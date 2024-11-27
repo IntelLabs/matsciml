@@ -141,8 +141,12 @@ class ModelOutput(BaseModel):
             ``ValueError``.
         """
         if isinstance(values, torch.Tensor):
-            # drop all redundant dimensions
-            values = values.squeeze()
+            if values.ndim > 1:
+                # drop all redundant dimensions
+                values = values.squeeze()
+            # we want to at least have a vector of energies
+            if values.ndim == 0:
+                values = values.unsqueeze(0)
             # last step is an assertion check for QA
             if values.ndim != 1:
                 raise ValueError(
