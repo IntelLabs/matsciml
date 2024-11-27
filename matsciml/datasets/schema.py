@@ -127,7 +127,9 @@ class DataSampleEnum(str, Enum):
 
     scf = "SCFCycle"
     opt_trajectory = "OptimizationCycle"
-    property = "Property"
+    e_property = "ElectronicPropertyCalculation"
+    n_property = "NuclearPropertyCalculation"
+    states = "ExcitedStateCalculation"
 
 
 class SplitHashSchema(MatsciMLSchema):
