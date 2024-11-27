@@ -10,6 +10,7 @@ import json
 import re
 
 from ase import Atoms
+from ase.geometry import cell_to_cellpar, cellpar_to_cell
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -778,6 +779,13 @@ class DataSampleSchema(MatsciMLSchema):
     @model_validator(mode="after")
     def coordinate_consistency(self) -> Self:
         """Sets fractional coordinates if parameters are available, and checks them"""
+        # convert lattice to lattice parameters if available
+        if self.lattice_matrix is not None and self.lattice_parameters is None:
+            self.lattice_parameters = cell_to_cellpar(self.lattice_matrix)
+        # convert lattice parameters to cell if available
+        if self.lattice_matrix is None and self.lattice_parameters is not None:
+            self.lattice_matrix = cellpar_to_cell(self.lattice_parameters)
+        # calculate fractional coordinates if we have lattice parameters
         if self.frac_coords is None and self.lattice_parameters is not None:
             self.frac_coords = cart_frac_conversion(
                 self.cart_coords, *self.lattice_parameters, to_fractional=True
