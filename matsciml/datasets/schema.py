@@ -263,7 +263,9 @@ class GraphWiringSchema(MatsciMLSchema):
     function.
 
     The validation of this schema includes checking to ensure
-    that the
+    that a specific package used for performing neighborhood
+    calculations matches the recorded version, to ensure that
+    there are no unexpected changes to the algorithm used.
 
     Attributes
     ----------
