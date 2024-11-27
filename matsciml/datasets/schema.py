@@ -801,6 +801,7 @@ class DataSampleSchema(MatsciMLSchema):
                 self._exception_wrapper(
                     ValueError("Fractional coordinates are outside of [0, 1].")
                 )
+        return self
 
     @model_validator(mode="after")
     def atom_count_consistency(self) -> Self:
