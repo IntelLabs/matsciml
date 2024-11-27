@@ -915,6 +915,7 @@ class DataSampleSchema(MatsciMLSchema):
             Instance of an ``Atoms`` object constructed with
             the current data sample.
         """
+        pbc = [value for value in self.pbc.model_dump().values()]
         return Atoms(
             positions=self.cart_coords,
             cell=self.lattice_matrix,
@@ -922,6 +923,7 @@ class DataSampleSchema(MatsciMLSchema):
             tags=self.atomic_labels,
             charges=self.atomic_charges,
             masses=self.isotopic_masses,
+            pbc=pbc,
         )
 
     @property
