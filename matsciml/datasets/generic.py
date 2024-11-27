@@ -41,7 +41,9 @@ def write_data_to_hdf5(
         If a sample of data already exists at the specified index while
         overwrite is set to False.
     """
-    assert h5_file.mode != "r"
+    assert any(
+        [letter in h5_file.mode for letter in ["w", "x", "a"]]
+    ), f"HDF5 file must be open for writing; mode set to {h5_file.mode}."
     if overwrite:
         # if allowed to overwrite, we delete the existing
         # data and group
