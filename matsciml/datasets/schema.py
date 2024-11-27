@@ -29,6 +29,7 @@ from matsciml.common.packages import package_registry
 from matsciml.common.inspection import get_all_args
 from matsciml.modules.normalizer import Normalizer
 from matsciml.datasets.transforms import PeriodicPropertiesTransform
+from matsciml.datasets.utils import cart_frac_conversion
 
 """This module defines schemas pertaining to data, using ``pydantic`` models
 to help with validation and (de)serialization.
@@ -729,6 +730,7 @@ class DataSampleSchema(MatsciMLSchema):
     edge_index: NDArray[Shape["2, *"], int] | None = (
         None  # allows for precomputed edges
     )
+    frac_coords: NDArray[Shape["*, 3"], float] | None = None
     charge: float | None = None  # overall system charge
     multiplicity: float | None = None  # overall system multiplicity
     electronic_state_index: int = 0
@@ -772,6 +774,25 @@ class DataSampleSchema(MatsciMLSchema):
         raise exception_cls(
             f"Data schema validation failed at sample {self.index}."
         ) from exception
+
+    @model_validator(mode="after")
+    def coordinate_consistency(self) -> Self:
+        """Sets fractional coordinates if parameters are available, and checks them"""
+        if self.frac_coords is None and self.lattice_parameters is not None:
+            self.frac_coords = cart_frac_conversion(
+                self.cart_coords, *self.lattice_parameters, to_fractional=True
+            )
+        if self.frac_coords is not None:
+            if self.frac_coords.shape != self.cart_coords.shape:
+                self._exception_wrapper(
+                    ValueError(
+                        "Fractional coordinate dimensions do not match cartesians."
+                    )
+                )
+            if min(self.frac_coords) < 0.0 or max(self.frac_coords) > 1.0:
+                self._exception_wrapper(
+                    ValueError("Fractional coordinates are outside of [0, 1].")
+                )
 
     @model_validator(mode="after")
     def atom_count_consistency(self) -> Self:
