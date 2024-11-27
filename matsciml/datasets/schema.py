@@ -104,11 +104,14 @@ class DataSampleEnum(str, Enum):
     samples may relate to one another. An example would be
     ``OptimizationCycle``, which implies the dataset should
     contain multiple samples per structure of atomic forces.
-    ``SCFCycle`` on the other hand may be more fine grained,
-    as it may contain a wide array
 
     These tend to map more directly to computational chemistry
-    workflows, and
+    workflows, although naturally some types of calculations
+    will have overlap between them (e.g. an excited state geometry
+    optimization). In those cases, the recommendation would be
+    to select the intended use case - i.e. ``OptimizationCycle``
+    is the preferred enum for this example as it infers the
+    presence of atomic forces.
 
     Attributes
     ----------
@@ -120,9 +123,18 @@ class DataSampleEnum(str, Enum):
         Describes data comprising a single optimization or relaxation
         step, which includes atomic forces, (partial) Hessians,
         and geometry convergence metrics.
-    property : str
-        Describes a specific property calculation. This can range
-        from multipole moments, to polarization, etc.
+    e_property : str
+        Describes a specific electronic property calculation. This can range
+        from multipole moments, to polarization, etc. Choose this
+        category if your intention is to provide properties, even if
+        certain electronic properties come for 'free' with SCF calculations.
+    n_property : str
+        Describes a specific nuclear property calculation, such as nuclear
+        multipole moments (e.g. nitrogen quadrupole), magnetic moments, etc.
+    states : str
+        Describes an excited state calculation that does not involve geometry
+        optimizations. This may refer to oscillator strengths/transition
+        moments.
     """
 
     scf = "SCFCycle"
