@@ -4,6 +4,7 @@ from datetime import datetime
 import pytest
 import numpy as np
 import torch
+from ase.geometry import cell_to_cellpar
 
 from matsciml.datasets import schema
 from matsciml.datasets.transforms import PeriodicPropertiesTransform
@@ -175,3 +176,24 @@ def test_data_sample_fail_coord_shape(num_atoms, array_lib):
             pbc=pbc,
             datatype="SCFCycle",
         )
+
+
+def test_lattice_param_to_matrix_consistency():
+    """Make sure that lattice parameters map to matrix correctly during validation"""
+    coords = np.random.rand(5, 3)
+    numbers = np.random.randint(1, 100, (5))
+    data = schema.DataSampleSchema(
+        index=0,
+        num_atoms=5,
+        cart_coords=coords,
+        atomic_numbers=numbers,
+        pbc={"x": True, "y": True, "z": True},
+        datatype="OptimizationCycle",
+        lattice_parameters=[5.0, 5.0, 5.0, 90.0, 90.0, 90.0],
+    )
+    assert data.frac_coords is not None
+    assert data.lattice_matrix is not None
+    reconverted = cell_to_cellpar(data.lattice_matrix)
+    assert np.allclose(reconverted, data.lattice_parameters)
+    exact = np.array([[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]])
+    assert np.allclose(exact, data.lattice_matrix)
