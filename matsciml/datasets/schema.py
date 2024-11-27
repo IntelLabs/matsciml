@@ -803,7 +803,7 @@ class DataSampleSchema(MatsciMLSchema):
                         "Fractional coordinate dimensions do not match cartesians."
                     )
                 )
-            if min(self.frac_coords) < 0.0 or max(self.frac_coords) > 1.0:
+            if self.frac_coords.min() < 0.0 or self.frac_coords.max() > 1.0:
                 self._exception_wrapper(
                     ValueError("Fractional coordinates are outside of [0, 1].")
                 )

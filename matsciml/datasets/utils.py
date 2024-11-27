@@ -1046,7 +1046,7 @@ def cart_frac_conversion(
 
     # This matrix is normally for fractional to cart. Implements the matrix found in
     # https://en.wikipedia.org/wiki/Fractional_coordinates#General_transformations_between_fractional_and_Cartesian_coordinates
-    rotation = torch.tensor(
+    rotation = np.array(
         [
             [
                 a
@@ -1069,11 +1069,13 @@ def cart_frac_conversion(
             ],
             [a * np.cos(beta), b * np.cos(alpha), c],
         ],
-        dtype=coords.dtype,
     )
     if to_fractional:
         # invert elements for the opposite conversion
-        rotation = torch.linalg.inv(rotation)
+        rotation = np.linalg.inv(rotation)
+    # if coords are already torch, cast as a tensor so we can matmul
+    if isinstance(coords, torch.Tensor):
+        rotation = torch.from_numpy(rotation).to(coords.type)
     output = coords @ rotation
     return output
 
