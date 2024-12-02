@@ -789,6 +789,40 @@ class DataSampleSchema(MatsciMLSchema):
             values["lattice_matrix"] = lattice_matrix
         return values
 
+    @field_validator("lattice_parameters")
+    @classmethod
+    def check_lattice_param_angles(
+        cls, values: NDArray[Shape["6"], np.floating] | None
+    ):
+        """
+        Check to make sure that if lattice parameters are set, then the
+        angles are in degrees, not radians.
+
+        The check is done by expecting a vector of six elements is passed,
+        with the latter three are the angles. We assume that angles are
+        in radians if none of the values exceed 2pi (i.e. 360 degrees).
+
+        This check is only performed if the lattice parameters are provided.
+
+        Parameters
+        ----------
+        values : NDArray[Shape['6'], float] | None
+            Vector of lattice parameters.
+
+        Raises
+        ------
+        ValueError:
+            If all lattice angles are smaller than or equal to
+            2pi, they are likely to be in radians.
+        """
+        if values is not None:
+            all_are_radians = np.all(values[3:] <= 2 * np.pi)
+            if all_are_radians:
+                raise ValueError(
+                    "Expected lattice angles to be in degrees. All input values are smaller than 2 * np.pi."
+                )
+        return values
+
     @model_validator(mode="after")
     def coordinate_consistency(self) -> Self:
         """Sets fractional coordinates if parameters are available, and checks them"""
