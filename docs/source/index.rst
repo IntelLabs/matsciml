@@ -12,6 +12,7 @@ The Open MatSciML Toolkit
 
    Getting started <self>
    datasets
+   schema
    transforms
    models
    training
