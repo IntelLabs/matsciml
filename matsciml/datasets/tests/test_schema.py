@@ -197,3 +197,24 @@ def test_lattice_param_to_matrix_consistency():
     assert np.allclose(reconverted, data.lattice_parameters)
     exact = np.array([[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]])
     assert np.allclose(exact, data.lattice_matrix)
+
+
+def test_lattice_matrix_to_param_consistency():
+    """Make sure that lattice parameters map to matrix correctly during validation"""
+    coords = np.random.rand(5, 3)
+    numbers = np.random.randint(1, 100, (5))
+    data = schema.DataSampleSchema(
+        index=0,
+        num_atoms=5,
+        cart_coords=coords,
+        atomic_numbers=numbers,
+        pbc={"x": True, "y": True, "z": True},
+        datatype="OptimizationCycle",
+        lattice_matrix=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+    )
+    assert data.frac_coords is not None
+    assert data.lattice_matrix is not None
+    converted = cell_to_cellpar(data.lattice_matrix)
+    assert np.allclose(converted, data.lattice_parameters)
+    exact = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    assert np.allclose(exact, data.lattice_matrix)
