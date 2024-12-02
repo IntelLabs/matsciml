@@ -4,6 +4,8 @@ import pickle
 from dataclasses import dataclass
 from collections.abc import Generator
 from functools import lru_cache, partial
+from ase.geometry import Cell, cellpar_to_cell, complete_cell
+from ase.neighborlist import NeighborList
 from os import makedirs
 from pathlib import Path
 from typing import Any, Callable
@@ -1030,54 +1032,12 @@ def cart_frac_conversion(
         Fractional coordinate representation
     """
 
-    def cot(x: float) -> float:
-        """cotangent of x"""
-        return -np.tan(x + np.pi / 2)
-
-    def csc(x: float) -> float:
-        """cosecant of x"""
-        return 1 / np.sin(x)
-
-    # convert to radians if angles are passed as degrees
-    if angles_are_degrees:
-        alpha = alpha * np.pi / 180.0
-        beta = beta * np.pi / 180.0
-        gamma = gamma * np.pi / 180.0
-
-    # This matrix is normally for fractional to cart. Implements the matrix found in
-    # https://en.wikipedia.org/wiki/Fractional_coordinates#General_transformations_between_fractional_and_Cartesian_coordinates
-    rotation = np.array(
-        [
-            [
-                a
-                * np.sin(beta)
-                * np.sqrt(
-                    1
-                    - (
-                        (cot(alpha) * cot(beta))
-                        - (csc(alpha) * csc(beta) * np.cos(gamma))
-                    )
-                    ** 2.0
-                ),
-                0.0,
-                0.0,
-            ],
-            [
-                a * csc(alpha) * np.cos(gamma) - a * cot(alpha) * np.cos(beta),
-                b * np.sin(alpha),
-                0.0,
-            ],
-            [a * np.cos(beta), b * np.cos(alpha), c],
-        ],
-    )
+    lattice_matrix = complete_cell(cellpar_to_cell([a, b, c, alpha, beta, gamma]))
+    cell = Cell(lattice_matrix)
     if to_fractional:
-        # invert elements for the opposite conversion
-        rotation = np.linalg.inv(rotation)
-    # if coords are already torch, cast as a tensor so we can matmul
-    if isinstance(coords, torch.Tensor):
-        rotation = torch.from_numpy(rotation).to(coords.type)
-    output = coords @ rotation
-    return output
+        return cell.scaled_positions(coords)
+    else:
+        return cell.cartesian_positions(coords)
 
 
 def build_nearest_images(max_image_number: int) -> torch.Tensor:
