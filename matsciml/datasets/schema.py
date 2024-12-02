@@ -832,14 +832,14 @@ class DataSampleSchema(MatsciMLSchema):
             )
         if isinstance(self.frac_coords, NDArray):
             if self.frac_coords.shape != self.cart_coords.shape:
-                self._exception_wrapper(
-                    ValueError(
-                        "Fractional coordinate dimensions do not match cartesians."
-                    )
+                raise ValueError(
+                    "Fractional coordinate dimensions do not match cartesians."
                 )
-            if self.frac_coords.min() < 0.0 or self.frac_coords.max() > 1.0:
-                self._exception_wrapper(
-                    ValueError("Fractional coordinates are outside of [0, 1].")
+            # round coordinate values so that -1e-6 is just zero and doesn't fail the test
+            round_coords = np.round(self.frac_coords, decimals=5)
+            if np.any(np.logical_or(round_coords > 1.0, round_coords < 0.0)):
+                raise ValueError(
+                    f"Fractional coordinates are outside of [0, 1]: {self.frac_coords}"
                 )
         return self
 
