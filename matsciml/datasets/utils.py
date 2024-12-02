@@ -661,7 +661,7 @@ class Edge:
 
     def __str__(self) -> str:
         """Represents the edge without phase or parity information. Mainly for hashing."""
-        return f"Sorted src/dst: {self.sorted_index}, |image|: {self.image}"
+        return f"Sorted src/dst: {self.sorted_index}, |image|: {self.unsigned_image}"
 
     def __hash__(self) -> int:
         return hash(str(self))
