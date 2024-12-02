@@ -644,7 +644,8 @@ class Edge:
         return all([index_eq, image_eq])
 
     def __str__(self) -> str:
-        return f"Sorted src/dst: {self.sorted_index}, image: {self.image}"
+        """Represents the edge without phase or parity information. Mainly for hashing."""
+        return f"Sorted src/dst: {self.sorted_index}, |image|: {self.image}"
 
     def __hash__(self) -> int:
         return hash(str(self))
