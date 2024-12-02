@@ -656,7 +656,7 @@ class Edge:
 
     def __eq__(self, other: Edge) -> bool:
         index_eq = self.sorted_index == other.sorted_index
-        image_eq = np.all(self.image == other.image)
+        image_eq = np.all(self.unsigned_image == other.unsigned_image)
         return all([index_eq, image_eq])
 
     def __str__(self) -> str:
