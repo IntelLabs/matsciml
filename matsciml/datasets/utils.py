@@ -638,6 +638,22 @@ class Edge:
     def sorted_index(self) -> tuple[int, int]:
         return (min(self.src, self.dst), max(self.src, self.dst))
 
+    @property
+    def unsigned_image(self) -> np.ndarray:
+        """
+        Returns the absolute image indices.
+
+        This is used when considering parity-inversion,
+        i.e. two edges are equivalent if they are in
+        in mirroring cell images.
+
+        Returns
+        -------
+        np.ndarray
+            Indices without parity
+        """
+        return np.abs(self.image)
+
     def __eq__(self, other: Edge) -> bool:
         index_eq = self.sorted_index == other.sorted_index
         image_eq = np.all(self.image == other.image)
