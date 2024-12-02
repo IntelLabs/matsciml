@@ -638,15 +638,58 @@ class Edge:
     def sorted_index(self) -> tuple[int, int]:
         return (min(self.src, self.dst), max(self.src, self.dst))
 
+    @property
+    def unsigned_image(self) -> np.ndarray:
+        """
+        Returns the absolute image indices.
+
+        This is used when considering parity-inversion,
+        i.e. two edges are equivalent if they are in
+        in mirroring cell images.
+
+        Returns
+        -------
+        np.ndarray
+            Indices without parity
+        """
+        return np.abs(self.image)
+
     def __eq__(self, other: Edge) -> bool:
         index_eq = self.sorted_index == other.sorted_index
-        image_eq = np.all(self.image == other.image)
+        image_eq = np.all(self.unsigned_image == other.unsigned_image)
         return all([index_eq, image_eq])
 
     def __str__(self) -> str:
-        return f"Sorted src/dst: {self.sorted_index}, image: {self.image}"
+        """Represents the edge without phase or parity information. Mainly for hashing."""
+        return f"Sorted src/dst: {self.sorted_index}, |image|: {self.unsigned_image}"
 
     def __hash__(self) -> int:
+        """
+        This hash method is primarily intended for use in
+        ``set`` comparisons to check for uniqueness.
+
+        The general idea for edge-uniqueness is assuming
+        the undirected case where ``src`` and ``dst``
+        is exchangable, and when not considering phase
+        for image indices.
+
+        As an example, the following two edges are
+        equivalent as they have interchangable ``src``
+        and ``dst`` indices, **and** the displacement
+        owing to image offsets is the same - just in
+        opposite directions,
+
+        ```
+        Edge(src=1, dst=7, image=[-1, 0, 0])
+        Edge(src=7, dst=1, image[1, 0, 0])
+        ```
+
+        Returns
+        -------
+        int
+            Permutation invariant hash of this edge.
+        """
+
         return hash(str(self))
 
 
