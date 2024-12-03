@@ -8,7 +8,7 @@ from typing import Any, Callable, Literal
 from logging import getLogger
 
 import h5py
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 from lightning import pytorch as pl
 
 from matsciml.datasets.schema import DatasetSchema, DataSampleSchema
@@ -425,3 +425,29 @@ class MatSciMLDataModule(pl.LightningDataModule):
             assert "train" in self.datasets, "No training split available!"
         if stage == "predict":
             assert "predict" in self.datasets, "No predict split available!"
+
+    def train_dataloader(self) -> DataLoader:
+        return DataLoader(
+            self.datasets["train"], shuffle=True, **self.hparams.loader_kwargs
+        )
+
+    def val_dataloader(self) -> DataLoader | None:
+        if "validation" not in self.datasets:
+            return None
+        return DataLoader(
+            self.datasets["validation"], shuffle=False, **self.hparams.loader_kwargs
+        )
+
+    def test_dataloader(self) -> DataLoader | None:
+        if "test" not in self.datasets:
+            return None
+        return DataLoader(
+            self.datasets["test"], shuffle=False, **self.hparams.loader_kwargs
+        )
+
+    def predict_dataloader(self) -> DataLoader | None:
+        if "predict" not in self.datasets:
+            return None
+        return DataLoader(
+            self.datasets["predict"], shuffle=False, **self.hparams.loader_kwargs
+        )
