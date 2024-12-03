@@ -43,6 +43,18 @@ experience for both developers and users by defining a consistent set of
 attribute names that should be
 """
 
+__all__ = [
+    "DataSampleSchema",
+    "DataSampleEnum",
+    "DatasetSchema",
+    "SplitHashSchema",
+    "PeriodicBoundarySchema",
+    "NormalizationSchema",
+    "GraphWiringSchema",
+    "TargetSchema",
+    "collate_samples_into_batch_schema",
+]
+
 # ruff: noqa: F722
 
 
