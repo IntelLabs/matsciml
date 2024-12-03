@@ -741,7 +741,7 @@ class DataSampleSchema(MatsciMLSchema):
     graph: Any = None
     extras: dict[str, Any] | None = None
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     def __getattr__(self, name: str) -> Any | None:
         """Overrides the behavior of `getattr` to also look in `extras` if available"""
