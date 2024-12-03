@@ -434,7 +434,7 @@ class TargetSchema(MatsciMLSchema):
     @model_validator(mode="after")
     def check_shape_str(self) -> Self:
         """This checks to make sure that the shape specification is valid for ``Shape``."""
-        invalid_regex = re.compile(r"[^\d\,\*]+")
+        invalid_regex = re.compile(r"[^\d\,\*\s]+")
         if invalid_regex.search(self.shape):
             raise ValueError(
                 f"Target shape should be specified with digits, commas, and wildcard only. Got {self.shape}"
