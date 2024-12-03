@@ -15,6 +15,7 @@ from pydantic import (
     ConfigDict,
     Field,
     ValidationError,
+    create_model,
     field_validator,
     model_validator,
     ValidationInfo,
@@ -993,3 +994,131 @@ class DataSampleSchema(MatsciMLSchema):
                 self._exception_wrapper(
                     TypeError(f"Unexpected graph type: {type(self.graph)}")
                 )
+
+
+def _concatenate_data_list(all_data: list[Any]) -> list[Any] | torch.Tensor:
+    """
+    Concatenates an arbitrary list of data where possible.
+
+    For array-types (NumPy, PyTorch), we first convert all
+    of the sample data into tensors, followed by concatenation
+    along the first dimension (nodes or edges).
+
+    For scalar-types, we return a 1D tensor.
+
+    For all other types, we return the inputs unmodified.
+
+    Parameters
+    ----------
+    all_data : list[Any]
+        List of data to try and concatenate.
+
+    Returns
+    -------
+    list[Any] | torch.Tensor
+        If the concatenation was successful, returns a tensor.
+        Otherwise, returns the unmodified input.
+    """
+    sample = all_data[0]
+    if isinstance(sample, (np.ndarray, torch.Tensor)):
+        # homogenize all samples into tensors
+        all_data = [torch.Tensor(s) for s in all_data]
+        return torch.concat(all_data)
+    if isinstance(sample, (float, int)):
+        output = torch.Tensor(all_data)
+        if isinstance(sample, int):
+            output = output.long()
+        return output
+    else:
+        # leave the data as a list
+        return all_data
+
+
+def collate_samples_into_batch_schema(samples: list[DataSampleSchema]) -> object:
+    """
+    Function to collate a list of ``DataSampleSchema`` into a dynamically
+    generated ``BatchSchema``.
+
+    The additional logic in this function is to handle graphs, copying
+    references to their respective data, and calling the respective framework
+    batching functions.
+
+    The purpose of on-the-fly schema generation is to do some degree of
+    validation, but primarily provide regular structure for use in the
+    task pipeline side of things. Given that the schema should be serializable,
+    it may also make debugging more streamlined.
+
+    Parameters
+    ----------
+    samples : list[DataSampleSchema]
+        List of data samples that have been pre-validated.
+
+    Returns
+    -------
+    object
+        Instance of a ``BatchSchema`` object. This is not explicitly annotated
+        since the model/class is defined dynamically based off incoming data.
+    """
+    ref_schema = samples[0].schema()
+    # initial keys are going to hold the main structure of the schema
+    schema_to_generate = {
+        "num_atoms": (NDArray[Shape["*"], int] | torch.LongTensor, ...),
+        "batch_size": (int, ...),
+        "graph": (Any | None, None),
+        "num_edges": (NDArray[Shape["*"], int] | torch.LongTensor | None, None),
+    }
+    collected_data = {}  # holds all the data to unpack into the generated schema
+    # check to see if graphs are present
+    if samples[0].graph is not None:
+        graph_sample = samples[0].graph
+        if "pyg" in package_registry:
+            from torch_geometric.data import Batch, Data
+
+            if isinstance(graph_sample, Data):
+                batched_graph = Batch.from_data_list(
+                    [sample.graph for sample in samples]
+                )
+                graph_type = Batch
+                for key in batched_graph.keys():
+                    data = getattr(batched_graph, key)
+                    schema_to_generate[key] = (type(data), ...)
+                    collected_data[key] = data
+                collected_data["num_edges"] = _concatenate_data_list(
+                    [sample.graph.batch_num_edges() for sample in samples]
+                ).long()
+        else:
+            from dgl import DGLGraph, batch
+
+            if isinstance(graph_sample, DGLGraph):
+                batched_graph = batch([sample.graph for sample in samples])
+                graph_type = DGLGraph
+                for key, data in batched_graph.ndata.items():
+                    schema_to_generate[key] = (type(data), ...)
+                    collected_data[key] = data
+                for key, data in batched_graph.edata.items():
+                    schema_to_generate[key] = (type(data), ...)
+                    collected_data[key] = data
+                collected_data["num_edges"] = _concatenate_data_list(
+                    [sample.graph.batch_num_edges() for sample in samples]
+                ).long()
+        collected_data["num_atoms"] = _concatenate_data_list(
+            [sample.num_atoms for sample in samples]
+        ).long()
+        collected_data["graph"] = batched_graph
+        schema_to_generate["graph"] = (graph_type, ...)
+    # for everything else that wasn't packed into the graph
+    for key in ref_schema["required"]:
+        if key not in schema_to_generate:
+            schema_to_generate[key] = (Any, ...)
+        if key not in collected_data:
+            collected_data[key] = _concatenate_data_list(
+                [getattr(sample, key) for sample in samples]
+            )
+    collected_data["batch_size"] = len(samples)
+    # generate the schema, then create the model
+    BatchSchema = create_model(
+        "BatchSchema",
+        **schema_to_generate,
+        __config__=ConfigDict(arbitrary_types_allowed=True, use_enum_values=True),
+    )
+    return BatchSchema(**collected_data)
