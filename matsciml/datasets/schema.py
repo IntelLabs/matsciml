@@ -23,7 +23,6 @@ from numpydantic import NDArray, Shape
 from loguru import logger
 import numpy as np
 import torch
-import h5py
 
 from matsciml.common.packages import package_registry
 from matsciml.common.inspection import get_all_args
@@ -994,22 +993,3 @@ class DataSampleSchema(MatsciMLSchema):
                 self._exception_wrapper(
                     TypeError(f"Unexpected graph type: {type(self.graph)}")
                 )
-
-    def write_to_hdf5(self, h5_file: h5py.File) -> None:
-        """
-        Write the current data schema to an open HDF5 file.
-
-        This uses the index value of the sample to create an
-        HDF5 group, and for every property that is not ``None``
-        will write to the group.
-
-        Parameters
-        ----------
-        h5_file : h5py.File
-            Open HDF5 file for writing.
-        """
-        assert h5_file.mode != "r", "HDF5 file must be open for writing."
-        group = h5_file.create_group(self.index)
-        for key, value in self.model_dump().items():
-            if value is not None:
-                group[key] = value
