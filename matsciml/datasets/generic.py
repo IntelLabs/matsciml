@@ -46,6 +46,49 @@ def write_data_to_hdf5_group(key: str, data: Any, h5_group: h5py.Group) -> None:
         h5_group[key] = data
 
 
+def read_hdf5_data(h5_group: h5py.Group) -> dict[str, Any]:
+    """
+    Recursively read in an HDF5 group's worth of data.
+
+    This function loops over every key/value pair contained
+    in the group. For ``h5py.Dataset`` objects, we read in
+    all the data, whereas for groups, we recursively apply
+    this function.
+
+    For primarily string-based data, we also peek into
+    the group's ``attrs`` storage and retrieve that data as well.
+
+    Parameters
+    ----------
+    h5_group : h5py.Group
+        Instance of an ``h5py.Group`` - intended usage is
+        to pass the top level group within an ``h5py.File``,
+        and retrieve all of the data pertaining to a sample.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary representation of the data, with matrix data
+        as ``np.ndarray``s.
+    """
+    output_dict = {}
+    for key, value in h5_group.items():
+        if isinstance(value, h5py.Dataset):
+            # [()] is the catch-all for scalar and matrix data
+            value = value[()]
+        elif isinstance(value, h5py.Group):
+            # call function recursively if it's a group
+            value = read_hdf5_data(value)
+        output_dict[key] = value
+    # things like strings are primarily stored as attrs
+    for key, value in h5_group.attrs.items():
+        if isinstance(value, dict):
+            output_dict[key] = {subkey: subvalue for subkey, subvalue in value.items()}
+        else:
+            output_dict[key] = value
+    return output_dict
+
+
 class MatSciMLDataset(Dataset):
     def __init__(
         self,
