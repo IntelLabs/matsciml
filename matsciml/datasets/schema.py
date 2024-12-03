@@ -94,7 +94,7 @@ class MatsciMLSchema(BaseModel):
         """
         if not isinstance(json_path, Path):
             json_path = Path(json_path)
-        with open(json_path.with_suffix(".json"), "r") as write_file:
+        with open(json_path.with_suffix(".json"), "w+") as write_file:
             json.dump(self.model_dump(), write_file, indent=2)
 
 
