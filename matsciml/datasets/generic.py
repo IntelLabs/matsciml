@@ -20,6 +20,8 @@ from matsciml.datasets.schema import (
 
 logger = getLogger("matsciml.datasets.MatSciMLDataset")
 
+__all__ = ["MatSciMLDataset", "MatSciMLDataModule"]
+
 
 def write_data_to_hdf5_group(key: str, data: Any, h5_group: h5py.Group) -> None:
     """
