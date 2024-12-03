@@ -249,9 +249,7 @@ class MatSciMLDataset(Dataset):
                 sample_group = h5_data[data_index]
             except KeyError as e:
                 raise KeyError(f"Data sample {data_index} missing from dataset.") from e
-            sample_data = {}
-            for key, value in sample_group.items():
-                sample_data[key] = value
+            sample_data = read_hdf5_data(sample_group)
             # validate expected data
             for target in self.metadata.targets:
                 if target.name not in sample_data:
