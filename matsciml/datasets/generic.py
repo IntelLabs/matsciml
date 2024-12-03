@@ -208,12 +208,12 @@ class MatSciMLDataset(Dataset):
             return list(h5_data.keys())
 
     def __getitem__(self, index: int):
-        index = str(index)
+        data_index = self.keys[index]
         with self.read_data() as h5_data:
             try:
-                sample_group = h5_data[index]
+                sample_group = h5_data[data_index]
             except KeyError as e:
-                raise KeyError(f"Data sample {index} missing from dataset.") from e
+                raise KeyError(f"Data sample {data_index} missing from dataset.") from e
             sample_data = {}
             for key, value in sample_group.items():
                 sample_data[key] = value
