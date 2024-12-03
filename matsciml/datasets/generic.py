@@ -4,7 +4,7 @@ from hashlib import blake2s
 from functools import cache
 from os import PathLike
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
 from logging import getLogger
 
 import h5py
@@ -17,46 +17,33 @@ from matsciml.datasets.schema import DatasetSchema, DataSampleSchema
 logger = getLogger("matsciml.datasets.MatSciMLDataset")
 
 
-def write_data_to_hdf5(
-    h5_file: h5py.File, index: int, content: DataSampleSchema, overwrite: bool
-) -> None:
+def write_data_to_hdf5_group(key: str, data: Any, h5_group: h5py.Group) -> None:
     """
-    Functional way to write a data sample to an HDF5 file.
+    Writes data recursively to an HDF5 group.
+
+    For dictionary data, we will create a new group and call this
+    same function to write the subkey/values within the new group.
+
+    For strings, the data is written to the ``attrs``.
 
     Parameters
     ----------
-    h5_file : h5py.File
-        Open instance of an HDF5 file in ``h5py``.
-    index : int
-        Index to write data to.
-    content : DataSampleSchema
-        Data sample to write, contained in a ``DataSampleSchema`` instance.
-    overwrite : bool
-        If True, will delete an existing ``index`` group in the HDF5
-        file if it exists.
-
-    Raises
-    ------
-    IndexError:
-        If a sample of data already exists at the specified index while
-        overwrite is set to False.
+    key : str
+        Key to write the data to; this will create a new
+        ``h5py.Dataset`` object under this name within the group.
+    data : Any
+        Any data to write to the HDF5 group.
+    h5_group : h5py.Group
+        Instance of an ``h5py.Group`` to write datasets to.
     """
-    assert any(
-        [letter in h5_file.mode for letter in ["w", "x", "a"]]
-    ), f"HDF5 file must be open for writing; mode set to {h5_file.mode}."
-    if overwrite:
-        # if allowed to overwrite, we delete the existing
-        # data and group
-        if index in h5_file:
-            del h5_file[index]
-    # this will fail if it exists and overwrite is False
-    try:
-        group = h5_file.create_group(index)
-    except Exception as e:
-        raise IndexError(f"Index {index} already exists in HDF5 file.") from e
-    model_dict = content.model_dump()
-    for key, value in model_dict.items():
-        group[key] = value
+    if isinstance(data, dict):
+        subgroup = h5_group.create_group(key)
+        for subkey, subvalue in data.items():
+            write_data_to_hdf5_group(subkey, subvalue, subgroup)
+    elif isinstance(data, str):
+        h5_group.attrs[key] = data
+    else:
+        h5_group[key] = data
 
 
 class MatSciMLDataset(Dataset):
@@ -194,7 +181,10 @@ class MatSciMLDataset(Dataset):
             a ``RuntimeError`` will be raised.
         """
         with h5py.File(str(self.filepath).absolute(), "w") as h5_file:
-            write_data_to_hdf5(h5_file, index, sample, overwrite)
+            group = h5_file.create_group(str(index))
+            sample_data = sample.model_dump(round_trip=True)
+            for key, value in sample_data.items():
+                write_data_to_hdf5_group(key, value, group)
 
     @cache
     def __len__(self) -> int:
