@@ -27,6 +27,7 @@ import torch
 
 from matsciml.common.packages import package_registry
 from matsciml.common.inspection import get_all_args
+from matsciml.common.types import Embeddings, ModelOutput
 from matsciml.modules.normalizer import Normalizer
 from matsciml.datasets.transforms import PeriodicPropertiesTransform
 from matsciml.datasets.utils import cart_frac_conversion
@@ -1066,6 +1067,8 @@ def collate_samples_into_batch_schema(samples: list[DataSampleSchema]) -> object
         "batch_size": (int, ...),
         "graph": (Any | None, None),
         "num_edges": (NDArray[Shape["*"], int] | torch.LongTensor | None, None),
+        "embeddings": (Embeddings | None, None),
+        "outputs": (ModelOutput | None, None),
     }
     collected_data = {}  # holds all the data to unpack into the generated schema
     # check to see if graphs are present
