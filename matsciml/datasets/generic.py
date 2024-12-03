@@ -409,7 +409,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             raise RuntimeError("No .h5 files found in target directory.")
         self._h5_files = h5_files
 
-    def setup(self, stage: str):
+    def setup(self, stage: str | None = None) -> None:
         # check and set the available HDF5 data files
         self.h5_files = self.hparams.filepath
         self.datasets = {
