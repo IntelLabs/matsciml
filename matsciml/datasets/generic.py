@@ -242,7 +242,45 @@ class MatSciMLDataset(Dataset):
         with self.read_data() as h5_data:
             return list(h5_data.keys())
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index: int) -> DataSampleSchema:
+        """
+        Retrieves a sample from the present dataset.
+
+        Data samples are organized into top-level ``h5py.Group``s,
+        and the passed ``index`` value maps onto the underlying
+        ``data_index`` which corresponds to the index the data sample
+        originally had before splits.
+
+        We recursively read in data contained within a group, and
+        use the key/values to reconstruct and validate with a ``DataSampleSchema``.
+        Finally, we apply transforms if they are provided to this object,
+        and return it.
+
+        Parameters
+        ----------
+        index : int
+            Integer corresponding to a value within the range of
+            the dataset length. This may or may not coincide with
+            the actual ``h5py.Group`` keys, but refers to the ``keys``
+            property of ``MatSciMLDataset`` to retrieve the 'real'
+            key to read with.
+
+        Returns
+        -------
+        DataSampleSchema
+            Data sample from disk after validation, and transforms
+            applied if relevant.
+
+        Raises
+        ------
+        KeyError:
+            If the data sample index is missing from the dataset.
+        KeyError:
+            If a target key is defined in the metadata, but missing
+            from the dictionary before passing into ``DataSampleSchema``.
+        RuntimeError:
+            If a transform was unable to be applied to the ``DataSampleSchema``.
+        """
         data_index = self.keys[index]
         with self.read_data() as h5_data:
             try:
