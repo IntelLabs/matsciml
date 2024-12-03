@@ -484,6 +484,9 @@ class DatasetSchema(MatsciMLSchema):
         Mean/std values for the nodes per data sample.
     edge_stats : NormalizationSchema, optional
         Mean/std values for the number of edges per data sample.
+    seed : int, optional
+        Random seed used to generate the splits. This is kept optional
+        in the case where splits are not randomly generated.
     """
 
     name: str
@@ -497,6 +500,7 @@ class DatasetSchema(MatsciMLSchema):
     normalization: dict[str, NormalizationSchema] | None = None
     node_stats: NormalizationSchema | None = None
     edge_stats: NormalizationSchema | None = None
+    seed: int | None = None
 
     @classmethod
     def from_json_file(cls, json_path: PathLike) -> Self:
