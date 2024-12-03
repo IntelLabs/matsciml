@@ -181,6 +181,8 @@ class MatSciMLDataset(Dataset):
             a ``RuntimeError`` will be raised.
         """
         with h5py.File(str(self.filepath).absolute(), "w") as h5_file:
+            if overwrite and str(index) in h5_file:
+                del h5_file[str(index)]
             group = h5_file.create_group(str(index))
             sample_data = sample.model_dump(round_trip=True)
             for key, value in sample_data.items():
