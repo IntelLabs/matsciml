@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Literal, Any, Self
 from os import PathLike
 from pathlib import Path
-import json
 import re
 
 from ase import Atoms
@@ -95,7 +94,7 @@ class MatsciMLSchema(BaseModel):
         if not isinstance(json_path, Path):
             json_path = Path(json_path)
         with open(json_path.with_suffix(".json"), "w+") as write_file:
-            json.dump(self.model_dump(), write_file, indent=2)
+            write_file.write(self.model_dump_json(round_trip=True, indent=2))
 
 
 class DataSampleEnum(str, Enum):
