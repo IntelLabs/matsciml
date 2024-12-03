@@ -338,6 +338,9 @@ class MatSciMLDataModule(pl.LightningDataModule):
             If the provided filepath is not a directory, this method
             will raise a ``RuntimeError``.
         """
+        loader_kwargs.setdefault("num_workers", 0)
+        loader_kwargs.setdefault("persistent_workers", False)
+        loader_kwargs.setdefault("batch_size", 8)
         super().__init__()
         if not isinstance(filepath, Path):
             filepath = Path(filepath)
