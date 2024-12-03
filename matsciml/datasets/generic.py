@@ -201,6 +201,12 @@ class MatSciMLDataset(Dataset):
         with self.read_data() as h5_data:
             return len(h5_data.keys())
 
+    @property
+    @cache
+    def keys(self) -> list[str]:
+        with self.read_data() as h5_data:
+            return list(h5_data.keys())
+
     def __getitem__(self, index: int):
         index = str(index)
         with self.read_data() as h5_data:
