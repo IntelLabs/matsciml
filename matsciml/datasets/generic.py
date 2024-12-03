@@ -290,7 +290,13 @@ class MatSciMLDataset(Dataset):
             sample_data = read_hdf5_data(sample_group)
             # validate expected data
             for target in self.metadata.targets:
-                if target.name not in sample_data:
+                is_missing = True
+                if target.name in sample_data:
+                    is_missing = False
+                if "extras" in sample_data:
+                    if target.name in sample_data["extras"]:
+                        is_missing = False
+                if is_missing:
                     raise KeyError(
                         f"Expected {target.name} in data sample but not found."
                     )
