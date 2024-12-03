@@ -708,6 +708,9 @@ class DataSampleSchema(MatsciMLSchema):
         does not fit under any of the currently defined fields, but
         is not recommended as it bypasses any of the type and shape
         validations that ``pydantic``/``numpydantic`` provides.
+    transform_store : dict[str, Any], optional
+        Dictionary storage for transform results. This is a way to organize
+        products of transforms, e.g. instead of overwriting properties.
     """
 
     index: int
@@ -744,6 +747,7 @@ class DataSampleSchema(MatsciMLSchema):
     unit_offsets: NDArray[Shape["*, 3"], float] | None = None
     graph: Any = None
     extras: dict[str, Any] | None = None
+    transform_store: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
