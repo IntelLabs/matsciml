@@ -11,7 +11,11 @@ import h5py
 from torch.utils.data import DataLoader, Dataset
 from lightning import pytorch as pl
 
-from matsciml.datasets.schema import DatasetSchema, DataSampleSchema
+from matsciml.datasets.schema import (
+    DatasetSchema,
+    DataSampleSchema,
+    collate_samples_into_batch_schema,
+)
 
 
 logger = getLogger("matsciml.datasets.MatSciMLDataset")
@@ -434,26 +438,38 @@ class MatSciMLDataModule(pl.LightningDataModule):
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.datasets["train"], shuffle=True, **self.hparams.loader_kwargs
+            self.datasets["train"],
+            shuffle=True,
+            **self.hparams.loader_kwargs,
+            collate_fn=collate_samples_into_batch_schema,
         )
 
     def val_dataloader(self) -> DataLoader | None:
         if "validation" not in self.datasets:
             return None
         return DataLoader(
-            self.datasets["validation"], shuffle=False, **self.hparams.loader_kwargs
+            self.datasets["validation"],
+            shuffle=False,
+            **self.hparams.loader_kwargs,
+            collate_fn=collate_samples_into_batch_schema,
         )
 
     def test_dataloader(self) -> DataLoader | None:
         if "test" not in self.datasets:
             return None
         return DataLoader(
-            self.datasets["test"], shuffle=False, **self.hparams.loader_kwargs
+            self.datasets["test"],
+            shuffle=False,
+            **self.hparams.loader_kwargs,
+            collate_fn=collate_samples_into_batch_schema,
         )
 
     def predict_dataloader(self) -> DataLoader | None:
         if "predict" not in self.datasets:
             return None
         return DataLoader(
-            self.datasets["predict"], shuffle=False, **self.hparams.loader_kwargs
+            self.datasets["predict"],
+            shuffle=False,
+            **self.hparams.loader_kwargs,
+            collate_fn=collate_samples_into_batch_schema,
         )
