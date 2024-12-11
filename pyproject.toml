@@ -18,7 +18,7 @@ dependencies = [
   "lightning>=2.4.0",
   "dgl>=2.0.0",
   "dgllife==0.3.2",
-  "rdkit==2023.9.5",
+  "rdkit==2024.3.6",
   "numba>=0.55.0",
   "numpy>=1.21.0, < 2.0.0",   # not all packages have migrated to >2.0 yet
   "matplotlib",
