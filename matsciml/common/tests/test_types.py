@@ -31,9 +31,10 @@ def test_incorrect_force_shape():
         types.ModelOutput(batch_size=8, forces=torch.rand(32, 4, 3))
 
 
-def test_consistency_check_pass():
+@pytest.mark.parametrize("batch_size", [1, 2, 4, 8, 16])
+def test_consistency_check_pass(batch_size):
     types.ModelOutput(
-        batch_size=8, forces=torch.rand(32, 3), node_energies=torch.rand(32, 1)
+        batch_size=batch_size, forces=torch.rand(32, 3), node_energies=torch.rand(32, 1)
     )
 
 
