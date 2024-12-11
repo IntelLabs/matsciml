@@ -32,9 +32,17 @@ def test_incorrect_force_shape():
 
 
 @pytest.mark.parametrize("batch_size", [1, 2, 4, 8, 16])
-def test_consistency_check_pass(batch_size):
+@pytest.mark.parametrize("is_unsqueeze", [True, False])
+def test_consistency_check_pass(batch_size, is_unsqueeze):
+    energies = torch.rand(batch_size)
+    # this imitates models that might keep redundant dimensions
+    if is_unsqueeze:
+        energies.unsqueeze_(-1)
     types.ModelOutput(
-        batch_size=batch_size, forces=torch.rand(32, 3), node_energies=torch.rand(32, 1)
+        batch_size=batch_size,
+        forces=torch.rand(32, 3),
+        node_energies=torch.rand(32, 1),
+        total_energy=energies,
     )
 
 
