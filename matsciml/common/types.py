@@ -148,7 +148,7 @@ class ModelOutput(BaseModel):
             if values.ndim == 0:
                 values = values.unsqueeze(0)
             # last step is an assertion check for QA
-            if values.ndim != 1:
+            if values.numel() != 1 and values.ndim != 1:
                 raise ValueError(
                     f"Expected graph/system energies to be scalar; got shape {values.shape}"
                 )
