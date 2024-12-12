@@ -23,7 +23,7 @@ dependencies = [
   "numpy>=1.21.0, < 2.0.0",   # not all packages have migrated to >2.0 yet
   "matplotlib",
   "munch>=2.5.0",
-  "lmdb==1.4.1",
+  "lmdb==1.5.1",
   "geometric-algebra-attention>=0.3.0",
   "sympy>=1.10.1",
   "jsonargparse[signatures]>=4.27.7",
