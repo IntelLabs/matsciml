@@ -71,7 +71,7 @@ pyg = [
   "pybind11"
 ]
 symmetry = [
-  "rowan==1.3.0.post1",
+  "rowan==1.3.2",
 ]
 
 [tool.setuptools.packages.find]
