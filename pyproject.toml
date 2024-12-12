@@ -27,7 +27,7 @@ dependencies = [
   "geometric-algebra-attention>=0.3.0",
   "sympy>=1.10.1",
   "jsonargparse[signatures]>=4.27.7",
-  "mp_api==0.41.2",
+  "mp_api==0.43.0",
   "emmet-core==0.83.6",
   "pymatgen==2024.3.1",
   "schema>=0.7.5",
