@@ -1,0 +1,61 @@
+FROM mambaorg/micromamba:noble AS oneapi_xpu
+SHELL ["/bin/bash", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+# for setup run with root
+USER 0
+# needed to make sure mamba environment is activated
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+# VGID as an environment variable specifying the group ID for render on host
+# this needs to match, otherwise non-root users will not pick up cards
+ARG VGID=993
+# install firmware, oneAPI, etc.
+RUN apt-get update -y && apt-get install -y software-properties-common wget git make g++ gcc gpg-agent
+RUN wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+    | gpg --dearmor > /usr/share/keyrings/intel-for-pytorch-gpu-dev-keyring.gpg
+RUN echo "deb [signed-by=/usr/share/keyrings/intel-for-pytorch-gpu-dev-keyring.gpg] https://apt.repos.intel.com/intel-for-pytorch-gpu-dev all main" > /etc/apt/sources.list.d/intel-for-pytorch-gpu-dev.list
+RUN wget -qO - https://repositories.intel.com/gpu/intel-graphics.key \
+    | gpg --yes --dearmor --output /usr/share/keyrings/intel-graphics.gpg
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu noble unified" > /etc/apt/sources.list.d/intel-gpu-noble.list
+RUN apt-get update -y && \
+	apt-get upgrade -y && \
+	apt-get install -y git make g++ gcc gpg-agent wget \
+        intel-for-pytorch-gpu-dev-0.5 \
+        intel-pti-dev \
+        cmake \
+        tzdata \
+        zlib1g zlib1g-dev \
+        xpu-smi \
+        intel-opencl-icd intel-level-zero-gpu libze1 intel-oneapi-mpi \
+        intel-media-va-driver-non-free libmfx1 libmfxgen1 libvpl2 \
+        libegl-mesa0 libegl1-mesa-dev libgbm1 libgl1-mesa-dev libgl1-mesa-dri \
+        libglapi-mesa libgles2-mesa-dev libglx-mesa0 libigdgmm12 libxatracker2 mesa-va-drivers \
+        mesa-vdpau-drivers mesa-vulkan-drivers va-driver-all vainfo hwinfo clinfo
+# make sure oneAPI components are in environment variables
+RUN source /opt/intel/oneapi/setvars.sh
+# make it so you don't have to source oneAPI every time
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+FROM oneapi_xpu
+# set aliases so python and pip are met
+RUN ln -s /opt/conda/bin/python /usr/local/bin/python && ln -s /opt/conda/bin/pip /usr/local/bin/pip
+# clone matsciml into container and install
+RUN git clone https://github.com/IntelLabs/matsciml /opt/matsciml
+WORKDIR /opt/matsciml
+# install packages, particularly xpu torch from nightly wheels
+RUN micromamba install -y -n base -f conda.yml && \
+    pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/xpu && \
+    pip install -e './[all]'
+RUN micromamba clean --all --yes && rm -rf /opt/xpu-backend /var/lib/apt/lists/*
+# let non-root mamba user have access to GPUS
+RUN groupadd -g $VGID render && usermod -a -G video,render $MAMBA_USER
+# make conda read-writable for user
+RUN chown -R $MAMBA_USER:$MAMBA_USER /opt/matsciml && chown -R $MAMBA_USER:$MAMBA_USER /opt/conda
+# change back to non-root user
+USER $MAMBA_USER
+LABEL org.opencontainers.image.authors="Kin Long Kelvin Lee"
+LABEL org.opencontainers.image.vendor="Intel Labs"
+LABEL org.opencontainers.image.base.name="amr-registry.caas.intel.com/aipg/kinlongk-pytorch:nightly"
+LABEL org.opencontainers.image.title="kinlongk-pytorch"
+LABEL org.opencontainers.image.description="XPU enabled PyTorch+Triton from Github artifact wheel builds."
+HEALTHCHECK NONE

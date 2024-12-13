@@ -1,0 +1,29 @@
+FROM amr-registry.caas.intel.com/aipg/kinlongk-pytorch:nightly-xpu
+# for setup run with root
+USER 0
+# needed to make sure mamba environment is activated
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+# install packages, particularly xpu torch from nightly wheels
+RUN pip install torch-geometric
+# DGl is currently unsupported, and uses libtorch so we need to build it
+WORKDIR /opt/matsciml
+COPY . .
+RUN pip install -e .
+RUN git clone --recurse-submodules https://github.com/dmlc/dgl.git /opt/dgl
+ENV DGL_HOME=/opt/dgl
+WORKDIR /opt/dgl/build
+RUN cmake -DUSE_CUDA=OFF -DPython3_EXECUTABLE=/opt/conda/bin/python .. && make
+WORKDIR /opt/dgl/python
+RUN pip install .
+RUN micromamba clean --all --yes && rm -rf /opt/xpu-backend /var/lib/apt/lists/*
+# make conda read-writable for user
+RUN chown -R $MAMBA_USER:$MAMBA_USER /opt/matsciml && chown -R $MAMBA_USER:$MAMBA_USER /opt/conda
+# change back to non-root user
+USER $MAMBA_USER
+LABEL org.opencontainers.image.authors="Kin Long Kelvin Lee"
+LABEL org.opencontainers.image.vendor="Intel Labs"
+LABEL org.opencontainers.image.base.name="amr-registry.caas.intel.com/aipg/kinlongk-pytorch:nightly"
+LABEL org.opencontainers.image.title="kinlongk-pytorch"
+LABEL org.opencontainers.image.description="XPU enabled PyTorch+Triton from Github artifact wheel builds."
+HEALTHCHECK NONE
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

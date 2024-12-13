@@ -20,6 +20,8 @@ from matsciml.datasets.nomad import NomadDataset
 from matsciml.datasets.ocp_datasets import IS2REDataset, S2EFDataset
 from matsciml.datasets.oqmd import OQMDDataset
 from matsciml.datasets.symmetry import SyntheticPointGroupDataset
+from matsciml.datasets.schema import DatasetSchema, DataSampleSchema
+from matsciml.datasets.generic import MatSciMLDataset, MatSciMLDataModule
 
 __all__ = [
     "AlexandriaDataset",
@@ -34,4 +36,8 @@ __all__ = [
     "SyntheticPointGroupDataset",
     "MultiDataset",
     "ColabFitDataset",
+    "DatasetSchema",
+    "DataSampleSchema",
+    "MatSciMLDataModule",
+    "MatSciMLDataset",
 ]
