@@ -4,8 +4,6 @@ import pickle
 from dataclasses import dataclass
 from collections.abc import Generator
 from functools import lru_cache, partial
-from ase.geometry import Cell, cellpar_to_cell, complete_cell
-from ase.neighborlist import NeighborList
 from os import makedirs
 from pathlib import Path
 from typing import Any, Callable
@@ -20,6 +18,7 @@ from joblib import Parallel, delayed
 from pymatgen.core import Lattice, Structure
 from tqdm import tqdm
 import ase
+from ase.geometry import Cell, cellpar_to_cell, complete_cell
 from ase.neighborlist import neighbor_list
 
 from matsciml.common import package_registry

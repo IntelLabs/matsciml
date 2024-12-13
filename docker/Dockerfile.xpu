@@ -26,7 +26,7 @@ RUN apt-get update -y && \
         tzdata \
         zlib1g zlib1g-dev \
         xpu-smi \
-        intel-opencl-icd intel-level-zero-gpu libze1 intel-oneapi-mpi \ 
+        intel-opencl-icd intel-level-zero-gpu libze1 intel-oneapi-mpi \
         intel-media-va-driver-non-free libmfx1 libmfxgen1 libvpl2 \
         libegl-mesa0 libegl1-mesa-dev libgbm1 libgl1-mesa-dev libgl1-mesa-dri \
         libglapi-mesa libgles2-mesa-dev libglx-mesa0 libigdgmm12 libxatracker2 mesa-va-drivers \
