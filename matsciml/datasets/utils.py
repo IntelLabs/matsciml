@@ -680,7 +680,7 @@ class Edge:
 
     def __str__(self) -> str:
         """Represents the edge without phase or parity information. Mainly for hashing."""
-        return f"Sorted src/dst: {self.sorted_index}, |image|: {self.unsigned_image}"
+        return f"src/dst: {self.sorted_index}, image: {self.image}"
 
     def __hash__(self) -> int:
         """
@@ -713,9 +713,11 @@ class Edge:
         else:
             idx = self.sorted_index
         if self.exclude_mirror:
-            img = (self.image, -1 * self.image)
+            img = np.vstack([self.image, -1 * self.image])
+            # this makes including the mirror image permutation invariant
+            img.sort(axis=0)
         else:
-            img = self.image.copy()
+            img = self.image
         rep = f"{idx}{img}"
 
         return hash(rep)
