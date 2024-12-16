@@ -639,25 +639,37 @@ class Edge:
     def sorted_index(self) -> tuple[int, int]:
         return (min(self.src, self.dst), max(self.src, self.dst))
 
-    @property
-    def unsigned_image(self) -> np.ndarray:
+    @staticmethod
+    def _compare_mirror_images(image_a: np.ndarray, image_b: np.ndarray) -> bool:
         """
-        Returns the absolute image indices.
+        Compare two images whilst factoring in whether they are mirror
+        images or not.
 
-        This is used when considering parity-inversion,
-        i.e. two edges are equivalent if they are in
-        in mirroring cell images.
+        The equivalence check looks at both the positive and negative
+        versions of ``image_a`` with ``image_b``.
+
+        Parameters
+        ----------
+        image_a : np.ndarray
+            1x3 vector of image indices for one image
+        image_b : np.ndarray
+            1x3 vector of image indices for the other image
 
         Returns
         -------
-        np.ndarray
-            Indices without parity
+        bool
+            Returns True if either the exact, or mirror image of
+            ``image_a`` is equivalent to ``image_b``.
         """
-        return np.abs(self.image)
+        return np.any([np.all(image_a == image_b), np.all((-1 * image_a) == image_b)])
 
     def __eq__(self, other: Edge) -> bool:
         index_eq = self.sorted_index == other.sorted_index
-        image_eq = np.all(self.unsigned_image == other.unsigned_image)
+        # for interactions with the same atom between neighboring images
+        if self.src != self.dst:
+            image_eq = True  # shortcut since this is more likely to occur
+        else:
+            image_eq = self._compare_mirror_images(self.image, other.image)
         return all([index_eq, image_eq])
 
     def __str__(self) -> str:
