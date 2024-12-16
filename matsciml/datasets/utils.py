@@ -661,7 +661,7 @@ class Edge:
             Returns True if either the exact, or mirror image of
             ``image_a`` is equivalent to ``image_b``.
         """
-        return np.any([np.all(image_a == image_b), np.all((-1 * image_a) == image_b)])
+        return any([np.all(image_a == image_b), np.all((-1 * image_a) == image_b)])
 
     def __eq__(self, other: Edge) -> bool:
         index_eq = self.sorted_index == other.sorted_index
