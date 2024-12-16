@@ -634,6 +634,8 @@ class Edge:
     src: int
     dst: int
     image: np.ndarray
+    is_directed: bool
+    exclude_mirror: bool
 
     @property
     def sorted_index(self) -> tuple[int, int]:
