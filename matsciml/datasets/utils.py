@@ -708,8 +708,17 @@ class Edge:
         int
             Permutation invariant hash of this edge.
         """
+        if self.is_directed:
+            idx = (self.src, self.dst)
+        else:
+            idx = self.sorted_index
+        if self.exclude_mirror:
+            img = (self.image, -1 * self.image)
+        else:
+            img = self.image.copy()
+        rep = f"{idx}{img}"
 
-        return hash(str(self))
+        return hash(rep)
 
 
 def make_pymatgen_periodic_structure(
