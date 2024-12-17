@@ -865,7 +865,6 @@ def calculate_periodic_shifts(
                     site.index,
                     np.array(site.image),
                     is_directed,
-                    exclude_mirror,
                 )
             )
     # now only keep the edges after the first loop
@@ -969,7 +968,7 @@ def calculate_ase_periodic_shifts(
     keep = set()
     # only keeps undirected edges that are unique
     for src, dst, image in zip(all_src, all_dst, all_images):
-        keep.add(Edge(src=src, dst=dst, image=image))
+        keep.add(Edge(src=src, dst=dst, image=image, is_directed=is_directed))
     # keep.add(Edge(src, dst, image, is_directed, exclude_mirror))
 
     all_src, all_dst, all_images = [], [], []
