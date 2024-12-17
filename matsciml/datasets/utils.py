@@ -608,7 +608,7 @@ def element_types():
 
 class Edge:
     def __init__(
-        self, src: int, dst: int, image: np.ndarray, is_directed: bool = False
+        self, src: int, dst: int, image: np.ndarray, is_undirected: bool = False
     ):
         """
         Initializes the Edge object with the source, destination,
@@ -622,7 +622,7 @@ class Edge:
         image : np.ndarray
             1D vector of three elements as a ``np.ndarray``.
         """
-        if is_directed:
+        if is_undirected:
             if src > dst:
                 # Enforce directed order
                 src, dst, image = dst, src, -image
@@ -632,7 +632,7 @@ class Edge:
         self.src = src
         self.dst = dst
         self.image = image
-        self.is_directed = is_directed
+        self.is_undirected = is_undirected
 
     @staticmethod
     def _canonicalize_image(image: np.ndarray) -> np.ndarray:
@@ -686,7 +686,7 @@ class Edge:
         """
         if not isinstance(other, Edge):
             return False
-        if self.is_directed:
+        if self.is_undirected:
             node_eq = self.directed_index == other.directed_index
         else:
             node_eq = (self.src == other.src) and (self.dst == other.dst)
@@ -968,7 +968,7 @@ def calculate_ase_periodic_shifts(
     keep = set()
     # only keeps undirected edges that are unique
     for src, dst, image in zip(all_src, all_dst, all_images):
-        keep.add(Edge(src=src, dst=dst, image=image, is_directed=is_directed))
+        keep.add(Edge(src=src, dst=dst, image=image, is_undirected=is_directed))
     # keep.add(Edge(src, dst, image, is_directed, exclude_mirror))
 
     all_src, all_dst, all_images = [], [], []
