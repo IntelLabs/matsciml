@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pickle
-from dataclasses import dataclass
 from collections.abc import Generator
 from functools import lru_cache, partial
 from os import makedirs
@@ -607,120 +606,114 @@ def element_types():
     return list(atomic_number_map().keys())
 
 
-@dataclass
 class Edge:
-    """
-    Implements a data structure for edge redundancy comparison
-    with a syntactic sugar.
-
-    Implements a ``sorted_index`` property to returns a pair
-    of indices for the edge, irrespective of direction. This,
-    in addition to the ``image`` of the edge is used in the
-    ``__eq__`` comparison.
-
-    Finally, ``__hash__`` is based off the string representation
-    of this object, making it hashable and usable in sets.
-
-    Attributes
-    ----------
-    src : int
-        Index of the source node of the edge.
-    dst : int
-        Index of the destination node of the edge.
-    image : np.ndarray
-        1D vector of three elements as a ``np.ndarray``.
-    """
-
-    src: int
-    dst: int
-    image: np.ndarray
-    is_directed: bool
-    exclude_mirror: bool
-
-    @property
-    def sorted_index(self) -> tuple[int, int]:
-        return (min(self.src, self.dst), max(self.src, self.dst))
+    def __init__(
+        self, src: int, dst: int, image: np.ndarray, is_directed: bool = False
+    ):
+        """
+        Initializes the Edge object with the source, destination,
+        and image, ensuring directionality and handling self-loops.
+        Parameters
+        ----------
+        src : int
+            Index of the source node of the edge.
+        dst : int
+            Index of the destination node of the edge.
+        image : np.ndarray
+            1D vector of three elements as a ``np.ndarray``.
+        """
+        if is_directed:
+            if src > dst:
+                # Enforce directed order
+                src, dst, image = dst, src, -image
+        if src == dst:
+            # For self-loops, enforce a canonical form of the image
+            image = self._canonicalize_image(image)
+        self.src = src
+        self.dst = dst
+        self.image = image
+        self.is_directed = is_directed
 
     @staticmethod
-    def _compare_mirror_images(image_a: np.ndarray, image_b: np.ndarray) -> bool:
+    def _canonicalize_image(image: np.ndarray) -> np.ndarray:
         """
-        Compare two images whilst factoring in whether they are mirror
-        images or not.
+        Canonicalizes the image vector for self-loops to ensure consistent
+        representation, eliminating mirrored duplicates.
+        Parameters
+        ----------
+        image : np.ndarray
+            The image vector to canonicalize.
+        Returns
+        -------
+        np.ndarray
+            The canonicalized image vector.
+        """
+        # Find the first non-zero component
+        for i in range(len(image)):
+            if image[i] != 0:
+                # Flip the image if the first non-zero component is negative
+                if image[i] < 0:
+                    return -image
+                break
+        return image
 
-        The equivalence check looks at both the positive and negative
-        versions of ``image_a`` with ``image_b``.
+    @property
+    def directed_index(self) -> tuple[int, int]:
+        """
+        Returns the directed pair of indices for the edge.
+
+        Returns
+        -------
+        tuple[int, int]
+            The pair (src, dst) with src < dst.
+        """
+        return self.src, self.dst
+
+    def __eq__(self, other) -> bool:
+        """
+        Compares two edges for equality, considering both the
+        directed (src, dst) pair and the image.
 
         Parameters
         ----------
-        image_a : np.ndarray
-            1x3 vector of image indices for one image
-        image_b : np.ndarray
-            1x3 vector of image indices for the other image
+        other : Edge
+            The other edge to compare against.
 
         Returns
         -------
         bool
-            Returns True if either the exact, or mirror image of
-            ``image_a`` is equivalent to ``image_b``.
+            True if the edges are equivalent, otherwise False.
         """
-        return any([np.all(image_a == image_b), np.all((-1 * image_a) == image_b)])
-
-    def __eq__(self, other: Edge) -> bool:
+        if not isinstance(other, Edge):
+            return False
         if self.is_directed:
-            # if we care about directionality, equality is based on exact match
-            index_eq = (self.src, self.dst) == (other.src, other.dst)
+            node_eq = self.directed_index == other.directed_index
         else:
-            # otherwise, equality is based only on pair of nodes
-            index_eq = self.sorted_index == other.sorted_index
-        # for interactions with the same atom between neighboring images
-        image_eq = True
-        if self.src == self.dst and self.exclude_mirror:
-            image_eq = self._compare_mirror_images(self.image, other.image)
-        return all([index_eq, image_eq])
+            node_eq = (self.src == other.src) and (self.dst == other.dst)
+        return node_eq and np.array_equal(self.image, other.image)
 
     def __str__(self) -> str:
-        """Represents the edge without phase or parity information. Mainly for hashing."""
-        return f"src/dst: {self.sorted_index}, image: {self.image}"
+        """
+        Represents the edge with the directed pair (src, dst) and image.
+
+        Returns
+        -------
+        str
+            A string representation of the edge.
+        """
+        return f"Directed src/dst: {self.directed_index}, image: {self.image}"
 
     def __hash__(self) -> int:
         """
-        This hash method is primarily intended for use in
-        ``set`` comparisons to check for uniqueness.
-
-        The general idea for edge-uniqueness is assuming
-        the undirected case where ``src`` and ``dst``
-        is exchangable, and when not considering phase
-        for image indices.
-
-        As an example, the following two edges are
-        equivalent as they have interchangable ``src``
-        and ``dst`` indices, **and** the displacement
-        owing to image offsets is the same - just in
-        opposite directions,
-
-        ```
-        Edge(src=1, dst=7, image=[-1, 0, 0])
-        Edge(src=7, dst=1, image[1, 0, 0])
-        ```
+        Hashes the edge for use in sets and dicts.
+        The hash is based on the directed (src, dst) pair and the image.
 
         Returns
         -------
         int
-            Permutation invariant hash of this edge.
+            The hash of this edge.
         """
-        if self.is_directed:
-            idx = (self.src, self.dst)
-        else:
-            idx = self.sorted_index
-        if self.exclude_mirror:
-            img = np.vstack([self.image, -1 * self.image])
-            # this makes including the mirror image permutation invariant
-            img.sort(axis=0)
-        else:
-            img = self.image
-        rep = f"{idx}{img}"
-
-        return hash(rep)
+        return hash((self.directed_index, tuple(self.image)))
 
 
 def make_pymatgen_periodic_structure(
@@ -794,6 +787,8 @@ def calculate_periodic_shifts(
     cutoff: float,
     adaptive_cutoff: bool = False,
     max_neighbors: int = 1000,
+    is_directed: bool = False,
+    exclude_mirror: bool = True,
 ) -> dict[str, torch.Tensor]:
     """
     Compute properties with respect to periodic boundary conditions.
@@ -864,7 +859,15 @@ def calculate_periodic_shifts(
     # only keeps undirected edges that are unique through set
     for src_idx, dst_sites in enumerate(neighbors):
         for site in dst_sites:
-            keep.add(Edge(src_idx, site.index, np.array(site.image)))
+            keep.add(
+                Edge(
+                    src_idx,
+                    site.index,
+                    np.array(site.image),
+                    is_directed,
+                    exclude_mirror,
+                )
+            )
     # now only keep the edges after the first loop
     all_src, all_dst, all_images = [], [], []
     num_atoms = len(structure.atomic_numbers)
@@ -912,6 +915,8 @@ def calculate_ase_periodic_shifts(
     cutoff_radius: float,
     adaptive_cutoff: bool,
     max_neighbors: int = 1000,
+    is_directed: bool = False,
+    exclude_mirror: bool = True,
 ) -> dict[str, torch.Tensor]:
     """
     Calculate edges for the system using ``ase`` routines.
@@ -964,7 +969,8 @@ def calculate_ase_periodic_shifts(
     keep = set()
     # only keeps undirected edges that are unique
     for src, dst, image in zip(all_src, all_dst, all_images):
-        keep.add(Edge(src, dst, image))
+        keep.add(Edge(src=src, dst=dst, image=image))
+    # keep.add(Edge(src, dst, image, is_directed, exclude_mirror))
 
     all_src, all_dst, all_images = [], [], []
     num_atoms = len(atoms)
