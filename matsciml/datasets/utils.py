@@ -788,7 +788,6 @@ def calculate_periodic_shifts(
     adaptive_cutoff: bool = False,
     max_neighbors: int = 1000,
     is_undirected: bool = False,
-    exclude_mirror: bool = True,
 ) -> dict[str, torch.Tensor]:
     """
     Compute properties with respect to periodic boundary conditions.
@@ -915,7 +914,6 @@ def calculate_ase_periodic_shifts(
     adaptive_cutoff: bool,
     max_neighbors: int = 1000,
     is_undirected: bool = False,
-    exclude_mirror: bool = True,
 ) -> dict[str, torch.Tensor]:
     """
     Calculate edges for the system using ``ase`` routines.
