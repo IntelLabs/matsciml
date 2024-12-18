@@ -787,7 +787,7 @@ def calculate_periodic_shifts(
     cutoff: float,
     adaptive_cutoff: bool = False,
     max_neighbors: int = 1000,
-    is_directed: bool = False,
+    is_undirected: bool = False,
     exclude_mirror: bool = True,
 ) -> dict[str, torch.Tensor]:
     """
@@ -864,7 +864,7 @@ def calculate_periodic_shifts(
                     src_idx,
                     site.index,
                     np.array(site.image),
-                    is_directed,
+                    is_undirected,
                 )
             )
     # now only keep the edges after the first loop
@@ -914,7 +914,7 @@ def calculate_ase_periodic_shifts(
     cutoff_radius: float,
     adaptive_cutoff: bool,
     max_neighbors: int = 1000,
-    is_directed: bool = False,
+    is_undirected: bool = False,
     exclude_mirror: bool = True,
 ) -> dict[str, torch.Tensor]:
     """
@@ -968,8 +968,7 @@ def calculate_ase_periodic_shifts(
     keep = set()
     # only keeps undirected edges that are unique
     for src, dst, image in zip(all_src, all_dst, all_images):
-        keep.add(Edge(src=src, dst=dst, image=image, is_undirected=is_directed))
-    # keep.add(Edge(src, dst, image, is_directed, exclude_mirror))
+        keep.add(Edge(src=src, dst=dst, image=image, is_undirected=is_undirected))
 
     all_src, all_dst, all_images = [], [], []
     num_atoms = len(atoms)

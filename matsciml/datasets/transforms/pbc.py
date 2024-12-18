@@ -137,7 +137,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
                     self.cutoff_radius,
                     self.adaptive_cutoff,
                     max_neighbors=self.max_neighbors,
-                    is_directed=self.is_undirected,
+                    is_undirected=self.is_undirected,
                 )
                 data.update(graph_props)
                 return data
