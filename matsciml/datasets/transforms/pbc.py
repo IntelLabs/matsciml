@@ -29,6 +29,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
         allow_self_loops: bool = False,
         convert_to_unit_cell: bool = False,
         is_cartesian: bool | None = None,
+        is_undirected: bool = False,
     ) -> None:
         """
         Rewires an already present graph to include periodic boundary conditions.
@@ -90,6 +91,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
             )
         self.is_cartesian = is_cartesian
         self.convert_to_unit_cell = convert_to_unit_cell
+        self.is_undirected = is_undirected
 
     def __call__(self, data: DataDict) -> DataDict:
         """
@@ -135,6 +137,7 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
                     self.cutoff_radius,
                     self.adaptive_cutoff,
                     max_neighbors=self.max_neighbors,
+                    is_undirected=self.is_undirected,
                 )
                 data.update(graph_props)
                 return data
@@ -179,11 +182,19 @@ class PeriodicPropertiesTransform(AbstractDataTransform):
                 is_cartesian=self.is_cartesian,
             )
             graph_props = calculate_periodic_shifts(
-                structure, self.cutoff_radius, self.adaptive_cutoff, self.max_neighbors
+                structure,
+                self.cutoff_radius,
+                self.adaptive_cutoff,
+                self.max_neighbors,
+                self.is_undirected,
             )
         elif self.backend == "ase":
             graph_props = calculate_ase_periodic_shifts(
-                data, self.cutoff_radius, self.adaptive_cutoff, self.max_neighbors
+                data,
+                self.cutoff_radius,
+                self.adaptive_cutoff,
+                self.max_neighbors,
+                self.is_undirected,
             )
         else:
             raise RuntimeError(f"Requested backend f{self.backend} not available.")
