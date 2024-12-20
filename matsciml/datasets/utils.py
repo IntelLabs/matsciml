@@ -963,24 +963,28 @@ def calculate_ase_periodic_shifts(
     )
     # not really needed but good sanity check
     assert np.all(distances <= cutoff_radius)
-    keep = set()
-    # only keeps undirected edges that are unique
-    for src, dst, image in zip(all_src, all_dst, all_images):
-        keep.add(Edge(src=src, dst=dst, image=image, is_undirected=is_undirected))
 
-    all_src, all_dst, all_images = [], [], []
-    num_atoms = len(atoms)
-    counter = {index: 0 for index in range(num_atoms)}
-    for edge in keep:
-        # obey max_neighbors by not adding any more edges
-        if counter[edge.src] > max_neighbors or counter[edge.dst] > max_neighbors:
-            pass
-        else:
-            all_src.append(edge.src)
-            all_dst.append(edge.dst)
-            all_images.append(edge.image)
-            counter[edge.src] += 1
-            counter[edge.dst] += 1
+    # in the undirected case, we will filter out
+    # half of the edges as src/dst == dst/src for a given image
+    if is_undirected:
+        keep = set()
+        # only keeps undirected edges that are unique
+        for src, dst, image in zip(all_src, all_dst, all_images):
+            keep.add(Edge(src=src, dst=dst, image=image, is_undirected=is_undirected))
+
+        all_src, all_dst, all_images = [], [], []
+        num_atoms = len(atoms)
+        counter = {index: 0 for index in range(num_atoms)}
+        for edge in keep:
+            # obey max_neighbors by not adding any more edges
+            if counter[edge.src] > max_neighbors or counter[edge.dst] > max_neighbors:
+                pass
+            else:
+                all_src.append(edge.src)
+                all_dst.append(edge.dst)
+                all_images.append(edge.image)
+                counter[edge.src] += 1
+                counter[edge.dst] += 1
 
     frac_coords = torch.from_numpy(atoms.get_scaled_positions()).float()
     coords = torch.from_numpy(atoms.positions).float()
