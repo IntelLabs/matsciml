@@ -1103,7 +1103,7 @@ def collate_samples_into_batch_schema(samples: list[DataSampleSchema]) -> object
                     schema_to_generate[key] = (type(data), ...)
                     collected_data[key] = data
                 collected_data["num_edges"] = _concatenate_data_list(
-                    [sample.graph.batch_num_edges() for sample in samples]
+                    [sample.graph.edge_index.size(-1) for sample in samples]
                 ).long()
         else:
             from dgl import DGLGraph, batch
