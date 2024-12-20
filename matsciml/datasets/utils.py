@@ -881,7 +881,7 @@ def calculate_periodic_shifts(
         for src_idx, dst_sites in enumerate(neighbors):
             for site in dst_sites:
                 all_src.append(src_idx)
-                all_dst.append(site)
+                all_dst.append(site.index)
                 all_images.append(site.image)
     if any([len(obj) == 0 for obj in [all_src, all_dst, all_images]]):
         raise ValueError(
