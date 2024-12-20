@@ -854,32 +854,42 @@ def calculate_periodic_shifts(
         raise ValueError(
             f"No neighbors detected for structure with cutoff {cutoff}; {structure}"
         )
-    keep = set()
-    # only keeps undirected edges that are unique through set
-    for src_idx, dst_sites in enumerate(neighbors):
-        for site in dst_sites:
-            keep.add(
-                Edge(
-                    src_idx,
-                    site.index,
-                    np.array(site.image),
-                    is_undirected,
+    # if we assume undirected edges, apply a filter
+    if is_undirected:
+        keep = set()
+        # only keeps undirected edges that are unique through set
+        for src_idx, dst_sites in enumerate(neighbors):
+            for site in dst_sites:
+                keep.add(
+                    Edge(
+                        src_idx,
+                        site.index,
+                        np.array(site.image),
+                        is_undirected,
+                    )
                 )
-            )
-    # now only keep the edges after the first loop
-    all_src, all_dst, all_images = [], [], []
-    num_atoms = len(structure.atomic_numbers)
-    counter = {index: 0 for index in range(num_atoms)}
-    for edge in keep:
-        # stop adding edges if either src/dst have accumulated enough neighbors
-        if counter[edge.src] > max_neighbors or counter[edge.dst] > max_neighbors:
-            pass
-        else:
-            all_src.append(edge.src)
-            all_dst.append(edge.dst)
-            all_images.append(edge.image)
-            counter[edge.src] += 1
-            counter[edge.dst] += 1
+        # now only keep the edges after the first loop
+        all_src, all_dst, all_images = [], [], []
+        num_atoms = len(structure.atomic_numbers)
+        counter = {index: 0 for index in range(num_atoms)}
+        for edge in keep:
+            # stop adding edges if either src/dst have accumulated enough neighbors
+            if counter[edge.src] > max_neighbors or counter[edge.dst] > max_neighbors:
+                pass
+            else:
+                all_src.append(edge.src)
+                all_dst.append(edge.dst)
+                all_images.append(edge.image)
+                counter[edge.src] += 1
+                counter[edge.dst] += 1
+    # alternatively, just add the edges as is from pymatgen
+    else:
+        all_src, all_dst, all_images = [], [], []
+        for src_idx, dst_sites in enumerate(neighbors):
+            for site in dst_sites:
+                all_src.append(src_idx)
+                all_dst.append(site)
+                all_images.append(site.image)
     if any([len(obj) == 0 for obj in [all_src, all_dst, all_images]]):
         raise ValueError(
             f"No images or edges to work off for cutoff {cutoff}."
