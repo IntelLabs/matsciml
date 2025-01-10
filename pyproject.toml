@@ -37,7 +37,7 @@ dependencies = [
   "mendeleev>=0.17.0",
   "e3nn",
   "mace-torch==0.3.6",
-  "monty==2024.2.2",
+  "monty==2025.1.9",
   "loguru",
   "numpydantic>=1.6.4",
   "pydantic>=2.9.2",
