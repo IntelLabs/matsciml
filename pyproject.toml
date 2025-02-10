@@ -36,7 +36,7 @@ dependencies = [
   "einops>=0.8.0",
   "mendeleev>=0.17.0",
   "e3nn",
-  "mace-torch==0.3.6",
+  "mace-torch==0.3.10",
   "monty==2024.2.2",
   "loguru",
   "numpydantic>=1.6.4",
