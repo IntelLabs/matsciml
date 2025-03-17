@@ -1584,7 +1584,16 @@ class MaceEnergyForceTask(BaseTaskModule):
             else:
                 coefficient = self.loss_coeff[key]
 
-            losses[key] = self.loss_func(predictions[key], target_val) * (
+            model_outputs = predictions[key]
+            # attempt to reshape model outputs for correct broadcasting
+            if model_outputs.shape != target_val.shape:
+                try:
+                    model_outputs = model_outputs.reshape(target_val.shape)
+                except RuntimeError as e:
+                    raise RuntimeError(
+                        f"Unable to reconile shapes for preds/labels; preds: {model_outputs.shape}, labels: {target_val.shape}."
+                    ) from e
+            losses[key] = self.loss_func(model_outputs, target_val) * (
                 coefficient / predictions[key].numel()
             )
         total_loss: torch.Tensor = sum(losses.values())
