@@ -1103,9 +1103,18 @@ class BaseTaskModule(pl.LightningModule):
             loss_func_signature = signature(loss_func.forward).parameters
             # TODO refactor this once outputs are homogenized
             if isinstance(predictions, dict):
-                kwargs = {"input": predictions[key], "target": target_val}
+                model_outputs = predictions[key]
             else:
-                kwargs = {"input": getattr(predictions, key), "target": target_val}
+                model_outputs = getattr(predictions, key)
+            # to ensure broadcasting works correctly
+            if model_outputs.shape != target_val.shape:
+                try:
+                    model_outputs = model_outputs.reshape(target_val.shape)
+                except RuntimeError as e:
+                    raise RuntimeError(
+                        f"Unable to reconcile prediction/label shapes; preds: {model_outputs.shape}, labels: {target_val.shape}"
+                    ) from e
+            kwargs = {"input": model_outputs, "target": target_val}
             if not isinstance(kwargs["input"], torch.Tensor):
                 raise KeyError(f"Expected model to produce output with key {key}.")
             # pack atoms per graph information too
