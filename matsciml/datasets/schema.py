@@ -818,7 +818,7 @@ class DataSampleSchema(MatsciMLSchema):
                 )
             # round coordinate values so that -1e-6 is just zero and doesn't fail the test
             round_coords = np.round(self.frac_coords, decimals=2)
-            if np.any(np.logical_or(round_coords > 1.01, round_coords < 0.0)):
+            if torch.any(torch.logical_or(round_coords > 1.01, round_coords < 0.0)):
                 logger.warning(
                     f"Fractional coordinates are outside of [0, 1]: {round_coords}"
                 )
@@ -1041,19 +1041,27 @@ class BatchSchema(DataSampleSchema):
                 else:
                     # if it's not pyg and it's a graph, only one other option
                     packed[key] = batch([s.graph for s in samples])
-            # for dicts we do not provide stricter type checking
-            if isinstance(ref_data, dict):
-                subdict = {}
-                for subkey in ref_data.keys():
-                    subdict[subkey] = _concatenate_data_list(
-                        [getattr(s, key)[subkey] for s in samples]
-                    )
-                packed[key] = subdict
-            # attempt to concatenate field if it's not empty
-            elif ref_data is not None:
-                packed[key] = _concatenate_data_list([getattr(s, key) for s in samples])
+            # add any other special cases here
+            elif (
+                key in ["lattice_matrix", "lattice_parameters"] and ref_data is not None
+            ):
+                packed[key] = torch.vstack([getattr(s, key) for s in samples])
             else:
-                packed[key] = None
+                # for dicts we do not provide stricter type checking
+                if isinstance(ref_data, dict):
+                    subdict = {}
+                    for subkey in ref_data.keys():
+                        subdict[subkey] = _concatenate_data_list(
+                            [getattr(s, key)[subkey] for s in samples]
+                        )
+                    packed[key] = subdict
+                # attempt to concatenate field if it's not empty
+                elif ref_data is not None:
+                    packed[key] = _concatenate_data_list(
+                        [getattr(s, key) for s in samples]
+                    )
+                else:
+                    packed[key] = None
         packed["batch_size"] = len(samples)
         return cls(**packed)
 
