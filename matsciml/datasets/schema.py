@@ -811,7 +811,7 @@ class DataSampleSchema(MatsciMLSchema):
             self.frac_coords = cart_frac_conversion(
                 self.cart_coords, *self.lattice_parameters, to_fractional=True
             )
-        if isinstance(self.frac_coords, NDArray):
+        if isinstance(self.frac_coords, torch.Tensor):
             if self.frac_coords.shape != self.cart_coords.shape:
                 raise ValueError(
                     "Fractional coordinate dimensions do not match cartesians."
