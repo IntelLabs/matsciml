@@ -24,7 +24,6 @@ from numpydantic import NDArray, Shape
 from loguru import logger
 import numpy as np
 import torch
-from torch import Tensor
 
 from matsciml.common.packages import package_registry
 from matsciml.common.inspection import get_all_args
@@ -743,7 +742,7 @@ class DataSampleSchema(MatsciMLSchema):
     total_energy: float | None = None
     forces: v.CoordTensor
     stresses: v.StressTensor
-    lattice_parameters: NDArray[Shape["6"], float] | Tensor | None = None
+    lattice_parameters: v.LatticeParameters | None = None
     lattice_matrix: v.LatticeTensor
     edge_index: v.EdgeTensor
     frac_coords: v.CoordTensor | None = None

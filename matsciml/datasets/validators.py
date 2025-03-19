@@ -87,6 +87,13 @@ def check_edge_like(data: torch.Tensor) -> torch.Tensor:
     return data
 
 
+def check_lattice_param_like(data: torch.Tensor) -> torch.Tensor:
+    """Checks that the last dimension has six values"""
+    if data.size(-1) != 6:
+        raise ValueError("Expects 6 parameters for lattice parameters.")
+    return data
+
+
 # type for coordinate-like tensors
 CoordTensor = Annotated[
     torch.Tensor,
@@ -132,5 +139,13 @@ EdgeTensor = Annotated[
     BeforeValidator(cast_to_torch),
     AfterValidator(coerce_long_like),
     AfterValidator(check_edge_like),
+    PlainSerializer(array_like_serialization),
+]
+
+LatticeParameters = Annotated[
+    torch.Tensor,
+    BeforeValidator(cast_to_torch),
+    AfterValidator(check_lattice_param_like),
+    AfterValidator(coerce_float_like),
     PlainSerializer(array_like_serialization),
 ]
