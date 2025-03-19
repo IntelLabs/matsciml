@@ -939,6 +939,13 @@ class DataSampleSchema(MatsciMLSchema):
             pbc=pbc,
         )
 
+    def to(self, device: str | torch.device) -> None:
+        """In-place transfer of tensors to a target device"""
+        for key in self.model_fields.keys():
+            value = getattr(self, key)
+            if isinstance(value, torch.Tensor):
+                setattr(self, key, value.to(device))
+
     @property
     def graph_backend(self) -> Literal["dgl", "pyg"] | None:
         if not self.graph:
