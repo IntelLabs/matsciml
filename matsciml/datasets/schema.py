@@ -962,6 +962,101 @@ class DataSampleSchema(MatsciMLSchema):
                 )
 
 
+class BatchSchema(DataSampleSchema):
+    batch_size: int
+    index: v.Long1DTensor
+    num_atoms: v.Long1DTensor
+    num_edges: v.Long1DTensor | None = None
+    pbc: list[PeriodicBoundarySchema]
+    datatype: list[DataSampleEnum]
+    total_energy: v.Float1DTensor | None = None
+    charge: v.Float1DTensor | None = None
+    multiplicity: v.Float1DTensor | None = None
+    electronic_state_index: v.Long1DTensor | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
+
+    @model_validator(mode="after")
+    def atom_count_consistency(self) -> Self:
+        num_atoms = self.num_atoms.sum()
+        for key in [
+            "atomic_numbers",
+            "electron_spins",
+            "nuclear_spins",
+            "isotopic_masses",
+            "atomic_charges",
+            "atomic_energies",
+            "atomic_labels",
+        ]:
+            value = getattr(self, key, None)
+            if value is not None:
+                if len(value) != num_atoms:
+                    self._exception_wrapper(
+                        ValueError(
+                            f"Inconsistent number of elements for {key}; expected {num_atoms}, got {len(value)}."
+                        )
+                    )
+        for key in ["forces", "stresses"]:
+            value = getattr(self, key, None)
+            if value is not None:
+                if value.shape[0] != num_atoms:
+                    self._exception_wrapper(
+                        ValueError(
+                            f"Inconsistent number of elements for node property {key}; expected {num_atoms}, got {value.shape[0]}."
+                        )
+                    )
+        if self.edge_index is not None:
+            for key in ["images", "offsets", "unit_offsets"]:
+                value = getattr(self, key, None)
+                if value is not None:
+                    if value.shape[0] != self.edge_index.size(-1):
+                        self._exception_wrapper(
+                            ValueError(
+                                f"Inconsistent number of elements for edge property {key}."
+                            )
+                        )
+        return self
+
+    @classmethod
+    def from_data_samples(cls, samples: list[DataSampleSchema]) -> Self:
+        packed = {}
+        ref_sample = samples[0]
+        for key in ref_sample.model_fields.keys():
+            ref_data = getattr(ref_sample, key, None)
+            if key == "graph" and ref_data is not None:
+                from dgl import batch
+
+                if "pyg" in package_registry:
+                    from torch_geometric.data import Data, Batch
+
+                    if isinstance(ref_data, Data):
+                        packed[key] = Batch.from_data_list([s.graph for s in samples])
+                        packed["num_edges"] = [
+                            s.graph.edge_index.size(-1) for s in samples
+                        ]
+                    else:
+                        packed[key] = batch([s.graph for s in samples])
+                        packed["num_edges"] = [s.graph.num_edges for s in samples]
+                else:
+                    # if it's not pyg and it's a graph, only one other option
+                    packed[key] = batch([s.graph for s in samples])
+            # for dicts we do not provide stricter type checking
+            if isinstance(ref_data, dict):
+                subdict = {}
+                for subkey in ref_data.keys():
+                    subdict[subkey] = _concatenate_data_list(
+                        [getattr(s, key)[subkey] for s in samples]
+                    )
+                packed[key] = subdict
+            # attempt to concatenate field if it's not empty
+            elif ref_data is not None:
+                packed[key] = _concatenate_data_list([getattr(s, key) for s in samples])
+            else:
+                packed[key] = None
+        packed["batch_size"] = len(samples)
+        return cls(**packed)
+
+
 def _concatenate_data_list(all_data: list[Any]) -> list[Any] | torch.Tensor:
     """
     Concatenates an arbitrary list of data where possible.

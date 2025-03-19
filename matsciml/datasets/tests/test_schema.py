@@ -218,3 +218,29 @@ def test_lattice_matrix_to_param_consistency():
     assert np.allclose(converted, data.lattice_parameters)
     exact = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
     assert np.allclose(exact, data.lattice_matrix)
+
+
+@pytest.mark.parametrize("num_atoms", [5, 12, 16])
+@pytest.mark.parametrize("array_lib", ["numpy", "torch"])
+@pytest.mark.parametrize("num_samples", [2, 4])
+def test_basic_data_batching(num_atoms, array_lib, num_samples):
+    if array_lib == "numpy":
+        coords = np.random.rand(num_atoms, 3)
+        numbers = np.random.randint(1, 100, (num_atoms))
+    else:
+        coords = torch.rand(num_atoms, 3)
+        numbers = torch.randint(1, 100, (num_atoms,))
+    pbc = {"x": True, "y": True, "z": True}
+    samples = []
+    for _ in range(num_samples):
+        data = schema.DataSampleSchema(
+            index=0,
+            num_atoms=num_atoms,
+            cart_coords=coords,
+            atomic_numbers=numbers,
+            pbc=pbc,
+            datatype="SCFCycle",
+        )
+        samples.append(data)
+    batch = schema.BatchSchema.from_data_samples(samples)
+    assert batch
