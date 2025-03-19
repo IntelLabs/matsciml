@@ -974,6 +974,8 @@ class BatchSchema(DataSampleSchema):
     multiplicity: v.Float1DTensor | None = None
     electronic_state_index: v.Long1DTensor | None = None
     lattice_matrix: v.BatchedLatticeTensor | None = None
+    embeddings: Embeddings | None = None
+    outputs: ModelOutput | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
