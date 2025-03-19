@@ -740,11 +740,11 @@ class DataSampleSchema(MatsciMLSchema):
     atomic_energies: v.Float1DTensor | None = None
     atomic_labels: v.Long1DTensor | None = None
     total_energy: float | None = None
-    forces: v.CoordTensor
-    stresses: v.StressTensor
+    forces: v.CoordTensor | None = None
+    stresses: v.StressTensor | None = None
     lattice_parameters: v.LatticeParameters | None = None
-    lattice_matrix: v.LatticeTensor
-    edge_index: v.EdgeTensor
+    lattice_matrix: v.LatticeTensor | None = None
+    edge_index: v.EdgeTensor | None = None
     frac_coords: v.CoordTensor | None = None
     charge: float | None = None  # overall system charge
     multiplicity: float | None = None  # overall system multiplicity
