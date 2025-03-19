@@ -32,6 +32,7 @@ from matsciml.common.types import Embeddings, ModelOutput
 from matsciml.modules.normalizer import Normalizer
 from matsciml.datasets.transforms import PeriodicPropertiesTransform
 from matsciml.datasets.utils import cart_frac_conversion
+from matsciml.datasets import validators as v
 
 """This module defines schemas pertaining to data, using ``pydantic`` models
 to help with validation and (de)serialization.
@@ -728,36 +729,30 @@ class DataSampleSchema(MatsciMLSchema):
 
     index: int
     num_atoms: int
-    cart_coords: NDArray[Shape["*, 3"], float] | Tensor
-    atomic_numbers: NDArray[Shape["*"], int] | Tensor
+    cart_coords: v.CoordTensor
+    atomic_numbers: v.Long1DTensor
     pbc: PeriodicBoundarySchema
     datatype: DataSampleEnum
-    alpha_electron_spins: NDArray[Shape["*"], float] | Tensor | None = None
-    beta_electron_spins: NDArray[Shape["*"], float] | Tensor | None = None
-    nuclear_spins: NDArray[Shape["*"], float] | Tensor | None = (
-        None  # optional nuclear spin at atom
-    )
-    isotopic_masses: NDArray[Shape["*"], float] | Tensor | None = None
-    atomic_charges: NDArray[Shape["*"], float] | Tensor | None = None
-    atomic_energies: NDArray[Shape["*"], float] | Tensor | None = None
-    atomic_labels: NDArray[Shape["*"], int] | Tensor | None = (
-        None  # allows atoms to be tagged with class labels
-    )
+    alpha_electron_spins: v.Float1DTensor | None = None
+    beta_electron_spins: v.Float1DTensor | None = None
+    nuclear_spins: v.Float1DTensor | None = None
+    isotopic_masses: v.Float1DTensor | None = None
+    atomic_charges: v.Float1DTensor | None = None
+    atomic_energies: v.Float1DTensor | None = None
+    atomic_labels: v.Long1DTensor | None = None
     total_energy: float | None = None
-    forces: NDArray[Shape["*, 3"], float] | Tensor | None = None
-    stresses: NDArray[Shape["*, 3, 3"], float] | Tensor | None = None
+    forces: v.CoordTensor
+    stresses: v.StressTensor
     lattice_parameters: NDArray[Shape["6"], float] | Tensor | None = None
-    lattice_matrix: NDArray[Shape["3, 3"], float] | Tensor | None = None
-    edge_index: NDArray[Shape["2, *"], int] | Tensor | None = (
-        None  # allows for precomputed edges
-    )
-    frac_coords: NDArray[Shape["*, 3"], float] | Tensor | None = None
+    lattice_matrix: v.LatticeTensor
+    edge_index: v.EdgeTensor
+    frac_coords: v.CoordTensor | None = None
     charge: float | None = None  # overall system charge
     multiplicity: float | None = None  # overall system multiplicity
     electronic_state_index: int = 0
-    images: NDArray[Shape["*, 3"], int] | Tensor | None = None
-    offsets: NDArray[Shape["*, 3"], float] | Tensor | None = None
-    unit_offsets: NDArray[Shape["*, 3"], float] | Tensor | None = None
+    images: v.CoordTensor | None = None
+    offsets: v.CoordTensor | None = None
+    unit_offsets: v.CoordTensor | None = None
     graph: Any = None
     extras: dict[str, Any] | None = None
     transform_store: dict[str, Any] = Field(default_factory=dict)

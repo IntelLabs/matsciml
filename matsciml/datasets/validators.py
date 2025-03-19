@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from typing_extensions import Annotated
 from typing import Iterable
 
 from ase.geometry import complete_cell
 import numpy as np
 import torch
+
+from pydantic import BeforeValidator, AfterValidator, PlainSerializer
 
 
 def coerce_long_like(data: torch.Tensor) -> torch.Tensor:
@@ -71,3 +74,63 @@ def check_lattice_ortho(data: torch.Tensor) -> torch.Tensor:
     """Check if the lattice matrix comprises orthogonal basis vectors"""
     # recasts after check
     return torch.from_numpy(complete_cell(data))
+
+
+def check_edge_like(data: torch.Tensor) -> torch.Tensor:
+    """Check if a tensor resembles expected edge indices"""
+    if data.ndim != 2:
+        raise ValueError("Edge tensor should be 2D")
+    if data.size(0) != 2:
+        raise ValueError("First dimension of edge tensor should be shape 2.")
+    if data.dtype != torch.long:
+        raise ValueError("Edge indices should be long type.")
+    return data
+
+
+# type for coordinate-like tensors
+CoordTensor = Annotated[
+    torch.Tensor,
+    BeforeValidator(cast_to_torch),
+    AfterValidator(check_coord_dims),
+    AfterValidator(coerce_float_like),
+    PlainSerializer(array_like_serialization),
+]
+
+Float1DTensor = Annotated[
+    torch.Tensor,
+    BeforeValidator(cast_to_torch),
+    AfterValidator(coerce_float_like),
+    PlainSerializer(array_like_serialization),
+]
+
+Long1DTensor = Annotated[
+    torch.Tensor,
+    BeforeValidator(cast_to_torch),
+    AfterValidator(coerce_long_like),
+    PlainSerializer(array_like_serialization),
+]
+
+# reuses the lattice matrix check which is functionally the same
+StressTensor = Annotated[
+    torch.Tensor,
+    BeforeValidator(cast_to_torch),
+    AfterValidator(check_lattice_matrix_like),
+    AfterValidator(coerce_float_like),
+    PlainSerializer(array_like_serialization),
+]
+
+LatticeTensor = Annotated[
+    torch.Tensor,
+    BeforeValidator(cast_to_torch),
+    AfterValidator(check_lattice_matrix_like),
+    AfterValidator(coerce_float_like),
+    PlainSerializer(array_like_serialization),
+]
+
+EdgeTensor = Annotated[
+    torch.Tensor,
+    BeforeValidator(cast_to_torch),
+    AfterValidator(coerce_long_like),
+    AfterValidator(check_edge_like),
+    PlainSerializer(array_like_serialization),
+]
