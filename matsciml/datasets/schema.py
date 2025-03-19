@@ -24,6 +24,7 @@ from numpydantic import NDArray, Shape
 from loguru import logger
 import numpy as np
 import torch
+from torch import Tensor
 
 from matsciml.common.packages import package_registry
 from matsciml.common.inspection import get_all_args
@@ -727,36 +728,36 @@ class DataSampleSchema(MatsciMLSchema):
 
     index: int
     num_atoms: int
-    cart_coords: NDArray[Shape["*, 3"], float]
-    atomic_numbers: NDArray[Shape["*"], int]
+    cart_coords: NDArray[Shape["*, 3"], float] | Tensor
+    atomic_numbers: NDArray[Shape["*"], int] | Tensor
     pbc: PeriodicBoundarySchema
     datatype: DataSampleEnum
-    alpha_electron_spins: NDArray[Shape["*"], float] | None = None
-    beta_electron_spins: NDArray[Shape["*"], float] | None = None
-    nuclear_spins: NDArray[Shape["*"], float] | None = (
+    alpha_electron_spins: NDArray[Shape["*"], float] | Tensor | None = None
+    beta_electron_spins: NDArray[Shape["*"], float] | Tensor | None = None
+    nuclear_spins: NDArray[Shape["*"], float] | Tensor | None = (
         None  # optional nuclear spin at atom
     )
-    isotopic_masses: NDArray[Shape["*"], float] | None = None
-    atomic_charges: NDArray[Shape["*"], float] | None = None
-    atomic_energies: NDArray[Shape["*"], float] | None = None
-    atomic_labels: NDArray[Shape["*"], int] | None = (
+    isotopic_masses: NDArray[Shape["*"], float] | Tensor | None = None
+    atomic_charges: NDArray[Shape["*"], float] | Tensor | None = None
+    atomic_energies: NDArray[Shape["*"], float] | Tensor | None = None
+    atomic_labels: NDArray[Shape["*"], int] | Tensor | None = (
         None  # allows atoms to be tagged with class labels
     )
     total_energy: float | None = None
-    forces: NDArray[Shape["*, 3"], float] | None = None
-    stresses: NDArray[Shape["*, 3, 3"], float] | None = None
-    lattice_parameters: NDArray[Shape["6"], float] | None = None
-    lattice_matrix: NDArray[Shape["3, 3"], float] | None = None
-    edge_index: NDArray[Shape["2, *"], int] | None = (
+    forces: NDArray[Shape["*, 3"], float] | Tensor | None = None
+    stresses: NDArray[Shape["*, 3, 3"], float] | Tensor | None = None
+    lattice_parameters: NDArray[Shape["6"], float] | Tensor | None = None
+    lattice_matrix: NDArray[Shape["3, 3"], float] | Tensor | None = None
+    edge_index: NDArray[Shape["2, *"], int] | Tensor | None = (
         None  # allows for precomputed edges
     )
-    frac_coords: NDArray[Shape["*, 3"], float] | None = None
+    frac_coords: NDArray[Shape["*, 3"], float] | Tensor | None = None
     charge: float | None = None  # overall system charge
     multiplicity: float | None = None  # overall system multiplicity
     electronic_state_index: int = 0
-    images: NDArray[Shape["*, 3"], int] | None = None
-    offsets: NDArray[Shape["*, 3"], float] | None = None
-    unit_offsets: NDArray[Shape["*, 3"], float] | None = None
+    images: NDArray[Shape["*, 3"], int] | Tensor | None = None
+    offsets: NDArray[Shape["*, 3"], float] | Tensor | None = None
+    unit_offsets: NDArray[Shape["*, 3"], float] | Tensor | None = None
     graph: Any = None
     extras: dict[str, Any] | None = None
     transform_store: dict[str, Any] = Field(default_factory=dict)
