@@ -7,6 +7,20 @@ import numpy as np
 import torch
 
 
+def coerce_long_like(data: torch.Tensor) -> torch.Tensor:
+    """If the input tensor is not integer type, cast to int64"""
+    if torch.is_floating_point(data):
+        return data.long()
+    return data
+
+
+def coerce_float_like(data: torch.Tensor) -> torch.Tensor:
+    """If the input tensor is not floating point, cast to fp32"""
+    if not torch.is_floating_point(data):
+        return data.float()
+    return data
+
+
 def array_like_serialization(data: np.ndarray | torch.Tensor) -> list:
     """Map array-like data to list for JSON serialization"""
     return data.tolist()
