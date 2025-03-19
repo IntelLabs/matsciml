@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
+from ase.geometry import complete_cell
 import numpy as np
 import torch
 
@@ -50,3 +51,9 @@ def check_lattice_matrix_like(data: torch.Tensor) -> torch.Tensor:
     if last_dims != (3, 3):
         raise ValueError("Lattice matrix should be (3, 3) in last two dimensions.")
     return data
+
+
+def check_lattice_ortho(data: torch.Tensor) -> torch.Tensor:
+    """Check if the lattice matrix comprises orthogonal basis vectors"""
+    # recasts after check
+    return torch.from_numpy(complete_cell(data))
