@@ -127,6 +127,7 @@ StressTensor = Annotated[
 LatticeTensor = Annotated[
     torch.Tensor,
     BeforeValidator(cast_to_torch),
+    BeforeValidator(check_lattice_ortho),
     AfterValidator(check_lattice_matrix_like),
     AfterValidator(coerce_float_like),
     PlainSerializer(array_like_serialization),
@@ -145,5 +146,10 @@ LatticeParameters = Annotated[
     BeforeValidator(cast_to_torch),
     AfterValidator(check_lattice_param_like),
     AfterValidator(coerce_float_like),
+    PlainSerializer(array_like_serialization),
+]
+
+BatchedLatticeTensor = Annotated[
+    torch.Tensor,
     PlainSerializer(array_like_serialization),
 ]

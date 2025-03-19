@@ -973,6 +973,7 @@ class BatchSchema(DataSampleSchema):
     charge: v.Float1DTensor | None = None
     multiplicity: v.Float1DTensor | None = None
     electronic_state_index: v.Long1DTensor | None = None
+    lattice_matrix: v.BatchedLatticeTensor | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
