@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 
 from ase import Atoms
-from ase.geometry import cell_to_cellpar, cellpar_to_cell, complete_cell
+from ase.geometry import cell_to_cellpar, cellpar_to_cell
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -790,18 +790,6 @@ class DataSampleSchema(MatsciMLSchema):
         raise exception_cls(
             f"Data schema validation failed at sample {self.index}."
         ) from exception
-
-    @field_validator("lattice_matrix")
-    @classmethod
-    def orthogonal_lattice_matrix(cls, values: NDArray[Shape["3, 3"], float] | None):
-        """
-        Ensures that the lattice matrix comprises a complete
-        basis of orthogonal vectors.
-        """
-
-        if values is not None:
-            values = complete_cell(values)
-        return values
 
     @model_validator(mode="before")
     @classmethod
