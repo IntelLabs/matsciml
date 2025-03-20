@@ -1103,3 +1103,34 @@ def build_nearest_images(max_image_number: int) -> torch.Tensor:
     )
     images = torch.FloatTensor(list(indices))
     return images
+
+
+def _recursive_move_tensors(obj: Any, device: str | torch.device) -> Any:
+    """
+    Moves all tensors within a nested data structure to the specified device.
+
+    This function recursively traverses the input object, which can be a dictionary
+    or list containing tensors, and moves each tensor to the specified device. If
+    the object is not a tensor, it is returned unchanged.
+
+    Parameters
+    ----------
+    obj : Any
+        The input data structure (e.g., dictionary, list)
+        containing tensors.
+    device : str | torch.device
+        The device to which the tensors should be moved. Can be a
+        string ('cpu', 'cuda') or a torch.device object.
+
+    Returns
+    -------
+    Any
+        The modified data structure with tensors moved to the specified device.
+    """
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            obj[key] = _recursive_move_tensors(value, device)
+    if isinstance(obj, torch.Tensor):
+        return obj.to(device)
+    # in the final case, return object without modification
+    return obj
