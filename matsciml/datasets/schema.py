@@ -1090,12 +1090,13 @@ def _concatenate_data_list(all_data: list[Any]) -> list[Any] | torch.Tensor:
         Otherwise, returns the unmodified input.
     """
     sample = all_data[0]
-    if isinstance(sample, (np.ndarray, torch.Tensor)):
-        # homogenize all samples into tensors
-        all_data = [torch.Tensor(s) for s in all_data]
-        return torch.concat(all_data)
-    if isinstance(sample, (float, int)):
-        output = torch.Tensor(all_data)
+    if isinstance(sample, torch.Tensor):
+        if sample.ndim == 1:
+            return torch.concat(all_data)
+        else:
+            return torch.vstack(all_data)
+    elif isinstance(sample, (float, int)):
+        output = torch.tensor(all_data)
         if isinstance(sample, int):
             output = output.long()
         return output
