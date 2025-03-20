@@ -1022,8 +1022,15 @@ class BatchSchema(DataSampleSchema):
     def from_data_samples(cls, samples: list[DataSampleSchema]) -> Self:
         packed = {}
         ref_sample = samples[0]
-        for key in ref_sample.model_fields.keys():
+        # loop over only the fields that were actually set
+        for key in ref_sample.model_fields_set:
             ref_data = getattr(ref_sample, key, None)
+            # skip certain keys if a graph structure was defined
+            if (
+                key in ["cart_coords", "frac_coords", "edge_index"]
+                and "graph" in ref_sample.model_fields_set
+            ):
+                continue
             if key == "graph" and ref_data is not None:
                 from dgl import batch
 
@@ -1031,13 +1038,28 @@ class BatchSchema(DataSampleSchema):
                     from torch_geometric.data import Data, Batch
 
                     if isinstance(ref_data, Data):
-                        packed[key] = Batch.from_data_list([s.graph for s in samples])
+                        # this addresses an issue with `index` as a key
+                        # while `num_nodes` is not set; see pyg #4554
+                        for s in samples:
+                            s.graph.num_nodes = len(s.graph.atomic_numbers)
+                        g = Batch.from_data_list([s.graph for s in samples])
+                        packed[key] = g
                         packed["num_edges"] = [
                             s.graph.edge_index.size(-1) for s in samples
                         ]
+                        # this sets all the data as references to graph tensors
+                        for key, value in g:
+                            packed[key] = value
                     else:
-                        packed[key] = batch([s.graph for s in samples])
+                        g = batch([s.graph for s in samples])
+                        packed[key] = g
                         packed["num_edges"] = [s.graph.num_edges for s in samples]
+                        packed["edge_index"] = torch.vstack(g.edges())
+                        # this sets all the data as references to graph tensors
+                        for key, value in g.ndata.items():
+                            packed[key] = value
+                        for key, value in g.edata.items():
+                            packed[key] = value
                 else:
                     # if it's not pyg and it's a graph, only one other option
                     packed[key] = batch([s.graph for s in samples])
