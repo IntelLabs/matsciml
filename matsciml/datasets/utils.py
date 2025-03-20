@@ -1133,7 +1133,11 @@ def _recursive_move_tensors(obj: Any, device: str | torch.device) -> Any:
     if isinstance(obj, dict):
         for key, value in obj.items():
             obj[key] = _recursive_move_tensors(value, device)
+    # TODO: movement will break references between graph and schema
+    # fields, causing redundancy
     if isinstance(obj, torch.Tensor):
+        return obj.to(device)
+    if "pyg" in package_registry and isinstance(obj, PyGGraph):
         return obj.to(device)
     # in the final case, return object without modification
     return obj
