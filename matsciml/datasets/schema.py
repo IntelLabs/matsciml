@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 
 from ase import Atoms
-from ase.geometry import cell_to_cellpar, cellpar_to_cell, complete_cell
+from ase.geometry import cell_to_cellpar, cellpar_to_cell
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -31,6 +31,7 @@ from matsciml.common.types import Embeddings, ModelOutput
 from matsciml.modules.normalizer import Normalizer
 from matsciml.datasets.transforms import PeriodicPropertiesTransform
 from matsciml.datasets.utils import cart_frac_conversion
+from matsciml.datasets import validators as v
 
 """This module defines schemas pertaining to data, using ``pydantic`` models
 to help with validation and (de)serialization.
@@ -727,36 +728,30 @@ class DataSampleSchema(MatsciMLSchema):
 
     index: int
     num_atoms: int
-    cart_coords: NDArray[Shape["*, 3"], float]
-    atomic_numbers: NDArray[Shape["*"], int]
+    cart_coords: v.CoordTensor
+    atomic_numbers: v.Long1DTensor
     pbc: PeriodicBoundarySchema
     datatype: DataSampleEnum
-    alpha_electron_spins: NDArray[Shape["*"], float] | None = None
-    beta_electron_spins: NDArray[Shape["*"], float] | None = None
-    nuclear_spins: NDArray[Shape["*"], float] | None = (
-        None  # optional nuclear spin at atom
-    )
-    isotopic_masses: NDArray[Shape["*"], float] | None = None
-    atomic_charges: NDArray[Shape["*"], float] | None = None
-    atomic_energies: NDArray[Shape["*"], float] | None = None
-    atomic_labels: NDArray[Shape["*"], int] | None = (
-        None  # allows atoms to be tagged with class labels
-    )
+    alpha_electron_spins: v.Float1DTensor | None = None
+    beta_electron_spins: v.Float1DTensor | None = None
+    nuclear_spins: v.Float1DTensor | None = None
+    isotopic_masses: v.Float1DTensor | None = None
+    atomic_charges: v.Float1DTensor | None = None
+    atomic_energies: v.Float1DTensor | None = None
+    atomic_labels: v.Long1DTensor | None = None
     total_energy: float | None = None
-    forces: NDArray[Shape["*, 3"], float] | None = None
-    stresses: NDArray[Shape["*, 3, 3"], float] | None = None
-    lattice_parameters: NDArray[Shape["6"], float] | None = None
-    lattice_matrix: NDArray[Shape["3, 3"], float] | None = None
-    edge_index: NDArray[Shape["2, *"], int] | None = (
-        None  # allows for precomputed edges
-    )
-    frac_coords: NDArray[Shape["*, 3"], float] | None = None
+    forces: v.CoordTensor | None = None
+    stresses: v.StressTensor | None = None
+    lattice_parameters: v.LatticeParameters | None = None
+    lattice_matrix: v.LatticeTensor | None = None
+    edge_index: v.EdgeTensor | None = None
+    frac_coords: v.CoordTensor | None = None
     charge: float | None = None  # overall system charge
     multiplicity: float | None = None  # overall system multiplicity
     electronic_state_index: int = 0
-    images: NDArray[Shape["*, 3"], int] | None = None
-    offsets: NDArray[Shape["*, 3"], float] | None = None
-    unit_offsets: NDArray[Shape["*, 3"], float] | None = None
+    images: v.CoordTensor | None = None
+    offsets: v.CoordTensor | None = None
+    unit_offsets: v.CoordTensor | None = None
     graph: Any = None
     extras: dict[str, Any] | None = None
     transform_store: dict[str, Any] = Field(default_factory=dict)
@@ -796,18 +791,6 @@ class DataSampleSchema(MatsciMLSchema):
             f"Data schema validation failed at sample {self.index}."
         ) from exception
 
-    @field_validator("lattice_matrix")
-    @classmethod
-    def orthogonal_lattice_matrix(cls, values: NDArray[Shape["3, 3"], float] | None):
-        """
-        Ensures that the lattice matrix comprises a complete
-        basis of orthogonal vectors.
-        """
-
-        if values is not None:
-            values = complete_cell(values)
-        return values
-
     @model_validator(mode="before")
     @classmethod
     def convert_lattice_and_parameters(cls, values: Any) -> Any:
@@ -821,40 +804,6 @@ class DataSampleSchema(MatsciMLSchema):
             values["lattice_matrix"] = lattice_matrix
         return values
 
-    @field_validator("lattice_parameters")
-    @classmethod
-    def check_lattice_param_angles(
-        cls, values: NDArray[Shape["6"], np.floating] | None
-    ):
-        """
-        Check to make sure that if lattice parameters are set, then the
-        angles are in degrees, not radians.
-
-        The check is done by expecting a vector of six elements is passed,
-        with the latter three are the angles. We assume that angles are
-        in radians if none of the values exceed 2pi (i.e. 360 degrees).
-
-        This check is only performed if the lattice parameters are provided.
-
-        Parameters
-        ----------
-        values : NDArray[Shape['6'], float] | None
-            Vector of lattice parameters.
-
-        Raises
-        ------
-        ValueError:
-            If all lattice angles are smaller than or equal to
-            2pi, they are likely to be in radians.
-        """
-        if values is not None:
-            all_are_radians = np.all(values[3:] <= 2 * np.pi)
-            if all_are_radians:
-                raise ValueError(
-                    "Expected lattice angles to be in degrees. All input values are smaller than 2 * np.pi."
-                )
-        return values
-
     @model_validator(mode="after")
     def coordinate_consistency(self) -> Self:
         """Sets fractional coordinates if parameters are available, and checks them"""
@@ -862,7 +811,7 @@ class DataSampleSchema(MatsciMLSchema):
             self.frac_coords = cart_frac_conversion(
                 self.cart_coords, *self.lattice_parameters, to_fractional=True
             )
-        if isinstance(self.frac_coords, NDArray):
+        if isinstance(self.frac_coords, torch.Tensor):
             if self.frac_coords.shape != self.cart_coords.shape:
                 raise ValueError(
                     "Fractional coordinate dimensions do not match cartesians."
