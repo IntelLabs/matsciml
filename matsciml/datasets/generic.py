@@ -11,11 +11,7 @@ import h5py
 from torch.utils.data import DataLoader, Dataset
 from lightning import pytorch as pl
 
-from matsciml.datasets.schema import (
-    DatasetSchema,
-    DataSampleSchema,
-    collate_samples_into_batch_schema,
-)
+from matsciml.datasets.schema import DatasetSchema, DataSampleSchema, BatchSchema
 
 
 logger = getLogger("matsciml.datasets.MatSciMLDataset")
@@ -443,7 +439,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             self.datasets["train"],
             shuffle=True,
             **self.hparams.loader_kwargs,
-            collate_fn=collate_samples_into_batch_schema,
+            collate_fn=BatchSchema.from_data_samples,
         )
 
     def val_dataloader(self) -> DataLoader | None:
@@ -453,7 +449,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             self.datasets["validation"],
             shuffle=False,
             **self.hparams.loader_kwargs,
-            collate_fn=collate_samples_into_batch_schema,
+            collate_fn=BatchSchema.from_data_samples,
         )
 
     def test_dataloader(self) -> DataLoader | None:
@@ -463,7 +459,7 @@ class MatSciMLDataModule(pl.LightningDataModule):
             self.datasets["test"],
             shuffle=False,
             **self.hparams.loader_kwargs,
-            collate_fn=collate_samples_into_batch_schema,
+            collate_fn=BatchSchema.from_data_samples,
         )
 
     def predict_dataloader(self) -> DataLoader | None:
@@ -473,5 +469,5 @@ class MatSciMLDataModule(pl.LightningDataModule):
             self.datasets["predict"],
             shuffle=False,
             **self.hparams.loader_kwargs,
-            collate_fn=collate_samples_into_batch_schema,
+            collate_fn=BatchSchema.from_data_samples,
         )

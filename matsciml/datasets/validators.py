@@ -49,8 +49,11 @@ def cast_to_torch(data: float | int | Iterable[float | int]) -> torch.Tensor:
         data = [data]
     if isinstance(data, np.ndarray):
         return torch.from_numpy(data)
-    else:
+    if not isinstance(data, torch.Tensor):
         return torch.tensor(data)
+    # assume that the construct is already a torch tensor,
+    # or we wouldn't be able to convert it anyway
+    return data
 
 
 def check_coord_dims(data: torch.Tensor) -> torch.Tensor:
@@ -127,6 +130,7 @@ StressTensor = Annotated[
 LatticeTensor = Annotated[
     torch.Tensor,
     BeforeValidator(cast_to_torch),
+    BeforeValidator(check_lattice_ortho),
     AfterValidator(check_lattice_matrix_like),
     AfterValidator(coerce_float_like),
     PlainSerializer(array_like_serialization),
@@ -145,5 +149,10 @@ LatticeParameters = Annotated[
     BeforeValidator(cast_to_torch),
     AfterValidator(check_lattice_param_like),
     AfterValidator(coerce_float_like),
+    PlainSerializer(array_like_serialization),
+]
+
+BatchedLatticeTensor = Annotated[
+    torch.Tensor,
     PlainSerializer(array_like_serialization),
 ]

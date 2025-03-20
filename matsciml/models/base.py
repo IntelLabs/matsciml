@@ -31,6 +31,7 @@ from matsciml.common.types import (
 from matsciml.models.common import OutputHead
 from matsciml.modules.normalizer import Normalizer
 from matsciml.models import losses as matsciml_losses
+from matsciml.datasets.schema import BatchSchema, DataSampleSchema
 
 logger = getLogger("matsciml")
 logger.setLevel("INFO")
@@ -757,6 +758,15 @@ class BaseTaskModule(pl.LightningModule):
             self.task_loss_scaling = self._task_loss_scaling
         self.embedding_reduction_type = embedding_reduction_type
         self.save_hyperparameters(ignore=["encoder", "loss_func"])
+
+    def transfer_batch_to_device(
+        self, batch: Any, device: torch.device, dataloader_idx: int
+    ) -> Any:
+        """Override base behavior to transfer custom data structures"""
+        batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
+        if isinstance(batch, BatchSchema | DataSampleSchema):
+            batch = batch.to(device)
+        return batch
 
     @property
     def task_keys(self) -> list[str]:
@@ -2734,6 +2744,18 @@ class MultiTaskLitModule(pl.LightningModule):
             for task_type in task_types:
                 pairs.append((dataset, task_type))
         return pairs
+
+    def transfer_batch_to_device(
+        self, batch: Any, device: torch.device, dataloader_idx: int
+    ) -> Any:
+        """Override base behavior to transfer custom data structures"""
+        batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
+        if isinstance(batch, BatchSchema | DataSampleSchema):
+            batch = batch.to(device)
+            raise RuntimeError(
+                "Multitask module does not currently support the new data schema yet."
+            )
+        return batch
 
     def configure_optimizers(self) -> list[Optimizer]:
         """
