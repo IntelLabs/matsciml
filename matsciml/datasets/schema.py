@@ -1049,7 +1049,8 @@ class BatchSchema(DataSampleSchema):
                         ]
                         # this sets all the data as references to graph tensors
                         for key, value in g:
-                            packed[key] = value
+                            if "lattice" not in key:
+                                packed[key] = value
                     else:
                         g = batch([s.graph for s in samples])
                         packed[key] = g
@@ -1057,17 +1058,16 @@ class BatchSchema(DataSampleSchema):
                         packed["edge_index"] = torch.vstack(g.edges())
                         # this sets all the data as references to graph tensors
                         for key, value in g.ndata.items():
-                            packed[key] = value
+                            if "lattice" not in key:
+                                packed[key] = value
                         for key, value in g.edata.items():
                             packed[key] = value
                 else:
                     # if it's not pyg and it's a graph, only one other option
                     packed[key] = batch([s.graph for s in samples])
-            # add any other special cases here
-            elif (
-                key in ["lattice_matrix", "lattice_parameters"] and ref_data is not None
-            ):
-                packed[key] = torch.vstack([getattr(s, key) for s in samples])
+            # these cases are concatenated along new dimensions
+            if key in ["lattice_matrix", "lattice_parameters"]:
+                packed[key] = torch.stack([getattr(s, key) for s in samples])
             else:
                 # for dicts we do not provide stricter type checking
                 if isinstance(ref_data, dict):
