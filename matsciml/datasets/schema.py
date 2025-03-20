@@ -933,11 +933,12 @@ class DataSampleSchema(MatsciMLSchema):
             pbc=pbc,
         )
 
-    def to(self, device: str | torch.device) -> None:
+    def to(self, device: str | torch.device) -> Self:
         """In-place transfer of tensors to a target device"""
         for key in self.model_fields_set:
             value = getattr(self, key)
             setattr(self, key, _recursive_move_tensors(value, device))
+        return self
 
     @property
     def graph_backend(self) -> Literal["dgl", "pyg"] | None:
