@@ -814,12 +814,6 @@ class DataSampleSchema(MatsciMLSchema):
                 raise ValueError(
                     "Fractional coordinate dimensions do not match cartesians."
                 )
-            # round coordinate values so that -1e-6 is just zero and doesn't fail the test
-            round_coords = np.round(self.frac_coords, decimals=2)
-            if torch.any(torch.logical_or(round_coords > 1.01, round_coords < 0.0)):
-                logger.warning(
-                    f"Fractional coordinates are outside of [0, 1]: {round_coords}"
-                )
         return self
 
     @model_validator(mode="after")
