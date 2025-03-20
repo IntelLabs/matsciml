@@ -272,3 +272,6 @@ def test_batching_with_graph(num_atoms, num_samples):
     batch = schema.BatchSchema.from_data_samples(samples)
     assert batch
     assert batch.batch_size == num_samples
+    # test to see if transfer method works
+    batch.to("cpu")
+    assert batch
