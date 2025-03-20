@@ -1016,7 +1016,7 @@ def calculate_ase_periodic_shifts(
 
 
 def cart_frac_conversion(
-    coords: torch.Tensor,
+    coords: torch.Tensor | np.ndarray,
     a: float,
     b: float,
     c: float,
@@ -1071,10 +1071,13 @@ def cart_frac_conversion(
 
     lattice_matrix = complete_cell(cellpar_to_cell([a, b, c, alpha, beta, gamma]))
     cell = Cell(lattice_matrix)
+    if isinstance(coords, torch.Tensor):
+        coords = coords.numpy()
     if to_fractional:
-        return cell.scaled_positions(coords)
+        coords = cell.scaled_positions(coords)
     else:
-        return cell.cartesian_positions(coords)
+        coords = cell.cartesian_positions(coords)
+    return torch.from_numpy(coords)
 
 
 def build_nearest_images(max_image_number: int) -> torch.Tensor:
