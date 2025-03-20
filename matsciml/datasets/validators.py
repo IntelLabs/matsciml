@@ -49,8 +49,11 @@ def cast_to_torch(data: float | int | Iterable[float | int]) -> torch.Tensor:
         data = [data]
     if isinstance(data, np.ndarray):
         return torch.from_numpy(data)
-    else:
+    if not isinstance(data, torch.Tensor):
         return torch.tensor(data)
+    # assume that the construct is already a torch tensor,
+    # or we wouldn't be able to convert it anyway
+    return data
 
 
 def check_coord_dims(data: torch.Tensor) -> torch.Tensor:
