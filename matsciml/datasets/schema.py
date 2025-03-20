@@ -28,7 +28,7 @@ from matsciml.common.inspection import get_all_args
 from matsciml.common.types import Embeddings, ModelOutput
 from matsciml.modules.normalizer import Normalizer
 from matsciml.datasets.transforms import PeriodicPropertiesTransform
-from matsciml.datasets.utils import cart_frac_conversion
+from matsciml.datasets.utils import cart_frac_conversion, _recursive_move_tensors
 from matsciml.datasets import validators as v
 
 """This module defines schemas pertaining to data, using ``pydantic`` models
@@ -941,10 +941,9 @@ class DataSampleSchema(MatsciMLSchema):
 
     def to(self, device: str | torch.device) -> None:
         """In-place transfer of tensors to a target device"""
-        for key in self.model_fields.keys():
+        for key in self.model_fields_set:
             value = getattr(self, key)
-            if isinstance(value, torch.Tensor):
-                setattr(self, key, value.to(device))
+            setattr(self, key, _recursive_move_tensors(value, device))
 
     @property
     def graph_backend(self) -> Literal["dgl", "pyg"] | None:
