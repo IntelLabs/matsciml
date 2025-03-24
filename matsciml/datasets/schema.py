@@ -15,12 +15,10 @@ from pydantic import (
     ConfigDict,
     Field,
     ValidationError,
-    create_model,
     field_validator,
     model_validator,
     ValidationInfo,
 )
-from numpydantic import NDArray, Shape
 from loguru import logger
 import numpy as np
 import torch
@@ -30,7 +28,7 @@ from matsciml.common.inspection import get_all_args
 from matsciml.common.types import Embeddings, ModelOutput
 from matsciml.modules.normalizer import Normalizer
 from matsciml.datasets.transforms import PeriodicPropertiesTransform
-from matsciml.datasets.utils import cart_frac_conversion
+from matsciml.datasets.utils import cart_frac_conversion, _recursive_move_tensors
 from matsciml.datasets import validators as v
 
 """This module defines schemas pertaining to data, using ``pydantic`` models
@@ -53,7 +51,7 @@ __all__ = [
     "NormalizationSchema",
     "GraphWiringSchema",
     "TargetSchema",
-    "collate_samples_into_batch_schema",
+    "BatchSchema",
 ]
 
 # ruff: noqa: F722
@@ -816,12 +814,6 @@ class DataSampleSchema(MatsciMLSchema):
                 raise ValueError(
                     "Fractional coordinate dimensions do not match cartesians."
                 )
-            # round coordinate values so that -1e-6 is just zero and doesn't fail the test
-            round_coords = np.round(self.frac_coords, decimals=2)
-            if np.any(np.logical_or(round_coords > 1.01, round_coords < 0.0)):
-                logger.warning(
-                    f"Fractional coordinates are outside of [0, 1]: {round_coords}"
-                )
         return self
 
     @model_validator(mode="after")
@@ -941,6 +933,13 @@ class DataSampleSchema(MatsciMLSchema):
             pbc=pbc,
         )
 
+    def to(self, device: str | torch.device) -> Self:
+        """In-place transfer of tensors to a target device"""
+        for key in self.model_fields_set:
+            value = getattr(self, key)
+            setattr(self, key, _recursive_move_tensors(value, device))
+        return self
+
     @property
     def graph_backend(self) -> Literal["dgl", "pyg"] | None:
         if not self.graph:
@@ -960,6 +959,134 @@ class DataSampleSchema(MatsciMLSchema):
                 self._exception_wrapper(
                     TypeError(f"Unexpected graph type: {type(self.graph)}")
                 )
+
+
+class BatchSchema(DataSampleSchema):
+    batch_size: int
+    index: v.Long1DTensor
+    num_atoms: v.Long1DTensor
+    num_edges: v.Long1DTensor | None = None
+    pbc: list[PeriodicBoundarySchema]
+    datatype: list[DataSampleEnum]
+    total_energy: v.Float1DTensor | None = None
+    charge: v.Float1DTensor | None = None
+    multiplicity: v.Float1DTensor | None = None
+    electronic_state_index: v.Long1DTensor | None = None
+    lattice_matrix: v.BatchedLatticeTensor | None = None
+    embeddings: Embeddings | None = None
+    outputs: ModelOutput | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
+
+    @model_validator(mode="after")
+    def atom_count_consistency(self) -> Self:
+        num_atoms = self.num_atoms.sum()
+        for key in [
+            "atomic_numbers",
+            "electron_spins",
+            "nuclear_spins",
+            "isotopic_masses",
+            "atomic_charges",
+            "atomic_energies",
+            "atomic_labels",
+        ]:
+            value = getattr(self, key, None)
+            if value is not None:
+                if len(value) != num_atoms:
+                    self._exception_wrapper(
+                        ValueError(
+                            f"Inconsistent number of elements for {key}; expected {num_atoms}, got {len(value)}."
+                        )
+                    )
+        for key in ["forces", "stresses"]:
+            value = getattr(self, key, None)
+            if value is not None:
+                if value.shape[0] != num_atoms:
+                    self._exception_wrapper(
+                        ValueError(
+                            f"Inconsistent number of elements for node property {key}; expected {num_atoms}, got {value.shape[0]}."
+                        )
+                    )
+        if self.edge_index is not None:
+            for key in ["images", "offsets", "unit_offsets"]:
+                value = getattr(self, key, None)
+                if value is not None:
+                    if value.shape[0] != self.edge_index.size(-1):
+                        self._exception_wrapper(
+                            ValueError(
+                                f"Inconsistent number of elements for edge property {key}."
+                            )
+                        )
+        return self
+
+    @classmethod
+    def from_data_samples(cls, samples: list[DataSampleSchema]) -> Self:
+        packed = {}
+        ref_sample = samples[0]
+        # loop over only the fields that were actually set
+        for key in ref_sample.model_fields_set:
+            ref_data = getattr(ref_sample, key, None)
+            # skip certain keys if a graph structure was defined
+            if (
+                key in ["cart_coords", "frac_coords", "edge_index"]
+                and "graph" in ref_sample.model_fields_set
+            ):
+                continue
+            if key == "graph" and ref_data is not None:
+                from dgl import batch
+
+                if "pyg" in package_registry:
+                    from torch_geometric.data import Data, Batch
+
+                    if isinstance(ref_data, Data):
+                        # this addresses an issue with `index` as a key
+                        # while `num_nodes` is not set; see pyg #4554
+                        for s in samples:
+                            s.graph.num_nodes = len(s.graph.atomic_numbers)
+                        g = Batch.from_data_list([s.graph for s in samples])
+                        packed[key] = g
+                        packed["num_edges"] = [
+                            s.graph.edge_index.size(-1) for s in samples
+                        ]
+                        # this sets all the data as references to graph tensors
+                        for key, value in g:
+                            if "lattice" not in key:
+                                packed[key] = value
+                    else:
+                        g = batch([s.graph for s in samples])
+                        packed[key] = g
+                        packed["num_edges"] = [s.graph.num_edges for s in samples]
+                        packed["edge_index"] = torch.vstack(g.edges())
+                        # this sets all the data as references to graph tensors
+                        for key, value in g.ndata.items():
+                            if "lattice" not in key:
+                                packed[key] = value
+                        for key, value in g.edata.items():
+                            packed[key] = value
+                else:
+                    # if it's not pyg and it's a graph, only one other option
+                    packed[key] = batch([s.graph for s in samples])
+            # these cases are concatenated along new dimensions
+            if key in ["lattice_matrix", "lattice_parameters"]:
+                packed[key] = torch.stack([getattr(s, key) for s in samples])
+            else:
+                # for dicts we do not provide stricter type checking
+                if isinstance(ref_data, dict):
+                    subdict = {}
+                    for subkey in ref_data.keys():
+                        subdict[subkey] = _concatenate_data_list(
+                            [getattr(s, key)[subkey] for s in samples]
+                        )
+                    packed[key] = subdict
+                # attempt to concatenate field if it's not empty
+                elif ref_data is not None:
+                    packed[key] = _concatenate_data_list(
+                        [getattr(s, key) for s in samples]
+                    )
+                else:
+                    packed[key] = None
+        packed["batch_size"] = len(samples)
+        return cls(**packed)
 
 
 def _concatenate_data_list(all_data: list[Any]) -> list[Any] | torch.Tensor:
@@ -986,107 +1113,16 @@ def _concatenate_data_list(all_data: list[Any]) -> list[Any] | torch.Tensor:
         Otherwise, returns the unmodified input.
     """
     sample = all_data[0]
-    if isinstance(sample, (np.ndarray, torch.Tensor)):
-        # homogenize all samples into tensors
-        all_data = [torch.Tensor(s) for s in all_data]
-        return torch.concat(all_data)
-    if isinstance(sample, (float, int)):
-        output = torch.Tensor(all_data)
+    if isinstance(sample, torch.Tensor):
+        if sample.ndim == 1:
+            return torch.concat(all_data)
+        else:
+            return torch.vstack(all_data)
+    elif isinstance(sample, (float, int)):
+        output = torch.tensor(all_data)
         if isinstance(sample, int):
             output = output.long()
         return output
     else:
         # leave the data as a list
         return all_data
-
-
-def collate_samples_into_batch_schema(samples: list[DataSampleSchema]) -> object:
-    """
-    Function to collate a list of ``DataSampleSchema`` into a dynamically
-    generated ``BatchSchema``.
-
-    The additional logic in this function is to handle graphs, copying
-    references to their respective data, and calling the respective framework
-    batching functions.
-
-    The purpose of on-the-fly schema generation is to do some degree of
-    validation, but primarily provide regular structure for use in the
-    task pipeline side of things. Given that the schema should be serializable,
-    it may also make debugging more streamlined.
-
-    Parameters
-    ----------
-    samples : list[DataSampleSchema]
-        List of data samples that have been pre-validated.
-
-    Returns
-    -------
-    object
-        Instance of a ``BatchSchema`` object. This is not explicitly annotated
-        since the model/class is defined dynamically based off incoming data.
-    """
-    ref_schema = samples[0].model_json_schema()
-    # initial keys are going to hold the main structure of the schema
-    schema_to_generate = {
-        "num_atoms": (NDArray[Shape["*"], int] | torch.LongTensor, ...),
-        "batch_size": (int, ...),
-        "graph": (Any | None, None),
-        "num_edges": (NDArray[Shape["*"], int] | torch.LongTensor | None, None),
-        "embeddings": (Embeddings | None, None),
-        "outputs": (ModelOutput | None, None),
-    }
-    collected_data = {}  # holds all the data to unpack into the generated schema
-    # check to see if graphs are present
-    if samples[0].graph is not None:
-        graph_sample = samples[0].graph
-        if "pyg" in package_registry:
-            from torch_geometric.data import Batch, Data
-
-            if isinstance(graph_sample, Data):
-                batched_graph = Batch.from_data_list(
-                    [sample.graph for sample in samples]
-                )
-                graph_type = Batch
-                for key in batched_graph.keys():
-                    data = getattr(batched_graph, key)
-                    schema_to_generate[key] = (type(data), ...)
-                    collected_data[key] = data
-                collected_data["num_edges"] = _concatenate_data_list(
-                    [sample.graph.edge_index.size(-1) for sample in samples]
-                ).long()
-        else:
-            from dgl import DGLGraph, batch
-
-            if isinstance(graph_sample, DGLGraph):
-                batched_graph = batch([sample.graph for sample in samples])
-                graph_type = DGLGraph
-                for key, data in batched_graph.ndata.items():
-                    schema_to_generate[key] = (type(data), ...)
-                    collected_data[key] = data
-                for key, data in batched_graph.edata.items():
-                    schema_to_generate[key] = (type(data), ...)
-                    collected_data[key] = data
-                collected_data["num_edges"] = _concatenate_data_list(
-                    [sample.graph.batch_num_edges() for sample in samples]
-                ).long()
-        collected_data["num_atoms"] = _concatenate_data_list(
-            [sample.num_atoms for sample in samples]
-        ).long()
-        collected_data["graph"] = batched_graph
-        schema_to_generate["graph"] = (graph_type, ...)
-    # for everything else that wasn't packed into the graph
-    for key in ref_schema["required"]:
-        if key not in schema_to_generate:
-            schema_to_generate[key] = (Any, ...)
-        if key not in collected_data:
-            collected_data[key] = _concatenate_data_list(
-                [getattr(sample, key) for sample in samples]
-            )
-    collected_data["batch_size"] = len(samples)
-    # generate the schema, then create the model
-    BatchSchema = create_model(
-        "BatchSchema",
-        **schema_to_generate,
-        __config__=ConfigDict(arbitrary_types_allowed=True, use_enum_values=True),
-    )
-    return BatchSchema(**collected_data)
