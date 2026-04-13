@@ -12,7 +12,7 @@ jobs:
   interfaces-pytest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Create/reuse micromamba env
         uses: mamba-org/setup-micromamba@v1
         with:
