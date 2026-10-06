@@ -1,3 +1,10 @@
+> [!WARNING]
+> **THIS PROJECT IS ARCHIVED**  
+> Intel will not provide or guarantee development of or support for this project,
+> including but not limited to, maintenance, bug fixes, new releases or updates.
+>
+> Patches to this project are no longer accepted by Intel.  
+
 
 <h1 align="center">Open MatSci ML Toolkit : A Broad, Multi-Task Benchmark for Solid-State Materials Modeling</h1>
 
